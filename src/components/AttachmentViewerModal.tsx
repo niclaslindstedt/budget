@@ -85,14 +85,23 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   // gates single-pointer dragging. Mirrors `scaleRef` but as render state.
   const [zoomed, setZoomed] = useState(false);
 
-  // Active touch / mouse pointers, keyed by id. One pointer pans; two
-  // pinch-zoom. Stored in a ref because the move handler runs between
-  // renders.
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
-  // Distance + scale captured when the second pinch pointer landed, so
-  // each move scales relative to the gesture start rather than the
-  // previous frame (no compounding drift).
-  const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
+  // Mouse-drag pan state (desktop). Touch is handled separately by the
+  // native listeners below — see the comment on the touch effect for why
+  // React's synthetic touch / pointer events can't drive pinch on iOS.
+  const mouse = useRef({ dragging: false, lastX: 0, lastY: 0 });
+  // Live touch-gesture state. `mode` gates pan vs pinch; `startDist` /
+  // `startScale` anchor each pinch frame to the gesture start (no
+  // compounding drift); `moved` distinguishes a tap from a drag so the
+  // double-tap toggle only fires on a real tap.
+  const touch = useRef({
+    mode: "idle" as "idle" | "pan" | "pinch",
+    startDist: 0,
+    startScale: 1,
+    lastX: 0,
+    lastY: 0,
+    moved: false,
+    lastTapAt: 0,
+  });
 
   const reset = useCallback(() => {
     scaleRef.current = 1;
@@ -140,6 +149,18 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     [],
   );
 
+  const panBy = useCallback((dx: number, dy: number) => {
+    const el = containerRef.current;
+    if (!el || scaleRef.current <= MIN_SCALE) return;
+    const rect = el.getBoundingClientRect();
+    offsetRef.current = clampOffset(
+      { x: offsetRef.current.x + dx, y: offsetRef.current.y + dy },
+      scaleRef.current,
+      rect,
+    );
+    flush();
+  }, []);
+
   function zoomFromCentre(factor: number) {
     const el = containerRef.current;
     if (!el) return;
@@ -147,72 +168,133 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     zoomBy(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
   }
 
-  // Wheel zoom needs a non-passive listener to call preventDefault (React
-  // attaches onWheel passively at the root, where preventDefault is a
-  // no-op), so wire it natively against the container.
+  // Native, non-passive touch + wheel listeners. This is the crux of the
+  // iOS fix: React routes its synthetic touch / pointer / wheel handlers
+  // through a single passive root listener, so `preventDefault()` is a
+  // no-op there. On a standalone iOS PWA the system then claims every
+  // two-finger gesture for page zoom and fires `pointercancel`, so the
+  // pinch never reaches our code. Binding `touchmove` / `wheel` directly
+  // with `{ passive: false }` lets us `preventDefault()` and keep the
+  // gesture, which is how in-app image viewers pinch-zoom on iOS at all.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
+    const dist = (a: Touch, b: Touch) =>
+      Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
     function onWheel(e: WheelEvent) {
       e.preventDefault();
       zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, e.clientX, e.clientY);
     }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomBy]);
 
-  function onPointerDown(e: React.PointerEvent) {
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      pinchStart.current = {
-        dist: Math.hypot(a.x - b.x, a.y - b.y),
-        scale: scaleRef.current,
-      };
-    }
-  }
-
-  function onPointerMove(e: React.PointerEvent) {
-    const prev = pointers.current.get(e.pointerId);
-    if (!prev) return;
-    const cur = { x: e.clientX, y: e.clientY };
-    pointers.current.set(e.pointerId, cur);
-
-    if (pointers.current.size >= 2 && pinchStart.current) {
-      const [a, b] = [...pointers.current.values()];
-      const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchStart.current.dist > 0) {
-        const target = clamp(
-          (pinchStart.current.scale * dist) / pinchStart.current.dist,
-          MIN_SCALE,
-          MAX_SCALE,
-        );
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        zoomBy(target / scaleRef.current, mid.x, mid.y);
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        touch.current.mode = "pinch";
+        touch.current.startDist = dist(e.touches[0], e.touches[1]);
+        touch.current.startScale = scaleRef.current;
+      } else if (e.touches.length === 1) {
+        touch.current.mode = "pan";
+        touch.current.moved = false;
+        touch.current.lastX = e.touches[0].clientX;
+        touch.current.lastY = e.touches[0].clientY;
       }
-      return;
     }
 
-    // Single-pointer pan — only meaningful once zoomed in.
+    function onTouchMove(e: TouchEvent) {
+      if (touch.current.mode === "pinch" && e.touches.length >= 2) {
+        e.preventDefault();
+        const d = dist(e.touches[0], e.touches[1]);
+        if (touch.current.startDist > 0) {
+          const target = clamp(
+            (touch.current.startScale * d) / touch.current.startDist,
+            MIN_SCALE,
+            MAX_SCALE,
+          );
+          const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+          zoomBy(target / scaleRef.current, midX, midY);
+        }
+      } else if (touch.current.mode === "pan" && e.touches.length === 1) {
+        // Only hijack the gesture (and stop the modal body scrolling)
+        // once zoomed in — at 1× a one-finger drag is a no-op and should
+        // pass through.
+        if (scaleRef.current <= MIN_SCALE) return;
+        e.preventDefault();
+        const tp = e.touches[0];
+        touch.current.moved = true;
+        panBy(
+          tp.clientX - touch.current.lastX,
+          tp.clientY - touch.current.lastY,
+        );
+        touch.current.lastX = tp.clientX;
+        touch.current.lastY = tp.clientY;
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      // A finger lifted off a single-finger tap that never moved: treat a
+      // second such tap within 300ms as a double-tap zoom toggle (iOS
+      // doesn't synthesize a reliable `dblclick` for touch).
+      if (
+        touch.current.mode === "pan" &&
+        !touch.current.moved &&
+        e.touches.length === 0
+      ) {
+        const now = Date.now();
+        if (now - touch.current.lastTapAt < 300) {
+          if (scaleRef.current > MIN_SCALE) reset();
+          else zoomBy(2.5, touch.current.lastX, touch.current.lastY);
+          touch.current.lastTapAt = 0;
+        } else {
+          touch.current.lastTapAt = now;
+        }
+      }
+      if (e.touches.length === 0) {
+        touch.current.mode = "idle";
+        flush(); // restore the post-gesture transition
+      } else if (e.touches.length === 1) {
+        // Lifted one finger of a pinch — continue as a pan from the
+        // finger that's still down.
+        touch.current.mode = "pan";
+        touch.current.moved = true;
+        touch.current.lastX = e.touches[0].clientX;
+        touch.current.lastY = e.touches[0].clientY;
+      }
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [zoomBy, panBy, reset]);
+
+  // Mouse-only pan (desktop). Touch never reaches these — it's consumed
+  // by the native listeners above — so they stay free of the iOS passive
+  // -event problem.
+  function onMouseDown(e: React.MouseEvent) {
     if (scaleRef.current <= MIN_SCALE) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    offsetRef.current = clampOffset(
-      {
-        x: offsetRef.current.x + (cur.x - prev.x),
-        y: offsetRef.current.y + (cur.y - prev.y),
-      },
-      scaleRef.current,
-      rect,
-    );
-    flush();
+    mouse.current = { dragging: true, lastX: e.clientX, lastY: e.clientY };
   }
 
-  function endPointer(e: React.PointerEvent) {
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinchStart.current = null;
+  function onMouseMove(e: React.MouseEvent) {
+    if (!mouse.current.dragging) return;
+    panBy(e.clientX - mouse.current.lastX, e.clientY - mouse.current.lastY);
+    mouse.current.lastX = e.clientX;
+    mouse.current.lastY = e.clientY;
+  }
+
+  function endMouse() {
+    mouse.current.dragging = false;
   }
 
   function onDoubleClick(e: React.MouseEvent) {
@@ -223,20 +305,29 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   const transform = `translate(${offsetRef.current.x}px, ${offsetRef.current.y}px) scale(${scaleRef.current})`;
   const atMin = scaleRef.current <= MIN_SCALE;
   const atMax = scaleRef.current >= MAX_SCALE;
+  const gesturing = touch.current.mode !== "idle" || mouse.current.dragging;
   const btn =
     "inline-flex h-9 w-9 items-center justify-center rounded-full text-fg transition-colors hover:text-accent disabled:cursor-default disabled:opacity-40";
 
   return (
+    // The container is a zoom/pan gesture surface, not a control — the
+    // real interactive elements are the toolbar buttons below. The mouse
+    // handlers drive desktop drag-pan, with no keyboard analogue (the
+    // buttons cover keyboard zoom), so the a11y interactive-element rule
+    // doesn't apply.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={containerRef}
-      // `touch-action: none` hands every touch gesture to our handlers so
-      // the browser doesn't claim two-finger drags for page zoom / scroll.
+      // `touch-action: none` keeps the browser from starting its own
+      // scroll / zoom on the first touch; the native `touchmove`
+      // listener's `preventDefault` is what actually holds the gesture on
+      // iOS. Both are needed.
       className="relative flex h-full max-h-full w-full max-w-full select-none items-center justify-center overflow-hidden"
       style={{ touchAction: "none" }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endPointer}
-      onPointerCancel={endPointer}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={endMouse}
+      onMouseLeave={endMouse}
       onDoubleClick={onDoubleClick}
     >
       <img
@@ -246,11 +337,11 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
         className="max-h-full max-w-full object-contain"
         style={{
           transform,
+          touchAction: "none",
           cursor: zoomed ? "grab" : "zoom-in",
           // Pan / pinch update every frame, so a transition would lag the
           // finger. Only the discrete button / double-tap steps animate.
-          transition:
-            pointers.current.size > 0 ? "none" : "transform 120ms ease-out",
+          transition: gesturing ? "none" : "transform 120ms ease-out",
         }}
       />
       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-surface/90 px-1.5 py-1 shadow-lg backdrop-blur">
