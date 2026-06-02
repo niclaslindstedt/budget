@@ -14,6 +14,7 @@ const settings = {
     tags: "Tags",
     patterns: "Patterns",
     items: "Items",
+    properties: "Properties",
     memory: "Memory",
     developer: "Developer",
     logs: "Logs",
@@ -440,6 +441,15 @@ const settings = {
     excludedHint:
       "{n} excluded. Clear the list to scan matching transactions again.",
     clearExcluded: "Clear list",
+  },
+  properties: {
+    sizeTitle: "Size",
+    sizeHint:
+      "Unit shown next to a property's living area. Both mean square metres — this only changes how the unit is written, not the number you record.",
+    sizeUnit: "Unit",
+    unitKvm: "kvm (kvadratmeter)",
+    unitSqm: "sqm (square metres)",
+    sizeExample: "75 {unit}",
   },
   developer: {
     section: "Developer",

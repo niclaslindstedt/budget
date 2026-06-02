@@ -3,6 +3,7 @@ import {
   Building2,
   Hash,
   HardDrive,
+  Home,
   type LucideIcon,
   Package,
   Palette,
@@ -25,6 +26,7 @@ import { ItemsTab } from "./items";
 import { LogsTab } from "./logs";
 import { MemoryTab } from "./memory";
 import { PatternsTab } from "./patterns";
+import { PropertiesTab } from "./properties";
 import { SearchTab } from "./search";
 import { StorageTab } from "./storage";
 import { TagsTab } from "./tags";
@@ -40,6 +42,7 @@ export {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  PropertiesTab,
   SearchTab,
   StorageTab,
   TagsTab,
@@ -77,6 +80,7 @@ export const TAB_REGISTRY: readonly TabEntry[] = [
   { id: "tags", icon: Bookmark },
   { id: "patterns", icon: Tags },
   { id: "items", icon: Package },
+  { id: "properties", icon: Home },
   { id: "memory", icon: SettingsIcon },
   {
     id: "developer",
@@ -101,6 +105,7 @@ export type SettingsTabId =
   | "tags"
   | "patterns"
   | "items"
+  | "properties"
   | "memory"
   | "developer"
   | "logs";

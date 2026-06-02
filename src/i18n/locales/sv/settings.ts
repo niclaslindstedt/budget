@@ -14,6 +14,7 @@ const settings: SettingsCatalog = {
     tags: "Taggar",
     patterns: "Mönster",
     items: "Saker",
+    properties: "Fastigheter",
     memory: "Minne",
     developer: "Utvecklare",
     logs: "Loggar",
@@ -440,6 +441,15 @@ const settings: SettingsCatalog = {
     excludedHint:
       "{n} uteslutna. Rensa listan för att skanna matchande transaktioner igen.",
     clearExcluded: "Rensa lista",
+  },
+  properties: {
+    sizeTitle: "Storlek",
+    sizeHint:
+      "Enhet som visas bredvid en fastighets boyta. Båda betyder kvadratmeter — det här ändrar bara hur enheten skrivs, inte talet du anger.",
+    sizeUnit: "Enhet",
+    unitKvm: "kvm (kvadratmeter)",
+    unitSqm: "sqm (square metres)",
+    sizeExample: "75 {unit}",
   },
   developer: {
     section: "Utvecklare",

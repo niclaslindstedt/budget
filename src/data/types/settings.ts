@@ -220,7 +220,18 @@ export type CommonSettings = {
   // is uploaded from the item editor. Defaults to `"name-date"`. See
   // `src/data/items/receipt-name.ts` for what each preset produces.
   receiptNamePattern: ReceiptNamePattern;
+  // Label rendered next to a property's living area on the Properties
+  // page. Both options describe the same square-metre quantity stored
+  // on `Property.size` — `"kvm"` is the Swedish "kvadratmeter"
+  // abbreviation, `"sqm"` the English one. A display preference only;
+  // it never changes the stored number. Edited in the Property settings
+  // tab. Defaults to `"kvm"`.
+  propertySizeUnit: PropertySizeUnit;
 };
+
+// Display label for a property's living area. Both mean square metres;
+// the choice is purely how the unit is written next to the number.
+export type PropertySizeUnit = "kvm" | "sqm";
 
 // Preset filename schemes for uploaded item receipts. `type-name-date`
 // files the receipt under a per-type subdirectory inside `receipts/`;

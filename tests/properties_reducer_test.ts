@@ -58,6 +58,34 @@ describe("properties reducer — properties", () => {
     data = reducer(data, { type: "deleteProperty", propertyId: "p1" });
     expect(data.properties).toEqual([]);
   });
+
+  it("records and clears a property size, surviving a reload", () => {
+    let data = seeded();
+
+    data = reducer(data, {
+      type: "updateProperty",
+      propertyId: "p1",
+      patch: { size: 72.5 },
+    });
+    expect(data.properties[0].size).toBe(72.5);
+    expect(revalidate(data).properties[0].size).toBe(72.5);
+
+    // A negative size is rejected by the validator (dropped to absent)
+    // rather than stored.
+    const withBadSize = revalidate({
+      ...data,
+      properties: [{ ...data.properties[0], size: -10 }],
+    });
+    expect("size" in withBadSize.properties[0]).toBe(false);
+
+    // Clearing the field (undefined patch) removes the key entirely.
+    data = reducer(data, {
+      type: "updateProperty",
+      propertyId: "p1",
+      patch: { size: undefined },
+    });
+    expect("size" in data.properties[0]).toBe(false);
+  });
 });
 
 describe("properties reducer — value history", () => {

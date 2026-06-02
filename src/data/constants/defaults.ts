@@ -118,6 +118,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // default — descriptive and chronologically sortable. The Items
   // settings tab lets the user pick another preset.
   receiptNamePattern: "name-date",
+  // Square-metre unit rendered next to a property's living area.
+  // Defaults to the Swedish "kvm"; the Property settings tab lets the
+  // user switch to the English "sqm".
+  propertySizeUnit: "kvm",
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -177,6 +181,7 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   itemFindThreshold: DEFAULT_SETTINGS.itemFindThreshold,
   itemFindTypeIds: DEFAULT_SETTINGS.itemFindTypeIds,
   receiptNamePattern: DEFAULT_SETTINGS.receiptNamePattern,
+  propertySizeUnit: DEFAULT_SETTINGS.propertySizeUnit,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

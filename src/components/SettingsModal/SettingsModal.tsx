@@ -41,6 +41,7 @@ import {
   LogsTab,
   MemoryTab,
   PatternsTab,
+  PropertiesTab,
   SearchTab,
   TagsTab,
   type SettingsTabId,
@@ -571,6 +572,9 @@ export function SettingsModal({
                 onClearIgnoredItemEntries={onClearIgnoredItemEntries}
                 onClearItemFindExclusions={onClearItemFindExclusions}
               />
+            )}
+            {activeTab === "properties" && (
+              <PropertiesTab draft={draft} onUpdate={update} />
             )}
             {activeTab === "memory" && (
               <MemoryTab

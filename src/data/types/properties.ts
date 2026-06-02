@@ -101,6 +101,12 @@ export type Property = {
   name: string;
   purchaseAmount?: number; // what the property was bought for
   purchaseDate?: string; // ISO date of purchase
+  // Living area of the property, in square metres. Stored as a bare
+  // number; the unit it renders with ("kvm" / "sqm") is a global
+  // display preference (`Settings.propertySizeUnit`), not stored per
+  // property — both labels mean the same square-metre quantity. Absent
+  // when the user hasn't recorded a size.
+  size?: number;
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
 };
