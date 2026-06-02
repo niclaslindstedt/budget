@@ -184,4 +184,40 @@ package-lock.json` before trusting the trace.
   downgrade.
 - New `recommended` lint rules from a major → disable, don't refactor.
 - `favicon.ico` drift from the assets-generator → `make icons`.
-- Don't merge the 18 PRs individually — consolidate into one.
+- Don't merge the PRs individually — consolidate into one.
+- Prettier formats this `SKILL.md` too — run `make fmt-check` (or
+  `prettier --write` the file) after editing the skill, or CI's
+  `fmt-check` job fails on it.
+
+## Improve this skill every run
+
+This playbook is only as good as the last bump taught it. **Every time
+you run it, leave it sharper than you found it** — in the same PR, before
+you call the task done:
+
+1. **Capture what surprised you.** Anything that cost you a round trip
+   the skill didn't warn about — a new peer-coupling (package X had to
+   move with major Y), a fresh API break in the new versions, a new wave
+   of lint rules, a generated artifact that drifted, a CI job that fired
+   on an event you didn't expect — is a missing line here. Add it to the
+   matching numbered step **and** a one-liner in the "Bumps-in-the-road
+   checklist" so it's catchable at a glance.
+2. **Correct what was wrong or stale.** If a version pin, peer range, or
+   instruction in here didn't match reality this time (e.g. a plugin
+   caught up to a peer and the `overrides` entry is no longer needed),
+   edit it in place rather than appending a contradiction. The skill
+   describes the _current_ shape, not its history — don't narrate "used
+   to be X"; just make it say Y.
+3. **Keep it lean.** Fold new findings into existing bullets where they
+   belong instead of growing a parallel list. A 200-line skill nobody
+   reads helps no one; the value is in the few non-obvious traps, kept
+   current. Prune advice that the tooling has since made automatic.
+4. **Generalize before you write.** A trap from one package
+   (`jsx-a11y` lagging ESLint) is worth more stated as the pattern
+   ("lint/format plugins lag their host's major; prefer an `overrides`
+   shim over downgrading the host"). Capture the shape, cite the
+   instance as the example.
+
+The frontmatter `description` is load-bearing too: if you find this skill
+fired for a request it shouldn't have, or _didn't_ fire when it should,
+adjust the trigger phrasing there in the same pass.
