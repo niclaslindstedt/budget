@@ -25,6 +25,7 @@ export type { Item, ItemDepreciation, LineItemLink } from "./items";
 
 export type {
   Mortgage,
+  MortgageAmortization,
   MortgagePayment,
   Property,
   PropertyValuePoint,

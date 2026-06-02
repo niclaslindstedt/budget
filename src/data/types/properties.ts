@@ -53,6 +53,21 @@ export type MortgagePayment = {
 // loan's recurring charge; nullable until the user picks one (mirrors
 // `SalaryView.accountId`).
 //
+// How much of the loan is amortised (paid down) each month. The user
+// picks one of two mutually-exclusive modes:
+//
+// - `percent` — an annual percentage of the *initial* loan
+//   (`Mortgage.loanAmount`). Swedish "amorteringskrav" is expressed this
+//   way: 2% of an original 7,000,000 ⇒ 0.02 × 7,000,000 ÷ 12 ≈ 11,667 a
+//   month. Needs `loanAmount` to resolve to a monthly figure.
+// - `fixed` — a flat sum paid every month, independent of the loan size.
+//
+// Both values are non-negative. Resolve the per-month amount with
+// `resolveMonthlyAmortization` in `src/data/property-mortgage/amortization.ts`.
+export type MortgageAmortization =
+  | { mode: "percent"; percent: number } // annual % of loanAmount
+  | { mode: "fixed"; amount: number }; // fixed sum per month
+
 // The loan-terms fields below are all manually entered and all optional —
 // a mortgage can exist with just a name and have its terms filled in
 // later. `currentBalance` is recorded directly (not derived from
@@ -61,7 +76,7 @@ export type MortgagePayment = {
 // The interest fields describe a fixed-rate (Swedish "bindningstid")
 // period: `interestRate` is the current annual rate, `rateChangeMonths`
 // is how often it resets, and `nextRateChangeDate` is when the next reset
-// lands.
+// lands. `amortization` is how much is paid down per month (see above).
 export type Mortgage = {
   id: string;
   name: string; // user label, e.g. "SBAB loan 1"
@@ -71,6 +86,7 @@ export type Mortgage = {
   interestRate?: number; // current annual interest rate, as a percent (3.45 ⇒ 3.45%)
   rateChangeMonths?: number; // how often the rate resets, in months
   nextRateChangeDate?: string; // ISO yyyy-mm-dd of the next rate change
+  amortization?: MortgageAmortization; // monthly amortisation (percent-of-initial or fixed)
   payments: MortgagePayment[];
 };
 

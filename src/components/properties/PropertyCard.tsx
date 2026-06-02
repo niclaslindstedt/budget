@@ -1,5 +1,6 @@
 import { Home, Pencil, Plus, Search, TrendingUp, Trash2 } from "lucide-react";
 
+import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import type { Account, Mortgage, Property, Settings } from "../../data/types";
 import { useT } from "../../i18n";
 import { formatBalance, formatNumber } from "../../utils/format";
@@ -192,12 +193,14 @@ function MortgageRow({
   const count = mortgage.payments.length;
   const principal = mortgage.payments.reduce((s, p) => s + p.principal, 0);
   const interest = mortgage.payments.reduce((s, p) => s + p.interest, 0);
+  const monthlyAmort = resolveMonthlyAmortization(mortgage);
   const hasTerms =
     mortgage.loanAmount !== undefined ||
     mortgage.currentBalance !== undefined ||
     mortgage.interestRate !== undefined ||
     mortgage.rateChangeMonths !== undefined ||
-    mortgage.nextRateChangeDate !== undefined;
+    mortgage.nextRateChangeDate !== undefined ||
+    mortgage.amortization !== undefined;
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
@@ -258,6 +261,25 @@ function MortgageRow({
                 <span className="tabular-nums text-fg">
                   {mortgage.nextRateChangeDate}
                 </span>
+              </span>
+            )}
+            {monthlyAmort !== null && (
+              <span>
+                {t("properties.amortShort")}{" "}
+                <span className="tabular-nums text-fg">
+                  {t("properties.amortPerMonth", {
+                    amount: formatBalance(monthlyAmort, settings),
+                  })}
+                </span>
+                {mortgage.amortization?.mode === "percent" && (
+                  <>
+                    {" ("}
+                    {formatNumber(mortgage.amortization.percent, settings, {
+                      neverAbbreviate: true,
+                    })}
+                    {"%)"}
+                  </>
+                )}
               </span>
             )}
           </span>

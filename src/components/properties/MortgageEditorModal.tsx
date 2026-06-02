@@ -1,11 +1,21 @@
 import { useRef, useState } from "react";
 import { Check, ChevronDown, Landmark, Wallet } from "lucide-react";
 
+import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { newId } from "../../data/sheet";
-import type { Account, Mortgage, Settings } from "../../data/types";
+import type {
+  Account,
+  Mortgage,
+  MortgageAmortization,
+  Settings,
+} from "../../data/types";
 import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
-import { formatAmountForInput, parseAmount } from "../../utils/format";
+import {
+  formatAmountForInput,
+  formatBalance,
+  parseAmount,
+} from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { Button, ClearableInput } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
@@ -52,6 +62,8 @@ export function MortgageEditorModal({
   const [interestRate, setInterestRate] = useState("");
   const [rateChangeMonths, setRateChangeMonths] = useState("");
   const [nextRateChangeDate, setNextRateChangeDate] = useState("");
+  const [amortMode, setAmortMode] = useState<"percent" | "fixed">("percent");
+  const [amortValue, setAmortValue] = useState("");
 
   useResetOnOpen(open, mortgage?.id ?? "__create__", () => {
     setName(mortgage?.name ?? "");
@@ -68,6 +80,11 @@ export function MortgageEditorModal({
         : "",
     );
     setNextRateChangeDate(mortgage?.nextRateChangeDate ?? "");
+    const amort = mortgage?.amortization;
+    setAmortMode(amort?.mode ?? "percent");
+    if (!amort) setAmortValue("");
+    else if (amort.mode === "percent") setAmortValue(String(amort.percent));
+    else setAmortValue(seedAmount(amort.amount, settings));
   });
 
   if (!open) return null;
@@ -82,6 +99,16 @@ export function MortgageEditorModal({
     return parsed === null ? undefined : Math.abs(parsed);
   }
 
+  // Build the amortisation value for the active mode, or undefined when the
+  // value is blank / unparseable so the field clears on save.
+  function buildAmortization(): MortgageAmortization | undefined {
+    const v = num(amortValue);
+    if (v === undefined) return undefined;
+    return amortMode === "percent"
+      ? { mode: "percent", percent: v }
+      : { mode: "fixed", amount: v };
+  }
+
   function buildTerms(): Partial<Omit<Mortgage, "id">> {
     return {
       loanAmount: num(loanAmount),
@@ -90,6 +117,7 @@ export function MortgageEditorModal({
       rateChangeMonths: num(rateChangeMonths),
       nextRateChangeDate:
         nextRateChangeDate !== "" ? nextRateChangeDate : undefined,
+      amortization: buildAmortization(),
     };
   }
 
@@ -121,11 +149,32 @@ export function MortgageEditorModal({
       fresh.rateChangeMonths = terms.rateChangeMonths;
     if (terms.nextRateChangeDate !== undefined)
       fresh.nextRateChangeDate = terms.nextRateChangeDate;
+    if (terms.amortization !== undefined)
+      fresh.amortization = terms.amortization;
     onCreate(fresh);
   }
 
   const fieldClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
+
+  // Live preview of the resolved monthly amortisation, reusing the same
+  // resolver the card and data layer use. `null` when there's nothing to
+  // show yet (blank value, or percent mode without a loan amount to take
+  // the percentage of).
+  const amortValueNum = num(amortValue);
+  const amortPreview =
+    amortValueNum === undefined
+      ? null
+      : resolveMonthlyAmortization({
+          id: "",
+          name: "",
+          payments: [],
+          loanAmount: num(loanAmount),
+          amortization:
+            amortMode === "percent"
+              ? { mode: "percent", percent: amortValueNum }
+              : { mode: "fixed", amount: amortValueNum },
+        });
 
   return (
     <Modal
@@ -223,6 +272,62 @@ export function MortgageEditorModal({
               className={fieldClass}
             />
           </label>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.amortizationLabel")}
+            </span>
+            <div className="flex rounded border border-line bg-surface-2 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setAmortMode("percent")}
+                aria-pressed={amortMode === "percent"}
+                className={`flex-1 cursor-pointer rounded px-2 py-1 ${
+                  amortMode === "percent"
+                    ? "bg-accent text-page-bg"
+                    : "bg-transparent text-muted hover:text-fg"
+                }`}
+              >
+                {t("properties.amortModePercent")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmortMode("fixed")}
+                aria-pressed={amortMode === "fixed"}
+                className={`flex-1 cursor-pointer rounded px-2 py-1 ${
+                  amortMode === "fixed"
+                    ? "bg-accent text-page-bg"
+                    : "bg-transparent text-muted hover:text-fg"
+                }`}
+              >
+                {t("properties.amortModeFixed")}
+              </button>
+            </div>
+            <ClearableInput
+              value={amortValue}
+              onValueChange={setAmortValue}
+              inputMode="decimal"
+              placeholder={
+                amortMode === "percent"
+                  ? t("properties.amortPercentPlaceholder")
+                  : t("properties.amortFixedPlaceholder")
+              }
+              className={fieldClass}
+            />
+            {amortPreview !== null ? (
+              <p className="m-0 text-xs text-muted">
+                {t("properties.amortPreview", {
+                  amount: formatBalance(amortPreview, settings),
+                })}
+              </p>
+            ) : (
+              <p className="m-0 text-xs text-muted">
+                {amortMode === "percent"
+                  ? t("properties.amortPercentHint")
+                  : t("properties.amortFixedHint")}
+              </p>
+            )}
+          </div>
 
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">

@@ -33,6 +33,8 @@ const properties: PropertiesCatalog = {
   rateResetsOne: "ändras varje månad",
   rateResetsOther: "ändras var {count}:e mån",
   nextRateChangeShort: "Nästa ändring",
+  amortShort: "Amortering",
+  amortPerMonth: "{amount}/mån",
 
   // Property editor modal.
   newPropertyTitle: "Ny fastighet",
@@ -70,6 +72,15 @@ const properties: PropertiesCatalog = {
   rateChangeMonthsHint:
     "Hur ofta räntan omförhandlas — 3 för rörlig ränta, 12 för 1 års bindningstid.",
   nextRateChangeLabel: "Nästa ränteändring",
+  amortizationLabel: "Månadsamortering",
+  amortModePercent: "% av ursprungslån",
+  amortModeFixed: "Fast summa",
+  amortPercentPlaceholder: "t.ex. 2",
+  amortFixedPlaceholder: "Belopp per månad",
+  amortPercentHint:
+    "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp för att se månadsbeloppet.",
+  amortFixedHint: "Ett fast belopp som amorteras varje månad.",
+  amortPreview: "≈ {amount} per månad",
   accountLabel: "Konto",
   accountHint:
     "Kontot det här lånet betalas från. ”Hitta betalningar” söker igenom kontots bankhistorik efter den återkommande dragningen.",
