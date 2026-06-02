@@ -101,6 +101,27 @@ const PKCE_VERIFIER_KEY = nsKey("budget.dropbox.pkce.verifier");
 
 export type FetchImpl = typeof fetch;
 
+// Serialize an argument struct for the `Dropbox-API-Arg` header. The
+// header travels as an HTTP header value, which the browser's `fetch`
+// refuses to send when it contains a code point above U+00FF — it throws
+// a bare `TypeError: Load failed` before the request leaves the tab. A
+// receipt / payslip path derived from a user-typed merchant or item name
+// routinely carries such characters (an em dash "—", a smart quote "’",
+// an emoji, any non-Latin script), so a raw `JSON.stringify` would make
+// those uploads fail with no useful error. Dropbox documents the fix and
+// ships it in its own SDKs as `http_header_safe_json`: ASCII-escape every
+// character at or above U+0080 to its `\uXXXX` form, which is valid JSON
+// Dropbox decodes back to the original string. Latin-1-but-non-ASCII
+// characters (å, é, …) also need escaping — the byte the header would
+// otherwise carry is misread by Dropbox as Latin-1, not UTF-8 — so the
+// threshold is U+0080, not U+0100.
+export function dropboxApiArg(arg: unknown): string {
+  return JSON.stringify(arg).replace(
+    /[\u0080-\uffff]/g,
+    (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
+  );
+}
+
 // Live access to the user's Dropbox tokens. The access token is short-
 // lived (~4 hours), so the adapter holds a mutable copy in its closure
 // and exchanges the refresh token for a fresh one on any 401 before
@@ -238,7 +259,7 @@ export function createDropboxAdapter(
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Dropbox-API-Arg": JSON.stringify({ path: DROPBOX_FILE_PATH }),
+        "Dropbox-API-Arg": dropboxApiArg({ path: DROPBOX_FILE_PATH }),
       },
     }));
     if (res.status === 409) {
@@ -276,7 +297,7 @@ export function createDropboxAdapter(
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Dropbox-API-Arg": JSON.stringify({ path }),
+        "Dropbox-API-Arg": dropboxApiArg({ path }),
       },
     }));
     if (res.status === 409) return null;
@@ -316,7 +337,7 @@ export function createDropboxAdapter(
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Dropbox-API-Arg": JSON.stringify(args),
+        "Dropbox-API-Arg": dropboxApiArg(args),
         "Content-Type": "application/octet-stream",
       },
       body: text,
@@ -354,7 +375,7 @@ export function createDropboxAdapter(
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Dropbox-API-Arg": JSON.stringify(args),
+            "Dropbox-API-Arg": dropboxApiArg(args),
             "Content-Type": "application/octet-stream",
           },
           body: buffer,
@@ -372,7 +393,7 @@ export function createDropboxAdapter(
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Dropbox-API-Arg": JSON.stringify({
+            "Dropbox-API-Arg": dropboxApiArg({
               path: `${folder}/${path}`,
             }),
           },
@@ -437,7 +458,7 @@ export function createDropboxAdapter(
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Dropbox-API-Arg": JSON.stringify(args),
+          "Dropbox-API-Arg": dropboxApiArg(args),
           "Content-Type": "application/octet-stream",
         },
         body: text,

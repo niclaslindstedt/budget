@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { ConflictError, RateLimitError } from "../src/storage/adapter";
-import { createDropboxAdapter } from "../src/storage/dropbox-adapter";
+import {
+  createDropboxAdapter,
+  dropboxApiArg,
+} from "../src/storage/dropbox-adapter";
 
 // Minimal `Response` shim. The adapter only ever reads `.status`,
 // `.ok`, `.headers.get`, `.json()`, and `.text()` — no need to drag
@@ -478,5 +481,44 @@ describe("ConflictError integration with dropbox", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(ConflictError);
     }
+  });
+});
+
+describe("dropboxApiArg header encoding", () => {
+  it("leaves pure-ASCII argument structs byte-for-byte equal to JSON", () => {
+    const arg = { path: "/receipts/Coop - 2026-01-02.jpg", mute: true };
+    expect(dropboxApiArg(arg)).toBe(JSON.stringify(arg));
+  });
+
+  it("escapes every code point above U+007F to \\uXXXX", () => {
+    // An em dash, a smart quote, a Latin-1 vowel, and an emoji (a
+    // surrogate pair) — the kinds of characters a pasted merchant name
+    // smuggles into a receipt path.
+    const arg = { path: "/receipts/Café — Brontë's ’shop’ 🧾.pdf" };
+    const encoded = dropboxApiArg(arg);
+    // Output is strictly ASCII, so a real Headers object accepts it —
+    // this is exactly what stops `fetch` throwing "TypeError: Load failed".
+    expect([...encoded].every((ch) => ch.charCodeAt(0) < 0x80)).toBe(true);
+    expect(() => new Headers({ "Dropbox-API-Arg": encoded })).not.toThrow();
+    // …and Dropbox decodes it back to the original struct.
+    expect(JSON.parse(encoded)).toEqual(arg);
+  });
+
+  it("sends an ASCII-safe header when a receipt path carries non-ASCII", async () => {
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({ status: 200, body: "{}" });
+      }
+      return makeResponse({ status: 200, body: "{}" });
+    });
+    const adapter = createDropboxAdapter("token", fn);
+    const path = "Café — Brontë 🧾.pdf";
+    await adapter.receipts!.upload(path, new Blob(["x"]));
+    const upload = calls.find((c) => c.url.includes("/files/upload"));
+    const header = (upload?.init?.headers as Record<string, string>)[
+      "Dropbox-API-Arg"
+    ];
+    expect([...header].every((ch) => ch.charCodeAt(0) < 0x80)).toBe(true);
+    expect(JSON.parse(header).path).toContain(path);
   });
 });
