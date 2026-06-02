@@ -2,7 +2,23 @@ import { useEffect, useState } from "react";
 import { Download, FileText, Paperclip } from "lucide-react";
 
 import { useT } from "../i18n";
+import { effectiveMimeType } from "../utils/mime";
 import { Modal } from "./Modal";
+
+// iOS (iPhone / iPod, plus iPadOS 13+ masquerading as "MacIntel" with a
+// touch screen) ignores the `<a download>` attribute: clicking a blob:
+// link just navigates the single PWA window to the URL and flashes the
+// page behind. There the Web Share sheet ("Save to Files" / share) is
+// the reliable way to hand the file off, so the download falls back to
+// `navigator.share` on those devices.
+function isIosDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  const nav = window.navigator;
+  return (
+    /iPad|iPhone|iPod/.test(nav.userAgent) ||
+    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
+  );
+}
 
 type Props = {
   open: boolean;
@@ -44,13 +60,48 @@ export function AttachmentViewerModal({
       setUrl(null);
       return;
     }
-    const objectUrl = URL.createObjectURL(blob);
+    // Some backends (Dropbox's content download) return the blob typed
+    // as octet-stream regardless of the real file type. Re-wrap it with
+    // the type resolved from the filename so the object URL drives the
+    // right inline renderer instead of prompting a download.
+    const type = effectiveMimeType(blob, filename);
+    const typed =
+      type && type !== blob.type ? blob.slice(0, blob.size, type) : blob;
+    const objectUrl = URL.createObjectURL(typed);
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [blob]);
+  }, [blob, filename]);
 
-  const isImage = blob?.type.startsWith("image/") ?? false;
-  const isPdf = blob?.type === "application/pdf";
+  const mimeType = blob ? effectiveMimeType(blob, filename) : "";
+  const isImage = mimeType.startsWith("image/");
+  const isPdf = mimeType === "application/pdf";
+
+  async function handleDownload() {
+    if (!blob) return;
+    const type = effectiveMimeType(blob, filename);
+    // On iOS the `<a download>` path silently fails, so offer the file
+    // through the share sheet when the platform can share it. AbortError
+    // means the user dismissed the sheet — leave it at that rather than
+    // falling through to a download that won't work anyway.
+    if (isIosDevice() && typeof navigator.canShare === "function") {
+      const file = new File([blob], filename, { type: type || blob.type });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title });
+          return;
+        } catch (err) {
+          if ((err as Error)?.name === "AbortError") return;
+        }
+      }
+    }
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="attachment-viewer-title">
@@ -89,14 +140,14 @@ export function AttachmentViewerModal({
       </Modal.Body>
       <Modal.Footer>
         {url && (
-          <a
-            href={url}
-            download={filename}
+          <button
+            type="button"
+            onClick={handleDownload}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
           >
             <Download size={14} aria-hidden focusable={false} />
             {t("common.download")}
-          </a>
+          </button>
         )}
         <button
           type="button"
