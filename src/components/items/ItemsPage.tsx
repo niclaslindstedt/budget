@@ -167,7 +167,7 @@ export function ItemsPage({
                 <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
                   <th
                     scope="col"
-                    className="w-10 px-2.5 py-2 text-center"
+                    className="w-10 px-2.5 py-2 text-left"
                     aria-label={t("itemsSheet.name")}
                   >
                     <Tag
@@ -188,10 +188,10 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="items-purchased-cell hidden px-2.5 py-2 text-right md:table-cell"
+                    className="items-purchased-cell hidden px-2.5 py-2 text-left md:table-cell"
                     aria-label={t("itemsSheet.purchased")}
                   >
-                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
                       <Calendar
                         size={16}
                         className="shrink-0 text-accent"
@@ -205,13 +205,13 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-left md:text-right"
+                    className="px-2.5 py-2 text-left"
                     aria-label={t("itemsSheet.purchaseValue")}
                   >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:justify-end md:gap-2">
+                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
                       <DollarSign
                         size={16}
-                        className="shrink-0 text-accent md:hidden"
+                        className="shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
                       />
@@ -222,10 +222,10 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-left md:text-right"
+                    className="px-2.5 py-2 text-left"
                     aria-label={t("itemsSheet.currentValue")}
                   >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:justify-end md:gap-2">
+                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
                       <Coins
                         size={16}
                         className="shrink-0 text-accent"
@@ -242,7 +242,7 @@ export function ItemsPage({
                     className="items-action-cell w-32 px-2.5 py-2"
                     aria-label={t("itemsSheet.actions")}
                   >
-                    <span className="flex items-center justify-center gap-1.5 md:gap-2">
+                    <span className="flex items-center justify-start gap-1.5 md:gap-2">
                       <Wrench
                         size={16}
                         className="shrink-0 text-accent"
