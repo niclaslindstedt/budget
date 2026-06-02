@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { FileText, Pencil, Trash2 } from "lucide-react";
 
 import { resolveSalary, roleForSalary } from "../../data/salary/salary";
 import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
@@ -105,6 +105,10 @@ function SalaryRowImpl({
   // tooltip, so an estimate is visually distinct from an entered figure.
   const estTitle = estimated ? t("tax.estimatedTitle") : undefined;
   const estClass = estimated ? "text-muted italic" : "text-fg";
+  // Show a payslip icon beside the gross figure once a file is attached and
+  // the backend can read it; tapping it opens the same attachment modal as
+  // the row's "…" menu.
+  const showPayslipIcon = canManagePayslip && salary.payslipPath !== undefined;
 
   return (
     <tr
@@ -169,8 +173,28 @@ function SalaryRowImpl({
         className={`px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
         title={estTitle}
       >
-        {estimated && `${t("tax.estimatedBadge")} `}
-        {formatBalance(gross, settings)}
+        <span className="inline-flex items-center justify-end gap-1.5">
+          {showPayslipIcon && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSwiped(false);
+                onManagePayslip(salary);
+              }}
+              aria-label={t("salary.viewPayslipAria", {
+                month: formatMonthLabel(salary.date.slice(0, 7), lang),
+              })}
+              className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-accent"
+            >
+              <FileText size={14} aria-hidden focusable={false} />
+            </button>
+          )}
+          <span>
+            {estimated && `${t("tax.estimatedBadge")} `}
+            {formatBalance(gross, settings)}
+          </span>
+        </span>
       </td>
       <td
         className="salary-secondary-cell hidden px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"

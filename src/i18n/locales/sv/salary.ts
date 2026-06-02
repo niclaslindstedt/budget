@@ -25,6 +25,7 @@ const salary: SalaryCatalog = {
   deleteAria: "Ta bort lön för {month}",
   selectRowAria: "Markera {month}",
   deselectRowAria: "Avmarkera {month}",
+  viewPayslipAria: "Visa lönerapport för {month}",
 
   // Absence-day badges
   careOfChildShort: "VAB",
