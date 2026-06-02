@@ -317,7 +317,9 @@ export function MortgageEditorModal({
             {amortPreview !== null ? (
               <p className="m-0 text-xs text-muted">
                 {t("properties.amortPreview", {
-                  amount: formatBalance(amortPreview, settings),
+                  amount: formatBalance(amortPreview, settings, {
+                    neverAbbreviate: true,
+                  }),
                 })}
               </p>
             ) : (

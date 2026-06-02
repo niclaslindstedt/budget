@@ -91,7 +91,7 @@ export function PropertyCard({
         <Stat label={t("properties.currentValue")}>
           {value !== undefined ? (
             <span className="tabular-nums text-fg-bright">
-              {formatBalance(value, settings)}
+              {formatBalance(value, settings, { neverAbbreviate: true })}
             </span>
           ) : (
             <span className="text-xs text-muted">
@@ -102,7 +102,9 @@ export function PropertyCard({
         <Stat label={t("properties.boughtFor")}>
           {property.purchaseAmount !== undefined ? (
             <span className="tabular-nums text-fg">
-              {formatBalance(property.purchaseAmount, settings)}
+              {formatBalance(property.purchaseAmount, settings, {
+                neverAbbreviate: true,
+              })}
             </span>
           ) : (
             <span className="text-muted">—</span>
@@ -231,7 +233,9 @@ function MortgageRow({
               <span>
                 {t("properties.balanceShort")}{" "}
                 <span className="tabular-nums text-fg">
-                  {formatBalance(mortgage.currentBalance, settings)}
+                  {formatBalance(mortgage.currentBalance, settings, {
+                    neverAbbreviate: true,
+                  })}
                 </span>
               </span>
             )}
@@ -239,7 +243,9 @@ function MortgageRow({
               <span>
                 {t("properties.loanShort")}{" "}
                 <span className="tabular-nums text-fg">
-                  {formatBalance(mortgage.loanAmount, settings)}
+                  {formatBalance(mortgage.loanAmount, settings, {
+                    neverAbbreviate: true,
+                  })}
                 </span>
               </span>
             )}
@@ -276,7 +282,9 @@ function MortgageRow({
                 {t("properties.amortShort")}{" "}
                 <span className="tabular-nums text-fg">
                   {t("properties.amortPerMonth", {
-                    amount: formatBalance(monthlyAmort, settings),
+                    amount: formatBalance(monthlyAmort, settings, {
+                      neverAbbreviate: true,
+                    }),
                   })}
                 </span>
                 {mortgage.amortization?.mode === "percent" && (
@@ -297,12 +305,12 @@ function MortgageRow({
         <span className="text-xs text-muted">
           {t("properties.principalTotal")}{" "}
           <span className="tabular-nums text-fg">
-            {formatBalance(principal, settings)}
+            {formatBalance(principal, settings, { neverAbbreviate: true })}
           </span>
           {" · "}
           {t("properties.interestTotal")}{" "}
           <span className="tabular-nums text-fg">
-            {formatBalance(interest, settings)}
+            {formatBalance(interest, settings, { neverAbbreviate: true })}
           </span>
         </span>
       )}
