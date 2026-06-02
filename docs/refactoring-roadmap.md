@@ -87,38 +87,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
-- **CRUD-admin `creating` / `editingId` / `pendingDeleteId` triple +
-  delete-confirmation derived state, duplicated across the
-  `SettingsModal` admin sections** — re-rated 2026-06 (was the
-  severity-4 `useAdminUIState()` extraction). The prior row claimed the
-  triple-`useState` was "confirmed at only **one** clean site
-  (`TypesSection`)"; that was **stale**. The identical block —
-  `const [creating] / [editingId] / [pendingDeleteId]` plus the derived
-  `pendingDeleteId !== null ? items.find(…) : null` confirmation target —
-  is at **four** sites: `SettingsModal/admin.tsx:366-368` (`TypesSection`),
-  `SettingsModal/TagsAdmin.tsx:36-38`,
-  `SettingsModal/CompaniesAdmin.tsx:59-61`, and
-  `SettingsModal/CompanyCategoriesAdmin.tsx:67-69` (the prior row conflated
-  `CompaniesAdmin`'s full triple with `admin.tsx`'s differently-named
-  `creatingCategory` toggle at `:128` and the `CategoryDropdown`'s own
-  `creating` at `:829`, which are genuinely separate). Each of the four also
-  re-implements the add / edit / delete-confirm wiring around the same
-  entity-form shape.
-  - **Plan**: extract `useCrudAdminState<T>(items)` returning
-    `{ creating, setCreating, editingId, setEditingId, pendingDelete,
-setPendingDeleteId }` (the last resolving the `find` against `items`),
-    adopt at the four sites. The `<EntityForm>` editor half already landed
-    2026-05; this is the surrounding state machine. A shared
-    `<DeleteConfirmation>` wrapper can ride along if the confirm dialogs
-    prove uniform.
-  - **Risk**: low–medium — pure state-shape refactor, but each admin
-    section's edit/delete UX must stay identical; `CategoriesAndTypesAdmin`
-    adds a category/type tier + expanded-set that the hook must not try to
-    own. No persisted-shape impact.
-  - **Severity: 5.** Friction with a clear multiplier — the four sites are
-    already drifting (one was missed entirely on the last sweep), and every
-    new preset admin (loan types, savings goals) re-derives the same triple.
-
 - **Three salary pickers reinvent the custom-dropdown shell instead of
   reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
   `salary/MunicipalityPicker.tsx` (147), and `salary/TaxProfilePicker.tsx`
@@ -486,6 +454,32 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **CRUD-admin `creating` / `editingId` / `pendingDeleteId` triple +
+  delete-confirmation derived state → `useCrudAdminState<T>(items)`**
+  (2026-06): the identical add / edit / delete-confirm UI-state block —
+  `const [creating] / [editingId] / [pendingDeleteId]` plus the derived
+  `pendingDeleteId !== null ? items.find(…) ?? null : null` confirmation
+  target — was inlined at four `SettingsModal` admin sites
+  (`admin.tsx` `TypesSection`, `TagsAdmin`, `CompaniesAdmin`,
+  `CompanyCategoriesAdmin`). Extracted `useCrudAdminState<T extends
+{ id: string }>(items)` into `src/hooks/` (re-exported from
+  `src/hooks/index.ts`) returning `{ creating, setCreating, editingId,
+setEditingId, pendingDeleteId, setPendingDeleteId, pendingDelete }`;
+  the hook exposes both the resolved `pendingDelete` object and the raw
+  `pendingDeleteId` because the four sites split on which they read in the
+  confirm-dialog `onSelect` (`admin.tsx` / `CompanyCategoriesAdmin` call
+  `onDelete(pendingDeleteId)`; `TagsAdmin` / `CompaniesAdmin` call
+  `onDelete(pendingDelete.id)`). The `find` resolves against each section's
+  full collection (`types` / `tags` / `companies` / `companyCategories` —
+  not the sorted view, and `companyCategories` excludes the immutable
+  presets), so a concurrent rename / removal stays reflected in an open
+  dialog. The `admin.tsx:128` `creatingCategory` toggle and the
+  `CategoryDropdown`'s own `:829` `creating` are genuinely separate single
+  flags and were left inline. Pure state-shape refactor — identical UX at
+  every site; fast loop + build + icons-check green, all 1267 tests pass.
+  **Was severity 5.** Every future preset admin (loan types, savings goals)
+  can adopt the hook from day one instead of re-deriving the triple.
 
 - **Sheet-type registry now covers validation, item-action
   discrimination, and cross-sheet row traversal** (2026-05): landed
