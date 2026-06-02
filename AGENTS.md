@@ -645,6 +645,7 @@ that aren't in the template comments:
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                                                                                                                                                                                                                                                                         |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                                                                                                                                                                     |
 | Adding or moving a file under `src/data/`                                                  | The data-layer inventory in `docs/architecture.md` (`## Today` tree + per-file descriptions)                                                                                                                                                                                                                                                                               |
+| Adding (or renaming the subject of) a reducer action                                       | The `actionHistory.action.<type>` label in `src/i18n/locales/{en,sv}/actionHistory.ts` **and** a `describeActionSubject` case in `src/data/action-summary.ts`. See the "Action history labels" section below.                                                                                                                                                              |
 | CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                                                                                                                                                                      |
 | `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants/storage.ts`                                                                                                                                                                                                                                                    |
 | Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                                                                                                                                                                                                                                                                     |
@@ -791,6 +792,31 @@ to `undefined`, `Transfer` preserves `null` and coerces a dangling id
 to `null`, and `HistoryEntrySplit` treats `null` as absent — so each
 is hand-written against its field's semantics rather than sharing a
 helper.
+
+## Action history labels
+
+Every reducer action that mutates `UserData` is recorded in the
+**Action history** modal and named in the undo / redo toasts. The
+message is a verb+object label (`actionHistory.action.<type>` in
+`src/i18n/locales/{en,sv}/actionHistory.ts`) plus the subject it acted
+on, resolved by `describeActionSubject` in `src/data/action-summary.ts`
+and rendered through `formatActionLabel`. A bare "Action" in the
+modal means an action type slipped through without a label — that's a
+bug, not a default.
+
+So when you **add a reducer action**, treat its history message as part
+of the change, in the same PR:
+
+1. Add the `actionHistory.action.<type>` label (en **and** sv) — plain
+   verb + object ("Edited payslip", "Deleted account"), no subject.
+2. Add a `case` to `describeActionSubject` returning the object it
+   touched: `{ kind: "name" }` for a single named entity (read the name
+   off `next`, or `prev` for deletes), `{ kind: "count" }` for a
+   multi-target op, or `undefined` when there's no nameable target.
+
+Cover it in `tests/action_summary_test.ts`. The i18n parity test
+guards the catalog; it does **not** catch a missing `describeActionSubject`
+case, so the message reads label-only until you add one.
 
 ## Cross-cutting rules
 
