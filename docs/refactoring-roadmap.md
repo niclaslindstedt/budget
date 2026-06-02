@@ -87,6 +87,62 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
+- **CRUD-admin `creating` / `editingId` / `pendingDeleteId` triple +
+  delete-confirmation derived state, duplicated across the
+  `SettingsModal` admin sections** — re-rated 2026-06 (was the
+  severity-4 `useAdminUIState()` extraction). The prior row claimed the
+  triple-`useState` was "confirmed at only **one** clean site
+  (`TypesSection`)"; that was **stale**. The identical block —
+  `const [creating] / [editingId] / [pendingDeleteId]` plus the derived
+  `pendingDeleteId !== null ? items.find(…) : null` confirmation target —
+  is at **four** sites: `SettingsModal/admin.tsx:366-368` (`TypesSection`),
+  `SettingsModal/TagsAdmin.tsx:36-38`,
+  `SettingsModal/CompaniesAdmin.tsx:59-61`, and
+  `SettingsModal/CompanyCategoriesAdmin.tsx:67-69` (the prior row conflated
+  `CompaniesAdmin`'s full triple with `admin.tsx`'s differently-named
+  `creatingCategory` toggle at `:128` and the `CategoryDropdown`'s own
+  `creating` at `:829`, which are genuinely separate). Each of the four also
+  re-implements the add / edit / delete-confirm wiring around the same
+  entity-form shape.
+  - **Plan**: extract `useCrudAdminState<T>(items)` returning
+    `{ creating, setCreating, editingId, setEditingId, pendingDelete,
+setPendingDeleteId }` (the last resolving the `find` against `items`),
+    adopt at the four sites. The `<EntityForm>` editor half already landed
+    2026-05; this is the surrounding state machine. A shared
+    `<DeleteConfirmation>` wrapper can ride along if the confirm dialogs
+    prove uniform.
+  - **Risk**: low–medium — pure state-shape refactor, but each admin
+    section's edit/delete UX must stay identical; `CategoriesAndTypesAdmin`
+    adds a category/type tier + expanded-set that the hook must not try to
+    own. No persisted-shape impact.
+  - **Severity: 5.** Friction with a clear multiplier — the four sites are
+    already drifting (one was missed entirely on the last sweep), and every
+    new preset admin (loan types, savings goals) re-derives the same triple.
+
+- **Three salary pickers reinvent the custom-dropdown shell instead of
+  reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
+  `salary/MunicipalityPicker.tsx` (147), and `salary/TaxProfilePicker.tsx`
+  (151) each build their own `FloatingPanel` + `<ul role="listbox">` +
+  `role="option"` buttons with a hardcoded `ROW_CLASS` (byte-identical in
+  `EmployerPicker.tsx:39` and `MunicipalityPicker.tsx:24`), duplicating the
+  shell that `form/SelectPicker.tsx` (262) already provides with full
+  keyboard nav.
+  - **Plan**: grow `SelectPicker` with the opt-in props the three pickers
+    actually need — a search-filter zone (MunicipalityPicker's ~290-entry
+    kommun list), a "create new" footer + "none" header (EmployerPicker),
+    and a custom option renderer (TaxProfilePicker's two-line rows) — then
+    route all three through it and lift the row-button styling to a single
+    shared class.
+  - **Risk**: medium — `EmployerPicker` adds roving-tabindex + a
+    create-footer that `SelectPicker`'s flat list doesn't model; fold those
+    in as options rather than flattening them. Smoke each picker's keyboard
+    nav. (The narrower `useListboxKeyboard()` extraction was skipped earlier
+    at one site — this is the broader shell-consolidation angle, not just the
+    key handler.)
+  - **Severity: 5.** Multiplier — new sheet types (loans, savings) will each
+    add domain pickers; consolidating the shell now stops the next batch from
+    re-deriving `FloatingPanel` + listbox + row styling a fourth/fifth time.
+
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
   landed 2026-05 (see Landed: three modal hosts), and the
@@ -248,6 +304,49 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 3–4 — nits with leverage
 
+- **`useLongPress(ms, onLongPress)` hook extraction** — the pointer
+  long-press state machine (`LONG_PRESS_MS = 450` + the `longPressTimer`
+  / `longPressStartX` / `longPressStartY` refs + the
+  pointerdown / pointermove / contextmenu choreography that fires after
+  the threshold and cancels on a move past tolerance) is inlined at
+  **four** sites: `src/components/BottomBar.tsx` (419),
+  `src/components/budget/BudgetAddEntryButton.tsx` (102),
+  `src/components/budget/BudgetRow.tsx` (521, which also carries
+  `LONG_PRESS_MOVE_PX = 8`), and
+  `src/components/budget/cells/DescriptionCell.tsx` (769). Each redefines
+  the same constant and ref triple; only the fired callback differs.
+  - **Plan**: extract `useLongPress(ms, onLongPress, { moveTolerancePx })`
+    into `src/hooks/` (re-exported from `src/hooks/index.ts`) returning
+    `{ onPointerDown, onPointerMove, onContextMenu, cancel }`; the four
+    sites import it and drop their private timer/coordinate refs. One place
+    to tune the timing.
+  - **Risk**: low — pure pointer state machine, no persisted shape. Smoke
+    the swipe-vs-long-press interaction on `BudgetRow` (it also owns the
+    horizontal row-swipe gesture, so the hook must not swallow the
+    pointer-move the swipe reads) and the sheet-tab long-press on
+    `BottomBar`.
+  - **Severity: 4.** Easy-win-flavoured (N=4, mechanical), and every new
+    tappable-row sheet type re-derives the same machine.
+
+- **Page-specific `useSalaryBulkSelection.ts` lives in
+  `src/components/AppShell/hooks/`** next to the budget
+  `useBulkSelection.ts`, and AppShell swaps between the two on an
+  `isSalarySheet` check before threading the result into `BottomBar`.
+  `AGENTS.md` puts page-specific code in the per-page directory
+  (`src/components/salary/`) with the page-name prefix; this hook is
+  salary-only. (Several other `AppShell/hooks/` members are budget-only —
+  `useComplexEntry`, `useMatchRuleUi`, `useTransferFlow`,
+  `useRowMutations` — but those are consumed by the budget modal host the
+  shell already owns; the salary bulk-selection hook is the clearest
+  standalone misplacement.)
+  - **Plan**: move `useSalaryBulkSelection.ts` to `src/components/salary/`
+    (AppShell already imports `SalaryPage` from that directory as the
+    router, so the import direction is consistent) and update the import.
+    Leave the `isSalarySheet` swap in AppShell or push it behind a small
+    selector.
+  - **Risk**: low — module relocation + import update, no behaviour change.
+  - **Severity: 4.**
+
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
   `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
@@ -267,19 +366,6 @@ _(none pending — the sheet-type registry coverage cluster landed
   - **Severity: 4.** Multiplier in principle (the next backend re-derives
     the closure tangle), but the un-testable risk caps its near-term
     priority — land it _with_ the third backend, not speculatively.
-
-- **`SettingsModal/admin.tsx` `useAdminUIState()` extraction** —
-  half of the previous duplicated-editor item; the `<EntityForm>`
-  half landed 2026-05 (see Landed). Re-verified 2026-05: the
-  `creating` / `editingId` / `pendingDeleteId` triple-`useState` is
-  now confirmed at only **one** clean site (`TypesSection`,
-  `admin.tsx:366-368`); `CategoriesAndTypesAdmin` carries a
-  differently-named single `creatingCategory` toggle and the
-  `CategoryPicker` nested component a separate `creating`. Adding a
-  third preset admin (loan types, savings goals) would re-derive it.
-  **Severity: 4** — premature at one-to-two sites (it's three
-  `useState` lines, not a sub-machine); re-rate up when a
-  `<LoanTypeAdmin>` lands and the pattern shows up a third time.
 
 - **`useReducer` in remaining modal state machines (opportunistic)** —
   `useReducer` now has **seven** landed hits
@@ -387,6 +473,15 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 - Replace `useState`-pyramid modals with `useReducer` as their
   surrounding file is otherwise touched. No batch PR — opportunistic
   drive-by.
+
+- **Adopt `form/FormSection.tsx` at inline label-stack sites** — the
+  `<label className="flex flex-col gap-1.5"><span className="text-xs
+text-muted">…</span>…</label>` label-stack is inlined at ~40
+  component files while `form/FormSection.tsx` (used at 11 sites)
+  already wraps exactly that pattern. Adopt opportunistically when a
+  modal is otherwise touched; not a batch PR (the `gap-1*` grep is
+  noisy, so confirm the `text-muted` label span per-site before
+  swapping).
 
 ---
 
@@ -570,6 +665,46 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
 ---
 
 ## Investigated and skipped
+
+- **Registry-based sheet-type router replacing AppShell's
+  `activeSheet.type === …` switch** (2026-06, Explore sweep rated it 8):
+  the proposal was to replace AppShell's page-routing chain with a
+  `SHEET_TYPE_REGISTRY[type]`-driven `<DynamicPage {...commonProps} />`
+  so a new sheet type doesn't add an arm. Rejected: `AGENTS.md`
+  documents the switch as the **intended** pattern — "Add a new arm to
+  the routing switch in `AppShell.tsx` … This is the only place that
+  knows about every page" — and the existing "AppShell further hook
+  splits" skip already records the routing switch as the file's reason
+  for existing. Each page's props are genuinely different
+  (bulk-selection shape, page-specific callbacks), so a generic
+  `{...commonProps}` router would either lose type-safety or re-grow the
+  per-type threading inside the registry. Speculative until a page with
+  a uniform prop contract actually exists. (Note: the registry already
+  covers validation / item-action discrimination / row traversal — see
+  Landed — so the data-layer half of "registry coverage" is done; this
+  rejected item is specifically the **component-router** half.)
+
+- **AppShell `modalHandlers` `useMemo` re-mint on data mutation**
+  (2026-06, Explore sweep rated it 6): flagged as a per-keystroke
+  re-render tax because the base-slice `useMemo` (`AppShell.tsx:737`)
+  depends on ~14 `onXRequest` callbacks. This is a **performance**
+  question, not a refactor — it belongs to the `find-optimizations`
+  skill, and the AppShell modal-host item above already records that the
+  _dispatch itself_ was stabilised to read refs (so memoised chrome /
+  rows no longer re-render on a column reorder). Re-measure under
+  `find-optimizations` if a profile shows the base-slice memo is hot;
+  don't restructure it as a refactor.
+
+- **`useAmountInput` hook for the parse → sign → apply cycle** (2026-06,
+  Explore sweep rated it 5): flagged as repeated across ~20 cell/modal
+  sites. Skipped: `form/SignedAmountInput.tsx` already exists and
+  abstracts the signed-amount input chrome, and most remaining sites run
+  the parse through their own per-modal `*-reducer.ts` (where the sign
+  semantics differ — blur-commit vs onChange, formula-toggle modes). The
+  earlier `<Amount>` display-component idea was likewise skipped at three
+  sites. Adopt `SignedAmountInput` opportunistically where a raw inline
+  parse+sign block is touched; a second shared hook on top of it would
+  overconstrain the diverging commit timings.
 
 - **`useStorageBackend.ts` token state machine entangled with
   adapter selection** (2026-05, was severity 6): the candidate was
@@ -818,3 +953,26 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   `useSaveStateMachine` ref/status density (correct-and-careful on the
   hot path, low reward), the `SegmentedRadio` single-site promotion and
   safe-area-padding magic numbers (speculative / cosmetic).
+- 2026-06 sweep (Explore mode): single **component-layer audit** angle
+  (three parallel Explore agents over `src/components/AppShell/` + the
+  universal chrome, `src/components/budget/`, and
+  `src/components/accounts|salary|items` + `SettingsModal`). Re-confirmed
+  the cross-cutting greps stay clean (native `<select>`,
+  `data`/`storage` → `components` imports, type-safety holes — the only
+  `as unknown as` pocket is four contained generic-key casts in
+  `data/action-summary.ts`, sev 2, left alone). Added four candidates:
+  `useLongPress` extraction (4 sites — `BottomBar`, `BudgetAddEntryButton`,
+  `BudgetRow`, `DescriptionCell`), the `useSalaryBulkSelection`
+  misplacement, the salary custom-picker shell duplication (5), and the
+  `FormSection` adoption easy-win. **Corrected the stale
+  `useAdminUIState` row**: the triple-`useState` is at **four** admin
+  sites, not the one the last sweep recorded — re-rated 4 → 5 and moved
+  to the friction band. Filtered the Explore over-ratings into
+  Investigated-and-skipped: the registry-based sheet-type router (rated 8,
+  contradicts the documented routing-switch intent), the `modalHandlers`
+  re-mint (rated 6, a `find-optimizations` concern), and the
+  `useAmountInput` hook (rated 5, largely pre-empted by the existing
+  `form/SignedAmountInput.tsx`). Several cosmetic non-starters were
+  dropped without a row (Tailwind `h-7 w-7` sizing and `duration-200` are
+  not theming-token violations; splitting the modal hosts further inverts
+  the in-progress host-colocation item).
