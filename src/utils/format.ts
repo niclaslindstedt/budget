@@ -78,6 +78,12 @@ export type FormatNumberOpts = {
   // stack of compact figures; amount cells leave this off so a small
   // amount keeps its precision.
   alwaysAbbreviate?: boolean;
+  // Suppress abbreviation regardless of the `abbreviateNumbers` setting,
+  // so the exact figure always shows. Set by surfaces where the precise
+  // amount matters and there's room for it — the item-finder candidate
+  // list and the line-items allocation modal, where a "-13K" stand-in
+  // would hide which transaction the user is reconciling.
+  neverAbbreviate?: boolean;
 };
 
 // Threshold at which `abbreviateNumbers` kicks in. Below this the
@@ -122,6 +128,7 @@ export function formatNumber(
   // column can keep every row compact when its dedicated setting is on.
   if (
     settings.abbreviateNumbers &&
+    !opts.neverAbbreviate &&
     (opts.alwaysAbbreviate || Math.abs(n) >= ABBREVIATE_THRESHOLD)
   ) {
     return abbreviateValue(n, settings);
@@ -158,8 +165,12 @@ export function withCurrency(body: string, settings: Settings): string {
     : `${body}${sep}${settings.currency}`;
 }
 
-export function formatAmount(n: number, settings: Settings): string {
-  return withCurrency(formatNumber(n, settings), settings);
+export function formatAmount(
+  n: number,
+  settings: Settings,
+  opts: FormatNumberOpts = {},
+): string {
+  return withCurrency(formatNumber(n, settings, opts), settings);
 }
 
 // Widest `formatNumber + withCurrency` length across `values`, computed

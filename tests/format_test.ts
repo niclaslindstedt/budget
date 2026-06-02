@@ -142,6 +142,15 @@ describe("formatNumber", () => {
     const s = settings({ abbreviateNumbers: false });
     expect(formatNumber(9_999, s, { alwaysAbbreviate: true })).toBe("9 999");
   });
+
+  it("shows the exact figure when neverAbbreviate is on", () => {
+    const s = settings({ abbreviateNumbers: true });
+    expect(formatNumber(13_000, s, { neverAbbreviate: true })).toBe("13 000");
+    expect(formatNumber(-9_591, s, { neverAbbreviate: true })).toBe("-9 591");
+    expect(formatNumber(1_250_000, s, { neverAbbreviate: true })).toBe(
+      "1 250 000",
+    );
+  });
 });
 
 describe("formatAmount / formatBalance", () => {
