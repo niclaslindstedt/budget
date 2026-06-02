@@ -718,46 +718,43 @@ export function AttachmentUploadModal({
           className="hidden"
         />
       </Modal.Body>
-      <Modal.Footer>
-        {hasAttachment && (
-          <>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={!blob}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Download size={14} aria-hidden focusable={false} />
-              {t("common.download")}
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw size={14} aria-hidden focusable={false} />
-              {t("attachment.replace")}
-            </button>
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={busy === "remove"}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Trash2 size={14} aria-hidden focusable={false} />
-              {t("attachment.remove")}
-            </button>
-          </>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-accent"
-        >
-          {t("common.close")}
-        </button>
-      </Modal.Footer>
+      {hasAttachment && (
+        <Modal.Footer>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={!blob}
+            aria-label={t("common.download")}
+            title={t("common.download")}
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded border border-line px-3 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={16} aria-hidden focusable={false} />
+            <span className="hidden sm:inline">{t("common.download")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            aria-label={t("attachment.replace")}
+            title={t("attachment.replace")}
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded border border-line px-3 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw size={16} aria-hidden focusable={false} />
+            <span className="hidden sm:inline">{t("attachment.replace")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={busy === "remove"}
+            aria-label={t("attachment.remove")}
+            title={t("attachment.remove")}
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded border border-line px-3 text-sm text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+            <span className="hidden sm:inline">{t("attachment.remove")}</span>
+          </button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }
