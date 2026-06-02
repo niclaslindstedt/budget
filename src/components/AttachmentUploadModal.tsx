@@ -23,6 +23,7 @@ import {
 import { useT } from "../i18n";
 import { effectiveMimeType } from "../utils/mime";
 import { Modal } from "./Modal";
+import { PdfZoomView } from "./PdfZoomView";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
@@ -643,9 +644,7 @@ export function AttachmentUploadModal({
               />
             )}
             {url && isImage && <ZoomableImage src={url} alt={filename} />}
-            {url && isPdf && (
-              <iframe src={url} title={filename} className="h-full w-full" />
-            )}
+            {blob && isPdf && <PdfZoomView blob={blob} filename={filename} />}
             {url && !isImage && !isPdf && (
               <div className="flex flex-col items-center gap-3 p-6 text-center">
                 <FileText

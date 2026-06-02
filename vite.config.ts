@@ -482,9 +482,20 @@ function pwaPlugin(): Plugin[] {
       // alias HTMLs (`/privacy/`, `/system/`, `/404.html`).
       // `globIgnores` keeps source maps and the discovery files out
       // of precache (they're served from the network just fine, and
-      // don't need to be available offline).
+      // don't need to be available offline). The pdf.js chunks
+      // (`pdf-*.js` + `pdf.worker.min-*.mjs`) are also excluded: pdf.js
+      // is dynamically imported only when a PDF attachment is opened, so
+      // precaching its ~1.7 MB would make every install / SW update pay
+      // for a feature most sessions never touch. They load on demand and
+      // the browser HTTP-caches them after first use.
       globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
-      globIgnores: ["**/*.map", "robots.txt", "sitemap.xml", "llms.txt"],
+      globIgnores: [
+        "**/*.map",
+        "robots.txt",
+        "sitemap.xml",
+        "llms.txt",
+        "**/pdf*.{js,mjs}",
+      ],
       navigateFallback: `${BASE_PATH}index.html`,
       navigateFallbackDenylist,
       cleanupOutdatedCaches: true,
