@@ -59,13 +59,14 @@ import type {
   UserData,
 } from "../../data/types";
 import { buildPayslipPath, extensionOf } from "../../data/salary/payslip-name";
-import { reducer } from "../../data/reducer";
+import { type Action, reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
   useAchievementWatcher,
 } from "../../data/achievements";
 import { useUserDataStorage } from "../../storage/useUserDataStorage";
-import { useT } from "../../i18n";
+import { describeActionSubject } from "../../data/action-summary";
+import { useLang, useT } from "../../i18n";
 import {
   useEffectiveSettings,
   useIdleSignOut,
@@ -119,7 +120,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     folderConnected,
   } = storage;
   const t = useT();
+  const lang = useLang();
   const toast = useToast();
+  // Resolve the subject of each dispatched action for the action-history
+  // modal and undo / redo toasts. Captures `lang` so the (rare) settings
+  // subject is named in the active language; re-created on a language
+  // switch, which only re-stamps subjects recorded afterward.
+  const describeSubject = useCallback(
+    (action: Action, prev: UserData, next: UserData) =>
+      describeActionSubject(action, prev, next, lang),
+    [lang],
+  );
   const {
     data,
     dispatch,
@@ -142,6 +153,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     beforeSerialize: userDataWithSavableRows,
     hasUnsavableContent: userDataHasUnsavableRows,
     userId: user.id,
+    describeSubject,
   });
   // Pull-to-refresh wiring. Listens for a downward drag from the top
   // of the page; on release past the trigger distance, re-runs

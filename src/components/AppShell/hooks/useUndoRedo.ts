@@ -1,7 +1,8 @@
 import { useCallback, useEffect } from "react";
 
 import type { ActionHistoryEntry } from "../../../storage/useUserDataStorage";
-import { type MessageKey, useT } from "../../../i18n";
+import { useT } from "../../../i18n";
+import { formatActionLabel } from "../../action-history-label";
 import type { useToast } from "../../../hooks";
 
 type Params = {
@@ -35,23 +36,6 @@ export function useUndoRedo({
 }: Params): Result {
   const t = useT();
 
-  // Resolve a reducer action type to its translated label, mirroring
-  // the lookup `ActionHistoryModal` uses. Lets undo/redo toasts share
-  // the same 60+ already-translated strings instead of duplicating
-  // them under a separate i18n surface.
-  const resolveActionLabel = useCallback(
-    (actionType: string): string => {
-      const key = `actionHistory.action.${actionType}` as MessageKey;
-      const label = t(key);
-      // `t()` returns the path itself when the key is missing — fall
-      // back to the generic `unknown` label so a freshly-added action
-      // type still renders something readable.
-      if (label === key) return t("actionHistory.action.unknown");
-      return label;
-    },
-    [t],
-  );
-
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
     // The entry at `historyIndex` is the action being reverted; the
@@ -62,19 +46,11 @@ export function useUndoRedo({
       toast.push({
         kind: "info",
         message: t("toast.undid", {
-          action: resolveActionLabel(entry.actionType),
+          action: formatActionLabel(t, entry.actionType, entry.subject),
         }),
       });
     }
-  }, [
-    canUndo,
-    historyEntries,
-    historyIndex,
-    undo,
-    toast,
-    t,
-    resolveActionLabel,
-  ]);
+  }, [canUndo, historyEntries, historyIndex, undo, toast, t]);
 
   const handleRedo = useCallback(() => {
     if (!canRedo) return;
@@ -86,19 +62,11 @@ export function useUndoRedo({
       toast.push({
         kind: "info",
         message: t("toast.redid", {
-          action: resolveActionLabel(entry.actionType),
+          action: formatActionLabel(t, entry.actionType, entry.subject),
         }),
       });
     }
-  }, [
-    canRedo,
-    historyEntries,
-    historyIndex,
-    redo,
-    toast,
-    t,
-    resolveActionLabel,
-  ]);
+  }, [canRedo, historyEntries, historyIndex, redo, toast, t]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

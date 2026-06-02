@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { CornerDownRight, History } from "lucide-react";
 
-import { useLang, useT, type MessageKey, type TFunction } from "../i18n";
+import { useLang, useT } from "../i18n";
 import { bcp47, type Lang } from "../i18n/locale";
 import type { ActionHistoryEntry } from "../storage/useUserDataStorage";
+import { formatActionLabel } from "./action-history-label";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -66,10 +67,7 @@ export function ActionHistoryModal({
           {ordered.map(({ entry, index }) => {
             const isCurrent = index === currentIndex;
             const isFuture = index > currentIndex;
-            const label =
-              entry.actionType === "initial"
-                ? t("actionHistory.initial")
-                : labelForAction(t, entry.actionType);
+            const label = formatActionLabel(t, entry.actionType, entry.subject);
             const timeText = timeFormatter.format(new Date(entry.timestamp));
             const baseClass =
               "flex w-full cursor-pointer items-center gap-3 border-b border-line px-3 py-2.5 text-left text-sm transition-colors sm:px-4";
@@ -132,17 +130,6 @@ export function ActionHistoryModal({
       </Modal.Footer>
     </Modal>
   );
-}
-
-// Resolve a reducer action type to a translated label, falling back
-// to the generic "Action" label when the catalog doesn't carry a
-// specific entry for the type (defensive against new action types
-// landing without a translation).
-function labelForAction(t: TFunction, actionType: string): string {
-  const key = `actionHistory.action.${actionType}` as MessageKey;
-  const resolved = t(key);
-  if (resolved === key) return t("actionHistory.action.unknown");
-  return resolved;
 }
 
 const timeFormatterCache = new Map<Lang, Intl.DateTimeFormat>();

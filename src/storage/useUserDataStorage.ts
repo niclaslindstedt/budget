@@ -10,6 +10,7 @@ import {
 
 import type { MigrationContext } from "../data/migrations";
 import type { UserData } from "../data/types";
+import type { ActionSubject } from "../data/action-summary";
 import { type Snapshot, type StorageAdapter } from "./adapter";
 import { freshUserData, tryReadUserDataFromText } from "./local";
 import { useLoadState } from "./useLoadState";
@@ -78,7 +79,19 @@ export type SaveStatus =
 // ⌘Z reverts the last edit, not a tab switch.
 const UI_ONLY_ACTION_TYPES = new Set<string>(["selectSheet"]);
 
-export type UserDataStorageOptions = {
+export type UserDataStorageOptions<Action = { type: string }> = {
+  // Resolve the human-readable subject of a dispatched action (the named
+  // object it acted on, or a count) so the action-history modal and the
+  // undo / redo toasts can show "Edited payslip 'BookBeat 2026-04'"
+  // instead of a bare "Action". Receives the action plus the state before
+  // and after the reducer ran (deletes read the name off `prev`). Pure;
+  // the concrete `Action` union is owned by the caller, so this hook
+  // stays generic. Omitted ⇒ entries carry no subject.
+  describeSubject?: (
+    action: Action,
+    prev: UserData,
+    next: UserData,
+  ) => ActionSubject | undefined;
   // Pre-serialize transform applied to the in-memory state before the
   // auto-save effect writes it. Used to strip transient state (e.g.
   // half-filled rows) so storage always reflects a clean snapshot.
@@ -251,7 +264,12 @@ export function isBailStatus(status: SaveStatus): boolean {
 export function useUserDataStorage<Action extends { type: string }>(
   adapter: StorageAdapter,
   reducer: Reducer<UserData, Action>,
-  { beforeSerialize, hasUnsavableContent, userId }: UserDataStorageOptions = {},
+  {
+    beforeSerialize,
+    hasUnsavableContent,
+    userId,
+    describeSubject,
+  }: UserDataStorageOptions<Action> = {},
 ): UserDataStorage<Action> {
   // Stable migration context for every `readUserDataFromText` /
   // `tryReadUserDataFromText` call this hook makes. Pinned to the
@@ -380,13 +398,14 @@ export function useUserDataStorage<Action extends { type: string }>(
           appendEntry({
             state: next,
             actionType: action.type,
+            subject: describeSubject?.(action, prev, next),
             timestamp: Date.now(),
           });
         }
         return next;
       });
     },
-    [reducer, appendEntry],
+    [reducer, appendEntry, describeSubject],
   );
 
   // Shared write path used by both the debounced auto-save and the
