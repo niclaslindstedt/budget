@@ -7,7 +7,11 @@ import type {
   CompanyCategory,
   EntryType,
 } from "../../data/types";
-import { useDesktopAutoFocus, useDragReorder } from "../../hooks";
+import {
+  useCrudAdminState,
+  useDesktopAutoFocus,
+  useDragReorder,
+} from "../../hooks";
 import { useT } from "../../i18n";
 import { arrayMove } from "../../utils/reorder";
 import { CompanyCategoryPicker } from "../CompanyCategoryPicker";
@@ -56,13 +60,14 @@ export function CompaniesAdmin({
     [companies],
   );
 
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const pendingDelete =
-    pendingDeleteId !== null
-      ? (companies.find((c) => c.id === pendingDeleteId) ?? null)
-      : null;
+  const {
+    creating,
+    setCreating,
+    editingId,
+    setEditingId,
+    setPendingDeleteId,
+    pendingDelete,
+  } = useCrudAdminState(companies);
 
   return (
     <div className="flex flex-col gap-2">

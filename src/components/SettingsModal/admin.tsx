@@ -36,7 +36,7 @@ import type {
   EntryType,
   EntryTypeKind,
 } from "../../data/types";
-import type { FloatingPlacement } from "../../hooks";
+import { type FloatingPlacement, useCrudAdminState } from "../../hooks";
 import { useT } from "../../i18n";
 import { displayCategoryName } from "../../i18n/preset-names";
 import { CategoryChip, CategoryCreator } from "../CategoryPicker";
@@ -363,13 +363,15 @@ function TypesSection({
   onSetPresetKind: (presetId: string, kind: EntryTypeKind) => void;
 }) {
   const t = useT();
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const pendingDelete =
-    pendingDeleteId !== null
-      ? (types.find((ty) => ty.id === pendingDeleteId) ?? null)
-      : null;
+  const {
+    creating,
+    setCreating,
+    editingId,
+    setEditingId,
+    pendingDeleteId,
+    setPendingDeleteId,
+    pendingDelete,
+  } = useCrudAdminState(types);
 
   return (
     <div className="flex flex-col gap-2 border-t border-line bg-surface-3 p-2 sm:pl-8">

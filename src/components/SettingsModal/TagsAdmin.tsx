@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { CATEGORY_COLORS } from "../../data/constants/taxonomy";
 import type { Tag } from "../../data/types";
-import { useDesktopAutoFocus } from "../../hooks";
+import { useCrudAdminState, useDesktopAutoFocus } from "../../hooks";
 import { useT } from "../../i18n";
 import { ColorPalette } from "../ColorPalette";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -33,13 +33,14 @@ export function TagsAdmin({
     [tags],
   );
 
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const pendingDelete =
-    pendingDeleteId !== null
-      ? (tags.find((tag) => tag.id === pendingDeleteId) ?? null)
-      : null;
+  const {
+    creating,
+    setCreating,
+    editingId,
+    setEditingId,
+    setPendingDeleteId,
+    pendingDelete,
+  } = useCrudAdminState(tags);
 
   return (
     <div className="flex flex-col gap-2">

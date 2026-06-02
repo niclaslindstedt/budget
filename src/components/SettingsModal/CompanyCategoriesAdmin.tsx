@@ -19,6 +19,7 @@ import {
   PRESET_COMPANY_CATEGORY_IDS,
 } from "../../data/presets/company-categories";
 import type { CategoryIcon, CompanyCategory } from "../../data/types";
+import { useCrudAdminState } from "../../hooks";
 import { useT } from "../../i18n";
 import { ColorPalette } from "../ColorPalette";
 import { CompanyCategoryChip } from "../CompanyCategoryPicker";
@@ -64,13 +65,15 @@ export function CompanyCategoriesAdmin({
     [companyCategories],
   );
 
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const pendingDelete =
-    pendingDeleteId !== null
-      ? (companyCategories.find((c) => c.id === pendingDeleteId) ?? null)
-      : null;
+  const {
+    creating,
+    setCreating,
+    editingId,
+    setEditingId,
+    pendingDeleteId,
+    setPendingDeleteId,
+    pendingDelete,
+  } = useCrudAdminState(companyCategories);
 
   return (
     <div className="flex flex-col gap-2">
