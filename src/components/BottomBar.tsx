@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
 
 import type { Sheet } from "../data/types";
-import { useIsStandalone, useScrollHide } from "../hooks";
+import { useIsStandalone, useLongPress, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
 import { tintFill } from "../utils/tint";
 import { BulkActionBar } from "./BulkActionBar";
@@ -32,9 +32,6 @@ type Props = {
   onBulkDelete: () => void;
   onBulkCancel: () => void;
 };
-
-const LONG_PRESS_MS = 450;
-const MOVE_THRESHOLD_PX = 8;
 
 const actionButton =
   "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
@@ -286,14 +283,10 @@ function SheetTab({
   onTabKey: (currentIdx: number, key: string) => void;
 }) {
   const t = useT();
-  // Long-press / right-click both open the edit modal. Mirrors the
-  // BudgetAddEntryButton pattern: a timer fires after LONG_PRESS_MS and a
-  // `triggered` flag guards the trailing click so the tap doesn't
-  // also fire a sheet switch.
-  const timer = useRef<number | null>(null);
-  const triggered = useRef(false);
-  const startX = useRef(0);
-  const startY = useRef(0);
+  // Long-press / right-click both open the edit modal. The
+  // `consumeTriggered` flag guards the trailing click so the tap that
+  // produced the long-press doesn't also fire a sheet switch.
+  const longPress = useLongPress({ onLongPress: onEdit });
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   // Pull the active tab back into the visible window of the horizontal
@@ -316,50 +309,9 @@ function SheetTab({
     }
   }, [active]);
 
-  function clearTimer() {
-    if (timer.current !== null) {
-      window.clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function handlePointerDown(e: React.PointerEvent<HTMLButtonElement>) {
-    if (e.button !== 0) return;
-    triggered.current = false;
-    startX.current = e.clientX;
-    startY.current = e.clientY;
-    clearTimer();
-    timer.current = window.setTimeout(() => {
-      triggered.current = true;
-      timer.current = null;
-      onEdit();
-    }, LONG_PRESS_MS);
-  }
-
-  function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
-    if (timer.current === null) return;
-    const dx = e.clientX - startX.current;
-    const dy = e.clientY - startY.current;
-    if (Math.hypot(dx, dy) > MOVE_THRESHOLD_PX) clearTimer();
-  }
-
-  function handlePointerUp() {
-    clearTimer();
-  }
-
   function handleClick() {
-    if (triggered.current) {
-      triggered.current = false;
-      return;
-    }
+    if (longPress.consumeTriggered()) return;
     onSelect();
-  }
-
-  function handleContextMenu(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    clearTimer();
-    triggered.current = true;
-    onEdit();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
@@ -392,12 +344,12 @@ function SheetTab({
       tabIndex={active ? 0 : -1}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-      onContextMenu={handleContextMenu}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerUp}
+      onPointerLeave={longPress.onPointerUp}
+      onContextMenu={longPress.onContextMenu}
       aria-label={t("sheetTabs.tabAriaLabel", { name: sheet.name })}
       title={
         sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name

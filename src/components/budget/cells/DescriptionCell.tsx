@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import type { CellValue, Company, EntryType } from "../../../data/types";
-import type { FloatingPlacement } from "../../../hooks";
+import { type FloatingPlacement, useLongPress } from "../../../hooks";
 import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
@@ -40,9 +40,6 @@ export type CellLineItem = {
   // Pre-formatted signed amount (e.g. "−1 200 kr"), ready to render.
   amount: string;
 };
-
-const LONG_PRESS_MS = 450;
-const LONG_PRESS_MOVE_PX = 8;
 
 // Both mobile and desktop drive the description cell through the same
 // `DescriptionPopover` trigger: it owns the type-name / company-pill /
@@ -156,18 +153,6 @@ export function DescriptionCell({
     : companyPillShown
       ? "company"
       : null;
-  const longPressTimer = useRef<number | null>(null);
-  const longPressTriggered = useRef(false);
-  const longPressStartX = useRef(0);
-  const longPressStartY = useRef(0);
-
-  const clearLongPress = useCallback(() => {
-    if (longPressTimer.current !== null) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
   const fireLongPress = useCallback(() => {
     if (longPressKind === "lineItems" && hasLineItems) {
       dispatchModal({ kind: "open-edit-item", itemId: lineItems![0].itemId });
@@ -176,42 +161,10 @@ export function DescriptionCell({
     }
   }, [longPressKind, company, hasLineItems, lineItems, dispatchModal]);
 
-  const onPillPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (longPressKind === null || e.button !== 0) return;
-      longPressTriggered.current = false;
-      longPressStartX.current = e.clientX;
-      longPressStartY.current = e.clientY;
-      clearLongPress();
-      longPressTimer.current = window.setTimeout(() => {
-        longPressTriggered.current = true;
-        longPressTimer.current = null;
-        fireLongPress();
-      }, LONG_PRESS_MS);
-    },
-    [longPressKind, clearLongPress, fireLongPress],
-  );
-
-  const onPillPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (longPressTimer.current === null) return;
-      const dx = e.clientX - longPressStartX.current;
-      const dy = e.clientY - longPressStartY.current;
-      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_PX) clearLongPress();
-    },
-    [clearLongPress],
-  );
-
-  const onPillContextMenu = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (longPressKind === null) return;
-      e.preventDefault();
-      clearLongPress();
-      longPressTriggered.current = true;
-      fireLongPress();
-    },
-    [longPressKind, clearLongPress, fireLongPress],
-  );
+  const longPress = useLongPress({
+    enabled: longPressKind !== null,
+    onLongPress: fireLongPress,
+  });
 
   return (
     <td
@@ -323,18 +276,15 @@ export function DescriptionCell({
                 // Pointerup fires before click — swallow the click that
                 // follows a long-press so the description popover doesn't
                 // also open on top of the company editor.
-                if (longPressTriggered.current) {
-                  longPressTriggered.current = false;
-                  return;
-                }
+                if (longPress.consumeTriggered()) return;
                 onClick();
               }}
-              onPointerDown={onPillPointerDown}
-              onPointerMove={onPillPointerMove}
-              onPointerUp={clearLongPress}
-              onPointerCancel={clearLongPress}
-              onPointerLeave={clearLongPress}
-              onContextMenu={onPillContextMenu}
+              onPointerDown={longPress.onPointerDown}
+              onPointerMove={longPress.onPointerMove}
+              onPointerUp={longPress.onPointerUp}
+              onPointerCancel={longPress.onPointerUp}
+              onPointerLeave={longPress.onPointerUp}
+              onContextMenu={longPress.onContextMenu}
               className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 ${
                 hasContent
                   ? "justify-start text-left"

@@ -1,8 +1,9 @@
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
 import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
+import { useLongPress } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type { CellValue, Column, Row } from "../../data/types";
@@ -70,9 +71,6 @@ type Props = {
   onToggleSelect: (rowId: string) => void;
 };
 
-const LONG_PRESS_MS = 450;
-const LONG_PRESS_MOVE_PX = 8;
-
 function BudgetRowImpl({
   row,
   columns,
@@ -118,15 +116,6 @@ function BudgetRowImpl({
   const { swiped, setSwiped, touchHandlers } = useRowSwipe({
     disabled: selectMode,
   });
-  // Long-press → open the generic edit-row modal. Same coordinator
-  // pattern as `BudgetAddEntryButton` / `BottomBar`'s sheet tabs: the timer
-  // fires after LONG_PRESS_MS and `longPressTriggered` guards the
-  // trailing click so the tap that produced the long-press doesn't
-  // also fire a cell editor underneath the modal.
-  const longPressTimer = useRef<number | null>(null);
-  const longPressTriggered = useRef(false);
-  const longPressStartX = useRef(0);
-  const longPressStartY = useRef(0);
 
   // A swiped row exposes destructive action buttons; mark it active so
   // a tap outside only dismisses the swipe instead of also firing the
@@ -219,24 +208,23 @@ function BudgetRowImpl({
   const rowDateColor =
     rowDateMonthNum !== null ? monthColorVar(rowDateMonthNum) : undefined;
 
+  // Long-press / right-click → open the generic edit-row modal. Same
+  // coordinator pattern as `BudgetAddEntryButton` / `BottomBar`'s sheet
+  // tabs: `consumeTriggered` guards the trailing click so the tap that
+  // produced the long-press doesn't also fire a cell editor underneath
+  // the modal.
+  //
   // Synthesized rows have their own edit affordances (AccountTransferModal
-  // for transfers, the promote flow for history) and balance-
-  // correction rows are display-only — long-press is a no-op on all of
-  // them. The select-mode tap toggles selection so we leave it alone
-  // there too.
-  const longPressEligible =
-    !selectMode && !isTransfer && !isHistory && row.kind !== "correction";
-
-  function clearLongPress() {
-    if (longPressTimer.current !== null) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }
-
-  function onPointerDown(e: React.PointerEvent<HTMLTableRowElement>) {
-    if (!longPressEligible) return;
-    if (e.button !== 0) return;
+  // for transfers, the promote flow for history) and balance-correction
+  // rows are display-only — long-press is a no-op on all of them. The
+  // select-mode tap toggles selection so we leave it alone there too.
+  const longPress = useLongPress({
+    enabled:
+      !selectMode && !isTransfer && !isHistory && row.kind !== "correction",
+    onLongPress: () => {
+      setSwiped(false);
+      dispatchModal({ kind: "open-edit-row", row });
+    },
     // Action-cell taps and select-cell taps drive their own handlers —
     // starting a long-press there would race with the button click and
     // pop the modal on top of whatever action the user meant to fire.
@@ -244,68 +232,25 @@ function BudgetRowImpl({
     // a tap on a description input still focuses the field, a tap on a
     // category chip still opens its picker, and iOS's text-selection
     // long-press inside an input keeps working. The pen button stays
-    // available for users who want the modal from inside a cell.
-    const target = e.target as HTMLElement;
-    if (
-      target.closest(".action-cell") ||
-      target.closest("[data-select-cell]") ||
-      target.closest("input, textarea, select, button")
-    ) {
-      return;
-    }
-    longPressTriggered.current = false;
-    longPressStartX.current = e.clientX;
-    longPressStartY.current = e.clientY;
-    clearLongPress();
-    longPressTimer.current = window.setTimeout(() => {
-      longPressTriggered.current = true;
-      longPressTimer.current = null;
-      setSwiped(false);
-      dispatchModal({ kind: "open-edit-row", row });
-    }, LONG_PRESS_MS);
-  }
-
-  function onPointerMove(e: React.PointerEvent<HTMLTableRowElement>) {
-    if (longPressTimer.current === null) return;
-    const dx = e.clientX - longPressStartX.current;
-    const dy = e.clientY - longPressStartY.current;
-    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_PX) clearLongPress();
-  }
-
-  function onPointerUp() {
-    clearLongPress();
-  }
-
-  function onContextMenu(e: React.MouseEvent<HTMLTableRowElement>) {
-    if (!longPressEligible) return;
-    // Right-click on desktop opens the same modal — mirrors the
-    // sheet-tab / add-row affordance so power users don't have to wait
-    // out the long-press timer. Skipped on action / select cells and
-    // on interactive cell controls for the same reason `onPointerDown`
-    // skips them: the native context menu (or the cell's own handler)
-    // should win there.
-    const target = e.target as HTMLElement;
-    if (
-      target.closest(".action-cell") ||
-      target.closest("[data-select-cell]") ||
-      target.closest("input, textarea, select, button")
-    ) {
-      return;
-    }
-    e.preventDefault();
-    clearLongPress();
-    longPressTriggered.current = true;
-    setSwiped(false);
-    dispatchModal({ kind: "open-edit-row", row });
-  }
+    // available for users who want the modal from inside a cell. The
+    // same guard suppresses the right-click path so the native context
+    // menu (or the cell's own handler) wins on interactive controls.
+    shouldSkip: (e) => {
+      const target = e.target as HTMLElement;
+      return (
+        target.closest(".action-cell") !== null ||
+        target.closest("[data-select-cell]") !== null ||
+        target.closest("input, textarea, select, button") !== null
+      );
+    },
+  });
 
   function onClickCapture(e: React.MouseEvent<HTMLTableRowElement>) {
     // Long-press triggered while the pointer was still down — the
     // following click would otherwise reach the cell underneath and
     // open its inline editor on top of the modal. Swallow it here in
     // the capture phase so descendants never see it.
-    if (longPressTriggered.current) {
-      longPressTriggered.current = false;
+    if (longPress.consumeTriggered()) {
       e.stopPropagation();
       e.preventDefault();
     }
@@ -337,14 +282,14 @@ function BudgetRowImpl({
       data-row-date={isoDate}
       data-swipe-handled
       {...touchHandlers}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onPointerLeave={onPointerUp}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerUp}
+      onPointerLeave={longPress.onPointerUp}
       onClick={handleRowClick}
       onClickCapture={onClickCapture}
-      onContextMenu={onContextMenu}
+      onContextMenu={longPress.onContextMenu}
       aria-selected={selectMode ? selected : undefined}
     >
       {selectMode && (

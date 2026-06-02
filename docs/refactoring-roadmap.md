@@ -272,30 +272,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 3–4 — nits with leverage
 
-- **`useLongPress(ms, onLongPress)` hook extraction** — the pointer
-  long-press state machine (`LONG_PRESS_MS = 450` + the `longPressTimer`
-  / `longPressStartX` / `longPressStartY` refs + the
-  pointerdown / pointermove / contextmenu choreography that fires after
-  the threshold and cancels on a move past tolerance) is inlined at
-  **four** sites: `src/components/BottomBar.tsx` (419),
-  `src/components/budget/BudgetAddEntryButton.tsx` (102),
-  `src/components/budget/BudgetRow.tsx` (521, which also carries
-  `LONG_PRESS_MOVE_PX = 8`), and
-  `src/components/budget/cells/DescriptionCell.tsx` (769). Each redefines
-  the same constant and ref triple; only the fired callback differs.
-  - **Plan**: extract `useLongPress(ms, onLongPress, { moveTolerancePx })`
-    into `src/hooks/` (re-exported from `src/hooks/index.ts`) returning
-    `{ onPointerDown, onPointerMove, onContextMenu, cancel }`; the four
-    sites import it and drop their private timer/coordinate refs. One place
-    to tune the timing.
-  - **Risk**: low — pure pointer state machine, no persisted shape. Smoke
-    the swipe-vs-long-press interaction on `BudgetRow` (it also owns the
-    horizontal row-swipe gesture, so the hook must not swallow the
-    pointer-move the swipe reads) and the sheet-tab long-press on
-    `BottomBar`.
-  - **Severity: 4.** Easy-win-flavoured (N=4, mechanical), and every new
-    tappable-row sheet type re-derives the same machine.
-
 - **Page-specific `useSalaryBulkSelection.ts` lives in
   `src/components/AppShell/hooks/`** next to the budget
   `useBulkSelection.ts`, and AppShell swaps between the two on an
@@ -454,6 +430,37 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Inlined pointer long-press state machine → `useLongPress` hook**
+  (2026-06): the `LONG_PRESS_MS = 450` constant + the
+  `timer` / `triggered` / `startX` / `startY` ref quartet + the
+  pointerdown (arm-timer) / pointermove (cancel-past-tolerance) /
+  pointerup (cancel) / contextmenu (fire-immediately) choreography +
+  the read-and-reset `triggered` flag that swallows the trailing click
+  were inlined byte-for-byte at four sites: `BottomBar` (sheet tab →
+  edit), `BudgetAddEntryButton` (hold → complex-entry modal),
+  `BudgetRow` (hold → edit-row modal), and `DescriptionCell` (hold the
+  company / item pill → edit modal). Extracted
+  `useLongPress({ onLongPress, enabled?, ms?, moveTolerancePx?,
+shouldSkip? })` into `src/hooks/useLongPress.ts` (re-exported from
+  `src/hooks/index.ts`), returning stable
+  `{ onPointerDown, onPointerMove, onPointerUp, onContextMenu,
+consumeTriggered, cancel }`. The `enabled` flag carries `BudgetRow`'s
+  synthesized-/correction-/select-mode eligibility gate and
+  `DescriptionCell`'s `longPressKind !== null` gate; the optional
+  `shouldSkip(e)` predicate carries `BudgetRow`'s action-cell /
+  select-cell / interactive-control target guard (run for both
+  pointerdown and contextmenu, matching the original). `consumeTriggered`
+  is read-and-reset so each site's trailing-click swallow is one call —
+  `BudgetRow` keeps its capture-phase `stopPropagation` + `preventDefault`
+  (the click target is a descendant cell), the others their plain
+  early-return. The defaults (`ms = 450`, `moveTolerancePx = 8`) covered
+  all four sites so none override them. Pure refactor — identical pointer
+  behaviour; `BudgetRow`'s `onPointerMove` still only reads coordinates
+  (never `preventDefault`s) so it doesn't swallow the `useRowSwipe`
+  touch-handler gesture it coexists with. Fast loop + build + icons-check
+  green, all 1267 tests pass. Net −199 lines across the four call sites.
+  **Was severity 4 (easy-win-flavoured).**
 
 - **CRUD-admin `creating` / `editingId` / `pendingDeleteId` triple +
   delete-confirmation derived state → `useCrudAdminState<T>(items)`**
