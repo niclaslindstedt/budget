@@ -14,6 +14,1304 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-02
+
+### Added
+
+- The running build is now shown next to the "Show source" link in the
+  burger menu, so you can tell at a glance which build is running.
+  Shape: `<version>[.<run>][-pre]` — e.g. `0.1.0` for a local release
+  build, `0.1.0.89` for a CI release build, and `0.1.0.89-pre` for the
+  deployed preview slot.
+- Settings now ends with a "Donate ♥" button that opens the
+  maintainer's donate page in a new tab. Hidden on forks that haven't
+  set their own URL.
+- Built-in **preset types** for typical Swedish households (rent, mortgage
+  principal and interest, el, A-kassa, Apoteket, SL/public transport,
+  alcohol, ISK, student loan, digital services, …) plus broad preset
+  categories (Housing, Food, Transport, Bills, Subscriptions, Entertainment,
+  Personal, Consumption, Unknown, …). The **Subscriptions** category groups
+  recurring digital charges (music & TV streaming, audiobooks, magazines,
+  newspapers) separately from Entertainment, which now covers only direct
+  consumption (books, cinema, games, museum visits, events). **Digital
+  services** (Ratsit, iCloud, 1Password, AI tools, domain renewals — online
+  services you consume, whether recurring or one-off) sits under
+  Consumption. The **Unknown** category gives you
+  a way to mark transactions you can't identify when walking back through
+  old account history — Unknown, Forgotten, Unidentified recurring, Cash,
+  Needs review, Suspicious. New **Categories** and **Types** sections in
+  Settings let you hide presets you don't need, edit or remove your own
+  entries, and add new ones — all in one place. Every type can now be
+  flagged as **income**, **expense**, or both: the picker filters by the
+  row's amount sign so Salary and Barnbidrag stop showing up on negative
+  entries and Groceries stops showing on positive ones. The flag is editable
+  inline from the Types list for both built-in presets and your own types.
+- A new **"Always abbreviate balance column"** number-format setting
+  (under Settings → Format → Numbers), shown only while "Abbreviate
+  large numbers" is enabled. When the toggle is on, the running-balance
+  column compresses every row — small balances included — so the
+  column reads as a uniform stack of compact figures instead of a mix
+  of "9 432" and "12K". The amount column is left at the 10 000
+  threshold because the amount is the primary value while the balance
+  is a derived snapshot.
+- Bank-history imports now reconcile with predicted budget rows. The
+  app prompts before merging close matches (±7 days, ±1% or ±2 SEK)
+  and offers to delete or move predictions that didn't post.
+  Confirming a match carries the predicted row's description and type
+  onto the imported entry so fine-tuned labels survive the merge. When
+  the predicted row belongs to a recurring series, the imported entry
+  keeps that series link too, so the transaction stays part of the
+  series and a recurring entry can be tracked across all its past
+  occurrences.
+  Dismissing the dialog (×, Escape, or click-outside) cancels the
+  import — nothing lands in the account history until you click
+  **Apply** or **Skip all**. Months fully covered by imported history
+  are locked — the **+ Add row** button is hidden and date edits snap
+  forward into the next uncovered month. Confirming a match on a
+  recurring series can apply the rule to every other occurrence in
+  the import; future imports then collapse the same pair silently.
+  The Settings start-of-month field can be auto-detected from recent
+  salary postings (uses the latest day-of-month observed so
+  holiday-induced early postings don't move payday earlier than it
+  actually lands).
+- The complex create-entry modal can now compute a row's amount with a
+  formula instead of a fixed number. Toggle `fx` next to the amount
+  field to enter expressions like `endOfMonthBalance - 5000` (leave
+  5,000 in the account at month's end) or
+  `5000 - sheet("Wife", endOfMonthBalance)` (top up the spouse's
+  sheet to 5,000). Variable names, function names, and cross-sheet
+  names render as colour-coded pills so the formula reads as composed
+  units that a single backspace removes wholesale; the new help button
+  next to the `fx` toggle walks through every variable, function, and
+  the cross-sheet shape. Variables cover `endOfMonthBalance`,
+  `balanceBefore`, `openingBalance`, `income`, `expenses`, `net`,
+  `uncategorized`, `prevMonth.*`, plus `categoryTotal()`, `typeTotal()`,
+  `sheet()` for cross-sheet references, and `min/max/clamp/abs/round`.
+  Cross-sheet references store the target's stable id, so renaming a
+  sheet doesn't break the formula. Re-editing a formula in v1 means
+  deleting the row and re-adding it through the complex modal.
+- Pattern rules now support a "Range" amount filter — a signed
+  from / to band with +/- toggles, exposed as a fourth Amount
+  button alongside Any / Negative / Positive — so a rule can narrow
+  to a specific price band instead of just a direction.
+- Label-by-pattern rules now support `?` as a single-character wildcard
+  alongside `*`. For example, `?LA*` matches `BLA` but not `LAB`.
+- The Recurring candidates panel now has a "Dismiss all" button in its
+  header that hides every detected candidate at once after a
+  confirmation prompt. Dismissed keys are remembered like single
+  dismissals, so the panel stays empty until a new import surfaces a
+  fresh pattern (and Settings still has the "Restore" affordance if you
+  change your mind).
+- Swedish translations and a language picker (English/Swedish flags in
+  Settings → General). New installs auto-detect from your browser
+  language; existing installs stay in English until you flip the picker.
+  Month names in date columns and headers follow the picked language.
+  Built-in categories (Housing, Food, Transport, …) and types (Rent,
+  Mortgage, Groceries, …) translate alongside the rest of the UI, so a
+  Swedish user sees Boende, Mat, Hyra, Bolån — without re-entering each
+  one. Custom categories and types you add still keep the name you typed.
+- Currency presets in Settings → Format: pick SEK/NOK/DKK/ISK, EUR,
+  GBP, CHF, or USD/CAD without spelling out the symbol, position, and
+  spacing by hand. Currencies that render identically (Nordic kronor,
+  US/Canadian dollars) share a single entry so the picker stays short
+  and doesn't suggest the choice affects how amounts are stored. The
+  custom-token inputs stay available behind a "Custom…" entry. Fresh
+  installs default to a preset matching the browser's region.
+- Download button next to the sheet title. On a budget sheet, opens a
+  modal to export rows as CSV or Excel (XLSX), with optional history
+  and future entries — synthesized history rows show the assigned type
+  in place of the bank's raw description when one's been set, and each
+  row carries date, type, category, description, amount, and balance.
+  On the Accounts sheet, opens a modal with a per-account grid (account,
+  account info, transactions) plus "select all" toggles per column, and
+  exports the chosen accounts as JSON. The export carries the per-account
+  transactions (imported bank entries), cross-account transfers, and the
+  confirmed budget-sheet rows bound to each selected account; two extra
+  toggles widen the budget filter to include unconfirmed and future
+  entries. The modal remembers your choices for next time.
+- History rows in a budget view now carry a pen-button edit modal for
+  relabelling a single imported entry — the modal shows the original
+  bank text for reference, and edits land on per-entry overrides so
+  other entries with the same merchant key stay unaffected. The
+  description and type cells on history rows are also directly
+  editable inline. Use the **Label by pattern** action (under the
+  row's "…" menu) for wildcard rules that affect many entries at once.
+- New **Split row** action (under the row's "…" menu) opens a Split
+  modal that carves the entry into separate parts — handy for a
+  mortgage payment that's part interest and part amortization, or a
+  bankgiro transaction that paid for several unrelated things in one
+  go. Each split becomes its own row on the same date; any leftover
+  stays on the original row (preserving its recurring-series link)
+  and is pushed to the bottom of the list. Re-opening the Split modal
+  on a bank entry that's already been split shows a "Revert split"
+  button that drops the decomposition and restores the entry to what
+  the bank originally reported.
+- Hide inter-account transfers from budget tables. Toggle "Hide transfers between accounts" under Settings → General → Display to suppress synthesized cross-account transactions, history entries flagged as transfers, and any budget row flagged with the new **Mark as transfer** action (available under the row's "…" menu for both budget and history rows, and as a bulk option in the Edit-many modal). The running balance still accounts for the hidden rows; balances that a hidden run contributed to render in italic with a dotted underline, and clicking such a balance reveals the hidden rows inline.
+- Theme picker (Dark, Light, System, Custom) and font picker (JetBrains Mono, Inter, Source Serif 4, OpenDyslexic) under Settings → Appearance. Custom theme reveals controls for every chrome colour, corner radius, UI density, border width, and a reduce-motion toggle — all stored alongside your data so they ride export, import, and cloud sync. Every Appearance pick previews live on the running app while Settings is open, so you can compare themes (or any combination of font, size, shape, motion) without having to save first — Cancel reverts back to your previous look.
+- Developer mode in Settings → General reveals a Developer tab with a
+  "Capture logs" toggle; enabling it exposes a Logs tab that shows
+  captured entries with level filtering, copy-all, and clear. Useful
+  for debugging on mobile where the devtools console is out of reach.
+  Stored on this device — never travels with an export. Logging
+  otherwise no longer reaches the browser console. The toggle is only
+  available in the `/preview/` build; production builds keep the
+  developer surface hidden.
+- Opt-in **Work offline when the cloud is unreachable** toggle for Dropbox / Google Drive in Settings → Storage. When on, the app keeps a copy of your cloud file in this browser so a page opened with no network still loads and accepts edits. Edits push automatically when the connection returns. If another device wrote to the cloud while this one was offline, a confirmation modal asks whether to keep this device's copy or the cloud's — never silent overwrites in either direction.
+- Undo and redo support for every edit. The last 50 actions can be
+  stepped backward and forward via ⌘Z / ⌘⇧Z (or Ctrl+Z / Ctrl+Y on
+  Windows), or the new buttons on the right side of the bottom bar.
+  A third button next to undo / redo opens an **Action history**
+  modal that lists every action with its timestamp so you can jump
+  straight to a known-good point instead of guessing how many times
+  to press undo. Each entry spells out what it did and to which
+  object — "Edited payslip 'BookBeat 2026-04'", "Deleted account
+  'Checking'", "Deleted 3 rows" — and the undo / redo toasts name the
+  same subject. Future actions stay visible (greyed) after you go
+  back so you can redo into them; they're cleared only when you take
+  a new action.
+- Clicking a row in the Recurring candidates panel now opens a modal
+  listing the bank entries that drove the detection — date and signed
+  amount per occurrence — so you can sanity-check a candidate before
+  promoting or dismissing it.
+- New eye-icon **view-mode** button on every sheet, between the existing
+  pencil (edit) and download buttons next to the sheet title. Tap it to
+  open a read-only viewer that shows the sheet's months and rows without
+  any of the editing chrome — no inline cell editors, no add-row plus,
+  no column-drag handles, no select-mode checkboxes — just the
+  data, clean and compact. The viewer fills the screen on mobile and
+  opens as a wide centered card on desktop, and renders every month of
+  history up-front so the in-modal search filter sees the full ledger
+  rather than just the recently-loaded months. Months dated after today
+  are tucked behind a clickable **Show 3 future months** line above the
+  current fiscal month so the modal opens anchored on today instead of
+  deep in next year's planning. Each click reveals another three months
+  and keeps the current-month header parked in view, matching the
+  paginated reveal the editable sheet already uses, and the line stays
+  out of the way while a search is active so a query reveals every
+  match. Days inside each
+  month run newest-first to match the descending month order, so the
+  most recent activity sits at the top of every section. Rows you never
+  gave a description fall back to their linked item or tagged company in
+  the description column, so the viewer reads meaningfully instead of
+  leaving a blank cell. The done column is
+  shown inline as a small check next to the date and uncompleted rows
+  fade slightly, so the table reads as one tight stack instead of
+  spending a whole column on a checkmark.
+- A new magnifier button on the bottom bar opens a transaction-search
+  modal that looks across every sheet at once. Type any part of a
+  description, the raw bank-statement text, company name, type name,
+  or category, or a tag, or a number — and matching rows appear ranked
+  by relevance by default, with the matched substring highlighted.
+  Relevance favours clean whole-word matches over letters buried
+  mid-word — searching "Car" surfaces a row you tagged or described
+  "Car" ahead of one that merely starts "Carlo" or hides "car" inside
+  "Childcare" — then weighs where the match landed (your own
+  description first, then tag, company, type, and category), and
+  finally how recent the row is, so the newest of otherwise-equal
+  matches leads. All of that is adjustable in the new Settings → Search
+  tab: match-quality-vs-field priority, the per-field weights, how much
+  recency counts, the amount tolerance, and how many results show.
+  Bank-text hits surface the original
+  bank memo on a third line so you can see why a row matched even
+  when its visible description is a user override or a company tag.
+  Number queries also match rows whose amount lands within ±20% of the
+  value, so "100" finds a 95 rent payment alongside the exact-100 ones.
+  Clicking a result switches to that row's sheet, scrolls it into view
+  (revealing hidden past or future months as needed), and pulses the row
+  briefly so you can see where you landed. The last query is remembered while the tab
+  stays open. A count above the list shows how many entries matched and,
+  when more match than fit on screen, how many are shown ("267 hits,
+  showing 50").
+  A sort menu to the right of the search bar overrides the default
+  ordering: pick "Date · Newest first / Oldest first" or "Amount ·
+  Highest first / Lowest first" to flip the result list, or return to
+  "Relevance". The choice sticks while the tab stays open.
+  A select button turns the results into a multi-pick list: tick several
+  entries and edit, move, copy, or delete them all at once with the same
+  toolbar the sheet uses. Selection stays within a single sheet at a time
+  and covers only entries you added (imported bank lines and transfers
+  aren't selectable); when your workspace has more than one sheet the
+  select button stays disabled until you scope the search to a single
+  sheet with the filter, so a bulk action can't span sheets by accident. A "Select all" action grabs every match on the
+  active sheet in one tap — including matches past the 50 shown — so a
+  search that turns up hundreds of rows can be acted on without ticking
+  each one.
+- A warning popup now greets you on every page load when your budget is
+  on the default browser backend and total local storage usage has
+  crossed ~3 MB. Browsers cap each site at around 5 MB, so the popup
+  nudges you to switch to a local folder or a cloud backend (Dropbox,
+  Google Drive) before writes start failing silently. "Go to storage
+  settings" lands you directly on the Storage tab; "Dismiss" closes the
+  popup for this session.
+- Added a "Show source" link to the header menu that opens the project's GitHub repository.
+- Accounts page: scissors button on each account row opens a "cut history" modal that drops imported entries and cross-account transactions dated before a chosen cutoff. The modal previews how many entries will be removed before confirming.
+- Budget is now installable as a Progressive Web App — add it to your
+  home screen on iOS / Android or install it from the address bar on
+  desktop Chrome / Edge for a standalone window with its own icon. The
+  app keeps working offline thanks to a precaching service worker, and
+  new builds surface a small "reload to apply" prompt in the corner so
+  you can pick the moment to refresh. Production and the `/preview/`
+  staging slot install as two separate apps with isolated caches, so
+  you can keep both side-by-side.
+- Achievements system: every feature in the app is now an unlockable
+  achievement, with playful names and tier-uniform points (Beginner 10,
+  Intermediate 25, Pro 50, Expert 100). A new star icon in the header
+  glows yellow when you've earned something new — click to see what,
+  click the empty star to browse the full catalog in a fullscreen
+  modal. The whole catalog (chrome, tier descriptions, every
+  achievement name and condition) is available in English and Swedish.
+- Budget now offers a small in-app banner prompting you to install it
+  on your device. On iPhone and iPad in Safari the banner points at the
+  Share icon and explains the Add-to-Home-Screen step; in Chrome, Edge,
+  and other Chromium-based browsers (including on Android) it shows an
+  Install button that triggers the browser's native install flow.
+  The banner stays hidden when Budget is already running from the home
+  screen and never returns once dismissed.
+- Toast notifications confirm undo and redo (showing which action was reverted), file imports and exports, cloud connect and disconnect, sheet and account deletions, and save errors. Toasts auto-dismiss and can be dismissed manually.
+- The "Edit recurring entry" and "Edit recurring row" modals now have a
+  "Shift days by" input that nudges the date of every entry in the
+  chosen scope by a signed number of days — handy when a recurring
+  series landed on day 24 but should be on day 25.
+- The production site now loads **GoatCounter**, a privacy-friendly,
+  open-source page-view counter, via an `async` script in the page head.
+  It records aggregated hits only (URL visited, referrer, language,
+  screen size, country, and a hashed/salted IP for short-term
+  deduplication), sets no cookies, collects no personally identifying
+  information, and does not track users across sites. The
+  `/preview/` staging slot and local dev builds never load the counter.
+  The privacy page documents what is and isn't recorded.
+- Tapping the active sheet tab in the bottom bar now scrolls the sheet back to the top.
+- Made the "budget" wordmark in the page header a configurable shortcut, like the Action Button on newer iPhones. Pick under Settings → General → Title click: scroll to top (default), jump to the current month, refresh the page, or open one of your sheets.
+- Pull down from the top of the page to refresh the budget from
+  storage — pick up edits another device pushed to Dropbox or Google
+  Drive, or a write made by another tab on the same browser. Any
+  unsaved local edits flush to the cloud first so the pull never
+  silently drops a keystroke; if the remote has moved underneath you,
+  the existing sync-conflict modal takes over. A small "Pull to
+  refresh / Release to refresh / Refreshing…" pip slides in from the
+  top to track the gesture.
+- In the installed PWA, swipe left or right anywhere on a "neutral"
+  page area to switch to the next / previous sheet, with wrap-around
+  at both ends — matches the iOS Photos / Safari tab convention. The
+  new sheet slides in from the side you swiped from so the gesture
+  has the same horizontal-page feel as the OS. Existing gestures keep
+  ownership of their surface: swiping a budget row in the middle of
+  the table still reveals its delete / edit / copy actions, and the
+  sheet tablist at the bottom still scrolls horizontally on its own.
+  A narrow band at the absolute left / right screen edges always
+  drives the sheet switch even when your thumb lands on a row, so
+  you can switch sheets without first finding an empty patch of page.
+  Inputs and open modals are excluded so the gesture never fights
+  text selection or a dialog. Disabled in a regular browser tab to
+  avoid colliding with the browser's own back / forward swipe.
+- Settings now split between common (one value everywhere), mobile, and
+  desktop scopes. Display toggles like _Abbreviate big numbers_, _Show
+  currency_, _Text size_, and the header-click action can hold a
+  different value on each device kind, picked live from the viewport;
+  locale, theme, achievements, and security settings stay shared. The
+  download-modal defaults and the cloud-reauth auto-open toggle also
+  ride along in the synced bucket now, so the choice follows you to
+  your other devices.
+- **Transaction order** preference in Settings → General → Display. Pick **Newest first** or **Oldest first** and the budget sheet, the read-only sheet viewer, the account transfer log, and the account history modal all read the same direction. Running balances always accumulate chronologically regardless of the choice.
+- **Show future entries in budget** toggle in Settings → General → Display. With it off (the new default), future-dated rows in the editable budget sheet hide behind an inline "Show 3 future months" divider so the sheet stays anchored on today's month — each click reveals the next three months, matching the existing "Show 3 earlier months" pagination. Turn it on to render a chosen number of upcoming fiscal months up front; anything beyond that still steps into view three months at a time via the in-sheet toggle.
+- A new "Label similar" item in the row menu opens the pattern modal on any budget row (not just bank-imported history), pre-filled with a date-stripped derivation of the row's description plus the row's existing type, company, tags, and custom description — so a rule made from an already-labelled row doesn't make you re-pick everything. Saved patterns now auto-apply on manually-typed entries too — type a description, the matching rule's type lands as soon as you blur the cell. Creating or editing a rule also re-labels every existing budget row the new pattern wins against, so a fresh rule catches up rows that were sitting unlabelled. Patterns are additive: a rule that no longer matches a row never strips the row's existing type, so hand-set types on long-standing recurring entries are safe across rule edits and "Reapply all" sweeps. Picking a type by hand locks the row out of further auto-relabelling; clearing the type re-engages it. A new "Patterns" tab in Settings lists every saved rule with a chip showing how many rows in the budget view each rule currently labels — counting both manually-typed budget rows and bank-imported history entries projected into the view — plus a "Reapply all" button that sweeps every row against the ruleset on demand.
+- Pattern-rule cards in Settings → Patterns now show an amount-match
+  chip ("Exactly −39 kr", "−200 kr to −50 kr", "≥ −50 kr", "≤ −200 kr")
+  so you can read at a glance which transactions a rule will pick up.
+  A new **Exact** mode in the rule editor lets you pin a rule to a
+  single amount with one input — no more entering the same number
+  twice as a 1-wide range. Each card also gets up/down arrows so you
+  can promote a specific rule (e.g. iCloud at −39) above a catch-all
+  that would otherwise shadow it (e.g. a generic App Store rule),
+  without having to delete and re-create rules in the right order.
+- Each cloud backup now has a trash button so older snapshots can be pruned as
+  they go stale.
+- Show a picker of known users on the sign-in screen so a returning user can pick their account in one click instead of typing the username.
+- "Label by pattern" now has a **Save pattern** checkbox (default on).
+  Uncheck it to bulk-label existing matches and discard the pattern in
+  one shot — useful for older entries from a merchant you'll never see
+  again (e.g. a pizzeria you stopped going to). Locked rows are still
+  relabelled by an explicit one-shot apply; the lock only blocks
+  automatic sweeps from saved rules and "Reapply all".
+- When deleting a recurring entry you can now stop after a chosen date
+  — useful for pausing a salary or membership during parental leave
+  without losing the rest of the series. Tick "Stop after a date",
+  pick the end, and the "This and all future" button updates to show
+  exactly how many entries through that date will be removed.
+- Bank-history imports now learn how you rename entries and suggest the
+  same renames next time. Every direct rename — from the pen-button
+  history-edit modal or the budget-view quick-rename on a history-backed
+  row — is remembered per account against the normalised bank
+  description, so a recurring merchant collapses across months even
+  though the date prefix changes each time. The last step of every
+  import opens a Review-suggested-renames dialog with one editable row
+  per learned mapping; toggle off the ones you want to keep as-is or
+  tweak the text inline before committing. The footer offers Cancel
+  (abort the import), Skip renames (import without renaming), and Apply
+  renames (import + stamp the accepted ones).
+- Find conflicts: the budget title `…` menu now offers a duplicate
+  finder that surfaces same-day, same-category, near-equal pairs (5%
+  amount tolerance, Food category excluded, tunable minimum amount)
+  and folds each one into a single row. When a bank-history row is in
+  the group it wins and the user-authored metadata stamps onto it;
+  otherwise the row with the richer label keeps its place. Unlocks the
+  _Doppelgänger_ achievement.
+- Metadata mode: the budget title `…` menu now offers a focused walk
+  through the imported entries that still need annotation. One entry at
+  a time, biggest absolute amount first, newest month first. Shows the
+  raw bank line read-only and lets you pick a type, tag a company, add
+  optional tags, optionally write a custom description, and move on.
+  Tags never bring an entry back to the list — they're an extra label,
+  not something the walk waits on. The form
+  pre-populates with whatever is already resolved for the entry (from
+  rules, hints, or per-entry overrides) so you see existing metadata
+  and can edit it instead of typing it again — Save only commits what
+  you actually changed, and surfaces a hint plus a one-shot pulse on
+  the next blocker if you tap it before there's anything to save. An
+  "Omit company" item at the top of the company dropdown marks entries
+  where tagging a merchant doesn't apply (salary, internal transfers,
+  …) so they stop surfacing here over a missing company. A "Mark as
+  transfer" checkbox lets you flag an entry as money moving between
+  accounts and continue to the next item without picking a type or a
+  company. A "Split into parts…" button carves the entry into several
+  rows without leaving the walk — give each part its own amount, type,
+  company, tags, and description; press "Split again" to commit a part
+  and start the next on whatever's left, or "Next" to let the final
+  part absorb the remainder. The running balance stays anchored to the
+  bank's total. Handy for a Klarna autogiro that covers several
+  unrelated purchases at once. "Back" and "Forward" buttons step through the entries
+  you've already skipped or saved so you can revisit and fix a mistake,
+  then return to where you left off — even if you didn't change
+  anything — without restarting the walk. As soon as you set any field, if the entry has lookalikes —
+  older imports whose bank text matches once dates and reference numbers
+  are stripped — an "Also apply to N similar entries" checkbox appears
+  and lets you fan that entry's type, company (or its "omit company"
+  decision), description, and tags out to all of them in one save. It
+  fills only the fields each match is still missing, so nothing you
+  tagged earlier gets overwritten and already-labelled lookalikes keep
+  what they have. Built for the spare-minute case on mobile — entries
+  covered by a match rule or a merchant hint are skipped so only the
+  genuinely unknown ones surface.
+- The budget page's month footer now flags fiscal months whose
+  imported bank history fully covers them: green checkmark when every
+  row in the month is reconciled, orange action button "{N} entries to
+  move or delete" when manual rows still sit inside the covered window.
+  Tapping the orange button opens the same triage modal the post-import
+  reconciliation flow uses, scoped to that single month.
+- **Companies** — tag budget entries with the merchant or organisation
+  the money went to (Fortum, Ellevio, H&M, the local pizzeria). Sits
+  alongside the existing type and description on every row: a row paying
+  H&M for sunglasses shows "Sunglasses" (description); the same row with
+  no description shows the company as an outlined pill (building glyph + name)
+  in the description column; strip both and it falls back to the type
+  name in the type's glyph colour, then to the raw bank text. Companies are entirely user-curated through an inline
+  "New company" row in the picker and a flat list under
+  **Settings → Companies** — and you can long-press (or right-click) a
+  row's company pill to jump straight into editing that merchant without
+  opening Settings. Each company can also be given a **category**
+  (Grocery stores, Pharmacies, Fuel, …) so you can see where the household
+  shops — pick from a built-in, Swedish-flavoured set or add your own, all
+  managed on the same Companies settings tab. The picker is wired into the
+  row edit modal,
+  the per-entry history pen, the bulk **Metadata mode** walkthrough, and
+  the **Label by pattern** modal — saved patterns can stamp a company
+  alongside a description and type. Rename memory learned from history
+  edits remembers the company you tagged each merchant with, so the
+  post-import rename prompt also re-tags companies on future statements.
+- Recurring series can now be marked as **primary income** in the
+  edit-row modal. When the next salary lands a few days early (weekend
+  or holiday), it (and every transfer / expense dated the same day)
+  gets pushed into the next fiscal month so the budget statistics for
+  "April" don't accidentally absorb May's pay. The row's date cell
+  shows a small ↗ arrow when an override is active. A new row-actions
+  menu entry — **Push to next fiscal month** / **Push to previous
+  fiscal month** — lets you nudge any single entry by hand when the
+  automatic detection doesn't apply. Flagging your first primary
+  income series also unlocks the **Early Bird** achievement.
+- The **Primary income** toggle now reaches bank-imported entries too —
+  open any positive history entry's edit modal and flag its bank
+  description (e.g. "LÖN HANDELSBANKEN") as your salary source. Future
+  imports of the same description are pushed into the next fiscal
+  month automatically when they land before the configured payday, and
+  the rule sticks across job changes: each new bank pattern is added
+  alongside the old one so historical entries from a previous employer
+  stay correctly tagged.
+  
+  The series-level toggle on the edit-row modal now only appears on
+  income rows (positive amount or an income-kind type), so it no longer
+  shows up for recurring expenses where it doesn't apply.
+- Budget rows tagged to a company now show a small building glyph
+  before the description text on both desktop and mobile so the
+  merchant tag is visible at a glance even when the description is
+  overridden. Rows whose company is explicitly omitted show the same
+  building glyph crossed out by a "ban" circle, so the deliberately-
+  skipped state is just as visible from the table without having to
+  tap the row open. The description popover also exposes an inline
+  company picker — pick a merchant, change the existing one, omit the
+  company entirely on a bank-history row, or create a new one
+  straight from the description reveal without opening the full
+  edit-row modal.
+- The description popover on history rows whose description has been
+  overridden now shows the original bank memo read-only beneath the
+  textarea, prefixed with a small bank glyph so it's clear where the
+  text came from. Rows that haven't been relabelled still rely on the
+  existing placeholder (the bank text appears inside the empty
+  textarea), so no extra line is added when there's nothing new to
+  show.
+- The New entry modal (long-press the +) and the Edit recurring entry modal
+  now expose a Company picker and a "Mark as transfer" checkbox, matching
+  the layout of the bank-history entry editor.
+- Budget rows now briefly heartbeat (two quick pulses) right after an
+  inline edit commits — typing a description and tapping done, picking
+  a type, ticking the completed box, changing a date, picking a
+  company from the description popover. Newly-added rows heartbeat
+  too. Makes it obvious which row just changed on mobile, where the
+  soft keyboard disappearing used to leave you momentarily unsure
+  where your edit landed. Respects the Reduce-motion setting.
+- **Suggest types from the company.** Picking a company on an entry now
+  helps fill in its type. A company that only ever goes with one type
+  fills that type in automatically; a company that spans several shows
+  them as one-tap **suggestions** at the top of the type picker (the five
+  most-used). You can also pin types to a company yourself under
+  **Settings → Companies** and drag them to set their priority. Works from
+  the inline picker in the description cell and from every edit modal with
+  a Company field.
+- Search now has a filter popover beside the sort menu, both tucked inside
+  the search bar. Exclude transfers, bank history, or unconfirmed entries
+  (leaving only imported history), scope the search to a single budget
+  sheet (a dropdown picks one sheet, or all), restrict to specific
+  companies, types, categories, or tags (match any tag or require all of
+  them), and narrow results to an amount or date range with dual-thumb
+  sliders, or pick a time range to exclude data older than a chosen number
+  of calendar years (this year, last 2 years, and so on) when older
+  entries aren't interesting. The
+  sliders span only what your current search actually contains — a search
+  that turns up four 100–500 kr rows gives you a 100–500 amount slider, not
+  the whole workspace's range — and the date slider steps by month.
+  Filters work even with an empty query, so you can browse by range alone.
+  The filter and sort glyphs light up when active, and the modal is now
+  simply titled "Search".
+- Budget entries can now be an estimate range instead of a single
+  amount. When adding or editing an entry, switch the amount from
+  "Exact" to "Estimate" and set a minimum, an estimate, and a maximum —
+  handy for bills that vary month to month, like electricity. The
+  estimate is what shows in the table and counts toward your balance,
+  and when the real transaction is imported, any amount inside the range
+  is matched to the entry even if it differs from the estimate.
+- Tag your entries. Tags are your own colour-coded labels for grouping
+  entries that cut across categories — "Vacation 2026", "Reimbursable",
+  "Work". Assign one or more when you create an entry, in an entry's edit
+  modal, when editing many rows at once, on a bank-history entry, or by
+  wildcard pattern so every matching transaction picks up the same tags
+  automatically. Manage them under Settings → Tags, and search by tag
+  name to pull up everything labelled the same way. Tags stay out of the
+  budget table — they only show while editing.
+- New **Line items** action (under the row's "…" menu) ties part of a
+  purchase to the physical things you own. A 20 000 kr purchase might be
+  15 000 kr for an iPhone — the rest is left as a "remainder" you don't
+  have to account for. The amount you enter for an item becomes that
+  item's purchase price, so you never type it twice — the line item just
+  connects the transaction to the thing it bought. Items are a catalog
+  you build up over time:
+  create one straight from the line-items modal, and optionally tag it
+  with a **subtype** — a third level below category → type ("Consumption"
+  → "Electronics" → "Laptop"). Unlike splitting an entry, line items
+  don't carve the row into separate rows; they annotate it with what it
+  bought, laying the groundwork for tracking what you own and how it
+  holds its value over time. Each item belongs to a single purchase — once
+  it's linked it drops out of the picker until you detach it. An entry with
+  line items shows an item pill
+  right in the ledger — captioned with the item's name (or the first one,
+  under a "many items" glyph) — and tapping its description lists every
+  linked item at the bottom of the popover. Each item carries the details
+  that story needs: what you paid for it, when you bought it, how it
+  depreciates each year, what it's worth to resell, and whether you've
+  sold it on. Edit any of those by long-pressing (or right-clicking) the
+  item pill, or by clicking a listed item in the description popover — the
+  line-items editor for re-allocating amounts stays on the row's "…" menu.
+  When your data lives in a local folder or a cloud backend (Dropbox or
+  Google Drive), you can also attach a **receipt** — a photo or PDF — to the
+  purchase, managed from the linked item's "…" menu on the **Items** sheet:
+  drag and drop (or browse to) the file, preview it in the app, and replace
+  or remove it later. Receipts are saved as plain files in a `receipts`
+  folder on your storage, named from a preset you choose in the **Items**
+  settings tab (one of them files each receipt under a folder per type), so
+  they're easy to find later. Receipts are never encrypted, so if you'd
+  rather not place them in a cloud backend, just don't attach them.
+- New **Items** sheet type lists everything you own in one place. Add it
+  from the bottom bar like any other sheet: it shows each item's name,
+  when you bought it, what you paid, and what it's worth now — with a
+  running total of both at the bottom. Add items straight from the table,
+  swipe a row to edit or delete it, and tap an item with a note to read
+  it. When an item is linked to a purchase (and your data lives in a local
+  folder or a cloud backend), the row's "…" menu lets you upload, preview,
+  or remove the purchase's **receipt** — a photo or PDF — without leaving
+  the sheet. The "worth now" figure follows each item's resale value or its
+  yearly depreciation, and items you've sold or given away drop off the
+  list automatically. A **Find items** action in the sheet's "…" menu
+  scans your imported transactions for likely purchases — money you spent
+  above an amount you set (default 2000 kr / 200 € / 200 $), limited to
+  durable types that hold value (electronics, furniture, tools, … — money
+  coming in and everyday consumables like groceries are left out) — and
+  walks them one at a time so you can add line items, skip, ignore a
+  single entry for good, or exclude every similar transaction at once so
+  recurring charges like rent stop cluttering the list. Tune the amount
+  and the type filter — deselect a type or add your own — and clear your
+  ignored or excluded lists in the new **Items** settings tab.
+- A new **Salary** sheet type that shows your pay over time. Bind the
+  sheet to the account your pay lands in — one Salary sheet per person —
+  and **Find salaries** scans that account's full bank history — even
+  years back — finds your recurring paycheck and walks you through it. It opens with
+  your **pay periods** — each stretch between raises, title changes, and
+  employer changes, with its date range, length, and typical pay — instead
+  of a single average that hides every change. Then it walks year by year:
+  each year lists every detected paycheck with its bank description
+  (unusual months flagged) so you can see exactly what you're adding, then
+  accept them all or review each
+  to edit, tag, or skip (it prefers recurring income over big one-offs,
+  only flags a month when it strays more than 10% from your usual pay, and
+  calls out a sustained pay rise as a "Raise" and a likely job change as a
+  new employer). Tag each salary with an **employer** and role
+  — add a new employer inline from the picker — and record taxes and
+  absence days (parental leave, VAB, vacation, sick). You can also attach
+  a payslip (lönerapport) — a photo or PDF — to each salary from the row's
+  "…" menu: drag and drop (or browse to) the file, preview it in the app,
+  and replace or remove it later. It is saved to a payslips folder on your
+  storage (available on the local-folder and cloud backends) as a plain
+  file — payslips are never encrypted, so if you'd rather not place them in
+  a cloud backend, just don't attach them. Salaries are listed per year
+  with gross and net totals.
+- Tap a modal's header to scroll its content back to the top — handy in the
+  long budget viewer and account history modals.
+- Salary sheets can now estimate a paycheck's gross from its net deposit using real Swedish tax rules. Set up a reusable **tax profile** (municipality, church membership, age, income type) on the sheet, and any salary you only know the net of shows an estimated gross and tax — until you type the exact gross to override it. Estimates use each paycheck's own tax year (2022–2026).
+- Zoom and pan attachments (payslips, receipts) in the in-app viewer — pinch on touch, scroll-wheel or double-click on desktop, plus zoom-in / zoom-out / fit-to-page controls. Works for both image and PDF attachments, so the fine print on a scanned or PDF receipt is finally readable instead of being locked to a fit-to-screen size.
+
+### Changed
+
+- The **Settings** modal now organises its sections into tabs — a vertical
+  sidebar on desktop and an in-header burger menu on mobile — so the
+  dialog opens to one focused panel at a time and stays on the tab you
+  opened across background saves. On desktop the modal keeps a constant
+  height as you switch tabs, so the card no longer jumps around when the
+  panels differ in length. Privacy / Schema / Changelog links and
+  the Donate button now sit in a footer that stays visible across every
+  tab.
+- Deleting a sheet or an account now opens a confirmation dialog before
+  the dispatch fires, so an accidental tap on the trash button can be
+  backed out instead of wiping the sheet, its rows, transfers, or bank
+  history in one shot.
+- Past months with no entries are no longer shown above the current month, so a fresh budget opens with a single month instead of stacked empty placeholders.
+- Google Drive backend now stores its file in a dedicated
+  `budget/` folder at the root of your My Drive, with backups nested
+  inside it, instead of writing `budget.json` straight to the root.
+  Existing files are migrated into the new layout automatically on
+  first load.
+- Categories now contain types: every type belongs to one category, and rows
+  only carry a type — the category is derived from the type's parent. The
+  separate category column on each sheet is replaced by a type column showing
+  the row's entry type (chip on desktop, glyph on mobile), and on mobile any
+  typed row collapses the description down to the type's name in the type's
+  colour — tap it to reveal the description text. Opening the type picker
+  shows the workspace's categories first; tap one to slide in the types it
+  contains, and tap "All categories" to slide back. Re-opening on a row that
+  already has a type drops you into that type's category with the selection
+  checkmarked, so swapping within the same category stays one tap. The
+  picker also echoes the row's date and description in a small header above
+  the choices so the row's context stays visible while picking. The Settings
+  panel merges the Categories and Types tabs into a single nested view where
+  you add types under the category they belong to. The category dropdown
+  inside the type creator (and inside the Settings type editor) ends with a
+  "New category" row that opens the creator dialog, so you can spawn a
+  brand-new category without leaving the type-creation flow.
+- Short modals without text inputs (date picker, confirmations, sync /
+  backup / history / changelog dialogs, transfer-collapse and
+  reconciliation prompts, the import-history dialog, the move / copy
+  picker) now appear as a centered card on mobile instead of filling the
+  screen. Fullscreen is still used for modals that open the keyboard so
+  the footer stays above it.
+- Relicensed from MIT to PolyForm Noncommercial 1.0.0. The source stays
+  public so you can read and audit what the app does with your data, but
+  commercial reuse now requires a separate license from the author.
+- Color picker for sheets, accounts, categories, and types now offers
+  a wider palette of sixteen saturated hues — pink, terracotta,
+  amber, lime, teal, indigo, mauve, and earth-brown join the original
+  red / orange / yellow / green / cyan / blue / purple / maroon set —
+  and still leaves out the neutral gray swatch, so a label's color
+  always carries a hue you can pick out at a glance instead of fading
+  into the chrome. The same palette is shared everywhere a color is
+  picked.
+- Plain text inputs in modals (descriptions, names, search and rename
+  fields, …) no longer select all on focus. Tapping a long pre-filled
+  description on mobile to wipe it would pop the soft keyboard before
+  the user had decided what to do, which jolted the modal layout and
+  buried the field they meant to look at. Each text input now carries
+  an inline × button that clears the value in one tap and drops focus
+  straight into the field, so you can start typing the replacement
+  immediately (and the soft keyboard comes up with it on mobile).
+  Amount and other numeric inputs still select on focus so a fast
+  retype works as before, and the inline description / amount editors
+  in the sheet are unchanged.
+- Restoring a backup taken with an older version of the app now tells you
+  the snapshot was migrated to the current format, so you can tell at a
+  glance when an old file was carried forward.
+- "Make recurring" now also backfills the chosen type and description
+  onto matching bank-history entries on the same account, not just on
+  new forward-looking rows. The promote modal previews the detected
+  past matches in gray alongside the future-date pills, so you can see
+  which past entries will adopt the label before confirming.
+- Improved budget downloads. XLSX exports are now structured Excel
+  Tables with autofilter and sortable headers, and currency / decimal
+  / thousands separators / date format mirror your Settings. Columns
+  auto-fit to their content and the Description column wraps long
+  strings instead of clipping or spilling sideways. The Description
+  column now sits next to Date in both CSV and XLSX. CSV column
+  headers include the currency symbol on Amount and Balance
+  (e.g. `Amount (kr)`).
+- Balance column now renders with the same `+ / − $ 1 200` layout as the
+  amount column — a sign glyph, then the currency symbol, then the
+  number — instead of folding the sign into the value. The glyph on
+  the balance is read-only; only the amount column toggles sign on
+  tap. Mobile widens both columns slightly so four-digit values with a
+  thousand separator no longer get clipped on the right edge.
+- Creating a new type or category from a row's "+" picker now opens a
+  proper dialog — fullscreen on mobile, a centered card on desktop —
+  instead of cramming the name / color / glyph form inside the floating
+  dropdown, where the soft keyboard would crowd over half of it on a
+  phone and the buttons sat on tiny inline chrome instead of a modal
+  footer. The picker dropdown closes when the create dialog opens, so
+  there's no stale panel hovering behind the form.
+- The Settings modal now pins itself to a stable 95% of the viewport
+  height on desktop so the tallest tabs (Storage, Categories) no longer
+  push content past the visible card.
+- Dropdown menus (category, type, backend, generic select) now flip
+  upward when there isn't enough room below the trigger to render a
+  useful list — typical when editing a row near the bottom of a long
+  sheet. The panel grows from above the trigger instead of being
+  squeezed into a sliver with a scrollbar against the visible bottom.
+- The Promote / complex-entry modal now lays out Amount and Type side
+  by side on a single row instead of stacking them, so the modal takes
+  less vertical space and the amount's +/- sign sits closer to the
+  number it modifies. The formula (`fx`) view still spans the full
+  width when there's helper chrome that needs the room.
+- Entries sharing a date now sort with incomes first, then expenses
+  grouped by category (largest category total first, biggest amounts
+  inside each group), with descriptions breaking any remaining ties
+  alphabetically — so the busiest day in a month reads top-down from
+  paycheck to coffee.
+- The "Promote history entry to recurring" modal now lists the past
+  bank-history entries that would adopt the new label and type, and
+  gates the backfill behind a checkbox so you can mint the future
+  series without overwriting how past matches read. Each past match
+  also has its own checkbox in the list, so you can leave individual
+  historic entries with their original bank text while the rest of
+  the matches pick up the new label.
+- Reorganised the per-row action area: only the pen (Edit) and trash
+  (Delete) icons stay on the swipe-revealed strip, and every other
+  action now lives inside a new "…" dropdown on the far right — Make
+  recurring, Mark / Unmark as transfer, Split, plus a new **Copy**
+  action. Copy opens the same modal as the bulk-select toolbar's
+  Copy, pre-seeded with just the one row — pick the target months on
+  the year grid and the row's date snaps to the chosen month(s).
+  History rows show the pen + "…" dropdown (with Label by pattern,
+  Make recurring, Mark / Unmark as transfer, Split, and Copy inside);
+  copying a history entry stamps fresh manual rows into the chosen
+  months so a one-off bank charge can seed a future budget. The strip
+  is now narrower so the swipe-reveal exposes fewer destructive icons
+  by default. Moving a single row to another month is handled by
+  editing its date cell.
+- Reorganised the page header. The top-right action row now holds just
+  the cloud / save indicator alongside a single burger menu, with the
+  budget version inlined on the same row as the title. A floating pill
+  at the top of the viewport groups Undo, Redo and the Select-rows
+  toggle — mirroring the bottom-pinned sheet pill so the chrome reads
+  as a matched pair. The burger menu itself gathers Settings, account
+  actions (Sign out, Switch user, Create account), and the Privacy
+  policy, What's new and Donate links that used to live in the Settings
+  modal footer. Delete account / Clear data moved into the Storage tab
+  of Settings as a Danger zone section, next to the data it affects.
+- Tightened the page header on mobile. Vertical padding, bottom margin
+  and inter-control gaps are smaller so the sticky title bar gives back
+  a sliver of vertical room to the sheet underneath. Desktop spacing is
+  unchanged.
+- Added Dracula, Monokai, GitHub Dark, GitHub Light, Solarized Light, and Quiet
+  Light theme presets, adapted from the popular VS Code themes. The Appearance
+  picker is now split into a Mode row (Dark / Light / System / Custom) with a
+  Variant row underneath that lists the themes inside the active mode (e.g. One
+  Dark / Dracula / Monokai / GitHub Dark for Dark; One Light / GitHub Light /
+  Solarized Light / Quiet Light for Light). The original Dark and Light presets
+  are now labelled One Dark and One Light to match their upstream theme names.
+- The sheet tabs at the foot of the page are now a single solid full-
+  width bar instead of a centered floating pill. Tabs scroll
+  horizontally on the left so a workspace with many sheets keeps every
+  one reachable (the active tab is auto-scrolled back into view when
+  you switch), and the bulk-edit action set takes the same left slot
+  when select-mode is on. The right edge of the bar houses the undo,
+  redo, action-history, and select-mode toggle so every editor control
+  is in one strip along the bottom edge. The bar collapses out of the
+  way when you scroll down through a long sheet and slides back in on
+  any upward scroll — in browser mode this rides the URL bar's natural
+  hide-on-scroll, and in the installed PWA the same behaviour is driven
+  from the page's scroll position so the row content gets the full
+  height when you're heads-down editing.
+- Settings → Format now hosts a single **Numbers** panel that covers
+  currency too — the separate Currency section is gone. The currency
+  preset picker sits next to the decimal / thousands controls, and the
+  "Show currency next to amounts" toggle joins the other display
+  toggles. The preview chips at the top of the panel now wrap their
+  sample numbers with your currency too, so you can read the effect of
+  every setting in one place.
+- The Accounts page's account-history modal now fills the screen on
+  mobile instead of rendering as a small centered card. On desktop it
+  stays a centered card — only the phone-viewport layout changes — so
+  imported bank entries get the full vertical space on the device where
+  the centered card felt cramped against a long ledger.
+- The header "budget" wordmark is no longer a scroll-to-today shortcut.
+  Instead, whenever the current fiscal month is scrolled off-screen, a
+  floating **Today** pill jumps you back to today's row on tap — anchored
+  above the bottom bar with a down chevron when you're scrolled into the
+  past, or below the header with an up chevron when you're scrolled into
+  the future. The pill stays out of the way while the current month is
+  visible.
+- The Accounts page's account-history modal now matches the budget view's
+  design: a TYPE column whose pills carry both the category icon and its
+  name on desktop (glyph-only on mobile to save space), month dividers
+  tinted by the per-month pastel, and full-date cells in place of the
+  day-only mobile shorthand. The resolved description and
+  type are pulled through the same priority chain
+  (`userDescription`/`userTypeId` → match rule → merchant hint → raw bank
+  text) the budget view already uses, so a relabelled bank entry now
+  reads the same in both surfaces. The Transfers section on the same
+  page picks up the matching month-divider chrome, so day-only dates
+  like `18/5` stay readable once the year or month rolls over.
+  
+  The budget-sheet viewer (Eye button) and the account-history modal also
+  gained a search bar at the top that filters rows in place against
+  description, type name, amount, and date. It sits in document flow and
+  scrolls away with the content, so the table claims the full viewport
+  once you're reading. On mobile the account-history modal's column
+  headers collapse to glyph-only (calendar / tag / lines / currency /
+  wallet) to match the budget view's sheet table; desktop keeps the
+  glyph + label pairing.
+- Description and amount cells now highlight on hover, matching the other interactive columns.
+- Rename the "Transactions" section on the Accounts page to "Transfers".
+  The list shows cross-account moves, so "Transfer" matches the lingo
+  used elsewhere — a "transaction" is any +/- post on an account, a
+  "transfer" is a transaction between two accounts.
+- Edit-transaction modal: when a transaction was created by collapsing two
+  imported bank-history entries, the date, amount, accounts, and
+  "mark as done" flag are now read-only — the bank statement is the
+  source of truth. Only the description and type stay editable. A new
+  "This is a transfer" toggle demotes the pair back to two stand-alone
+  history entries (with confirmation). The transfer icon now sits on the
+  same row as the modal title.
+- On the Accounts sheet, the view-history button now uses the same eye icon
+  as the budget sheet's view button, and shows the imported entry count
+  next to it so each account's history size is visible at a glance.
+- The Settings → Import / export buttons now use directional icons: ⬇ for
+  Import (data coming into the app) and ⬆ for Export (data going out). The
+  button order also matches the heading: Import first, then Export. The
+  per-account "Import bank history" button on the Accounts page picks up
+  the same ⬇ icon.
+- Centered every column header in the sheet table and labelled the row-actions column with its own icon and "Actions" title so the strip of edit / delete / more buttons reads as a proper column. The accounts table picks up the same actions header, and its row buttons now sit on a fixed grid so the download / view / cut / edit icons align across accounts no matter how wide the history count is.
+- Every modal now leads its title with a small glyph — a pencil for
+  edits, a calendar for the date picker, a magnifying glass for
+  search, a wallet for accounts, and so on — so each dialog announces
+  its purpose at a glance, the way the Edit transaction modal already
+  did.
+- A fresh install's first sheet is now named "Budget" instead of
+  "Sheet 1" — the placeholder didn't say anything useful to a brand
+  new user and "Budget" is the same word in both English and Swedish,
+  so the rename works in either locale.
+- Mobile sheet rows now give the type column the same narrow 40 px track
+  as the completed column — both carry a single glyph on phone widths,
+  so the previous 56 px allotment wasted ~16 px the description column
+  can use instead. The amount column hugs its longest number tightly
+  when currency is hidden or rendered before it; when currency is
+  rendered after the number, the column widens to give short tokens
+  like `# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This file is regenerated by the release pipeline from changeset
+fragments under `.changes/unreleased/` (see
+`scripts/release/collate-changelog.mjs`). Do not edit it by hand
+outside release commits — add a fragment to `.changes/unreleased/`
+instead. See `AGENTS.md` for the format and the rules about when to
+write a fragment.
+
+ room to sit clear of the right edge instead of flush against
+  it the way longer ones like ` kr` did not.
+- Mobile sheet rows now give the date column the same 40 px track as the
+  type and completed columns. The date cell only renders a 1–2 digit day
+  number on phone widths, so the 46 px allotment wasted ~6 px the
+  description column can use instead.
+- "What's new" in the burger menu now opens the changelog as a modal
+  (fullscreen on mobile, large centered card on desktop) instead of
+  navigating to a separate `/changelog/` page. The post-upgrade popup
+  keeps showing just the new entries with a "Show all changes" link
+  that expands the modal to the full history.
+- The running-balance column no longer shows a `+` / `-` glyph next
+  to each number on mobile — the column reads narrower and direction
+  is still conveyed by the sign colour (green for positive, red for
+  negative). The glyph stays on desktop and the amount column keeps
+  its tap-to-toggle sign on every viewport.
+- Sweeping accessibility pass: every custom listbox / glyph grid / colour
+  swatch now supports arrow-key navigation (with Home / End and a roving
+  tabindex so Tab moves you into the list once and arrow keys move you
+  inside it), the sheet picker and the desktop Settings sidebar are now
+  proper ARIA tablists (with the "New sheet" action living as a sibling,
+  not a child, so the tablist only contains tabs), modals trap focus and
+  return it to the opener on close, every `<th>` carries `scope="col"`,
+  the auth screen errors announce via `role="alert"` and the auth
+  screen itself is wrapped in a `<main>` landmark, the budget shell
+  carries an `<h1>`, and a batch of small icon buttons (colour swatches,
+  the toast dismiss, the transfer-anchor toggle) had their hit areas
+  grown to the WCAG 2.2 AA 24×24 minimum without changing their visible
+  glyph.
+- The Accounts sheet's two tables (Accounts and Transfers) now follow
+  the budget sheet's visual conventions end to end — same bold uppercase
+  column headers, same icon size, same cell density, and the same
+  slightly tighter text scale on desktop. Each header carries an icon
+  that stays visible on mobile while the label drops away, with the
+  tag glyph sitting over the leftmost column so it lines up with the
+  coloured account glyphs below. The category tag under a transfer's
+  description, and the from/to chips in the transfers column on
+  desktop, now render as the same rounded pill the budget sheet uses
+  for entry types — coloured border, coloured background, glyph +
+  label — so a transfer reads with the same vocabulary as a budget
+  row. The transfers column stays a real column on mobile too,
+  sitting between the description and amount with just the coloured
+  account glyphs + arrow (no account names, so the column stays
+  tight); desktop still shows the full pilled chips with account
+  names. The transfer header's `↔` glyph sits above its own column
+  both on mobile and desktop.
+- The **Accounts** table now mirrors the budget sheet's swipe affordance.
+  On mobile, swipe an account row left to reveal pen / trash / more
+  actions; on desktop the same strip lives in the right-hand action
+  column. The fourth column shows the account's imported-transaction
+  count, and clicking anywhere on an account row opens the read-only
+  transaction viewer. The More (•••) menu groups **Update balance**,
+  **Import bank history** and **Cut history** together — the balance
+  number is now a plain figure, and Update balance lives in the menu
+  (disabled with a hint when the account has no budget sheet pointing
+  at it). The new Trash button on each row opens a confirmation dialog
+  before permanently removing the account along with its transfers and
+  bank history.
+- The mobile budget sheet now writes the actual description text into
+  the description column, truncated with `…` when it doesn't fit,
+  instead of collapsing every row down to a `…` placeholder (or the
+  entry type's name) and hiding the description behind a popover. Empty
+  rows still show `…` so the cell stays tappable, and recurring rows
+  keep the repeat glyph as a prefix; tapping the cell still opens the
+  same edit popover.
+- Folded the inline edit / view / download icons next to each sheet's title into a single dropdown menu, so the header reads as just the sheet name with a trailing overflow glyph. Tapping anywhere on the title — the name or the glyph — opens the menu, so it's an easy target on mobile. Each sheet view owns its own item list, so the menu now reads **Edit sheet** / **View budget** / **Download budget** on a budget sheet and **Edit sheet** / **Download account data** on the accounts sheet — and new sheet types can push whatever items make sense without growing the menu's props.
+- Dropped the soft-red background that tinted a row while its swipe-revealed action strip was open. The slide animation already reads as a deliberate state change, so the colour wash mostly read as a warning the row was about to disappear.
+- Month markers and column headers now stay pinned while scrolling the
+  transfers table on the accounts sheet, the read-only budget view
+  modal, and the account-history modal, matching the budget sheet.
+  Trimmed the modal title bar's bottom padding and added some breathing
+  room above the column-header icons so the two bands feel balanced.
+- `robots.txt` now explicitly disallows `/preview/`, so well-behaved
+  crawlers skip the staging slot entirely instead of fetching it and
+  discovering the `noindex,nofollow` meta tag. Belt-and-braces on top
+  of the existing per-alias robots meta — combined with the fact that
+  `sitemap.xml` and `llms.txt` are emitted by the production build
+  only, `https://budget.niclaslindstedt.se/preview/…` URLs should
+  never appear in search results or LLM discovery surfaces.
+- The pen-icon **Edit recurring row** modal now lists every entry the
+  chosen scope will touch so you can see what you're about to change
+  before pressing Save — the row you opened the modal from is
+  highlighted and labelled "current". A new **All rows in the series**
+  scope joins **Just this row** and **This row and all future**, useful
+  when a vendor renamed or you want to recategorise the whole history.
+  Under that scope the amount field locks (with a short note explaining
+  why) so a cosmetic change can't silently rewrite the amount of past,
+  already-reconciled entries.
+- When a bank-history import fully covers a fiscal month, the
+  reconciliation modal now groups orphan predictions by month with an
+  explanatory header, offers quick "Next month start" and "Next month,
+  same date" moves per row (the latter is hidden when a recurring
+  series already has an occurrence in the destination month), and adds
+  bulk "Keep all" / "Delete all" / "Move all to next month start"
+  buttons for one-tap triage.
+- App icon dollar glyph now uses a subtle gold gradient with a soft warm halo, so the home-screen tile reads like a burnished coin instead of a flat colour fill.
+- Show a `not-allowed` cursor when hovering the amount cell of history,
+  transfer, or formula rows so it's clear they can't be edited inline.
+- Edit a transfer with a pen icon in the new Actions column (desktop)
+  or by left-swiping the row to reveal it (mobile) — the whole-row
+  click target is gone, matching the budget sheet. The account name on
+  the Accounts table is no longer a link either; use the More menu to
+  open bank history.
+- Inputs across every modal now carry an inline (×) clear button, replacing the previous tap-to-select-all behaviour. The cramped in-table cell editors keep their select-all so the column doesn't have to host an extra button.
+- Speed up the budget table on accounts with large imported histories: match-rule regexes are now compiled once and cached per rule, history-row label resolution looks companies and types up in an indexed map instead of scanning the arrays per entry, the per-row entry-type lookup is now O(1) so adding a new type no longer invalidates every visible row's memo, each row resolves its standard columns once per `columns` reference (instead of four array scans on every balances-map change), each month walks its rows once for select-all / hidden-transfer accounting (instead of five passes plus two array allocations), and synthesized transfer rows write their cells directly instead of looping every column in the budget.
+- On mobile, bank-imported rows whose description is a calculated
+  fallback (the type's name, because no real description has been
+  typed for the entry) now render the type name left-aligned in the
+  type's glyph colour, same size as a normal description — even when
+  the inline editor is closed and after the popover dismisses, where
+  the cell previously reverted to plain grey text. Tapping the cell
+  opens the editor with an empty textarea and the raw bank statement
+  text as the placeholder, instead of pre-filling with the type name
+  the user never authored, so it's clear what the new text overrides.
+- Three render-hot algorithms now scale better on large datasets:
+  
+  - Formula resolution precomputes per-month aggregates and a sorted
+    prefix sum once instead of re-walking every row for every formula —
+    O(N log N + F²) instead of O(F × N log N).
+  - `coveredMonths` hoists the history-date min/max out of the per-month
+    inner loop so 144-month coverage walks on a 10000-entry account
+    drop from O(M × H) to O(H + M).
+  - Transaction search precomputes lowercase mirrors of the indexed
+    fields so each keystroke is a plain `indexOf` instead of
+    `.toLowerCase()` per haystack.
+- Three more hot algorithms now scale better on large datasets:
+  
+  - The Accounts page computes every account's balance in a single pass
+    over the workspace instead of re-walking every sheet, transfer, and
+    history entry once per account — O(R + T + H) instead of
+    O(A × (R + T + H)).
+  - Bank-import reconciliation indexes budget rows by `seriesId` so the
+    rule-driven matcher only scans rows of the rule's own series instead
+    of the entire row list per (rule, entry) pair.
+  - The plain reconciliation matcher sorts rows by absolute amount once
+    and binary-searches the tolerance band per incoming entry, so large
+    imports drop from O(E × R) to O((E + R) log R + E × band).
+- Faster editing on workspaces with hundreds of imported history entries.
+  Each budget-cell keystroke previously re-resolved every history row's
+  labels (description normalisation + pattern matching) and rebuilt the
+  transaction-search index across every sheet, even when the search
+  modal was closed; the synthesis now caches between cell edits and the
+  search index builds lazily when the user opens search.
+- Budget and history entry modals now show type, company, and description in the same order so switching between editing a series, promoting a history row, and per-entry overrides feels consistent.
+- The account history modal now reads as a bank statement: only the
+  raw bank-statement fields the import carried (date, bank
+  description, amount, balance) are shown — the type column and the
+  resolved user descriptions are gone. User-curated metadata (types,
+  merchant hints, renames) stays on the budget view, where it
+  belongs. The columns themselves still pick up the budget view's
+  month tint on dates and headers and the green/red signed coloring
+  on amount and balance so the modal scans as easily as the budget.
+- Faster formula resolution on sheets that reference each other, and
+  faster post-import rename application on accounts with thousands of
+  history entries. Formulas that share a `sheet("…")` target now reuse a
+  cached aggregate instead of re-walking the referenced sheet's rows on
+  every call, and the import-rename reducer indexes history by id once
+  instead of scanning it per accepted suggestion.
+- Calling the same thing the same word everywhere: the budget page's
+  **Edit row** modal is now titled **Edit entry** (recurring variant
+  **Edit recurring entry**), and the global **Search transactions**
+  sheet is now **Search entries** — both to match the "entry"
+  vocabulary used everywhere else in the app for a budget row.
+- The budget description cell now opens the same rich popover on
+  desktop as on mobile, with the company picker, the description
+  editor, and the read-only bank-memo line in one place. Company-only
+  history rows render the company pill on every viewport, and the
+  fallback rendering (type-coloured name when only a type is tagged,
+  bank text when nothing is tagged) is the same across viewports
+  instead of dumping the resolved fallback into a desktop textarea.
+- Sped up the per-keystroke render path. The achievement watcher now skips
+  predicates whose state slice didn't change on a given dispatch, and the
+  account history modal's search bar no longer re-runs `Intl.NumberFormat`
+  on every entry per keystroke — both gave noticeable lag on workspaces
+  with thousands of rows or history entries.
+- Three algorithmic improvements that cut per-keystroke and per-modal
+  work in the data layer:
+  
+  - The pattern-apply pass that runs after every cell edit now
+    short-circuits on row reference identity (a single keystroke flips
+    exactly one row's reference, so the other R−1 rows skip the cells
+    comparison and candidate construction) and only allocates a new
+    rows array when a rule actually overlays a label. Previously every
+    keystroke paid an O(R) `.map(...)` allocation regardless.
+  - The merchant-key normaliser cache now evicts least-recently-used
+    entries instead of FIFO, so a one-shot bulk import that fills the
+    cache with one-off descriptions no longer permanently evicts the
+    recurring merchants the next render still wants.
+  - The single-account balance lookup no longer routes through the
+    workspace-wide batch helper. For a workspace with K accounts it
+    used to walk every other account's history, every unrelated
+    budget's rows, and every cross-account transfer; now it touches
+    only the slices that affect the requested account.
+- Budget rendering is noticeably snappier on large workspaces. Three hot
+  paths got tighter algorithms: history-row synthesis now caches the
+  match-rule lookup per (description, amount, transfer) so a recurring
+  merchant pays one rule walk instead of one per occurrence; the running
+  balance and per-month display now share a single sort of the rows
+  array instead of each sorting independently on every keystroke; and
+  the read-only viewer modal's search filter now reuses a pre-formatted
+  index so each typed character runs cheap `indexOf` checks against
+  cached strings instead of re-lowercasing and re-formatting every row.
+- Widen the transaction search modal on desktop to match the Settings
+  modal, giving search results a larger, steadier area to scan.
+- The cross-account transfer log now opens in its own modal from the
+  accounts title menu ("…"), instead of sitting below the accounts
+  table. The accounts overview stays focused on your accounts, and the
+  transfer log is one tap away — month-grouped and editable, just like
+  before. The modal also carries the same search bar as the budget
+  viewer: type to filter transfers by description, account, type, or
+  amount, toggle newest/oldest order, and optionally hide uncompleted
+  transfers.
+- Add and edit dialogs now show the company picker first, followed by
+  type, tags and description. Picking a company can suggest a matching
+  type, so it now comes before the type field.
+
+### Fixed
+
+- Description-popover arrow now connects seamlessly to the panel below
+  it — the panel's top border no longer cuts across the arrow base,
+  and the accent highlight that appears when the textarea is focused
+  now extends up across the arrow's two visible edges so the popover
+  reads as one continuous highlighted shape instead of a panel with a
+  disconnected grey tip.
+- Connecting Google Drive no longer occasionally lands on the Dropbox path
+  when the provider's redirect strips the OAuth `state` param — the PKCE
+  verifier in the browser is now the source of truth for which flow
+  issued the inbound code.
+- The preview build's "Connect Dropbox" and "Connect Google Drive"
+  buttons now round-trip back to `/preview/` instead of bouncing onto
+  the production root, where the preview's PKCE verifier wasn't visible
+  and auth completion silently aborted.
+- Add-row `+` button at the foot of the last month can now scroll clear
+  of the floating sheet-tabs pill instead of ending up tucked behind it.
+- iOS 26 Safari's translucent Liquid Glass address bar now lets the
+  budget show through it when there's something to show — the page
+  sits at the chrome-excluded inner box (`svh`) by default and grows
+  past it once a sheet has enough rows to scroll, so tall budgets
+  tint the bar with the rows behind it while an empty sheet no longer
+  leaves a scrollable band of blank page background below the AddRow
+  button. The bottom action bar sticks to the visible-viewport floor
+  in flow rather than floating above it, so it lands at the same
+  on-screen position whether the sheet is empty or scrolls past the
+  screen edge — and the page can no longer be pulled up by the
+  chrome's footprint on an empty budget. In an installed PWA the
+  BottomBar uses `position: fixed; inset: auto 0 0 0` (matching the
+  Modal's fullscreen-footer pattern) so it anchors to the screen
+  bottom, with the bar's `env(safe-area-inset-bottom)` padding
+  lifting the icons above the home indicator and a matching
+  `<main>` `padding-bottom` keeping the last AddRow clear of the
+  out-of-flow bar.
+- The date picker that opens from a row's date cell no longer dismisses
+  itself on the first tap. Selecting a day (or any control inside the
+  modal) now works instead of being swallowed by the active-row
+  coordinator.
+- Google Drive sign-in now uses Google Identity Services' popup token client instead of the PKCE redirect flow, which Google's OAuth endpoint kept rejecting with `client_secret is missing`. Connecting to Drive no longer leaves the app or requires an authorized redirect URI to be registered in the Google Cloud Console.
+- Description popover no longer drifts away from its row when the
+  on-screen keyboard opens on iOS — the panel and its arrow stay
+  anchored to the trigger instead of being pulled toward the visible
+  region's top edge.
+- Phones held in landscape now get the compact mobile sheet layout —
+  left-swipe on a row reveals the action buttons again, more rows fit
+  on screen than the desktop table allowed, and the column-header
+  labels are hidden so the grid no longer shows truncated "DA…",
+  "AMOUN…", or "BALAN…" text next to their icons. The date and type
+  cells follow the same height-based switch, so a landscape phone
+  shows the day-only date ("25") and the icon-only type chip instead
+  of overflowing the 40px-wide column tracks with the desktop
+  short-date ("25/5") and full-text type chip.
+- Cloud backups modal no longer squeezes its intro paragraph into a
+  narrow two-or-three-words-per-line column next to the "Back up now"
+  button on phones. The button drops below the paragraph on narrow
+  viewports and sits on the right at desktop widths.
+- The amount input in the edit-row and edit-entry modals no longer
+  stretches past the screen edge when the formatted number is wide —
+  the field shrinks with the column on narrow phones instead.
+- When a cloud sync session expires (most often Google Drive, whose
+  access tokens last about an hour), a dedicated Reconnect dialog now
+  pops up so you can resume in one tap instead of being stuck on a
+  generic "Sync failed" message that just retried the same expired
+  token. The Reconnect button shows a spinner while the OAuth round
+  trip runs, surfaces any failure (popup blocked, network error,
+  dismissed) inline instead of swallowing it silently, and flips into
+  a Retry button so it's clear another tap will try again. A new
+  Storage setting lets you turn the auto-pop-up off and reconnect from
+  the sync status icon yourself.
+- Tapping outside a modal (the date picker on a row, confirmation
+  dialogs, etc.) now only dismisses the modal instead of also
+  interacting with whatever sheet element happened to sit behind the
+  backdrop. Selecting text inside a modal and releasing the mouse
+  over the backdrop no longer dismisses the modal either — only a
+  press that starts on the backdrop closes it.
+- Tapping a description or type cell on an old row no longer freezes
+  for a second or two when many years of history are visible. The
+  sheet's render tree no longer rebuilds itself end-to-end on every
+  focus / popover toggle.
+- The account history modal no longer lets scrolled rows peek through
+  above the sticky column header on iOS — the first row would
+  previously show a thin slice of itself between the modal title and
+  the "DATE / DESCRIPTION / AMOUNT / BALANCE" band while scrolling.
+- Refreshing the page on iOS no longer reopens the amount cell of the
+  last-edited row with its value pre-selected. Safari restores focus
+  to the previously focused input on reload, which used to trip the
+  "select all on focus" behaviour and pop the keyboard before the user
+  had touched the page. Numeric inputs now select on focus only after
+  a real tap or keypress, so genuine taps still get the fast-retype
+  behaviour while browser-restored focus is left alone.
+- Switching between cloud backends (Dropbox ↔ Google Drive, Local → Cloud, or
+  reconnecting after a session expired) no longer risks blanking the destination.
+  The offline cache is now tagged with the backend that wrote it and is dropped
+  when wrapped against a different provider, the cache is cleared before a
+  freshly linked cloud commits, and `Save now` is gated on a successful load so a
+  failed reconnect can never push the empty in-memory starter state over your
+  real data. The dirty-state sync icon also keeps a cloud glyph (with an upload
+  arrow) instead of switching to a floppy disk, so it stays obvious which backend
+  the session is bound to.
+- Stop a stale validator allowlist from silently destroying the budget
+  on cloud backends: the parser now accepts every glyph the UI can
+  pick, falls back to the default glyph for unknown names instead of
+  rejecting the whole file, refuses to autosave the fresh-budget
+  fallback over the real stored bytes when a load parses cleanly but
+  fails validation, and pauses any save that would shrink the budget
+  by more than 5% so a regression can no longer overwrite the cloud
+  copy without an explicit confirmation in the sync details panel.
+- Bulk-copying entries to other months now carries the entry type along, so you no longer have to re-pick it on every duplicated row.
+- "Back to budget" on the Privacy and Changelog pages now respects the
+  deploy slot. Previously the link was hardcoded to `/`, which jumped
+  from `/preview/changelog/` straight to the production root. Same fix
+  on the burger menu's Privacy and What's new links so the preview
+  slot's navigation stays inside `/preview/`.
+- Tapping outside an active editor on the sheet — entry-type picker,
+  category picker, backend picker, description popover, the amount
+  input, the desktop description textarea — now only dismisses it,
+  regardless of where the tap lands. Previously a tap on another cell
+  in the same row, or on another input inside the same modal, would
+  both dismiss the editor AND focus the input / activate the cell
+  beneath the tap; on iOS the keyboard would even pop up under the
+  next input mid-dismiss.
+- Cloud sync no longer surfaces a phantom "Sync conflict" warning when
+  this device is the only one editing. Rapid Save clicks during a slow
+  upload to Dropbox or Google Drive could leave two saves racing for
+  the same file revision — one would land, the other would be rejected
+  as out-of-date — and the conflict surfaced even though both copies
+  held the same data. Saves now run one at a time, and a fresh edit
+  during a slow upload queues a single trailing save instead of
+  piling up.
+- Promoting a recurring candidate from the history panel now seeds the
+  amount as a whole number. Previously a utility bill that averaged
+  something like 321.333… kr filled the promote modal with the full
+  floating-point tail; the seed is now rounded to the nearest integer
+  so the modal opens with a clean value the user can keep or edit.
+- Jumping to a search result years back, or pressing description / type cells on very old history rows, no longer freezes for several seconds. Months far from the viewport now render a height-matched placeholder instead of their full row tree, so the DOM stays small and interactions stay responsive even with many years of history loaded.
+- Align the edit button on history rows with the edit button on regular
+  budget rows by reserving a disabled, struck-through trash slot — making
+  it clear at a glance that history entries can't be deleted.
+- Center the "Confirm balance update" button label in the update-balance
+  modal so it matches the centered Cancel button below it.
+- Widen the account history modal to match the sheet view modal so the TYPE,
+  AMOUNT, and BALANCE column headers fit on desktop, and extend the colored
+  month divider rows across the full table width.
+- Scrolling inside an open modal no longer drags the page underneath
+  along with it. Reaching the top or bottom of a modal's content (or
+  dragging on a non-scrolling part of it) now stays contained inside
+  the modal instead of chaining out to the page behind.
+- Fullscreen modals on the installed PWA now extend through the
+  full screen height — the band of page background that showed
+  below the footer on iOS 26 is gone — the title bar is trimmed
+  so the Dynamic Island visually sits inside it, and the footer
+  buttons ride right above the home-indicator strip instead of
+  floating above it.
+- Confirmation dialogs (Delete row, Delete category type, Delete sheet,
+  …) now center their action button labels so they line up with the
+  Cancel button below, and the centered-card variant no longer reserves
+  status-bar safe-area room above the title — the header collapses to a
+  tight band on every device.
+- Touch-scrolling inside the burger menu (and any other dropdown
+  popover) no longer drags the page underneath on mobile. The panel
+  now locks page scroll while it's open, matching how modals already
+  behaved.
+- Budgets larger than ~5 MB no longer hit the browser's local-storage
+  quota. The default "This browser" backend now stores your data in
+  IndexedDB instead of localStorage, which lifts the cap from ~5 MB to
+  tens or hundreds of MB. Existing budgets migrate automatically on
+  the next page load — no action required. The cloud-mirror cache
+  used by Dropbox and Google Drive moves along with it, so cloud
+  users with large budgets also stop bumping into the cap.
+- Opening the page-header burger menu now highlights the trigger in the
+  app's green accent color, matching every other open dropdown and
+  picker, instead of an off-palette purple.
+- When Dropbox briefly rate-limits writes during a heavy editing session
+  the cloud icon now turns orange and auto-save pauses for a few seconds,
+  instead of surfacing a red "Sync failed" error. Saves resume on their
+  own and any edits made during the pause are pushed in the next save.
+- Show the pointer cursor on the Reload button in the "new build ready" update hint.
+- Added breathing room between the last sheet row and the BottomBar in
+  browser tabs — previously the "Show 3 future months" toggle (or the
+  final month's AddRow) sat flush against the bar's top border. The
+  installed-PWA layout already had this gap; the browser layout now
+  matches.
+- Left-align type chips in the budget sheet on desktop so their glyphs line up across rows. Mobile keeps the centered glyph-only layout.
+- The account history modal no longer clips the trailing "K" off the running-balance column when a long bank-text description crowds the row, and tapping a description no longer pops a redundant read-only viewer.
+- The month title (APRIL 2026, MAY 2026, …) now sits visually centred
+  in its sticky band — top and bottom padding match — and the column
+  headers tuck up 3-4 px tighter against the title so the header row's
+  top edge is clearly visible instead of getting lost in extra dead
+  space.
+- Editing a budget row on iOS no longer snaps the page to the top after
+  pressing Save. The body scroll lock now snapshots the scroll position
+  when a modal opens and restores it on close — iOS Safari (which
+  otherwise resets `scrollY` to 0 when `body.overflow` is hidden) lands
+  back exactly where the user opened the modal from, so the next item
+  in the list stays where they were looking.
+- The sheet title at the top of each page now has matching breathing
+  room above and below — previously the gap below was larger than the
+  gap above the title.
+- A handful of UI strings now follow the language picker instead of
+  staying in English: the loading screen, the sheet modal's account
+  picker ("No account" / "New account") and disabled-type indicator
+  ("Already exists"), and the transfer modal's account picker
+  ("Choose an account") and empty-state hint.
+- Sync conflict resolution: the "Keep mine" button in the cloud sync
+  conflict modal now actually pushes the local copy. The conflict
+  status itself was blocking the very save it was meant to trigger,
+  so clicks logged "save skipped — status=conflict" and the modal
+  stayed stuck open with no other way out than "Keep the other".
+- Clearing a budget row's description (via the inline × button, the
+  mobile popover, or the edit modal) now actually persists. Previously
+  the cleared description survived in memory but the underlying row
+  was treated as a transient placeholder and stripped before save —
+  which then tripped the shrink-warning safeguard and left the
+  previous text pinned in storage, so the description "came back" on
+  the next reload. Rows with any user-meaningful field (a
+  description, an amount, a tagged type, or a tagged company) now
+  keep their slot in storage, and clearing one field no longer makes
+  the whole row vanish.
+- Stop the description popover (and every other floating panel) from
+  yanking the page away from the row you just edited when it closes.
+  On iOS the soft keyboard's hide animation already shifts the layout
+  viewport, and the panel's focus-restoration was chasing that with a
+  default `scrollIntoView`, scrolling the visible area off the row.
+  The focus call now sets `preventScroll: true` so the page stays put.
+- A history-row description that was cleared through the edit modal or
+  the inline popover would silently come back as soon as the merchant
+  hint or matching pattern fired again at synthesis time. The reducer
+  now stamps an empty-string "explicit clear" marker on the entry
+  instead of deleting the field, and `resolveEntryLabels` reads that
+  marker to skip the rule / hint description chain — so the cell
+  falls back cleanly to the company tag, type tag, or raw bank text
+  the next render. Older entries previously cleared the legacy way
+  (no marker) keep working as before; clear them once more and the new
+  behaviour takes over.
+- On mobile, modals like Edit account no longer push their action buttons
+  (Delete / Cancel / Save) off the bottom of the screen — the footer now
+  stays fully visible above the home indicator and above the keyboard.
+- Every sheet now fills the full height of the screen. Previously a sheet
+  with little content — an empty budget, or the Accounts, Salary, and Item
+  sheets before you add anything — could leave a gap below its content and
+  only stretch to fill after you switched to another sheet and back.
+
+### Removed
+
+- Removed the public JSON Schema page at `/schema` and the "Data schema"
+  link in Settings. The persisted shape is documented in the TypeScript
+  source (`src/data/types.ts`, `src/data/validate.ts`); agents can read
+  it there.
+- Dropped the "Find transfers" shortcut from the Accounts page header.
+  The transfer-collapse modal still auto-opens after a bank-history
+  import, and you can manage individual transfers from each account's
+  history view.
+
 ## [0.1.0] - 2026-05-19
 
 ### Added
