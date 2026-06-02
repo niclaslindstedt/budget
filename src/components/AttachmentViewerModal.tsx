@@ -342,7 +342,11 @@ export function AttachmentViewerModal({
       const file = new File([blob], filename, { type: type || blob.type });
       if (navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title });
+          // Share the file alone — no `title`/`text`. iOS's "Save to
+          // Files" target writes any accompanying share text out as a
+          // second, separate file, so passing a title here saves a
+          // stray text file next to the payslip.
+          await navigator.share({ files: [file] });
           return;
         } catch (err) {
           if ((err as Error)?.name === "AbortError") return;
