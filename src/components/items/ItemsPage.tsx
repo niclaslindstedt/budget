@@ -294,10 +294,10 @@ export function ItemsPage({
                       {t("itemsSheet.total")}
                     </td>
                     <td className="items-purchased-cell hidden md:table-cell" />
-                    <td className="px-2.5 py-2 text-right tabular-nums">
+                    <td className="px-2.5 py-2 text-left tabular-nums">
                       <span>{formatBalance(totals.purchase, settings)}</span>
                     </td>
-                    <td className="px-2.5 py-2 text-right tabular-nums">
+                    <td className="px-2.5 py-2 text-left tabular-nums">
                       <span>{formatBalance(totals.current, settings)}</span>
                     </td>
                     <td className="items-action-cell px-2.5 py-2" />

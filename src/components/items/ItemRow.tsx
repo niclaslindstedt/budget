@@ -146,17 +146,17 @@ function ItemRowImpl({
           </FloatingPanel>
         )}
       </td>
-      <td className="items-purchased-cell hidden px-2.5 py-2 text-right align-middle font-mono text-xs whitespace-nowrap text-muted tabular-nums md:table-cell">
+      <td className="items-purchased-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap text-muted tabular-nums md:table-cell">
         {acquired}
       </td>
-      <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-muted tabular-nums">
+      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-muted tabular-nums">
         <span>
           {item.purchasePrice !== undefined
             ? formatBalance(item.purchasePrice, settings)
             : "—"}
         </span>
       </td>
-      <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-fg tabular-nums">
+      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-fg tabular-nums">
         <span>{formatBalance(currentValue, settings)}</span>
       </td>
       <td className="items-action-cell w-32 p-0 align-middle">

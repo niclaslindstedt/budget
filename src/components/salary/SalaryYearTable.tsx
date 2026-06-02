@@ -251,7 +251,7 @@ export function SalaryYearTable({
                 className="salary-action-cell w-32 px-2.5 py-2"
                 aria-label={t("salary.actions")}
               >
-                <span className="flex items-center justify-center gap-1.5 md:gap-2">
+                <span className="flex items-center justify-start gap-1.5 md:gap-2">
                   <Wrench
                     size={16}
                     className="shrink-0 text-accent"
