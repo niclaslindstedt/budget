@@ -25,6 +25,7 @@ const salary = {
   deleteAria: "Delete salary for {month}",
   selectRowAria: "Select {month}",
   deselectRowAria: "Deselect {month}",
+  viewPayslipAria: "View payslip for {month}",
 
   // Absence-day badges
   careOfChildShort: "VAB",
