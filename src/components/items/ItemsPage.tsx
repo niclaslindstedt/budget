@@ -205,25 +205,27 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-right"
+                    className="px-2.5 py-2 text-left md:text-right"
                     aria-label={t("itemsSheet.purchaseValue")}
                   >
-                    <span className="hidden md:inline">
-                      {t("itemsSheet.purchaseValue")}
+                    <span className="inline-flex items-center justify-start gap-1.5 md:justify-end md:gap-2">
+                      <DollarSign
+                        size={16}
+                        className="shrink-0 text-accent md:hidden"
+                        aria-hidden
+                        focusable={false}
+                      />
+                      <span className="hidden md:inline">
+                        {t("itemsSheet.purchaseValue")}
+                      </span>
                     </span>
-                    <DollarSign
-                      size={16}
-                      className="inline-block shrink-0 text-accent md:hidden"
-                      aria-hidden
-                      focusable={false}
-                    />
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-right"
+                    className="px-2.5 py-2 text-left md:text-right"
                     aria-label={t("itemsSheet.currentValue")}
                   >
-                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                    <span className="inline-flex items-center justify-start gap-1.5 md:justify-end md:gap-2">
                       <Coins
                         size={16}
                         className="shrink-0 text-accent"
