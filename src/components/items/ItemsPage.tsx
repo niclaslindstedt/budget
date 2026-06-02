@@ -10,13 +10,21 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { collectItemReceipts } from "../../data/items/link";
 import { computeItemCurrentValue, isItemOwned } from "../../data/items/value";
 import { allTypes } from "../../data/presets/merge";
-import type { EntryType, Settings, Sheet, UserData } from "../../data/types";
+import type {
+  EntryType,
+  Item,
+  Settings,
+  Sheet,
+  UserData,
+} from "../../data/types";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -29,9 +37,27 @@ type Props = {
   // Routed to the `deleteItem` action by AppShell. The page owns the
   // confirmation step; the callback only fires once the user confirms.
   onDeleteItem: (itemId: string) => void;
+  // Receipt attachment for an item, threaded from AppShell where the
+  // storage adapter lives. A receipt hangs off the transaction the item is
+  // linked to; `canManageReceipt` gates the row "…" menu entry on a backend
+  // that advertises the `receipts` capability. The callbacks write / read /
+  // delete the file (and commit the linked transaction's `receiptPath`).
+  canManageReceipt: boolean;
+  onUploadReceipt: (item: Item, file: File) => Promise<string>;
+  onDownloadReceipt: (path: string) => Promise<Blob>;
+  onRemoveReceipt: (item: Item, path: string) => Promise<void>;
 };
 
-export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
+export function ItemsPage({
+  sheet,
+  data,
+  settings,
+  onDeleteItem,
+  canManageReceipt,
+  onUploadReceipt,
+  onDownloadReceipt,
+  onRemoveReceipt,
+}: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
   // Pending delete confirmation: the item id + name the trash button
@@ -40,6 +66,22 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
     id: string;
     name: string;
   } | null>(null);
+  // The item whose receipt the shared attachment modal is managing (opened
+  // from a row's "…" menu), held by id so the modal always reads the live
+  // receipt reference after an upload / removal.
+  const [managingReceiptId, setManagingReceiptId] = useState<string | null>(
+    null,
+  );
+
+  // Map every linked item id to the receipt of the transaction it hangs
+  // off (undefined when that transaction carries no receipt yet). Keys are
+  // the linked items — only those can manage a receipt, since a receipt
+  // needs a transaction to live on. One pass over all transactions.
+  const itemReceipts = useMemo(() => collectItemReceipts(data), [data]);
+
+  const managingReceiptItem = managingReceiptId
+    ? (data.items.find((it) => it.id === managingReceiptId) ?? null)
+    : null;
 
   const today = todayIso();
   // Only currently-owned items are shown; disposed items stay in the
@@ -195,7 +237,7 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
                   </th>
                   <th
                     scope="col"
-                    className="items-action-cell w-24 px-2.5 py-2"
+                    className="items-action-cell w-32 px-2.5 py-2"
                     aria-label={t("itemsSheet.actions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">
@@ -236,6 +278,11 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
                     onDeleteItem={(itemId, name) =>
                       setPendingDelete({ id: itemId, name })
                     }
+                    canManageReceipt={
+                      canManageReceipt && itemReceipts.has(item.id)
+                    }
+                    hasReceipt={itemReceipts.get(item.id) !== undefined}
+                    onManageReceipt={(it) => setManagingReceiptId(it.id)}
                   />
                 ))}
                 {ownedItems.length > 0 && (
@@ -295,6 +342,20 @@ export function ItemsPage({ sheet, data, settings, onDeleteItem }: Props) {
           },
         ]}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <AttachmentUploadModal
+        open={managingReceiptItem !== null}
+        onClose={() => setManagingReceiptId(null)}
+        title={t("items.receipt")}
+        currentPath={
+          managingReceiptItem
+            ? itemReceipts.get(managingReceiptItem.id)
+            : undefined
+        }
+        onUpload={(file) => onUploadReceipt(managingReceiptItem!, file)}
+        onDownload={onDownloadReceipt}
+        onRemove={(path) => onRemoveReceipt(managingReceiptItem!, path)}
       />
     </ActiveRowProvider>
   );

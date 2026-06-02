@@ -10,6 +10,7 @@ import { formatBalance, formatDate } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
 import { useClaimActiveRow } from "../useClaimActiveRow";
+import { ItemEntryActionsMenu } from "./ItemEntryActionsMenu";
 
 type Props = {
   item: Item;
@@ -23,6 +24,12 @@ type Props = {
   todayIso: string;
   onEditItem: (itemId: string) => void;
   onDeleteItem: (itemId: string, name: string) => void;
+  // Receipt management via the row "…" menu. `canManageReceipt` is true
+  // only when the item is linked to a purchase AND the backend can hold
+  // receipts; `hasReceipt` toggles the entry between View / Upload.
+  canManageReceipt: boolean;
+  hasReceipt: boolean;
+  onManageReceipt: (item: Item) => void;
 };
 
 // Description popovers open below the row and to the left of the
@@ -41,6 +48,9 @@ function ItemRowImpl({
   todayIso,
   onEditItem,
   onDeleteItem,
+  canManageReceipt,
+  hasReceipt,
+  onManageReceipt,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -149,7 +159,7 @@ function ItemRowImpl({
       <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-fg tabular-nums">
         <span>{formatBalance(currentValue, settings)}</span>
       </td>
-      <td className="items-action-cell w-24 p-0 align-middle">
+      <td className="items-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"
@@ -177,6 +187,13 @@ function ItemRowImpl({
           >
             <Trash2 size={16} aria-hidden focusable={false} />
           </button>
+          <ItemEntryActionsMenu
+            item={item}
+            canManageReceipt={canManageReceipt}
+            hasReceipt={hasReceipt}
+            onManageReceipt={onManageReceipt}
+            onAction={() => setSwiped(false)}
+          />
         </div>
       </td>
     </tr>

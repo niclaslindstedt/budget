@@ -1,9 +1,21 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import {
   Download,
   FileText,
+  Loader2,
   Maximize2,
   Paperclip,
+  RefreshCw,
+  Trash2,
+  UploadCloud,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -11,35 +23,6 @@ import {
 import { useT } from "../i18n";
 import { effectiveMimeType } from "../utils/mime";
 import { Modal } from "./Modal";
-
-// iOS (iPhone / iPod, plus iPadOS 13+ masquerading as "MacIntel" with a
-// touch screen) ignores the `<a download>` attribute: clicking a blob:
-// link just navigates the single PWA window to the URL and flashes the
-// page behind. There the Web Share sheet ("Save to Files" / share) is
-// the reliable way to hand the file off, so the download falls back to
-// `navigator.share` on those devices.
-function isIosDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  const nav = window.navigator;
-  return (
-    /iPad|iPhone|iPod/.test(nav.userAgent) ||
-    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
-  );
-}
-
-type Props = {
-  open: boolean;
-  onClose: () => void;
-  // The downloaded attachment. Null while a download is in flight or
-  // after a failure — the modal shows a spinner / nothing until the blob
-  // arrives. The caller owns the download so this component stays free of
-  // any storage-adapter dependency.
-  blob: Blob | null;
-  // Suggested filename for the in-app download fallback link.
-  filename: string;
-  // Modal title (e.g. the localized "Payslip" / "Receipt" label).
-  title: string;
-};
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
@@ -380,63 +363,226 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-// Universal in-app viewer for a downloaded file attachment (payslip,
-// receipt, …). Renders the blob inline — an `<img>` for images, an
-// `<iframe>` for PDFs — instead of handing a `blob:` URL to
-// `window.open`. That matters on iOS: a `blob:` URL opened in a new tab
-// hangs on a blank page inside in-app browsers (SFSafariViewController)
-// and standalone PWAs, and calling `window.open` after the `await` that
-// fetches the blob loses the user-gesture so the popup is blocked
-// outright. Rendering in a portalled modal works in every context. A
-// Download button is always offered as the escape hatch for file types
-// the browser can't preview inline (and for iOS, where PDFs in an
-// `<iframe>` can still come up blank).
-export function AttachmentViewerModal({
+// iOS (iPhone / iPod, plus iPadOS 13+ masquerading as "MacIntel" with a
+// touch screen) ignores the `<a download>` attribute: clicking a blob:
+// link just navigates the single PWA window to the URL and flashes the
+// page behind. There the Web Share sheet ("Save to Files" / share) is the
+// reliable way to hand the file off, so the download falls back to
+// `navigator.share` on those devices.
+function isIosDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  const nav = window.navigator;
+  return (
+    /iPad|iPhone|iPod/.test(nav.userAgent) ||
+    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
+  );
+}
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  // Localized noun for the attachment ("Payslip" / "Receipt"). Drives the
+  // modal title.
+  title: string;
+  // The attachment currently stored on the owning entry, or undefined when
+  // none is attached. Seeds the modal: a path opens straight into the
+  // preview, its absence into the drag-and-drop upload zone.
+  currentPath: string | undefined;
+  // Accepted file types for the picker / drop zone. Defaults to images +
+  // PDF — the only two the inline preview can render.
+  accept?: string;
+  // Write the picked file to the backend AND persist the reference onto the
+  // owning entry; resolves the stored path. The host owns both the file
+  // write and the data commit so this modal stays storage-agnostic and can
+  // serve payslips, receipts, and any future attachment alike.
+  onUpload: (file: File) => Promise<string>;
+  // Fetch the attachment bytes for the inline preview / download.
+  onDownload: (path: string) => Promise<Blob>;
+  // Delete the file AND clear the reference on the owning entry.
+  onRemove: (path: string) => Promise<void>;
+};
+
+const DEFAULT_ACCEPT = "image/*,application/pdf";
+
+// Universal "manage a single file attachment" modal — used for salary
+// payslips and transaction receipts. It folds the upload, in-app preview,
+// replace, remove, and download flows into one surface:
+//
+//   - No attachment yet → a drag-and-drop zone (or click to browse) that
+//     uploads the dropped / picked file.
+//   - Attachment present → the file rendered inline (an `<img>` for images,
+//     an `<iframe>` for PDFs) with Replace / Remove / Download controls.
+//
+// Every mutation commits immediately through the host callbacks (the file
+// write and the data reference move together), so the modal is opened
+// straight from a row's "…" menu rather than riding a parent form's Save.
+// Rendering the blob inline — instead of handing a `blob:` URL to
+// `window.open` — is what makes the preview work on iOS in-app browsers and
+// standalone PWAs, where a new-tab `blob:` URL hangs on a blank page.
+export function AttachmentUploadModal({
   open,
   onClose,
-  blob,
-  filename,
   title,
+  currentPath,
+  accept = DEFAULT_ACCEPT,
+  onUpload,
+  onDownload,
+  onRemove,
 }: Props) {
   const t = useT();
+  // Local mirror of the stored path so the modal can flip between the
+  // upload zone and the preview as the user uploads / removes, without a
+  // round-trip through the parent's render.
+  const [path, setPath] = useState<string | undefined>(currentPath);
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"upload" | "download" | "remove" | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  // Drag highlight, tracked with a depth counter so dragging over a child
+  // element (which fires dragleave on the parent) doesn't flicker it off.
+  const [dragActive, setDragActive] = useState(false);
+  const dragDepth = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reseed whenever the modal (re)opens, possibly for a different entry.
   useEffect(() => {
-    if (!blob) {
+    if (!open) return;
+    setPath(currentPath);
+    setBlob(null);
+    setError(null);
+    setBusy(null);
+    setDragActive(false);
+    dragDepth.current = 0;
+  }, [open, currentPath]);
+
+  // Download the current attachment for preview whenever the resolved path
+  // changes while open — the initial open with a stored path, or right
+  // after an upload sets a fresh one.
+  useEffect(() => {
+    if (!open || !path) {
+      setBlob(null);
+      return;
+    }
+    let cancelled = false;
+    setBusy("download");
+    setError(null);
+    onDownload(path)
+      .then((b) => {
+        if (!cancelled) setBlob(b);
+      })
+      .catch(() => {
+        if (!cancelled) setError(t("attachment.loadError"));
+      })
+      .finally(() => {
+        if (!cancelled) setBusy((cur) => (cur === "download" ? null : cur));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, path, onDownload, t]);
+
+  // Object URL for the inline `<img>` / `<iframe>`, retyped from the
+  // filename so octet-stream blobs (Dropbox's content download) still drive
+  // the right renderer instead of prompting a download.
+  useEffect(() => {
+    if (!blob || !path) {
       setUrl(null);
       return;
     }
-    // Some backends (Dropbox's content download) return the blob typed
-    // as octet-stream regardless of the real file type. Re-wrap it with
-    // the type resolved from the filename so the object URL drives the
-    // right inline renderer instead of prompting a download.
-    const type = effectiveMimeType(blob, filename);
+    const type = effectiveMimeType(blob, path);
     const typed =
       type && type !== blob.type ? blob.slice(0, blob.size, type) : blob;
     const objectUrl = URL.createObjectURL(typed);
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [blob, filename]);
+  }, [blob, path]);
 
-  const mimeType = blob ? effectiveMimeType(blob, filename) : "";
-  const isImage = mimeType.startsWith("image/");
-  const isPdf = mimeType === "application/pdf";
+  const upload = useCallback(
+    async (file: File) => {
+      setBusy("upload");
+      setError(null);
+      try {
+        const next = await onUpload(file);
+        // Setting the path triggers the download effect, which fetches the
+        // freshly-uploaded bytes and swaps the zone for the preview.
+        setPath(next);
+      } catch {
+        setError(t("attachment.uploadError"));
+        setBusy((cur) => (cur === "upload" ? null : cur));
+      }
+    },
+    [onUpload, t],
+  );
+
+  function handlePicked(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again still fires onChange.
+    e.target.value = "";
+    if (file) void upload(file);
+  }
+
+  function handleDrop(e: DragEvent<HTMLElement>) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragActive(false);
+    if (busy) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) void upload(file);
+  }
+
+  function handleDragEnter(e: DragEvent<HTMLElement>) {
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragActive(true);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLElement>) {
+    // Without preventDefault on dragover the browser refuses the drop.
+    e.preventDefault();
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLElement>) {
+    e.preventDefault();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragActive(false);
+    }
+  }
+
+  async function handleRemove() {
+    if (!path) return;
+    setBusy("remove");
+    setError(null);
+    try {
+      await onRemove(path);
+      setPath(undefined);
+      setBlob(null);
+    } catch {
+      setError(t("attachment.removeError"));
+    } finally {
+      setBusy((cur) => (cur === "remove" ? null : cur));
+    }
+  }
 
   async function handleDownload() {
-    if (!blob) return;
-    const type = effectiveMimeType(blob, filename);
+    if (!blob || !path) return;
+    const filename = path.split("/").pop() ?? path;
+    const type = effectiveMimeType(blob, path);
     // On iOS the `<a download>` path silently fails, so offer the file
     // through the share sheet when the platform can share it. AbortError
-    // means the user dismissed the sheet — leave it at that rather than
+    // means the user dismissed the sheet — leave it there rather than
     // falling through to a download that won't work anyway.
     if (isIosDevice() && typeof navigator.canShare === "function") {
       const file = new File([blob], filename, { type: type || blob.type });
       if (navigator.canShare({ files: [file] })) {
         try {
-          // Share the file alone — no `title`/`text`. iOS's "Save to
+          // Share the file alone — no `title` / `text`. iOS's "Save to
           // Files" target writes any accompanying share text out as a
-          // second, separate file, so passing a title here saves a
-          // stray text file next to the payslip.
+          // second, separate file, so passing a title saves a stray text
+          // file next to the attachment.
           await navigator.share({ files: [file] });
           return;
         } catch (err) {
@@ -453,14 +599,21 @@ export function AttachmentViewerModal({
     a.remove();
   }
 
+  const hasAttachment = path !== undefined;
+  const filename = path ? (path.split("/").pop() ?? path) : "";
+  const mimeType = blob && path ? effectiveMimeType(blob, path) : "";
+  const isImage = mimeType.startsWith("image/");
+  const isPdf = mimeType === "application/pdf";
+  const uploading = busy === "upload";
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      labelledBy="attachment-viewer-title"
+      labelledBy="attachment-upload-title"
       // Pin a stable tall canvas on desktop (mobile stays fullscreen) so
-      // the zoom / pan surface has a real height to fill — an auto-height
-      // card would collapse the `h-full` viewport to zero.
+      // the zoom / pan surface and the drop zone have a real height to
+      // fill — an auto-height card would collapse the `h-full` viewport.
       fixedHeight
     >
       <Modal.Header
@@ -468,38 +621,134 @@ export function AttachmentViewerModal({
         title={title}
         onClose={onClose}
       />
-      <Modal.Body
-        noPadding
-        className="flex items-center justify-center bg-surface-2"
-      >
-        {url && isImage && <ZoomableImage src={url} alt={filename} />}
-        {url && isPdf && (
-          <iframe src={url} title={filename} className="h-full w-full" />
-        )}
-        {url && !isImage && !isPdf && (
-          <div className="flex flex-col items-center gap-3 p-6 text-center">
-            <FileText
-              size={32}
-              aria-hidden
-              focusable={false}
-              className="text-muted"
-            />
-            <p className="text-sm text-muted">
-              {t("attachment.cannotPreview")}
-            </p>
+      <Modal.Body noPadding className="flex min-h-0 flex-col">
+        {hasAttachment ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center bg-surface-2">
+            {busy === "download" && (
+              <Loader2
+                size={28}
+                aria-hidden
+                focusable={false}
+                className="animate-spin text-muted"
+              />
+            )}
+            {url && isImage && <ZoomableImage src={url} alt={filename} />}
+            {url && isPdf && (
+              <iframe src={url} title={filename} className="h-full w-full" />
+            )}
+            {url && !isImage && !isPdf && (
+              <div className="flex flex-col items-center gap-3 p-6 text-center">
+                <FileText
+                  size={32}
+                  aria-hidden
+                  focusable={false}
+                  className="text-muted"
+                />
+                <p className="text-sm text-muted">
+                  {t("attachment.cannotPreview")}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col p-4">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed ${
+                dragActive
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-line bg-surface-2 text-muted hover:border-accent hover:text-accent"
+              }`}
+            >
+              {uploading ? (
+                <>
+                  <Loader2
+                    size={32}
+                    aria-hidden
+                    focusable={false}
+                    className="animate-spin"
+                  />
+                  <span className="text-sm">{t("attachment.uploading")}</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud
+                    size={36}
+                    aria-hidden
+                    focusable={false}
+                    className={`transition-transform ${
+                      dragActive ? "scale-110" : ""
+                    }`}
+                  />
+                  <span className="text-sm font-bold text-fg">
+                    {t("attachment.dropTitle")}
+                  </span>
+                  <span className="text-xs">{t("attachment.dropHint")}</span>
+                  <span className="text-[11px] text-muted">
+                    {t("attachment.dropTypes")}
+                  </span>
+                </>
+              )}
+            </button>
           </div>
         )}
+
+        {error && (
+          <p className="border-t border-line px-4 py-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        {hasAttachment && filename && (
+          <p className="truncate border-t border-line px-4 py-2 text-center font-mono text-xs text-muted">
+            {filename}
+          </p>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept}
+          onChange={handlePicked}
+          className="hidden"
+        />
       </Modal.Body>
       <Modal.Footer>
-        {url && (
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
-          >
-            <Download size={14} aria-hidden focusable={false} />
-            {t("common.download")}
-          </button>
+        {hasAttachment && (
+          <>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={!blob}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={14} aria-hidden focusable={false} />
+              {t("common.download")}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw size={14} aria-hidden focusable={false} />
+              {t("attachment.replace")}
+            </button>
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={busy === "remove"}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={14} aria-hidden focusable={false} />
+              {t("attachment.remove")}
+            </button>
+          </>
         )}
         <button
           type="button"

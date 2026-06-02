@@ -194,6 +194,9 @@ src/
 │   │   │                       #   Items page (resale value + depreciation)
 │   │   ├── find.ts             # findItemPurchaseCandidates — scans bank history
 │   │   │                       #   for likely item purchases (Find items modal)
+│   │   ├── link.ts             # findItemLink / unlinkedItems / collectItemReceipts /
+│   │   │                       #   collectReceiptPaths — item↔transaction linkage
+│   │   │                       #   (one transaction per item; surfaces its receipt)
 │   │   └── receipt-name.ts     # buildReceiptPath — preset-driven receipt filenames
 │   │                           #   (incl. the type-subfolder pattern) + extensionOf
 │   ├── salary/

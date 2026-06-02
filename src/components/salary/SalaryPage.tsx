@@ -11,10 +11,9 @@ import type {
   UserData,
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
-import { useToast } from "../../hooks";
 import { formatMonthLabel } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
-import { AttachmentViewerModal } from "../AttachmentViewerModal";
+import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -44,12 +43,14 @@ type Props = {
   onCloseBulkDelete: () => void;
   onConfirmBulkDelete: () => void;
   // Payslip attachment, threaded from AppShell where the storage adapter
-  // lives. `canUploadPayslip` gates the control on a backend that
-  // advertises the `payslips` capability; the callbacks write / read the
-  // file through that adapter for the given salary.
-  canUploadPayslip: boolean;
+  // lives. `canManagePayslip` gates the row "…" menu entry on a backend
+  // that advertises the `payslips` capability; the callbacks write / read /
+  // delete the file (and commit the `Salary.payslipPath` reference) through
+  // that adapter for the given salary.
+  canManagePayslip: boolean;
   onUploadPayslip: (salary: Salary, file: File) => Promise<string>;
   onDownloadPayslip: (path: string) => Promise<Blob>;
+  onRemovePayslip: (salary: Salary, path: string) => Promise<void>;
 };
 
 export function SalaryPage({
@@ -67,14 +68,14 @@ export function SalaryPage({
   bulkDeleteOpen,
   onCloseBulkDelete,
   onConfirmBulkDelete,
-  canUploadPayslip,
+  canManagePayslip,
   onUploadPayslip,
   onDownloadPayslip,
+  onRemovePayslip,
 }: Props) {
   const t = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
-  const toast = useToast();
 
   function handleCreateEmployer(employer: Employer) {
     dispatch({ type: "createEmployer", employer });
@@ -84,23 +85,15 @@ export function SalaryPage({
   const [employersOpen, setEmployersOpen] = useState(false);
   const [editing, setEditing] = useState<Salary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Salary | null>(null);
-  // Downloaded payslip shown in the in-app viewer when "View payslip" is
-  // picked from a row's "…" menu — same effect as Edit → View. Rendered
-  // inline rather than handed to a new tab (hangs on iOS / PWAs).
-  const [viewingPayslip, setViewingPayslip] = useState<{
-    blob: Blob;
-    name: string;
-  } | null>(null);
-
-  async function handleViewPayslip(salary: Salary) {
-    if (!salary.payslipPath) return;
-    try {
-      const blob = await onDownloadPayslip(salary.payslipPath);
-      setViewingPayslip({ blob, name: salary.payslipPath });
-    } catch {
-      toast.push({ kind: "error", message: t("salary.payslipMissing") });
-    }
-  }
+  // The salary whose payslip the shared attachment modal is managing
+  // (opened from a row's "…" menu), held by id so the modal always reads
+  // the live `payslipPath` after an upload / removal.
+  const [managingPayslipId, setManagingPayslipId] = useState<string | null>(
+    null,
+  );
+  const managingPayslip = managingPayslipId
+    ? (data.salaries.find((s) => s.id === managingPayslipId) ?? null)
+    : null;
 
   // Land at the top of the page when switching to this sheet.
   useEffect(() => {
@@ -249,8 +242,8 @@ export function SalaryPage({
                   if (s) setEditing(s);
                 }}
                 onDelete={(salary) => setPendingDelete(salary)}
-                canViewPayslip={canUploadPayslip}
-                onViewPayslip={handleViewPayslip}
+                canManagePayslip={canManagePayslip}
+                onManagePayslip={(salary) => setManagingPayslipId(salary.id)}
               />
             ))
           )}
@@ -265,11 +258,6 @@ export function SalaryPage({
           onClose={() => setEditing(null)}
           onSave={handleSaveSalary}
           onCreateEmployer={handleCreateEmployer}
-          canUploadPayslip={canUploadPayslip}
-          onUploadPayslip={
-            editing ? (file) => onUploadPayslip(editing, file) : undefined
-          }
-          onDownloadPayslip={onDownloadPayslip}
         />
 
         <SalaryBulkEditModal
@@ -353,12 +341,14 @@ export function SalaryPage({
           onCancel={onCloseBulkDelete}
         />
 
-        <AttachmentViewerModal
-          open={viewingPayslip !== null}
-          onClose={() => setViewingPayslip(null)}
-          blob={viewingPayslip?.blob ?? null}
-          filename={viewingPayslip?.name ?? t("salary.payslipFallbackName")}
+        <AttachmentUploadModal
+          open={managingPayslip !== null}
+          onClose={() => setManagingPayslipId(null)}
           title={t("salary.payslip")}
+          currentPath={managingPayslip?.payslipPath}
+          onUpload={(file) => onUploadPayslip(managingPayslip!, file)}
+          onDownload={onDownloadPayslip}
+          onRemove={(path) => onRemovePayslip(managingPayslip!, path)}
         />
       </section>
     </ActiveRowProvider>

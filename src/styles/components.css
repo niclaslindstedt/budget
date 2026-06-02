@@ -536,7 +536,7 @@
       transition: transform 200ms ease;
     }
     .items-table > tbody > tr.is-swiped > td:not(.items-action-cell) {
-      transform: translateX(-96px);
+      transform: translateX(-128px);
     }
     .items-table > thead > tr > .items-action-cell,
     .items-table > tbody > tr > .items-action-cell {
@@ -544,9 +544,13 @@
       top: 0;
       right: 0;
       bottom: 0;
-      /* 96px — two buttons (edit / delete) at a ~48px tap target each;
-         matches the cell's desktop `w-24` so the strip lines up. */
-      width: 96px;
+      /* 128px fits the maximum visible button count (3 when the item is
+         linked to a purchase: edit / delete / more) at a comfortable
+         ~42px tap target each, mirroring the salary sheet. Rows without a
+         linked purchase show edit / delete only and let flex share the
+         same width. Matches the cell's desktop `w-32` so the strip lines
+         up. */
+      width: 128px;
       transform: translateX(100%);
       transition: transform 200ms ease;
       background: var(--page-bg);
@@ -566,6 +570,10 @@
     .items-table > tbody > tr > .items-action-cell .action-btn-delete {
       background: var(--danger);
       color: white;
+    }
+    .items-table > tbody > tr > .items-action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
     }
 
     /* Transfers table — single-button swipe strip (edit only) using the

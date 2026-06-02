@@ -3,21 +3,25 @@ import { FileText, MoreHorizontal, Upload } from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
-import type { Salary } from "../../data/types";
+import type { Item } from "../../data/types";
 import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
-  salary: Salary;
-  // Whether the active storage backend can hold payslip files. The
-  // localStorage backend has no payslips capability, so the whole entry is
-  // hidden there; on a file-capable backend it always shows (to upload a
-  // first payslip or view / replace an existing one).
-  canManagePayslip: boolean;
-  // Open the shared attachment modal for this salary's payslip — upload a
-  // new one, or view / replace / remove the existing file.
-  onManagePayslip: (salary: Salary) => void;
-  // Fired after picking any menu item so the parent can dismiss its
-  // swipe state in the same frame the dropdown closes.
+  item: Item;
+  // Whether the receipt entry should show at all. An item's receipt hangs
+  // off the single transaction it's linked to, so this is true only when
+  // the item is linked to a purchase AND the active backend can hold
+  // receipt files (the localStorage backend can't). Hidden otherwise — an
+  // unlinked item has no transaction to attach a receipt to.
+  canManageReceipt: boolean;
+  // Whether the linked transaction already carries a receipt — toggles the
+  // entry between "View receipt" and "Upload receipt".
+  hasReceipt: boolean;
+  // Open the shared attachment modal for this item's receipt — upload a new
+  // one, or view / replace / remove the existing file.
+  onManageReceipt: (item: Item) => void;
+  // Fired after picking any menu item so the parent can dismiss its swipe
+  // state in the same frame the dropdown closes.
   onAction: () => void;
 };
 
@@ -34,10 +38,16 @@ type MenuItem = {
   onClick: () => void;
 };
 
-export function SalaryEntryActionsMenu({
-  salary,
-  canManagePayslip,
-  onManagePayslip,
+// The "…" overflow popover in an item row's swipe strip — the items-sheet
+// analogue of `SalaryEntryActionsMenu`. Its single entry manages the
+// receipt of the purchase the item is linked to. Renders nothing when no
+// entry applies (no receipts capability, or the item isn't linked to a
+// transaction yet), so the swipe strip stays at edit + delete.
+export function ItemEntryActionsMenu({
+  item,
+  canManageReceipt,
+  hasReceipt,
+  onManageReceipt,
   onAction,
 }: Props) {
   const t = useT();
@@ -53,22 +63,19 @@ export function SalaryEntryActionsMenu({
 
   const items: MenuItem[] = [];
 
-  if (canManagePayslip) {
-    const hasPayslip = salary.payslipPath !== undefined;
+  if (canManageReceipt) {
     items.push({
-      key: "payslip",
-      icon: hasPayslip ? (
+      key: "receipt",
+      icon: hasReceipt ? (
         <FileText size={16} aria-hidden focusable={false} />
       ) : (
         <Upload size={16} aria-hidden focusable={false} />
       ),
-      label: hasPayslip ? t("salary.viewPayslip") : t("salary.payslipUpload"),
-      onClick: () => pick(() => onManagePayslip(salary)),
+      label: hasReceipt ? t("items.viewReceipt") : t("items.receiptUpload"),
+      onClick: () => pick(() => onManageReceipt(item)),
     });
   }
 
-  // No row-level actions available (the backend can't hold payslips) —
-  // render nothing so the swipe strip stays at two buttons.
   if (items.length === 0) return null;
 
   return (
@@ -92,7 +99,7 @@ export function SalaryEntryActionsMenu({
         onClose={close}
         triggerRef={triggerRef}
         placement={PLACEMENT}
-        rowId={salary.id}
+        rowId={item.id}
         className="overflow-hidden"
       >
         <ul role="menu" className="py-1">

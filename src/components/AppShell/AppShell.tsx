@@ -53,12 +53,20 @@ import {
 import { findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
+  Item,
   Row,
   Salary,
   Settings,
   UserData,
 } from "../../data/types";
 import { buildPayslipPath, extensionOf } from "../../data/salary/payslip-name";
+import { buildReceiptPath } from "../../data/items/receipt-name";
+import {
+  collectReceiptPaths,
+  findItemLink,
+  type ItemTxnLink,
+} from "../../data/items/link";
+import { todayIso } from "../../utils/date";
 import { type Action, reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
@@ -556,9 +564,12 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     dispatch,
   });
 
-  // Payslip attachment, mirroring BudgetModalHost's receipt flow. The
-  // storage adapter lives here, so the upload/view callbacks are built
-  // here and threaded into SalaryPage → SalaryEditModal.
+  // Payslip attachment, mirroring the item-receipt flow below. The storage
+  // adapter lives here, so the upload / download / remove callbacks are
+  // built here and threaded into SalaryPage's shared attachment modal.
+  // Each upload / remove commits the file AND the `Salary.payslipPath`
+  // reference together, since the modal is opened straight from a row's
+  // "…" menu rather than riding a parent form's Save.
   const canUploadPayslip = adapter?.capabilities.has("payslips") ?? false;
   const onUploadPayslip = useCallback(
     async (salary: Salary, file: File): Promise<string> => {
@@ -572,19 +583,26 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         month: salary.date.slice(0, 7),
         salaryId: salary.id,
         extension: extensionOf(file.name),
+        // Excluding the salary's own current path reuses its tidy name on
+        // replace, so the new file overwrites the old in place — no orphan.
         usedPaths: collectPayslipPaths(data, salary.payslipPath),
       });
       await adapter.payslips.upload(path, file);
       unlockAchievement("payslipKeeper");
+      dispatch({
+        type: "updateSalary",
+        salaryId: salary.id,
+        patch: { payslipPath: path },
+      });
       return path;
     },
-    [adapter, data, t],
+    [adapter, data, t, dispatch],
   );
-  // Download the payslip blob and hand it to the in-app viewer. We do
-  // NOT `window.open` a `blob:` URL here: on iOS that hangs on a blank
-  // page inside in-app browsers and standalone PWAs, and opening a
-  // window after this `await` loses the user-gesture so the popup is
-  // blocked. SalaryEditModal renders the blob inline instead.
+  // Download the payslip blob for the in-app preview. We do NOT
+  // `window.open` a `blob:` URL: on iOS that hangs on a blank page inside
+  // in-app browsers and standalone PWAs, and opening a window after this
+  // `await` loses the user-gesture so the popup is blocked. The shared
+  // attachment modal renders the blob inline instead.
   const onDownloadPayslip = useCallback(
     async (path: string): Promise<Blob> => {
       if (!adapter?.payslips) throw new Error("payslips unavailable");
@@ -593,6 +611,109 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       return blob;
     },
     [adapter],
+  );
+  // Delete the payslip file and clear the reference — the "Remove" action
+  // in the shared attachment modal.
+  const onRemovePayslip = useCallback(
+    async (salary: Salary, path: string): Promise<void> => {
+      if (!adapter?.payslips) throw new Error("payslips unavailable");
+      await adapter.payslips.remove(path);
+      dispatch({
+        type: "updateSalary",
+        salaryId: salary.id,
+        patch: { payslipPath: undefined },
+      });
+    },
+    [adapter, dispatch],
+  );
+
+  // Item receipt attachment. A receipt hangs off the single transaction an
+  // item is linked to (an item can belong to at most one purchase), so
+  // managing an item's receipt reads / writes the linked row's or history
+  // entry's `receiptPath` — `findItemLink` resolves which. Committing the
+  // receiptPath alongside the existing line items leaves the links
+  // untouched. The file is named off the item (its name + acquired date)
+  // for a recognisable filename on the Items sheet.
+  const canManageItemReceipt = adapter?.capabilities.has("receipts") ?? false;
+  const commitItemReceipt = useCallback(
+    (link: ItemTxnLink, receiptPath: string): void => {
+      if (link.kind === "history") {
+        dispatch({
+          type: "linkLineItemsToHistoryEntry",
+          accountId: link.accountId,
+          entryId: link.entryId,
+          lineItems: link.lineItems,
+          receiptPath,
+        });
+        return;
+      }
+      dispatch({
+        type: "setRowLineItems",
+        sheetId: link.sheetId,
+        itemId: link.sheetItemId,
+        rowId: link.rowId,
+        lineItems: link.lineItems,
+        receiptPath,
+      });
+    },
+    [dispatch],
+  );
+  const onUploadItemReceipt = useCallback(
+    async (item: Item, file: File): Promise<string> => {
+      if (!adapter?.receipts) throw new Error("receipts unavailable");
+      const link = findItemLink(data, item.id);
+      if (!link) throw new Error("item not linked to a transaction");
+      const subtype = item.subtypeId
+        ? data.subtypes.find((s) => s.id === item.subtypeId)
+        : undefined;
+      const typeLabel = subtype
+        ? allTypesMerged.find((ty) => ty.id === subtype.typeId)?.name
+        : undefined;
+      const path = buildReceiptPath({
+        pattern: effectiveSettings.receiptNamePattern,
+        companyName: item.name,
+        entryId: item.id,
+        entryDate: item.acquiredAt,
+        today: todayIso(),
+        extension: extensionOf(file.name),
+        typeLabel,
+        uncategorizedLabel: t("items.receiptUncategorized"),
+        // Excluding the linked transaction's own current path reuses its
+        // tidy name on replace, so the new file overwrites it in place.
+        usedPaths: collectReceiptPaths(data, link.receiptPath),
+      });
+      await adapter.receipts.upload(path, file);
+      unlockAchievement("receiptKeeper");
+      commitItemReceipt(link, path);
+      return path;
+    },
+    [
+      adapter,
+      data,
+      allTypesMerged,
+      effectiveSettings.receiptNamePattern,
+      t,
+      commitItemReceipt,
+    ],
+  );
+  const onDownloadItemReceipt = useCallback(
+    async (path: string): Promise<Blob> => {
+      if (!adapter?.receipts) throw new Error("receipts unavailable");
+      const blob = await adapter.receipts.download(path);
+      if (!blob) throw new Error("receipt missing");
+      return blob;
+    },
+    [adapter],
+  );
+  const onRemoveItemReceipt = useCallback(
+    async (item: Item, path: string): Promise<void> => {
+      if (!adapter?.receipts) throw new Error("receipts unavailable");
+      const link = findItemLink(data, item.id);
+      await adapter.receipts.remove(path);
+      // Empty string clears the receiptPath; the line items are preserved.
+      if (link) commitItemReceipt(link, "");
+    },
+    [adapter, data, commitItemReceipt],
   );
   // Accounts / items pages have no row-level select-many — the toggle is
   // disabled there instead of dropping into an empty selection mode.
@@ -793,6 +914,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onDeleteItem={(itemId) =>
                     dispatch({ type: "deleteItem", itemId })
                   }
+                  canManageReceipt={canManageItemReceipt}
+                  onUploadReceipt={onUploadItemReceipt}
+                  onDownloadReceipt={onDownloadItemReceipt}
+                  onRemoveReceipt={onRemoveItemReceipt}
                 />
               ) : activeSheet.type === "salary" ? (
                 <SalaryPage
@@ -810,9 +935,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   bulkDeleteOpen={salaryBulk.bulkDeleteOpen}
                   onCloseBulkDelete={() => salaryBulk.setBulkDeleteOpen(false)}
                   onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
-                  canUploadPayslip={canUploadPayslip}
+                  canManagePayslip={canUploadPayslip}
                   onUploadPayslip={onUploadPayslip}
                   onDownloadPayslip={onDownloadPayslip}
+                  onRemovePayslip={onRemovePayslip}
                 />
               ) : (
                 <>
@@ -997,7 +1123,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           itemId={itemId}
           activeItem={activeItem}
           dateCol={dateCol}
-          adapter={adapter}
           dispatch={dispatch}
           editPrompts={editPrompts}
           deletePrompts={deletePrompts}
