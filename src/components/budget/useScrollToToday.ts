@@ -122,7 +122,7 @@ export type ScrollToTodayController = {
   // Ref the parent must attach to the current-month container so the
   // lazy-mount fallback in `scrollToToday` has something to scroll
   // into view when today's row isn't in the DOM yet.
-  scrollTargetRef: RefObject<HTMLDivElement>;
+  scrollTargetRef: RefObject<HTMLDivElement | null>;
   scrollToToday: (behavior: ScrollBehavior) => void;
 };
 

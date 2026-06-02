@@ -24,6 +24,22 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.flatConfigs.recommended.rules,
+      // The eslint 10 + eslint-plugin-react-hooks 7 major bumps grew
+      // their "recommended" presets with a wave of new lint opinions
+      // (the React-Compiler-aware hook rules below, plus core
+      // `no-useless-assignment`). They fire on deliberate, commented
+      // patterns this codebase already relies on — `ref.current = x`
+      // during render to keep a closure fresh, defensive `let x = init`
+      // before a conditional reassign, controlled `setState` inside an
+      // effect. Adopting any of them is a standalone refactor, not part
+      // of a dependency bump, so the prior lint surface is preserved
+      // here. Re-enable one at a time when the matching cleanup lands.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "no-useless-assignment": "off",
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },

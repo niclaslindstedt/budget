@@ -31,7 +31,7 @@ type Params = {
   // Ref the parent attaches to the current-month container. Same ref
   // `useScrollToToday` exposes — both hooks anchor against the
   // current-month bounding rect.
-  scrollTargetRef: RefObject<HTMLDivElement>;
+  scrollTargetRef: RefObject<HTMLDivElement | null>;
 };
 
 export type RevealAnchorPreservation = {
