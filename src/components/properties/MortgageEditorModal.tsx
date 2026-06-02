@@ -157,6 +157,13 @@ export function MortgageEditorModal({
   const fieldClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
+  // Native `<input type="date">` keeps the intrinsic width of its editing
+  // controls on iOS WebKit and won't shrink to a `w-full` container, so it
+  // overflows the modal. Match the sibling property modals: omit `w-full`
+  // and let the control size to its content.
+  const dateInputClass =
+    "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
+
   // Live preview of the resolved monthly amortisation, reusing the same
   // resolver the card and data layer use. `null` when there's nothing to
   // show yet (blank value, or percent mode without a loan amount to take
@@ -269,7 +276,7 @@ export function MortgageEditorModal({
               type="date"
               value={nextRateChangeDate}
               onChange={(e) => setNextRateChangeDate(e.target.value)}
-              className={fieldClass}
+              className={dateInputClass}
             />
           </label>
 
