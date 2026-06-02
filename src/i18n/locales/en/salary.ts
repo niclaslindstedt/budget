@@ -55,6 +55,7 @@ const salary = {
   payslipUpload: "Upload payslip",
   payslipReplace: "Replace payslip",
   payslipView: "View",
+  viewPayslip: "View payslip",
   payslipRemove: "Remove",
   payslipUploading: "Uploading…",
   payslipUnsupported:

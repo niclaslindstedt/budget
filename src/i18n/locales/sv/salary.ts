@@ -55,6 +55,7 @@ const salary: SalaryCatalog = {
   payslipUpload: "Ladda upp lönerapport",
   payslipReplace: "Ersätt lönerapport",
   payslipView: "Visa",
+  viewPayslip: "Visa lönerapport",
   payslipRemove: "Ta bort",
   payslipUploading: "Laddar upp…",
   payslipUnsupported:

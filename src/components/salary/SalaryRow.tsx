@@ -12,6 +12,7 @@ import {
 } from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
 import { useClaimActiveRow } from "../useClaimActiveRow";
+import { SalaryEntryActionsMenu } from "./SalaryEntryActionsMenu";
 
 type Props = {
   salary: Salary;
@@ -24,6 +25,10 @@ type Props = {
   onToggleSelect: (salaryId: string) => void;
   onEdit: (salaryId: string) => void;
   onDelete: (salary: Salary) => void;
+  // Whether the active storage backend can serve payslip files — gates
+  // the "View payslip" entry in the row's "…" menu.
+  canViewPayslip: boolean;
+  onViewPayslip: (salary: Salary) => void;
 };
 
 // One small pill per non-zero absence-day count, so an off-average
@@ -80,6 +85,8 @@ function SalaryRowImpl({
   onToggleSelect,
   onEdit,
   onDelete,
+  canViewPayslip,
+  onViewPayslip,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -178,7 +185,7 @@ function SalaryRowImpl({
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">
         <DayBadges salary={salary} />
       </td>
-      <td className="salary-action-cell w-24 p-0 align-middle">
+      <td className="salary-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"
@@ -208,6 +215,12 @@ function SalaryRowImpl({
           >
             <Trash2 size={16} aria-hidden focusable={false} />
           </button>
+          <SalaryEntryActionsMenu
+            salary={salary}
+            canViewPayslip={canViewPayslip}
+            onViewPayslip={onViewPayslip}
+            onAction={() => setSwiped(false)}
+          />
         </div>
       </td>
     </tr>

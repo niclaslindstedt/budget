@@ -11,8 +11,10 @@ import type {
   UserData,
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
+import { useToast } from "../../hooks";
 import { formatMonthLabel } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
+import { AttachmentViewerModal } from "../AttachmentViewerModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
 import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
@@ -72,6 +74,7 @@ export function SalaryPage({
   const t = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
+  const toast = useToast();
 
   function handleCreateEmployer(employer: Employer) {
     dispatch({ type: "createEmployer", employer });
@@ -81,6 +84,23 @@ export function SalaryPage({
   const [employersOpen, setEmployersOpen] = useState(false);
   const [editing, setEditing] = useState<Salary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Salary | null>(null);
+  // Downloaded payslip shown in the in-app viewer when "View payslip" is
+  // picked from a row's "…" menu — same effect as Edit → View. Rendered
+  // inline rather than handed to a new tab (hangs on iOS / PWAs).
+  const [viewingPayslip, setViewingPayslip] = useState<{
+    blob: Blob;
+    name: string;
+  } | null>(null);
+
+  async function handleViewPayslip(salary: Salary) {
+    if (!salary.payslipPath) return;
+    try {
+      const blob = await onDownloadPayslip(salary.payslipPath);
+      setViewingPayslip({ blob, name: salary.payslipPath });
+    } catch {
+      toast.push({ kind: "error", message: t("salary.payslipMissing") });
+    }
+  }
 
   // Land at the top of the page when switching to this sheet.
   useEffect(() => {
@@ -229,6 +249,8 @@ export function SalaryPage({
                   if (s) setEditing(s);
                 }}
                 onDelete={(salary) => setPendingDelete(salary)}
+                canViewPayslip={canUploadPayslip}
+                onViewPayslip={handleViewPayslip}
               />
             ))
           )}
@@ -329,6 +351,14 @@ export function SalaryPage({
             },
           ]}
           onCancel={onCloseBulkDelete}
+        />
+
+        <AttachmentViewerModal
+          open={viewingPayslip !== null}
+          onClose={() => setViewingPayslip(null)}
+          blob={viewingPayslip?.blob ?? null}
+          filename={viewingPayslip?.name ?? t("salary.payslipFallbackName")}
+          title={t("salary.payslip")}
         />
       </section>
     </ActiveRowProvider>
