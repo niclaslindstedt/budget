@@ -74,6 +74,63 @@ describe("describeActionSubject", () => {
     expect(subject).toEqual({ kind: "count", value: 2 });
   });
 
+  it("names a property on edit and reads a deleted one off prev", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      properties: [
+        { id: "p1", name: "Apartment", valueHistory: [], mortgages: [] },
+      ],
+    };
+    expect(
+      describe2(
+        { type: "updateProperty", propertyId: "p1", patch: { name: "Cabin" } },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Cabin" });
+    expect(
+      describe2({ type: "deleteProperty", propertyId: "p1" }, prev),
+    ).toEqual({ kind: "name", value: "Apartment" });
+  });
+
+  it("names the mortgage and counts added payments", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      properties: [
+        {
+          id: "p1",
+          name: "Apartment",
+          valueHistory: [],
+          mortgages: [{ id: "m1", name: "SBAB loan", payments: [] }],
+        },
+      ],
+    };
+    expect(
+      describe2(
+        {
+          type: "updateMortgage",
+          propertyId: "p1",
+          mortgageId: "m1",
+          patch: { name: "Refinance" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Refinance" });
+    expect(
+      describe2(
+        {
+          type: "addMortgagePayments",
+          propertyId: "p1",
+          mortgageId: "m1",
+          payments: [
+            { id: "x", date: "2026-01-28", principal: 4000, interest: 1500 },
+            { id: "y", date: "2026-02-28", principal: 4000, interest: 1490 },
+          ],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "count", value: 2 });
+  });
+
   it("returns undefined for an action with no nameable target", () => {
     const fresh = freshUserData();
     expect(

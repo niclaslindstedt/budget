@@ -1,5 +1,5 @@
 import type { Action } from "./reducer";
-import type { Employer, Salary, Transfer, UserData } from "./types";
+import type { Employer, Property, Salary, Transfer, UserData } from "./types";
 import { findColumnByType } from "./sheet";
 import { tFor, type MessageKey } from "../i18n";
 import type { Lang } from "../i18n/locale";
@@ -56,6 +56,18 @@ function payslipName(
     ? byId(employers, salary.employerId)?.name?.trim()
     : undefined;
   return (employer ? `${employer} ${month}` : month).trim() || undefined;
+}
+
+// A mortgage's label, resolved from its parent property by id. Falls back
+// to the property name when the mortgage can't be found.
+function mortgageName(
+  properties: readonly Property[] | undefined,
+  propertyId: string,
+  mortgageId: string,
+): string | undefined {
+  const property = byId(properties, propertyId);
+  const mortgage = property?.mortgages.find((m) => m.id === mortgageId);
+  return mortgage?.name || property?.name;
 }
 
 // A history entry's display label: the user's override, else the raw bank
@@ -272,6 +284,37 @@ export function describeActionSubject(
     case "setSalaryTaxProfile":
     case "setItemAccount":
       return name(byId(next.sheets, action.sheetId)?.name);
+
+    // Properties / mortgages — single-target actions name the property
+    // (or the mortgage); bulk-added payments report a count. Edits / value
+    // points read off `next` (the property still exists); deletes read the
+    // parent off `next` too unless the named entity itself is gone.
+    case "addProperty":
+      return name(action.property.name);
+    case "updateProperty":
+    case "addPropertyValue":
+    case "updatePropertyValue":
+    case "deletePropertyValue":
+      return name(byId(next.properties, action.propertyId)?.name);
+    case "deleteProperty":
+      return name(byId(prev.properties, action.propertyId)?.name);
+    case "addMortgage":
+      return name(action.mortgage.name);
+    case "updateMortgage":
+      return name(
+        mortgageName(next.properties, action.propertyId, action.mortgageId),
+      );
+    case "deleteMortgage":
+      return name(
+        mortgageName(prev.properties, action.propertyId, action.mortgageId),
+      );
+    case "addMortgagePayments":
+      return count(action.payments.length);
+    case "updateMortgagePayment":
+    case "deleteMortgagePayment":
+      return name(
+        mortgageName(next.properties, action.propertyId, action.mortgageId),
+      );
 
     // Transfers.
     case "createTransfer":

@@ -108,17 +108,25 @@ src/
 │       ├── AccountRenamePredictorModal.tsx  # learned-rename suggestions
 │       ├── AccountTransferCollapseModal.tsx # cross-account pair collapse
 │       └── account-*-reducer.ts
-│   └── items/                # items page — owned-items catalog
-│       ├── ItemsPage.tsx         # page root — items table + totals + add button
-│       └── ItemRow.tsx           # one item row (swipe edit/delete, note popover)
+│   ├── items/                # items page — owned-items catalog
+│   │   ├── ItemsPage.tsx         # page root — items table + totals + add button
+│   │   └── ItemRow.tsx           # one item row (swipe edit/delete, note popover)
+│   └── properties/           # properties page — homes/apartments + mortgages
+│       ├── PropertiesPage.tsx    # page root — property cards + add button
+│       ├── PropertyCard.tsx      # one property (value, mortgages, actions)
+│       ├── PropertyEditorModal.tsx, UpdatePropertyValueModal.tsx
+│       └── MortgageEditorModal.tsx, MortgageDiscoveryModal.tsx
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 60, incl. taxProfiles),
-│   │   │                       #   StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 62, incl. taxProfiles +
+│   │   │                       #   properties), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
-│   │   │                       #   ItemsView, SalaryView, SheetType, SheetGlyph
+│   │   │                       #   ItemsView, SalaryView, PropertiesView,
+│   │   │                       #   SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
+│   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
+│   │   │                       #   Mortgage, MortgagePayment
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -212,6 +220,10 @@ src/
 │   │                           #   changes for the account-step summary
 │   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
 │   │                           #   payslip filenames (+ re-exports extensionOf)
+│   ├── property-mortgage/  # properties page — mortgage-payment discovery
+│   │   └── discovery.ts        # discoverMortgagePayments — scans a mortgage's
+│   │                           #   bound account history for recurring monthly
+│   │                           #   outflows (Find mortgage payments walk)
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross
 │   │   │                   #   from a net deposit). No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,
@@ -233,24 +245,27 @@ src/
 │   │   ├── item/               # AccountBudget item reducer (updateCell, bulk
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
-│   │   ├── accounts.ts, salary.ts, sheets.ts, transfers.ts, history.ts,
-│   │   │   history-primary-income.ts, categories-and-types.ts, items.ts,
-│   │   │   match-rules.ts, recurring.ts, series-metadata.ts, settings.ts,
-│   │   │   achievements.ts
+│   │   ├── accounts.ts, salary.ts, properties.ts, sheets.ts, transfers.ts,
+│   │   │   history.ts, history-primary-income.ts, categories-and-types.ts,
+│   │   │   items.ts, match-rules.ts, recurring.ts, series-metadata.ts,
+│   │   │   settings.ts, achievements.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
-│   │   │                       #   accountsView/itemsView/salaryView) — cycle-free
-│   │   │                       #   so the sheet-type descriptors can import them
+│   │   │                       #   accountsView/itemsView/salaryView/
+│   │   │                       #   propertiesView) — cycle-free so the sheet-type
+│   │   │                       #   descriptors can import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
+│   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
+│   │   │                       #   payments; drops dangling mortgage accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (60) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (62) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v58 steps
+│   │   ├── modern.ts           # v31 → v61 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
@@ -730,6 +745,10 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   link's old signed amount onto its item as a non-negative purchase price
   (first link to name an unpriced item wins; pre-priced items untouched),
   then strips `amount` off every link across budget rows and bank history.
+- **v61 → v62** — adds `UserData.properties`, the homes / apartments
+  rendered by the Properties sheet (each with its purchase amount, a
+  manually-recorded value history, and the mortgages against it). Seeds
+  empty; a bare additive bump.
 
 ## State management
 

@@ -12,6 +12,8 @@ const sheetModal: SheetModalCatalog = {
     "Kontobladet är en arbetsytesövergripande översikt. Hantera konton och överföringar därifrån — ingen koppling per blad behövs.",
   itemsHint:
     "Prylbladet listar allt du äger, med vad varje sak kostade och vad den är värd nu. Lägg till prylar därifrån — ingen koppling per blad behövs.",
+  propertiesHint:
+    "Fastighetsbladet håller koll på bostäderna du äger — vad var och en kostade, vad den är värd nu, och bolånen på den. Lägg till fastigheter därifrån; varje bolån kopplas till sitt eget konto för att hitta betalningar.",
   salaryAccountHint:
     "Kontot din lön betalas in på. ”Hitta löner” söker igenom det här kontots bankhistorik efter löner. Använd ett löneblad per person, vart och ett kopplat till den personens lönekonto.",
   color: "Färg",

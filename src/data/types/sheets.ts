@@ -64,22 +64,46 @@ export type SalaryView = {
   taxProfileId?: string;
 };
 
+// Workspace-wide properties sheet item. The Properties sheet renders the
+// global `UserData.properties` collection (the homes / apartments the
+// user owns, with their value over time and the mortgages against them)
+// rather than a per-account ledger. Like `ItemsView` the item carries no
+// data of its own — it reads the shared catalog — so the shape exists
+// only so future per-sheet config (sort order, hide-sold toggle, …)
+// lands here without another migration.
+export type PropertiesView = {
+  id: string;
+  type: "propertiesView";
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
-// owned-items catalog rendered by the Items sheet flavour. Future
-// variants (Graph, Note, …) slot in as additional cases without a
-// migration of the existing data because old blocks still match their
-// own variant.
-export type SheetItem = AccountBudget | AccountsView | ItemsView | SalaryView;
+// owned-items catalog rendered by the Items sheet flavour;
+// `PropertiesView` is the properties catalog rendered by the Properties
+// flavour. Future variants (Graph, Note, …) slot in as additional cases
+// without a migration of the existing data because old blocks still
+// match their own variant.
+export type SheetItem =
+  | AccountBudget
+  | AccountsView
+  | ItemsView
+  | SalaryView
+  | PropertiesView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
-// workspace-wide accounts dashboard ("accounts"), and the owned-items
-// catalog ("items") are implemented. Future planners (loan tracking,
-// savings forecast, parental-leave planner, …) slot in as additional
-// literals without needing another migration.
-export type SheetType = "budget" | "accounts" | "items" | "salary";
+// workspace-wide accounts dashboard ("accounts"), the owned-items
+// catalog ("items"), the salary history ("salary"), and the properties
+// catalog ("properties") are implemented. Future planners (savings
+// forecast, parental-leave planner, …) slot in as additional literals
+// without needing another migration.
+export type SheetType =
+  | "budget"
+  | "accounts"
+  | "items"
+  | "salary"
+  | "properties";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

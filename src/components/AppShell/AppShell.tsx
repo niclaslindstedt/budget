@@ -26,6 +26,7 @@ import { useUndoRedo } from "./hooks/useUndoRedo";
 import { AccountsModalHost } from "./AccountsModalHost";
 import { AccountsPage } from "../accounts/AccountsPage";
 import { ItemsPage } from "../items/ItemsPage";
+import { PropertiesPage } from "../properties/PropertiesPage";
 import { SalaryPage } from "../salary/SalaryPage";
 import { AppLoading } from "../AppLoading";
 import { BottomBar } from "../BottomBar";
@@ -918,6 +919,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onUploadReceipt={onUploadItemReceipt}
                   onDownloadReceipt={onDownloadItemReceipt}
                   onRemoveReceipt={onRemoveItemReceipt}
+                />
+              ) : activeSheet.type === "properties" ? (
+                <PropertiesPage
+                  sheet={activeSheet}
+                  data={data}
+                  settings={effectiveSettings}
+                  dispatch={dispatch}
                 />
               ) : activeSheet.type === "salary" ? (
                 <SalaryPage

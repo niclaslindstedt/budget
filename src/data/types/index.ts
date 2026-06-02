@@ -24,6 +24,13 @@ export type {
 export type { Item, ItemDepreciation, LineItemLink } from "./items";
 
 export type {
+  Mortgage,
+  MortgagePayment,
+  Property,
+  PropertyValuePoint,
+} from "./properties";
+
+export type {
   Account,
   HistoryEntry,
   HistoryEntrySplit,
@@ -35,6 +42,7 @@ export type {
   AccountBudget,
   AccountsView,
   ItemsView,
+  PropertiesView,
   SalaryView,
   Sheet,
   SheetGlyph,

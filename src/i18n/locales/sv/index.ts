@@ -52,6 +52,7 @@ import account from "./account";
 import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
 import salary from "./salary";
+import properties from "./properties";
 import tax from "./tax";
 import cutHistory from "./cutHistory";
 import sheetModal from "./sheetModal";
@@ -129,6 +130,7 @@ export const sv: Catalog = {
   accountsSheet,
   itemsSheet,
   salary,
+  properties,
   tax,
   cutHistory,
   sheetModal,
