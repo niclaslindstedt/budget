@@ -268,6 +268,56 @@ export const ACCOUNT_GLYPH_NAMES: readonly CategoryIcon[] = [
   "briefcase",
 ] as const;
 
+// Employers are workplaces — the glyph stands in for the industry the
+// user works within, so the palette spans the common sectors (office,
+// tech, healthcare, education, trades, retail, hospitality, transport,
+// media, …) rather than the money-leaning sheet/account sets. An
+// employer is a place of work, not a money store, so the default glyph
+// is a briefcase rather than a wallet.
+export const EMPLOYER_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "briefcase",
+  "building-2",
+  "landmark",
+  "laptop",
+  "smartphone",
+  "stethoscope",
+  "heart-pulse",
+  "pill",
+  "graduation-cap",
+  "school",
+  "book-open",
+  "scale",
+  "utensils",
+  "coffee",
+  "shopping-bag",
+  "shopping-cart",
+  "shirt",
+  "scissors",
+  "wrench",
+  "hammer",
+  "paint-roller",
+  "car-front",
+  "fuel",
+  "plane",
+  "ship",
+  "bus",
+  "sprout",
+  "tree-pine",
+  "camera",
+  "clapperboard",
+  "music",
+  "palette",
+  "newspaper",
+  "globe",
+  "dumbbell",
+  "zap",
+] as const;
+
+// Default glyph for a freshly-created employer. A briefcase reads as
+// "workplace" — distinct from the money glyphs used for sheets and
+// accounts.
+export const DEFAULT_EMPLOYER_GLYPH: SheetGlyph = "briefcase";
+
 // Categories are broad buckets used for cross-row analysis: Home,
 // Food, Car, Travel, Health, Bills. The palette stays high-level so
 // fine-grained icons (gasoline vs. bus vs. train) don't pollute what
