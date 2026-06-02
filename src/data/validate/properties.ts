@@ -136,6 +136,9 @@ export function validateProperty(
   if (isFiniteNumber(raw.purchaseAmount))
     property.purchaseAmount = raw.purchaseAmount;
   if (isIsoDate(raw.purchaseDate)) property.purchaseDate = raw.purchaseDate;
+  // Living area in square metres. Non-negative finite only; a bad value
+  // is dropped (the field goes absent) rather than rejecting the file.
+  if (isFiniteNumber(raw.size) && raw.size >= 0) property.size = raw.size;
   if (Array.isArray(raw.valueHistory)) {
     const seen = new Set<string>();
     for (const rawPoint of raw.valueHistory) {

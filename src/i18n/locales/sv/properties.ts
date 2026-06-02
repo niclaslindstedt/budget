@@ -11,6 +11,7 @@ const properties: PropertiesCatalog = {
   // Property card.
   boughtFor: "Köpt för",
   purchased: "Köpt",
+  size: "Storlek",
   currentValue: "Nuvarande värde",
   noValue: "Inget värde registrerat",
   updateValue: "Uppdatera värde",
@@ -44,6 +45,8 @@ const properties: PropertiesCatalog = {
   purchaseAmountLabel: "Köpesumma",
   purchaseAmountPlaceholder: "Vad du betalade för den",
   purchaseDateLabel: "Köpdatum",
+  sizeLabel: "Storlek",
+  sizePlaceholder: "Boyta",
 
   // Update-value modal.
   updateValueTitle: "Uppdatera värde",

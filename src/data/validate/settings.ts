@@ -29,6 +29,7 @@ import {
   DATE_FORMAT_SET,
   DECIMAL_SEPARATORS,
   FONT_FAMILY_SET,
+  PROPERTY_SIZE_UNIT_SET,
   RECEIPT_NAME_PATTERN_SET,
   SHORT_DATE_FORMAT_SET,
   THEME_SET,
@@ -94,6 +95,7 @@ function clonePersistedDefaults(): PersistedSettings {
     itemFindThreshold: DEFAULT_SETTINGS.itemFindThreshold,
     itemFindTypeIds: [...DEFAULT_SETTINGS.itemFindTypeIds],
     receiptNamePattern: DEFAULT_SETTINGS.receiptNamePattern,
+    propertySizeUnit: DEFAULT_SETTINGS.propertySizeUnit,
     device: {
       mobile: { ...DEFAULT_DEVICE_SETTINGS_MOBILE },
       desktop: { ...DEFAULT_DEVICE_SETTINGS_DESKTOP },
@@ -234,6 +236,11 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     RECEIPT_NAME_PATTERN_SET,
     DEFAULT_SETTINGS.receiptNamePattern,
   );
+  const propertySizeUnit = validateEnum(
+    raw.propertySizeUnit,
+    PROPERTY_SIZE_UNIT_SET,
+    DEFAULT_SETTINGS.propertySizeUnit,
+  );
   return {
     startOfMonth,
     dateFormat,
@@ -260,6 +267,7 @@ function validateCommonSettings(raw: Record<string, unknown>): CommonSettings {
     itemFindThreshold,
     itemFindTypeIds,
     receiptNamePattern,
+    propertySizeUnit,
   };
 }
 

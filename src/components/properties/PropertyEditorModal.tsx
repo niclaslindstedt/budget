@@ -47,11 +47,13 @@ export function PropertyEditorModal({
   const [name, setName] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [size, setSize] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
     setName(property?.name ?? "");
     setPurchaseAmount(seedAmount(property?.purchaseAmount, settings));
     setPurchaseDate(property?.purchaseDate ?? "");
+    setSize(seedAmount(property?.size, settings));
   });
 
   if (!open) return null;
@@ -70,6 +72,7 @@ export function PropertyEditorModal({
       name: trimmedName,
       purchaseAmount: num(purchaseAmount),
       purchaseDate: purchaseDate !== "" ? purchaseDate : undefined,
+      size: num(size),
     };
     if (property) {
       onSubmit(property.id, patch);
@@ -87,6 +90,7 @@ export function PropertyEditorModal({
       fresh.purchaseAmount = patch.purchaseAmount;
     if (patch.purchaseDate !== undefined)
       fresh.purchaseDate = patch.purchaseDate;
+    if (patch.size !== undefined) fresh.size = patch.size;
     onCreate(fresh);
   }
 
@@ -148,6 +152,24 @@ export function PropertyEditorModal({
               onChange={(e) => setPurchaseDate(e.target.value)}
               className={dateInputClass}
             />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.sizeLabel")}
+            </span>
+            <div className="flex items-center gap-2">
+              <ClearableInput
+                value={size}
+                onValueChange={setSize}
+                inputMode="decimal"
+                placeholder={t("properties.sizePlaceholder")}
+                className={amountInputClass}
+              />
+              <span className="shrink-0 text-sm text-muted">
+                {settings.propertySizeUnit}
+              </span>
+            </div>
           </label>
         </div>
       </Modal.Body>

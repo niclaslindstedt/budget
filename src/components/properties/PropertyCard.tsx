@@ -113,6 +113,14 @@ export function PropertyCard({
             <span className="text-fg">{property.purchaseDate}</span>
           </Stat>
         )}
+        {property.size !== undefined && (
+          <Stat label={t("properties.size")}>
+            <span className="tabular-nums text-fg">
+              {formatNumber(property.size, settings, { neverAbbreviate: true })}{" "}
+              {settings.propertySizeUnit}
+            </span>
+          </Stat>
+        )}
       </div>
 
       <div className="border-t border-line px-3 py-2">

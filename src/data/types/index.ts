@@ -76,6 +76,7 @@ export type {
   DeviceSettings,
   HeaderAction,
   PersistedSettings,
+  PropertySizeUnit,
   ReceiptNamePattern,
   SearchFieldWeights,
   SearchRankingSettings,

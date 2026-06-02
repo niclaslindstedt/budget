@@ -11,6 +11,7 @@ const properties = {
   // Property card.
   boughtFor: "Bought for",
   purchased: "Purchased",
+  size: "Size",
   currentValue: "Current value",
   noValue: "No value recorded",
   updateValue: "Update value",
@@ -44,6 +45,8 @@ const properties = {
   purchaseAmountLabel: "Purchase amount",
   purchaseAmountPlaceholder: "What you paid for it",
   purchaseDateLabel: "Purchase date",
+  sizeLabel: "Size",
+  sizePlaceholder: "Living area",
 
   // Update-value modal.
   updateValueTitle: "Update value",
