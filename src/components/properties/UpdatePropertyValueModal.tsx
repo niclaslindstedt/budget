@@ -55,7 +55,7 @@ export function UpdatePropertyValueModal({
       date,
       value: Math.abs(parsed),
     });
-    setValue("");
+    onClose();
   }
 
   // Newest snapshot first.
