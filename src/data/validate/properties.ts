@@ -1,5 +1,6 @@
 import type {
   Mortgage,
+  MortgageAmortization,
   MortgagePayment,
   Property,
   PropertyValuePoint,
@@ -58,6 +59,19 @@ function validatePayment(raw: unknown): MortgagePayment | null {
   return payment;
 }
 
+// Validate a mortgage's amortisation. A discriminated object — `percent`
+// of the initial loan (annual) or a `fixed` monthly sum, both
+// non-negative. A malformed / unknown shape drops to undefined (the
+// mortgage keeps no amortisation) rather than rejecting the mortgage.
+function validateAmortization(raw: unknown): MortgageAmortization | undefined {
+  if (!isObject(raw)) return undefined;
+  if (raw.mode === "percent" && isFiniteNumber(raw.percent) && raw.percent >= 0)
+    return { mode: "percent", percent: raw.percent };
+  if (raw.mode === "fixed" && isFiniteNumber(raw.amount) && raw.amount >= 0)
+    return { mode: "fixed", amount: raw.amount };
+  return undefined;
+}
+
 // Validate one mortgage. `accountId` is nullable so a mortgage can exist
 // before the user binds the account "Find mortgage payments" scans; a
 // dangling reference (a deleted account) is dropped to `null` rather than
@@ -90,6 +104,8 @@ function validateMortgage(
     mortgage.rateChangeMonths = raw.rateChangeMonths;
   if (isIsoDate(raw.nextRateChangeDate))
     mortgage.nextRateChangeDate = raw.nextRateChangeDate;
+  const amortization = validateAmortization(raw.amortization);
+  if (amortization) mortgage.amortization = amortization;
   if (Array.isArray(raw.payments)) {
     const seen = new Set<string>();
     for (const rawPayment of raw.payments) {

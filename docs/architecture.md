@@ -220,10 +220,12 @@ src/
 │   │                           #   changes for the account-step summary
 │   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
 │   │                           #   payslip filenames (+ re-exports extensionOf)
-│   ├── property-mortgage/  # properties page — mortgage-payment discovery
-│   │   └── discovery.ts        # discoverMortgagePayments — scans a mortgage's
-│   │                           #   bound account history for recurring monthly
-│   │                           #   outflows (Find mortgage payments walk)
+│   ├── property-mortgage/  # properties page — mortgage helpers
+│   │   ├── discovery.ts        # discoverMortgagePayments — scans a mortgage's
+│   │   │                       #   bound account history for recurring monthly
+│   │   │                       #   outflows (Find mortgage payments walk)
+│   │   └── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
+│   │                           #   or fixed monthly amortisation → a per-month sum
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross
 │   │   │                   #   from a net deposit). No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,

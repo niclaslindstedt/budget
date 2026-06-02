@@ -33,6 +33,8 @@ const properties = {
   rateResetsOne: "resets monthly",
   rateResetsOther: "resets every {count} mo",
   nextRateChangeShort: "Next change",
+  amortShort: "Amortisation",
+  amortPerMonth: "{amount}/mo",
 
   // Property editor modal.
   newPropertyTitle: "New property",
@@ -70,6 +72,15 @@ const properties = {
   rateChangeMonthsHint:
     "How often the interest rate is renegotiated — 3 for a variable rate, 12 for a 1-year fixed term.",
   nextRateChangeLabel: "Next rate change",
+  amortizationLabel: "Monthly amortisation",
+  amortModePercent: "% of initial loan",
+  amortModeFixed: "Fixed sum",
+  amortPercentPlaceholder: "e.g. 2",
+  amortFixedPlaceholder: "Amount per month",
+  amortPercentHint:
+    "Annual amortisation as a percent of the original loan amount. Add a loan amount to see the monthly figure.",
+  amortFixedHint: "A flat amount paid down every month.",
+  amortPreview: "≈ {amount} per month",
   accountLabel: "Account",
   accountHint:
     "The account this loan is paid from. “Find payments” scans this account's bank history for the recurring charge.",
