@@ -166,20 +166,20 @@ function SalaryRowImpl({
         {title ?? <span className="text-muted">—</span>}
       </td>
       <td
-        className={`px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
+        className={`px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
         title={estTitle}
       >
         {estimated && `${t("tax.estimatedBadge")} `}
         {formatBalance(gross, settings)}
       </td>
       <td
-        className="salary-secondary-cell hidden px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"
+        className="salary-secondary-cell hidden px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"
         title={estTitle}
       >
         {estimated && `${t("tax.estimatedBadge")} `}
         {formatBalance(tax, settings)}
       </td>
-      <td className="px-2.5 py-2 text-right align-middle font-mono whitespace-nowrap text-fg-bright tabular-nums">
+      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-fg-bright tabular-nums">
         {formatBalance(salary.net, settings)}
       </td>
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">
