@@ -231,9 +231,13 @@ export function formatCount(n: number, settings: Settings): string {
     : s;
 }
 
-export function formatBalance(n: number, settings: Settings): string {
+export function formatBalance(
+  n: number,
+  settings: Settings,
+  opts: FormatNumberOpts = {},
+): string {
   return withCurrency(
-    formatNumber(n, settings, { alwaysTwoFractionDigits: true }),
+    formatNumber(n, settings, { alwaysTwoFractionDigits: true, ...opts }),
     settings,
   );
 }

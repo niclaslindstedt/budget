@@ -256,7 +256,9 @@ function SeriesPicker({
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-fg-bright">{s.label}</span>
                 <span className="text-xs text-muted">
-                  {formatBalance(s.suggestedAmount, settings)}
+                  {formatBalance(s.suggestedAmount, settings, {
+                    neverAbbreviate: true,
+                  })}
                   {" · "}
                   {s.months.length === 1
                     ? t("properties.findMonthsOne", { count: s.months.length })

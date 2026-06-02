@@ -131,7 +131,9 @@ export function UpdatePropertyValueModal({
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="tabular-nums text-fg-bright">
-                        {formatBalance(point.value, settings)}
+                        {formatBalance(point.value, settings, {
+                          neverAbbreviate: true,
+                        })}
                       </span>
                       <button
                         type="button"
