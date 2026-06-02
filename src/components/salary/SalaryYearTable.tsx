@@ -188,10 +188,10 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="px-2.5 py-2 text-right"
+                className="px-2.5 py-2 text-left"
                 aria-label={t("salary.gross")}
               >
-                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
                   <Banknote
                     size={16}
                     className="shrink-0 text-accent"
@@ -203,10 +203,10 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="salary-secondary-cell hidden px-2.5 py-2 text-right md:table-cell"
+                className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
                 aria-label={t("salary.tax")}
               >
-                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
                   <Receipt
                     size={16}
                     className="shrink-0 text-accent"
@@ -218,10 +218,10 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="px-2.5 py-2 text-right"
+                className="px-2.5 py-2 text-left"
                 aria-label={t("salary.net")}
               >
-                <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                <span className="inline-flex items-center gap-1.5 md:gap-2">
                   <Wallet
                     size={16}
                     className="shrink-0 text-accent"
@@ -293,11 +293,11 @@ export function SalaryYearTable({
               </td>
               <td className="px-2.5 py-2" />
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="px-2.5 py-2 text-right tabular-nums">
+              <td className="px-2.5 py-2 text-left tabular-nums">
                 {formatBalance(totals.gross, settings)}
               </td>
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="px-2.5 py-2 text-right tabular-nums">
+              <td className="px-2.5 py-2 text-left tabular-nums">
                 {formatBalance(totals.net, settings)}
               </td>
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
