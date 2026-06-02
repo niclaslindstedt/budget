@@ -241,6 +241,25 @@ export const ITEMS_GLYPH_NAMES: readonly CategoryIcon[] = [
   "star",
 ] as const;
 
+// Properties sheets stand for real estate — homes, apartments, cabins,
+// land — so the palette leans toward buildings and the keys / landmarks
+// that read as "a place you own". The SheetModal picks this set when the
+// selected sheet type is "properties" via the descriptor's `glyphNames`.
+export const PROPERTIES_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "home",
+  "building-2",
+  "key",
+  "landmark",
+  "vault",
+  "car",
+  "plane",
+  "ship",
+  "trending-up",
+  "coins",
+  "scale",
+  "star",
+] as const;
+
 // Accounts are real-world money stores — bank accounts, cards, cash,
 // brokerage, crypto, loans. The palette covers the spectrum so users
 // can express checking vs. mortgage vs. mobile-pay app at a glance.

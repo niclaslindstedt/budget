@@ -139,6 +139,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "En skatteprofil (kommun, kyrkomedlemskap, ålder, inkomsttyp) låter Lön-sidan uppskatta varje lönebeskeds bruttolön från nettoinsättningen med svenska skatteregler — så att en lön där du bara känner till nettot ändå visar brutto och skatt. Ange exakt bruttolön när som helst för att åsidosätta uppskattningen.",
   },
+  homeOwner: {
+    name: "Husägare",
+    condition: "Lägg till din första fastighet på Fastigheter-sidan.",
+    learnMore:
+      "Fastigheter-sidan håller koll på bostäderna du äger: vad var och en kostade, vad den är värd nu (uppdatera värdet när som helst för att lägga till en punkt i historiken), och bolånen på den. Koppla ett bolån till ett bankkonto så söker Hitta bolånebetalningar igenom dess historik efter den återkommande dragningen, månad för månad.",
+  },
   secondDraft: {
     name: "Andra utkastet",
     condition: "Redigera en återkommande serie.",

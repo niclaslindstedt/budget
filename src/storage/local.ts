@@ -24,13 +24,14 @@ export function freshUserData(): UserData {
   // 2000-unit floor.
   const currency = detectInitialCurrency();
   return {
-    version: 61,
+    version: 62,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
     taxProfiles: [],
     salaries: [],
     employers: [],
+    properties: [],
     companies: [],
     tags: [],
     categories: [],

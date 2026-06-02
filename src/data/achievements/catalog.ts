@@ -34,6 +34,7 @@ import {
   GitMerge,
   Hash,
   History,
+  Home,
   LayoutDashboard,
   LayoutGrid,
   Link as LinkIcon,
@@ -534,6 +535,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.taxProfiles],
       predicate: (prev, next) => !hasTaxProfile(prev) && hasTaxProfile(next),
+    },
+  },
+  {
+    id: "homeOwner",
+    tier: "intermediate",
+    glyph: Home,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        prev.properties.length === 0 && next.properties.length > 0,
     },
   },
   {

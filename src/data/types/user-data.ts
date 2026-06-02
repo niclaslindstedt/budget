@@ -22,6 +22,7 @@ import type {
   SeriesMatchRule,
   SeriesMetadata,
 } from "./rules";
+import type { Property } from "./properties";
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
@@ -34,7 +35,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 61;
+  version: 62;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -54,6 +55,12 @@ export type UserData = {
   // roles (titles) held there over time. Entirely user-curated — no
   // presets ship. Empty on a fresh budget.
   employers: Employer[];
+  // Properties the user owns (homes, apartments), rendered by the
+  // Properties sheet. Each carries what it was bought for, a manually
+  // recorded market-value history, and the mortgages (loans) against it
+  // with their monthly principal/interest payments. Entirely
+  // user-curated — no presets ship. Empty on a fresh budget.
+  properties: Property[];
   // User-added tags (cross-cutting labels). Referenced from
   // `Row.tagIds` — a row can carry several. No presets ship; tags are
   // entirely user-curated through the inline create row on the

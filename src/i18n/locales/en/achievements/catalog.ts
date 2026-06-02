@@ -144,6 +144,12 @@ const catalog = {
     learnMore:
       "A tax profile (municipality, church membership, age, income type) lets the Salary sheet estimate each paycheck's gross from its net deposit using Swedish tax rules — so a salary you only know the net of still shows a gross and a tax. Type the exact gross any time to override the estimate.",
   },
+  homeOwner: {
+    name: "Home Owner",
+    condition: "Add your first property on the Properties sheet.",
+    learnMore:
+      "The Properties sheet tracks the homes and apartments you own: what each cost, what it's worth now (update the value any time to add a point to its history), and the mortgages against it. Bind a mortgage to a bank account and Find mortgage payments scans its history for the recurring charge, month by month.",
+  },
   secondDraft: {
     name: "Second Draft",
     condition: "Edit a recurring series.",

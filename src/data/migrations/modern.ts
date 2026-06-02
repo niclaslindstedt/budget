@@ -654,6 +654,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
 
     return { ...v60, version: 61, sheets, history, items };
   },
+
+  // v61 → v62: introduces `UserData.properties`, the homes / apartments
+  // rendered by the new Properties sheet (each with its purchase amount,
+  // a manually recorded value history, and the mortgages against it).
+  // Seeds empty; old exports simply lack it and a fresh-empty default
+  // passes the v62 validator unchanged. Bare additive bump.
+  61: (v61) => ({ ...v61, version: 62, properties: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

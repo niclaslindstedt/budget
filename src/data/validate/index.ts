@@ -15,6 +15,7 @@ import type {
   MatchRule,
   MerchantHint,
   PrimaryIncomeMerchant,
+  Property,
   RenamePattern,
   Salary,
   SeriesMatchRule,
@@ -43,6 +44,7 @@ import {
   validateTransfer,
 } from "./history";
 import { validateEmployer, validateSalary } from "./salary";
+import { validateProperty } from "./properties";
 import {
   validateMatchRule,
   validateMerchantHint,
@@ -116,6 +118,26 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`salaries[${i}].id`, `duplicate id "${r.value.id}"`);
     seenSalaryIds.add(r.value.id);
     salaries.push(r.value);
+  }
+
+  // Properties (homes / apartments). Validated after accounts so each
+  // mortgage's `accountId` can be checked against the resolvable set (a
+  // dangling reference is dropped to null rather than rejecting the
+  // file). Duplicate ids fail the load like the other top-level arrays.
+  const rawProperties = Array.isArray(raw.properties) ? raw.properties : [];
+  const properties: Property[] = [];
+  const seenPropertyIds = new Set<string>();
+  for (let i = 0; i < rawProperties.length; i++) {
+    const r = validateProperty(
+      rawProperties[i],
+      `properties[${i}]`,
+      seenAccountIds,
+    );
+    if (!r.ok) return r;
+    if (seenPropertyIds.has(r.value.id))
+      return fail(`properties[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenPropertyIds.add(r.value.id);
+    properties.push(r.value);
   }
 
   const rawCompanies = Array.isArray(raw.companies) ? raw.companies : [];
@@ -531,6 +553,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       taxProfiles,
       salaries,
       employers,
+      properties,
       companies,
       tags,
       categories,

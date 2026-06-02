@@ -12,6 +12,10 @@ import type {
   Item,
   LineItemLink,
   MatchRule,
+  Mortgage,
+  MortgagePayment,
+  Property,
+  PropertyValuePoint,
   Salary,
   SeriesMatchRule,
   Settings,
@@ -31,6 +35,7 @@ import { reduceSheets } from "./reducers/sheets";
 import { reduceSettings } from "./reducers/settings";
 import { reduceCategoriesAndTypes } from "./reducers/categories-and-types";
 import { reduceItems } from "./reducers/items";
+import { reduceProperties } from "./reducers/properties";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
@@ -338,6 +343,62 @@ export type Action =
       patch: Partial<Transfer>;
     }
   | { type: "deleteTransfer"; transferId: string }
+  // Properties — the homes / apartments the user owns, rendered by the
+  // Properties sheet. Each mutates `UserData.properties`; the mortgage /
+  // value-point / payment actions reach two levels deep (property →
+  // mortgage → payment) and carry the parent ids to address the target.
+  | { type: "addProperty"; property: Property }
+  | {
+      // Edit one property by id. Each field in `patch` is optional; an
+      // explicit `undefined` deletes the key. Mirrors `updateItem`.
+      type: "updateProperty";
+      propertyId: string;
+      patch: Partial<Omit<Property, "id">>;
+    }
+  | { type: "deleteProperty"; propertyId: string }
+  | {
+      // Record a manually-entered market value — appends one point to the
+      // property's `valueHistory` (the current value is the latest point).
+      type: "addPropertyValue";
+      propertyId: string;
+      point: PropertyValuePoint;
+    }
+  | {
+      type: "updatePropertyValue";
+      propertyId: string;
+      pointId: string;
+      patch: Partial<Omit<PropertyValuePoint, "id">>;
+    }
+  | { type: "deletePropertyValue"; propertyId: string; pointId: string }
+  | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
+  | {
+      type: "updateMortgage";
+      propertyId: string;
+      mortgageId: string;
+      patch: Partial<Omit<Mortgage, "id">>;
+    }
+  | { type: "deleteMortgage"; propertyId: string; mortgageId: string }
+  | {
+      // Bulk-add payments accepted from the "Find mortgage payments"
+      // walk in one pass so the page doesn't re-render between inserts.
+      type: "addMortgagePayments";
+      propertyId: string;
+      mortgageId: string;
+      payments: MortgagePayment[];
+    }
+  | {
+      type: "updateMortgagePayment";
+      propertyId: string;
+      mortgageId: string;
+      paymentId: string;
+      patch: Partial<Omit<MortgagePayment, "id">>;
+    }
+  | {
+      type: "deleteMortgagePayment";
+      propertyId: string;
+      mortgageId: string;
+      paymentId: string;
+    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
@@ -709,6 +770,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceSettings(state, action) ??
     reduceCategoriesAndTypes(state, action) ??
     reduceItems(state, action) ??
+    reduceProperties(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??

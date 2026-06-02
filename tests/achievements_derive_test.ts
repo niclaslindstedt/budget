@@ -167,6 +167,17 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("bookKeeper");
   });
 
+  it("fires homeOwner when the first property is added", () => {
+    const prev = withItem([]);
+    prev.properties = [];
+    const next = withItem([]);
+    next.properties = [
+      { id: "p1", name: "Apartment", valueHistory: [], mortgages: [] },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("homeOwner");
+  });
+
   it("fires groundhogDay when a row becomes recurring", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);
