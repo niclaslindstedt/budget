@@ -2,28 +2,33 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Briefcase, Check, ChevronDown, Plus } from "lucide-react";
 
 import {
+  DEFAULT_EMPLOYER_GLYPH,
   DEFAULT_SHEET_COLOR,
   DEFAULT_SHEET_GLYPH,
+  EMPLOYER_GLYPH_NAMES,
+  SHEET_COLORS,
 } from "../../data/constants/taxonomy";
 import { newId } from "../../data/sheet";
-import type { Employer } from "../../data/types";
+import type { CategoryIcon, Employer } from "../../data/types";
 import {
   useDesktopAutoFocus,
   useRovingTabindex,
   type FloatingPlacement,
 } from "../../hooks";
 import { useT } from "../../i18n";
+import { ColorPalette } from "../ColorPalette";
 import { FloatingPanel } from "../FloatingPanel";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, FormSection } from "../form";
+import { GlyphGrid } from "../GlyphGrid";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 
 // Custom employer dropdown (no native <select>) built on FloatingPanel,
 // mirroring CompanyPicker. The list is a flat "No employer" + sorted
 // employers; when `onCreate` is wired the panel grows a "New employer"
-// footer that opens a name-only creator so a fresh workplace can be
-// added without leaving the salary flow. Colour / glyph / roles are
-// filled in later from the Employers modal.
+// footer that opens a creator (name + colour + industry glyph) so a
+// fresh workplace can be added without leaving the salary flow. Roles
+// are filled in later from the Employers modal.
 
 const PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 200 },
@@ -223,12 +228,12 @@ export function EmployerPicker({
         <EmployerCreator
           existing={employers}
           onCancel={close}
-          onSubmit={(name) => {
+          onSubmit={({ name, color, glyph }) => {
             const employer: Employer = {
               id: newId(),
               name,
-              color: DEFAULT_SHEET_COLOR,
-              glyph: DEFAULT_SHEET_GLYPH,
+              color,
+              glyph,
               roles: [],
             };
             onCreate(employer);
@@ -241,9 +246,11 @@ export function EmployerPicker({
   );
 }
 
-// Focused name-only creator — single text input, Cancel / Create.
-// Matches CompanyCreator; colour / glyph / roles default and are
-// editable later from the Employers modal.
+// Focused creator — name + colour + an industry glyph, Cancel / Create.
+// The glyph palette (EMPLOYER_GLYPH_NAMES) leans toward the sectors
+// people work within and defaults to a briefcase rather than a wallet,
+// so a fresh employer reads as a workplace from the start. Roles are
+// still filled in later from the Employers modal.
 function EmployerCreator({
   existing,
   onCancel,
@@ -251,10 +258,16 @@ function EmployerCreator({
 }: {
   existing: readonly Employer[];
   onCancel: () => void;
-  onSubmit: (name: string) => void;
+  onSubmit: (employer: {
+    name: string;
+    color: string;
+    glyph: CategoryIcon;
+  }) => void;
 }) {
   const t = useT();
   const [name, setName] = useState("");
+  const [color, setColor] = useState<string>(DEFAULT_SHEET_COLOR);
+  const [glyph, setGlyph] = useState<CategoryIcon>(DEFAULT_EMPLOYER_GLYPH);
   const inputRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(inputRef, true);
   const trimmed = name.trim();
@@ -277,21 +290,43 @@ function EmployerCreator({
         onClose={onCancel}
       />
       <Modal.Body>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted">{t("salary.employerName")}</span>
-          <ClearableInput
-            ref={inputRef}
-            value={name}
-            onValueChange={setName}
-            placeholder={t("salary.employerNamePlaceholder")}
-            className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
-          />
-          {duplicate && (
-            <span className="text-xs text-danger">
-              {t("salary.duplicateEmployer")}
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("salary.employerName")}
             </span>
-          )}
-        </label>
+            <ClearableInput
+              ref={inputRef}
+              value={name}
+              onValueChange={setName}
+              placeholder={t("salary.employerNamePlaceholder")}
+              className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+            />
+            {duplicate && (
+              <span className="text-xs text-danger">
+                {t("salary.duplicateEmployer")}
+              </span>
+            )}
+          </label>
+
+          <FormSection label={t("salary.employerColor")}>
+            <ColorPalette
+              colors={SHEET_COLORS}
+              value={color}
+              onChange={setColor}
+            />
+          </FormSection>
+
+          <FormSection label={t("salary.employerGlyph")}>
+            <GlyphGrid
+              icons={EMPLOYER_GLYPH_NAMES}
+              value={glyph}
+              onChange={setGlyph}
+              size={8}
+              tintColor={color}
+            />
+          </FormSection>
+        </div>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onCancel}>
@@ -300,7 +335,7 @@ function EmployerCreator({
         <Button
           variant="primary"
           onClick={() => {
-            if (canSubmit) onSubmit(trimmed);
+            if (canSubmit) onSubmit({ name: trimmed, color, glyph });
           }}
           disabled={!canSubmit}
         >

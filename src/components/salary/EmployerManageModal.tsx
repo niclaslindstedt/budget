@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { Briefcase, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
+  DEFAULT_EMPLOYER_GLYPH,
   DEFAULT_SHEET_COLOR,
-  DEFAULT_SHEET_GLYPH,
+  EMPLOYER_GLYPH_NAMES,
   SHEET_COLORS,
-  SHEET_GLYPH_NAMES,
 } from "../../data/constants/taxonomy";
 import { roleDateRange } from "../../data/salary/salary";
 import { newId } from "../../data/sheet";
@@ -47,7 +47,7 @@ function blankEditor(): EditorState {
     id: null,
     name: "",
     color: DEFAULT_SHEET_COLOR,
-    glyph: DEFAULT_SHEET_GLYPH,
+    glyph: DEFAULT_EMPLOYER_GLYPH,
     roles: [],
   };
 }
@@ -57,7 +57,7 @@ function editorFor(employer: Employer): EditorState {
     id: employer.id,
     name: employer.name,
     color: employer.color ?? DEFAULT_SHEET_COLOR,
-    glyph: employer.glyph ?? DEFAULT_SHEET_GLYPH,
+    glyph: employer.glyph ?? DEFAULT_EMPLOYER_GLYPH,
     roles: employer.roles.map((r) => ({ ...r })),
   };
 }
@@ -157,7 +157,7 @@ export function EmployerManageModal({
 
             <FormSection label={t("salary.employerGlyph")}>
               <GlyphGrid
-                icons={SHEET_GLYPH_NAMES}
+                icons={EMPLOYER_GLYPH_NAMES}
                 value={editor.glyph}
                 onChange={(glyph) =>
                   setEditor((prev) => (prev ? { ...prev, glyph } : prev))
@@ -249,7 +249,7 @@ export function EmployerManageModal({
                   style={{ color: e.color ?? undefined }}
                 >
                   <CategoryIconGlyph
-                    name={e.glyph ?? DEFAULT_SHEET_GLYPH}
+                    name={e.glyph ?? DEFAULT_EMPLOYER_GLYPH}
                     size={16}
                   />
                 </span>
