@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { unlock as unlockAchievement } from "../../../data/achievements";
-import type { Action } from "../../../data/reducer";
-import type { Salary } from "../../../data/types";
-import type { SalaryBulkApply } from "../../salary/SalaryBulkEditModal";
+import { unlock as unlockAchievement } from "../../data/achievements";
+import type { Action } from "../../data/reducer";
+import type { Salary } from "../../data/types";
+import type { SalaryBulkApply } from "./SalaryBulkEditModal";
 
 type Params = {
   // The full salary list — used to prune selected ids that no longer
