@@ -11,7 +11,7 @@ import {
 import type { Mortgage } from "../src/data/types";
 
 function mortgage(over: Partial<Mortgage> = {}): Mortgage {
-  return { id: "m", name: "Loan", accountId: null, payments: [], ...over };
+  return { id: "m", name: "Loan", payments: [], ...over };
 }
 
 describe("resolveRateAt", () => {

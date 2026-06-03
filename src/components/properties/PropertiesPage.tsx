@@ -243,6 +243,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           open={editingProperty !== null || creatingProperty}
           property={editingProperty}
           companies={data.companies}
+          accounts={data.accounts}
           settings={settings}
           onClose={() => {
             setEditingProperty(null);
@@ -265,7 +266,6 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
         <MortgageEditorModal
           open={editingMortgage !== null || creatingMortgageFor !== null}
           mortgage={editingMortgage?.mortgage ?? null}
-          accounts={data.accounts}
           settings={settings}
           onClose={() => {
             setEditingMortgage(null);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 
 // The v63 → v64 step lifts a property's lender from its mortgages up to the
 // property — one lender per home — and strips `companyId` off every
@@ -29,7 +29,7 @@ describe("migration v63 → v64 (lift the lender to the property)", () => {
       companyId?: string;
       mortgages: Array<Record<string, unknown>>;
     }>;
-    expect(result.data.version).toBe(64);
+    expect(result.data.version).toBe(LATEST_VERSION);
     expect(properties[0].companyId).toBe("co-sbab");
     expect(properties[0].mortgages.every((m) => !("companyId" in m))).toBe(
       true,

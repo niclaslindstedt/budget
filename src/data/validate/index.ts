@@ -134,7 +134,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const knownCompanyIds: ReadonlySet<string> = seenCompanyIds;
 
   // Properties (homes / apartments). Validated after accounts and
-  // companies so each mortgage's `accountId` and `companyId` can be
+  // companies so each property's `accountId` and `companyId` can be
   // checked against the resolvable sets (a dangling reference is dropped
   // rather than rejecting the file). Duplicate ids fail the load like the
   // other top-level arrays.
