@@ -223,7 +223,7 @@ function MortgageRow({
     mortgage.amortization !== undefined;
 
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
+    <li className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-fg-bright">{mortgage.name}</span>
         <span className="block truncate text-xs text-muted">
