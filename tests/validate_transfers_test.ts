@@ -156,7 +156,7 @@ describe("validateUserData — accounts metadata", () => {
           glyph: "wallet",
           color: "#61afef",
           bank: "Swedbank",
-          clearing: "8327",
+          clearing: "8000",
           accountNumber: "123 456 789",
           iban: "SE45 5000 0000 0583 9825 7466",
           bic: "SWEDSESS",

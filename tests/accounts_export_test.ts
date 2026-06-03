@@ -10,7 +10,7 @@ const ACC_A: Account = {
   id: "a",
   name: "Lönekonto",
   bank: "Skandia",
-  clearing: "9150",
+  clearing: "9169",
   accountNumber: "1234567",
   iban: "SE001",
   color: "#abc",
@@ -117,7 +117,7 @@ describe("buildAccountsExport", () => {
       includeTransactions: false,
     });
     expect(payload.accounts[0].bank).toBe("Skandia");
-    expect(payload.accounts[0].clearing).toBe("9150");
+    expect(payload.accounts[0].clearing).toBe("9169");
     expect(payload.accounts[0].iban).toBe("SE001");
   });
 

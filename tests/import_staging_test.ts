@@ -209,12 +209,12 @@ describe("stageHistoryImport", () => {
     const data = makeData();
     const file: ParsedBankFile = {
       bankParserId: "skandia-xlsx",
-      bankClearing: "9159",
+      bankClearing: "9169",
       bankAccountNumber: "1234567",
       entries: [{ date: "2026-03-30", description: "SIMPLEKO", amount: -5252 }],
     };
     const staged = stageHistoryImport(data, ACCOUNT_ID, file, "x.xlsx", 9);
-    expect(staged.pendingImport.bankClearing).toBe("9159");
+    expect(staged.pendingImport.bankClearing).toBe("9169");
     expect(staged.pendingImport.bankAccountNumber).toBe("1234567");
     expect(staged.pendingImport.now).toBe(9);
   });

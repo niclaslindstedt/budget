@@ -19,7 +19,7 @@ import { buildXlsx, type XlsxCell } from "./fixtures/build-xlsx";
 //   Row 4: header — A="Bokf. datum", B="Beskrivning", C="Belopp", D="Saldo"
 //   Row 5+: data rows
 const SAMPLE_ROWS: readonly (readonly XlsxCell[])[] = [
-  ["Kontonummer", "9150-897.480-4"],
+  ["Kontonummer", "9169-123.456-7"],
   ["Period", "2026-05-17 - 2026-05-18"],
   [],
   ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"],
@@ -37,8 +37,8 @@ describe("bank-skandia", () => {
   it("parses the sample statement", async () => {
     const parsed = await parseBankFile(sampleFile());
     expect(parsed.bankParserId).toBe("skandia-xlsx");
-    expect(parsed.bankClearing).toBe("9150");
-    expect(parsed.bankAccountNumber).toBe("897.480-4");
+    expect(parsed.bankClearing).toBe("9169");
+    expect(parsed.bankAccountNumber).toBe("123.456-7");
     expect(parsed.entries.length).toBe(4);
     const first = parsed.entries[0];
     expect(first.date).toBe("2026-05-18");
@@ -48,16 +48,36 @@ describe("bank-skandia", () => {
   });
 
   it("splits a Skandia account cell", () => {
-    expect(parseAccountCell("9150-897.480-4")).toEqual({
-      clearing: "9150",
-      accountNumber: "897.480-4",
+    expect(parseAccountCell("9169-123.456-7")).toEqual({
+      clearing: "9169",
+      accountNumber: "123.456-7",
     });
-    expect(parseAccountCell("  9150-897.480-4  ")).toEqual({
-      clearing: "9150",
-      accountNumber: "897.480-4",
+    expect(parseAccountCell("  9169-123.456-7  ")).toEqual({
+      clearing: "9169",
+      accountNumber: "123.456-7",
     });
     expect(parseAccountCell("")).toEqual({});
-    expect(parseAccountCell("877480")).toEqual({ accountNumber: "877480" });
+    expect(parseAccountCell("123456")).toEqual({ accountNumber: "123456" });
+  });
+
+  it("splits on the first dash only, keeping dashes in the account part", () => {
+    // The account-number portion routinely carries its own dash; only
+    // the clearing/account boundary (the first dash) should split.
+    expect(parseAccountCell("9169-123-456-7")).toEqual({
+      clearing: "9169",
+      accountNumber: "123-456-7",
+    });
+  });
+
+  it("treats a leading-dash cell as an account number, not a clearing", () => {
+    // dashIdx === 0 → there is no clearing segment to the left, so the
+    // whole (trimmed) cell is the account number.
+    expect(parseAccountCell("-123.456-7")).toEqual({
+      accountNumber: "-123.456-7",
+    });
+    expect(parseAccountCell("  -123.456-7  ")).toEqual({
+      accountNumber: "-123.456-7",
+    });
   });
 
   it("dedups on re-import with mergeHistory", async () => {

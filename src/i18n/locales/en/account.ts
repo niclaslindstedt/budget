@@ -12,7 +12,7 @@ const account = {
   bank: "Bank",
   bankPlaceholder: "e.g. Swedbank, Nordea, Revolut…",
   clearing: "Clearing",
-  clearingPlaceholder: "8327",
+  clearingPlaceholder: "8000",
   accountNumber: "Account number",
   accountNumberPlaceholder: "123 456 789",
   iban: "IBAN",

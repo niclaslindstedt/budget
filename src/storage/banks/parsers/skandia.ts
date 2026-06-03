@@ -2,7 +2,7 @@
 //
 // File layout (observed on a single-account export):
 //
-//   Row 1: A="Kontonummer", B="<clearing>-<account>"  (e.g. "9150-897.480-4")
+//   Row 1: A="Kontonummer", B="<clearing>-<account>"  (e.g. "9169-123.456-7")
 //   Row 2: A="Period",      B="YYYY-MM-DD - YYYY-MM-DD"
 //   Row 3: blank
 //   Row 4: headers — A="Bokf. datum", B="Beskrivning",
@@ -33,9 +33,10 @@ defineXlsxParser({
     parseAccountCell(stringCell(rowsAbove[0]?.get(1)) ?? ""),
 });
 
-// "9150-897.480-4" → { clearing: "9150", accountNumber: "897.480-4" }.
-// Different statements format the account-number portion differently;
-// we leave it raw and let the user edit it manually if needed.
+// "9169-123.456-7" → { clearing: "9169", accountNumber: "123.456-7" }.
+// Only the first dash splits clearing from account: the account-number
+// portion can itself contain dashes and dots, which we leave raw and
+// let the user edit manually if a given statement formats it oddly.
 export function parseAccountCell(s: string): {
   clearing?: string;
   accountNumber?: string;

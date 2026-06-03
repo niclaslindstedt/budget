@@ -7,7 +7,7 @@ import { buildXlsx } from "./fixtures/build-xlsx";
 describe("xlsx-reader", () => {
   it("decodes a small synthetic sheet end-to-end", async () => {
     const xlsx = buildXlsx([
-      ["Kontonummer", "9150-897.480-4"],
+      ["Kontonummer", "9169-123.456-7"],
       ["Period", "2026-05-17 - 2026-05-18"],
       [],
       ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"],
@@ -15,9 +15,9 @@ describe("xlsx-reader", () => {
     ]);
     const sheet = await readFirstSheet(xlsx);
     expect(sheet.rows.length).toBe(5);
-    // Row 0: ["Kontonummer", "9150-897.480-4"]
+    // Row 0: ["Kontonummer", "9169-123.456-7"]
     expect(sheet.rows[0].get(0)).toBe("Kontonummer");
-    expect(sheet.rows[0].get(1)).toBe("9150-897.480-4");
+    expect(sheet.rows[0].get(1)).toBe("9169-123.456-7");
     // Row 3: header row
     expect(sheet.rows[3].get(0)).toBe("Bokf. datum");
     expect(sheet.rows[3].get(3)).toBe("Saldo");

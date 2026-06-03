@@ -12,7 +12,7 @@ const account: AccountCatalog = {
   bank: "Bank",
   bankPlaceholder: "t.ex. Swedbank, Nordea, Revolut…",
   clearing: "Clearingnummer",
-  clearingPlaceholder: "8327",
+  clearingPlaceholder: "8000",
   accountNumber: "Kontonummer",
   accountNumberPlaceholder: "123 456 789",
   iban: "IBAN",
