@@ -104,17 +104,9 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
     },
     {
       slug: "mortgage",
-      name: "Mortgage principal",
+      name: "Mortgage",
       color: C[0],
       glyph: "landmark",
-      category: "housing",
-      kind: "expense",
-    },
-    {
-      slug: "mortgage-interest",
-      name: "Mortgage interest",
-      color: C[7],
-      glyph: "percent",
       category: "housing",
       kind: "expense",
     },
@@ -970,6 +962,12 @@ export function isPresetTypeId(id: string): boolean {
   return PRESET_ENTRY_TYPE_IDS.has(id);
 }
 
+// The single "Mortgage" preset type id. The mortgage finder anchors on
+// entries the user has tagged with this type (alongside the mortgage's
+// tied company) when locating a property's payments. Kept as a named
+// export so that anchor reads as intent rather than a bare literal.
+export const PRESET_TYPE_MORTGAGE_ID = "preset-type-mortgage";
+
 // Default allow-list for the Items sheet's "Find items" scan — the
 // preset types whose purchases tend to be durable physical things that
 // hold resale value (electronics, furniture, tools, …). Consumables
@@ -1004,7 +1002,6 @@ export const NEVER_ITEM_TYPE_IDS: ReadonlySet<string> = new Set([
   // Housing & utilities
   "preset-type-rent",
   "preset-type-mortgage",
-  "preset-type-mortgage-interest",
   "preset-type-home-insurance",
   "preset-type-cleaning",
   "preset-type-gas",

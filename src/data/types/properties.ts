@@ -21,29 +21,22 @@ export type PropertyValuePoint = {
   value: number; // the market value at that date, in the user's currency
 };
 
-// One month's payment on a mortgage, split into the amortisation
-// (`principal`) and `interest` portions. Recorded manually or via the
-// "Find mortgage payments" walk that scans the bound account's history.
-// A combined bank charge is stored as a single record (the user splits
-// it into principal / interest); two separate charges are paired into
-// one record, with `interestSourceHistoryId` carrying the interest leg's
-// bank entry so both can be de-duplicated on a re-scan.
+// One mortgage payment — a single charge against the loan, recorded
+// manually or via the "Find mortgage payments" walk that scans the bound
+// account's history. Amortisation and interest are no longer split apart:
+// each bank charge the user tagged as a mortgage payment is one record at
+// its full magnitude. A month split across two bank draws (an amortisation
+// charge and a separate interest charge) simply yields two payment records
+// for that month; the card sums them.
 export type MortgagePayment = {
   id: string;
   date: string; // ISO payment date — drives the per-month grouping
-  principal: number; // amortisation portion (>= 0)
-  interest: number; // interest portion (>= 0)
+  amount: number; // the charge magnitude (>= 0)
   // The bank `HistoryEntry` this payment was discovered from, when added
-  // via "Find mortgage payments". For a combined charge this is the whole
-  // payment; for a split pair it is the principal (amortisation) leg.
-  // Best-effort dedupe key — bank ids aren't stable across re-imports, so
-  // the discovery walk pairs this with a month dedupe. Absent on a
-  // hand-entered payment.
+  // via "Find mortgage payments". Best-effort dedupe key — bank ids aren't
+  // stable across re-imports, so the discovery walk pairs this with a
+  // month dedupe. Absent on a hand-entered payment.
   sourceHistoryId?: string;
-  // The interest leg's bank `HistoryEntry`, set only when principal and
-  // interest arrived as two separate charges. Absent for a combined
-  // charge or a hand-entered payment.
-  interestSourceHistoryId?: string;
 };
 
 // A loan taken against a property. A property can carry several (a first
@@ -81,6 +74,13 @@ export type Mortgage = {
   id: string;
   name: string; // user label, e.g. "SBAB loan 1"
   accountId?: string | null; // bank account scanned for payments
+  // The lender this loan is held with (e.g. "SBAB"), referencing
+  // `UserData.companies`. The strongest signal "Find mortgage payments"
+  // uses: it filters the bound account's history to charges the user has
+  // tagged with this company. Absent until the user picks one; a dangling
+  // reference (the company was deleted) is swept to absent on load and on
+  // the `deleteCompany` cascade, mirroring `Row.companyId`.
+  companyId?: string;
   loanAmount?: number; // the sum originally borrowed
   currentBalance?: number; // outstanding balance now (manually recorded)
   interestRate?: number; // current annual interest rate, as a percent (3.45 ⇒ 3.45%)

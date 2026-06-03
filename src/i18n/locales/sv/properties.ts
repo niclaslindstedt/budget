@@ -26,8 +26,7 @@ const properties: PropertiesCatalog = {
   noAccountBound: "Inget konto kopplat",
   paymentsCountOne: "{count} betalning",
   paymentsCountOther: "{count} betalningar",
-  principalTotal: "Amortering",
-  interestTotal: "Ränta",
+  paidTotal: "Betalt",
   balanceShort: "Skuld",
   loanShort: "Lån",
   rateShort: "Ränta",
@@ -86,41 +85,38 @@ const properties: PropertiesCatalog = {
   amortPreview: "≈ {amount} per månad",
   accountLabel: "Konto",
   accountHint:
-    "Kontot det här lånet betalas från. ”Hitta betalningar” söker igenom kontots bankhistorik efter den återkommande dragningen.",
+    "Kontot det här lånet betalas från. ”Hitta betalningar” söker igenom kontots bankhistorik efter dragningen.",
   chooseAccount: "Välj ett konto",
   noAccount: "Inget konto",
   noAccountsYet: "Inga konton ännu",
+  lenderLabel: "Långivare",
+  lenderPlaceholder: "Välj ett företag…",
+  lenderHint:
+    "Företaget du har lånet hos. ”Hitta betalningar” använder det — och bolånetypen — för att hitta rätt dragningar.",
 
   // Find-payments walk.
   findTitle: "Hitta bolånebetalningar",
   findNoAccount:
-    "Koppla ett bankkonto till det här bolånet först — ”Hitta betalningar” söker igenom kontots historik efter den återkommande dragningen.",
-  findNoneFound:
-    "Inga återkommande månadsdragningar hittades i kontots historik.",
-  findPickPrincipal: "Vilken dragning är betalningen (amorteringen)?",
-  findPickInterest: "Separat räntedragning? (valfritt)",
-  findNoInterest: "Ingen — en kombinerad dragning",
+    "Koppla ett bankkonto till det här bolånet först — ”Hitta betalningar” söker igenom kontots historik efter dragningen.",
+  findNoneFound: "Inga matchande dragningar hittades i kontots historik.",
+  findNeedsTags:
+    "Inget att utgå från ännu. Märk den här fastighetens bolånedragningar med deras företag och bolånetypen i din budget (en månad räcker), och kom sedan tillbaka — sökningen använder de märkningarna för att hitta resten.",
+  findSelectCharges: "Dragningar att lägga till",
+  findSeedTags:
+    "Matchat från dragningar du märkt med det här bolånets företag eller bolånetypen.",
+  findSeedPayments: "Matchat från betalningarna som redan finns på bolånet.",
   findPreview: "Betalningar att lägga till",
-  findMonthsOne: "{count} månad",
-  findMonthsOther: "{count} månader",
   findAlreadyAdded: "Redan tillagd",
   findAddOne: "Lägg till {count} betalning",
   findAddOther: "Lägg till {count} betalningar",
-  findEmptySelection: "Välj en dragning ovan för att förhandsgranska.",
 
-  // Amount matching against the mortgage's rate + amortisation.
+  // Amount band around each matched charge.
   findToleranceLabel: "Matchningstolerans",
   findToleranceValue: "±{pct}%",
   findToleranceHint:
-    "Dragningar inom det här bandet från lånets ränta, amortering eller de två tillsammans matchas och rankas först.",
-  findTargetInterest: "Ränta",
-  findTargetPrincipal: "Amortering",
-  findTargetCombined: "Kombinerad",
-  findTargetRecurring: "Återkommande",
+    "Hur mycket en dragnings belopp får variera mellan månaderna och ändå räknas — vidga det om räntan ändrats under perioden.",
   findSpanMonthsOne: "över {count} månad",
   findSpanMonthsOther: "över {count} månader",
-  findPatternHint:
-    "Lägg till dessa betalningar med den här dragningens mönster?",
   findRange: "{start} – {end}",
 
   // Delete property confirm.

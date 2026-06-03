@@ -2,8 +2,7 @@ import type { PresetTypesCatalog } from "../en/presetTypes";
 
 const presetTypes: PresetTypesCatalog = {
   rent: "Hyra / Avgift",
-  mortgage: "Amortering",
-  "mortgage-interest": "Bolåneränta",
+  mortgage: "Bolån",
   "home-insurance": "Hemförsäkring",
   "housing-queue": "Bostadskö",
   cleaning: "Städning",

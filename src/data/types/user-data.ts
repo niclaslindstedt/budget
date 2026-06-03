@@ -35,7 +35,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 62;
+  version: 63;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -58,8 +58,8 @@ export type UserData = {
   // Properties the user owns (homes, apartments), rendered by the
   // Properties sheet. Each carries what it was bought for, a manually
   // recorded market-value history, and the mortgages (loans) against it
-  // with their monthly principal/interest payments. Entirely
-  // user-curated — no presets ship. Empty on a fresh budget.
+  // with their monthly payments. Entirely user-curated — no presets
+  // ship. Empty on a fresh budget.
   properties: Property[];
   // User-added tags (cross-cutting labels). Referenced from
   // `Row.tagIds` — a row can carry several. No presets ship; tags are

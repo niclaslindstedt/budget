@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   discoverMortgagePayments,
   monthsWithinBand,
+  type MortgageDiscoveryInput,
 } from "../src/data/property-mortgage/discovery";
-import type { HistoryEntry } from "../src/data/types";
+import { PRESET_TYPE_MORTGAGE_ID } from "../src/data/presets/types";
+import type { Company, HistoryEntry } from "../src/data/types";
 
 // Monthly ISO dates ("YYYY-MM-DD") on a fixed day from a start month.
 function monthlyDates(
@@ -34,90 +36,141 @@ function entry(
   date: string,
   amount: number,
   description: string,
+  extra: Partial<HistoryEntry> = {},
 ): HistoryEntry {
-  return { id, date, description, amount, importedAt: 0 };
+  return { id, date, description, amount, importedAt: 0, ...extra };
 }
+
+const COMPANY: Company = { id: "co-sbab", name: "SBAB" };
 
 // A fictional split mortgage: an 8,000 amortisation draw and a 4,000
 // interest draw every month for a year, plus an unrelated 149 subscription.
-function splitMortgageHistory(): HistoryEntry[] {
+// `amortTags` / `rantaTags` decide which legs the user has tagged.
+function splitMortgageHistory(
+  opts: {
+    amortType?: boolean;
+    amortCompany?: boolean;
+    rantaType?: boolean;
+  } = {},
+): HistoryEntry[] {
   const dates = monthlyDates(2023, 1, 12);
   const out: HistoryEntry[] = [];
   dates.forEach((d, i) => {
-    out.push(entry(`amort-${i}`, d, -8_000, "HEMBANKEN AMORTERING"));
-    out.push(entry(`ranta-${i}`, d, -4_000, "HEMBANKEN RANTA"));
+    out.push(
+      entry(`amort-${i}`, d, -8_000, "HEMBANKEN AMORTERING", {
+        ...(opts.amortType ? { userTypeId: PRESET_TYPE_MORTGAGE_ID } : {}),
+        ...(opts.amortCompany ? { userCompanyId: COMPANY.id } : {}),
+      }),
+    );
+    out.push(
+      entry(`ranta-${i}`, d, -4_000, "HEMBANKEN RANTA", {
+        ...(opts.rantaType ? { userTypeId: PRESET_TYPE_MORTGAGE_ID } : {}),
+      }),
+    );
     out.push(entry(`sub-${i}`, d, -149, "STREAMINGTJANST"));
   });
   return out;
 }
 
+function baseInput(
+  entries: HistoryEntry[],
+  over: Partial<MortgageDiscoveryInput> = {},
+): MortgageDiscoveryInput {
+  return {
+    entries,
+    merchantHints: {},
+    matchRules: [],
+    companies: [COMPANY],
+    types: [],
+    mortgageTypeId: PRESET_TYPE_MORTGAGE_ID,
+    ...over,
+  };
+}
+
 describe("discoverMortgagePayments", () => {
-  it("surfaces recurring monthly outflows as series with a calendar span", () => {
-    const { series } = discoverMortgagePayments({
-      entries: splitMortgageHistory(),
-    });
+  it("reports seed 'none' and no series when nothing is tagged", () => {
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(splitMortgageHistory()),
+    );
+    expect(seed).toBe("none");
+    expect(series).toEqual([]);
+  });
+
+  it("anchors on the Mortgage type and expands across every month", () => {
+    // Only one month of the amortisation leg is tagged; the rest is found
+    // by its shared bank description.
+    const entries = splitMortgageHistory();
+    const tagged = entries.find((e) => e.id === "amort-0")!;
+    tagged.userTypeId = PRESET_TYPE_MORTGAGE_ID;
+    const { series, seed } = discoverMortgagePayments(baseInput(entries));
+    expect(seed).toBe("tags");
     const amort = series.find((s) => s.suggestedAmount === 8_000);
     expect(amort).toBeDefined();
     expect(amort?.months).toHaveLength(12);
     expect(amort?.spanMonths).toBe(12);
+    expect(amort?.anchor).toBe("tag");
+    // The untagged subscription must NOT surface.
+    expect(series.some((s) => s.suggestedAmount === 149)).toBe(false);
   });
 
-  it("tags series matching the loan's interest, amortisation, and combined targets", () => {
-    const { series } = discoverMortgagePayments({
-      entries: splitMortgageHistory(),
-      targets: { interest: 4_000, principal: 8_000 },
-    });
+  it("anchors on the tied company", () => {
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(splitMortgageHistory({ amortCompany: true }), {
+        companyId: COMPANY.id,
+      }),
+    );
+    expect(seed).toBe("tags");
+    expect(series.find((s) => s.suggestedAmount === 8_000)).toBeDefined();
+    expect(series.find((s) => s.suggestedAmount === 4_000)).toBeUndefined();
+  });
+
+  it("surfaces both legs when each is tagged, largest first", () => {
+    const { series } = discoverMortgagePayments(
+      baseInput(splitMortgageHistory({ amortType: true, rantaType: true })),
+    );
+    expect(series.map((s) => s.suggestedAmount)).toEqual([8_000, 4_000]);
+  });
+
+  it("falls back to existing payments when nothing is tagged", () => {
+    const entries = splitMortgageHistory();
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(entries, { seedEntryIds: ["amort-3"] }),
+    );
+    expect(seed).toBe("payments");
     const amort = series.find((s) => s.suggestedAmount === 8_000);
-    const ranta = series.find((s) => s.suggestedAmount === 4_000);
-    expect(amort?.matchedTarget).toBe("principal");
-    expect(ranta?.matchedTarget).toBe("interest");
+    expect(amort?.anchor).toBe("payment");
+    expect(amort?.months).toHaveLength(12);
   });
 
-  it("matches a single combined charge against interest + amortisation", () => {
-    const dates = monthlyDates(2023, 1, 6);
-    const entries = dates.map((d, i) =>
-      entry(`pay-${i}`, d, -12_000, "HEMBANKEN BOLAN"),
+  it("ranks the series closest to an expected figure first", () => {
+    // Both legs tagged; the larger amortisation draw would lead by amount,
+    // but an expected interest figure of 4,000 promotes the interest draw.
+    const { series } = discoverMortgagePayments(
+      baseInput(splitMortgageHistory({ amortType: true, rantaType: true }), {
+        targetAmounts: [4_000],
+      }),
     );
-    const { series } = discoverMortgagePayments({
-      entries,
-      targets: { interest: 4_000, principal: 8_000 },
-    });
-    expect(series[0]?.matchedTarget).toBe("combined");
+    expect(series[0].suggestedAmount).toBe(4_000);
+    expect(series[0].targetDelta).toBe(0);
   });
 
-  it("ranks amount matches ahead of recurrence-only candidates", () => {
-    const { series } = discoverMortgagePayments({
-      entries: splitMortgageHistory(),
-      targets: { interest: 4_000, principal: 8_000 },
-    });
-    const matchedIdx = series.findIndex((s) => s.matchedTarget !== undefined);
-    const unmatchedIdx = series.findIndex((s) => s.matchedTarget === undefined);
-    expect(matchedIdx).toBeGreaterThanOrEqual(0);
-    // The 149 subscription has no target match and must sort last.
-    expect(unmatchedIdx).toBeGreaterThan(matchedIdx);
-    expect(series[series.length - 1]?.suggestedAmount).toBe(149);
-  });
-
-  it("widening the tolerance pulls in a charge a tight band excluded", () => {
-    // 9,000 vs an 8,000 amortisation target ⇒ ~11.1% off: outside ±10%,
-    // inside ±15%.
-    const dates = monthlyDates(2023, 1, 6);
+  it("centres the amount band on charges from the purchase date onward", () => {
+    // Six months of a previous home's 5,000 loan, then six of this home's
+    // 8,000 loan — same bank description either side of the move.
+    const dates = monthlyDates(2023, 1, 12);
     const entries = dates.map((d, i) =>
-      entry(`pay-${i}`, d, -9_000, "HEMBANKEN AMORTERING"),
+      entry(`p-${i}`, d, i < 6 ? -5_000 : -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
     );
-    const tight = discoverMortgagePayments({
-      entries,
-      targets: { interest: null, principal: 8_000 },
-      tolerance: 0.1,
-    });
-    expect(tight.series[0]?.matchedTarget).toBeUndefined();
-
-    const wide = discoverMortgagePayments({
-      entries,
-      targets: { interest: null, principal: 8_000 },
-      tolerance: 0.15,
-    });
-    expect(wide.series[0]?.matchedTarget).toBe("principal");
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { fromDate: "2023-07-01" }),
+    );
+    const s = series[0];
+    expect(s.suggestedAmount).toBe(8_000);
+    const kept = monthsWithinBand(s, s.suggestedAmount, 0.1);
+    expect(kept).toHaveLength(6);
+    expect(kept.every((m) => m.amount === 8_000)).toBe(true);
   });
 });
 
@@ -127,9 +180,11 @@ describe("monthsWithinBand", () => {
     // month — the pattern's amount band should exclude the outlier.
     const dates = monthlyDates(2023, 1, 12);
     const entries = dates.map((d, i) =>
-      entry(`pay-${i}`, d, i === 1 ? -16_000 : -8_000, "HEMBANKEN AMORTERING"),
+      entry(`pay-${i}`, d, i === 1 ? -16_000 : -8_000, "HEMBANKEN AMORTERING", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
     );
-    const { series } = discoverMortgagePayments({ entries });
+    const { series } = discoverMortgagePayments(baseInput(entries));
     const target = series.find((s) => s.suggestedAmount === 8_000);
     expect(target).toBeDefined();
     const kept = monthsWithinBand(target!, target!.suggestedAmount, 0.1);

@@ -2,8 +2,7 @@ import type { Widen } from "./_widen";
 
 const presetTypes = {
   rent: "Rent / Fee",
-  mortgage: "Mortgage principal",
-  "mortgage-interest": "Mortgage interest",
+  mortgage: "Mortgage",
   "home-insurance": "Home insurance",
   "housing-queue": "Housing queue",
   cleaning: "Cleaning",

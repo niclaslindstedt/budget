@@ -1,7 +1,13 @@
 import { Home, Pencil, Plus, Search, TrendingUp, Trash2 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
-import type { Account, Mortgage, Property, Settings } from "../../data/types";
+import type {
+  Account,
+  Company,
+  Mortgage,
+  Property,
+  Settings,
+} from "../../data/types";
 import { useT } from "../../i18n";
 import { formatBalance, formatNumber } from "../../utils/format";
 
@@ -13,6 +19,7 @@ import { formatBalance, formatNumber } from "../../utils/format";
 type Props = {
   property: Property;
   accountsById: ReadonlyMap<string, Account>;
+  companiesById: ReadonlyMap<string, Company>;
   settings: Settings;
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
@@ -35,6 +42,7 @@ function currentValue(property: Property): number | undefined {
 export function PropertyCard({
   property,
   accountsById,
+  companiesById,
   settings,
   onEditProperty,
   onDeleteProperty,
@@ -151,6 +159,7 @@ export function PropertyCard({
                 property={property}
                 mortgage={mortgage}
                 accountsById={accountsById}
+                companiesById={companiesById}
                 settings={settings}
                 onEdit={onEditMortgage}
                 onDelete={onDeleteMortgage}
@@ -183,6 +192,7 @@ function MortgageRow({
   property,
   mortgage,
   accountsById,
+  companiesById,
   settings,
   onEdit,
   onDelete,
@@ -191,6 +201,7 @@ function MortgageRow({
   property: Property;
   mortgage: Mortgage;
   accountsById: ReadonlyMap<string, Account>;
+  companiesById: ReadonlyMap<string, Company>;
   settings: Settings;
   onEdit: (property: Property, mortgage: Mortgage) => void;
   onDelete: (property: Property, mortgage: Mortgage) => void;
@@ -200,9 +211,11 @@ function MortgageRow({
   const account = mortgage.accountId
     ? accountsById.get(mortgage.accountId)
     : undefined;
+  const company = mortgage.companyId
+    ? companiesById.get(mortgage.companyId)
+    : undefined;
   const count = mortgage.payments.length;
-  const principal = mortgage.payments.reduce((s, p) => s + p.principal, 0);
-  const interest = mortgage.payments.reduce((s, p) => s + p.interest, 0);
+  const paid = mortgage.payments.reduce((s, p) => s + p.amount, 0);
   const monthlyAmort = resolveMonthlyAmortization(mortgage);
   const hasTerms =
     mortgage.loanAmount !== undefined ||
@@ -217,6 +230,12 @@ function MortgageRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-fg-bright">{mortgage.name}</span>
         <span className="block truncate text-xs text-muted">
+          {company && (
+            <>
+              {company.name}
+              {" · "}
+            </>
+          )}
           {account ? account.name : t("properties.noAccountBound")}
           {count > 0 && (
             <>
@@ -303,14 +322,9 @@ function MortgageRow({
       </span>
       {count > 0 && (
         <span className="text-xs text-muted">
-          {t("properties.principalTotal")}{" "}
+          {t("properties.paidTotal")}{" "}
           <span className="tabular-nums text-fg">
-            {formatBalance(principal, settings, { neverAbbreviate: true })}
-          </span>
-          {" · "}
-          {t("properties.interestTotal")}{" "}
-          <span className="tabular-nums text-fg">
-            {formatBalance(interest, settings, { neverAbbreviate: true })}
+            {formatBalance(paid, settings, { neverAbbreviate: true })}
           </span>
         </span>
       )}

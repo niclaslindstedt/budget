@@ -222,8 +222,11 @@ src/
 │   │                           #   payslip filenames (+ re-exports extensionOf)
 │   ├── property-mortgage/  # properties page — mortgage helpers
 │   │   ├── discovery.ts        # discoverMortgagePayments — scans a mortgage's
-│   │   │                       #   bound account history for recurring monthly
-│   │   │                       #   outflows (Find mortgage payments walk)
+│   │   │                       #   bound account history for the charges tagged
+│   │   │                       #   with its company / the Mortgage type, expands
+│   │   │                       #   by bank description + amount band, ranks by the
+│   │   │                       #   expected figures (Find mortgage payments walk)
+│   │   ├── interest.ts         # resolveMonthlyInterest — balance × rate ÷ 12
 │   │   └── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
 │   │                           #   or fixed monthly amortisation → a per-month sum
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross
