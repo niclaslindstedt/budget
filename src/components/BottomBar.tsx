@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -118,29 +118,44 @@ export function BottomBar({
     [sheets, onSelectSheet],
   );
 
-  // Subtle "there's more this way" cue: track whether the tab strip has
-  // content scrolled out of view on either side so the chevron hints can
-  // fade in. Recomputed on scroll, on resize (the strip's available
-  // width changes when the window does), and whenever the sheet count
-  // changes (adding a sheet can newly overflow the bar).
+  // Subtle "there's more this way" cue: fade a chevron in at whichever
+  // edge has tabs scrolled out of view. The hints are driven straight
+  // from the DOM (toggling opacity on refs) rather than React state on
+  // purpose — a setState on every scroll event re-renders the whole tab
+  // list mid-flick, and on iOS that re-render (plus the layout read)
+  // interrupts momentum scrolling, so the strip "swallows" the gesture.
+  // The rAF throttle coalesces the layout reads to one per frame.
   const tabScrollerRef = useRef<HTMLDivElement | null>(null);
-  const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
+  const leftHintRef = useRef<HTMLSpanElement | null>(null);
+  const rightHintRef = useRef<HTMLSpanElement | null>(null);
   const syncTabOverflow = useCallback(() => {
     const el = tabScrollerRef.current;
     if (!el) return;
-    const left = el.scrollLeft > 1;
-    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-    setTabOverflow((prev) =>
-      prev.left === left && prev.right === right ? prev : { left, right },
-    );
+    const atStart = el.scrollLeft <= 1;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+    if (leftHintRef.current)
+      leftHintRef.current.style.opacity = atStart ? "0" : "1";
+    if (rightHintRef.current)
+      rightHintRef.current.style.opacity = atEnd ? "0" : "1";
   }, []);
+  const rafRef = useRef(0);
+  const onTabScroll = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      syncTabOverflow();
+    });
+  }, [syncTabOverflow]);
   useEffect(() => {
     const el = tabScrollerRef.current;
     if (!el) return;
     syncTabOverflow();
     const ro = new ResizeObserver(syncTabOverflow);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [syncTabOverflow, selectMode, sheets.length]);
 
   return (
@@ -217,7 +232,7 @@ export function BottomBar({
               <div className="relative flex min-w-0 items-center">
                 <div
                   ref={tabScrollerRef}
-                  onScroll={syncTabOverflow}
+                  onScroll={onTabScroll}
                   role="tablist"
                   aria-label={t("sheetTabs.tablistLabel")}
                   className={scrollRegion}
@@ -244,18 +259,16 @@ export function BottomBar({
                     and let a drag started on the edge fall through to the
                     scroller beneath. */}
                 <span
+                  ref={leftHintRef}
                   aria-hidden
-                  className={`pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-surface-2 to-transparent pr-4 text-muted transition-opacity ${
-                    tabOverflow.left ? "opacity-100" : "opacity-0"
-                  }`}
+                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-surface-2 to-transparent pr-4 text-muted opacity-0 transition-opacity"
                 >
                   <ChevronLeft size={14} aria-hidden focusable={false} />
                 </span>
                 <span
+                  ref={rightHintRef}
                   aria-hidden
-                  className={`pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-surface-2 to-transparent pl-4 text-muted transition-opacity ${
-                    tabOverflow.right ? "opacity-100" : "opacity-0"
-                  }`}
+                  className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-surface-2 to-transparent pl-4 text-muted opacity-0 transition-opacity"
                 >
                   <ChevronRight size={14} aria-hidden focusable={false} />
                 </span>
