@@ -221,12 +221,15 @@ src/
 │   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
 │   │                           #   payslip filenames (+ re-exports extensionOf)
 │   ├── property-mortgage/  # properties page — mortgage helpers
-│   │   ├── discovery.ts        # discoverMortgagePayments — scans a mortgage's
-│   │   │                       #   bound account history for the charges tagged
-│   │   │                       #   with its company / the Mortgage type, expands
-│   │   │                       #   by bank description + amount band, ranks by the
+│   │   ├── discovery.ts        # discoverMortgagePayments — scans a property's
+│   │   │                       #   bound account history for charges tagged with
+│   │   │                       #   a lender / the Mortgage type, expands by bank
+│   │   │                       #   description + amount band, ranks by the
 │   │   │                       #   expected figures (Find mortgage payments walk)
-│   │   ├── interest.ts         # resolveMonthlyInterest — balance × rate ÷ 12
+│   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
+│   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
+│   │   ├── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages
+│   │   │                       #   — split a combined charge across a property's loans
 │   │   └── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
 │   │                           #   or fixed monthly amortisation → a per-month sum
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross

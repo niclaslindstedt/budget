@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
-import { Check, ChevronDown, Landmark, Wallet } from "lucide-react";
+import { Check, ChevronDown, Landmark, Plus, Wallet, X } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { newId } from "../../data/sheet";
 import type {
   Account,
-  Company,
   Mortgage,
   MortgageAmortization,
+  MortgageRateChange,
   Settings,
 } from "../../data/types";
 import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
@@ -18,7 +18,6 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
-import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
@@ -35,12 +34,10 @@ type Props = {
   // The mortgage to edit, or null in create mode.
   mortgage: Mortgage | null;
   accounts: readonly Account[];
-  companies: readonly Company[];
   settings: Settings;
   onClose: () => void;
   onSubmit: (mortgageId: string, patch: Partial<Omit<Mortgage, "id">>) => void;
   onCreate: (mortgage: Mortgage) => void;
-  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 function seedAmount(value: number | undefined, settings: Settings): string {
@@ -48,25 +45,43 @@ function seedAmount(value: number | undefined, settings: Settings): string {
   return formatAmountForInput(Math.abs(value), settings);
 }
 
+// One editable interest-rate period: a (possibly blank) effective date and
+// the rate as typed text.
+type RateRow = { id: string; date: string; rate: string };
+
+// Seed the rate-history editor: the stored history when present, else a
+// single row carrying the legacy `interestRate` (or an empty starter row).
+function seedRateRows(mortgage: Mortgage | null): RateRow[] {
+  const history = mortgage?.rateHistory;
+  if (history && history.length > 0)
+    return history.map((rc) => ({
+      id: rc.id,
+      date: rc.date,
+      rate: String(rc.rate),
+    }));
+  if (mortgage?.interestRate !== undefined)
+    return [{ id: newId(), date: "", rate: String(mortgage.interestRate) }];
+  return [{ id: newId(), date: "", rate: "" }];
+}
+
 export function MortgageEditorModal({
   open,
   mortgage,
   accounts,
-  companies,
   settings,
   onClose,
   onSubmit,
   onCreate,
-  onCreateCompany,
 }: Props) {
   const t = useT();
   const [name, setName] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [loanAmount, setLoanAmount] = useState("");
   const [currentBalance, setCurrentBalance] = useState("");
-  const [interestRate, setInterestRate] = useState("");
+  // Effective-dated interest rates, newest editing at the bottom. The most
+  // recent by date is the current rate; a blank date marks the original.
+  const [rateRows, setRateRows] = useState<RateRow[]>([]);
   const [rateChangeMonths, setRateChangeMonths] = useState("");
   const [nextRateChangeDate, setNextRateChangeDate] = useState("");
   const [amortMode, setAmortMode] = useState<"percent" | "fixed">("percent");
@@ -76,12 +91,9 @@ export function MortgageEditorModal({
     setName(mortgage?.name ?? "");
     setAccountId(mortgage?.accountId ?? null);
     setAccountOpen(false);
-    setCompanyId(mortgage?.companyId ?? null);
     setLoanAmount(seedAmount(mortgage?.loanAmount, settings));
     setCurrentBalance(seedAmount(mortgage?.currentBalance, settings));
-    setInterestRate(
-      mortgage?.interestRate !== undefined ? String(mortgage.interestRate) : "",
-    );
+    setRateRows(seedRateRows(mortgage));
     setRateChangeMonths(
       mortgage?.rateChangeMonths !== undefined
         ? String(mortgage.rateChangeMonths)
@@ -117,16 +129,52 @@ export function MortgageEditorModal({
       : { mode: "fixed", amount: v };
   }
 
+  // Collapse the rate rows into the current rate + an optional history.
+  // A single original-rate row (blank date) is just a current rate, so it
+  // stores `interestRate` only — no `rateHistory` clutter.
+  function buildRateTerms(): {
+    interestRate?: number;
+    rateHistory?: MortgageRateChange[];
+  } {
+    const parsed = rateRows
+      .map((r) => ({ id: r.id, date: r.date.trim(), rate: num(r.rate) }))
+      .filter(
+        (r): r is { id: string; date: string; rate: number } =>
+          r.rate !== undefined,
+      )
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    if (parsed.length === 0)
+      return { interestRate: undefined, rateHistory: undefined };
+    const interestRate = parsed[parsed.length - 1].rate;
+    if (parsed.length === 1 && parsed[0].date === "")
+      return { interestRate, rateHistory: undefined };
+    return { interestRate, rateHistory: parsed };
+  }
+
   function buildTerms(): Partial<Omit<Mortgage, "id">> {
+    const { interestRate, rateHistory } = buildRateTerms();
     return {
       loanAmount: num(loanAmount),
       currentBalance: num(currentBalance),
-      interestRate: num(interestRate),
+      interestRate,
+      rateHistory,
       rateChangeMonths: num(rateChangeMonths),
       nextRateChangeDate:
         nextRateChangeDate !== "" ? nextRateChangeDate : undefined,
       amortization: buildAmortization(),
     };
+  }
+
+  function updateRateRow(id: string, patch: Partial<Omit<RateRow, "id">>) {
+    setRateRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    );
+  }
+  function addRateRow() {
+    setRateRows((rows) => [...rows, { id: newId(), date: "", rate: "" }]);
+  }
+  function removeRateRow(id: string) {
+    setRateRows((rows) => rows.filter((r) => r.id !== id));
   }
 
   function handleSubmit() {
@@ -135,9 +183,6 @@ export function MortgageEditorModal({
       onSubmit(mortgage.id, {
         name: trimmedName,
         accountId,
-        // `null` from the picker clears the field; `applyPatch` treats the
-        // resulting `undefined` as "delete this key".
-        companyId: companyId ?? undefined,
         ...buildTerms(),
       });
       return;
@@ -150,13 +195,13 @@ export function MortgageEditorModal({
       accountId,
       payments: [],
     };
-    if (companyId) fresh.companyId = companyId;
     const terms = buildTerms();
     if (terms.loanAmount !== undefined) fresh.loanAmount = terms.loanAmount;
     if (terms.currentBalance !== undefined)
       fresh.currentBalance = terms.currentBalance;
     if (terms.interestRate !== undefined)
       fresh.interestRate = terms.interestRate;
+    if (terms.rateHistory !== undefined) fresh.rateHistory = terms.rateHistory;
     if (terms.rateChangeMonths !== undefined)
       fresh.rateChangeMonths = terms.rateChangeMonths;
     if (terms.nextRateChangeDate !== undefined)
@@ -251,18 +296,55 @@ export function MortgageEditorModal({
             />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted">
               {t("properties.interestRateLabel")}
             </span>
-            <ClearableInput
-              value={interestRate}
-              onValueChange={setInterestRate}
-              inputMode="decimal"
-              placeholder={t("properties.interestRatePlaceholder")}
-              className={fieldClass}
-            />
-          </label>
+            <div className="flex flex-col gap-1.5">
+              {rateRows.map((row) => (
+                <div key={row.id} className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={row.date}
+                    onChange={(e) =>
+                      updateRateRow(row.id, { date: e.target.value })
+                    }
+                    aria-label={t("properties.rateChangeDateLabel")}
+                    className={dateInputClass}
+                  />
+                  <ClearableInput
+                    value={row.rate}
+                    onValueChange={(v) => updateRateRow(row.id, { rate: v })}
+                    inputMode="decimal"
+                    placeholder={t("properties.interestRatePlaceholder")}
+                    aria-label={t("properties.rateChangeRateLabel")}
+                    className={`${fieldClass} flex-1`}
+                  />
+                  {rateRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRateRow(row.id)}
+                      aria-label={t("properties.removeRateChange")}
+                      className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+                    >
+                      <X size={14} aria-hidden focusable={false} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addRateRow}
+              className="inline-flex cursor-pointer items-center gap-1 self-start rounded border-0 bg-transparent px-1 text-xs text-accent hover:underline"
+            >
+              <Plus size={14} aria-hidden focusable={false} />
+              {t("properties.addRateChange")}
+            </button>
+            <p className="m-0 text-xs text-muted">
+              {t("properties.rateHistoryHint")}
+            </p>
+          </div>
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">
@@ -367,22 +449,6 @@ export function MortgageEditorModal({
             />
             <p className="m-0 text-xs text-muted">
               {t("properties.accountHint")}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.lenderLabel")}
-            </span>
-            <CompanyPicker
-              companies={companies}
-              selectedId={companyId}
-              onSelect={setCompanyId}
-              onCreate={onCreateCompany}
-              placeholder={t("properties.lenderPlaceholder")}
-            />
-            <p className="m-0 text-xs text-muted">
-              {t("properties.lenderHint")}
             </p>
           </div>
         </div>

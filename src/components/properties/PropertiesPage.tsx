@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Home, Pencil, Plus } from "lucide-react";
+import { Home, Pencil, Plus, Search } from "lucide-react";
 
 import { allTypes } from "../../data/presets/merge";
 import type { Action } from "../../data/reducer";
@@ -54,7 +54,10 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   );
   const [creatingMortgageFor, setCreatingMortgageFor] =
     useState<Property | null>(null);
-  const [findFor, setFindFor] = useState<MortgageRef | null>(null);
+  // The "Find mortgage payments" walk runs per property (one combined
+  // transaction covers every loan), so it's a single sheet-level modal
+  // opened from the "…" menu rather than per-mortgage.
+  const [findOpen, setFindOpen] = useState(false);
   const [pendingDeleteMortgage, setPendingDeleteMortgage] =
     useState<MortgageRef | null>(null);
 
@@ -89,11 +92,20 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const liveValueProperty = valueProperty
     ? (data.properties.find((p) => p.id === valueProperty.id) ?? null)
     : null;
-  const liveFindRef = findFor
-    ? resolveMortgageRef(data.properties, findFor)
-    : null;
+
+  const hasAnyMortgage = data.properties.some((p) => p.mortgages.length > 0);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    ...(hasAnyMortgage
+      ? [
+          {
+            key: "find-payments",
+            icon: <Search size={16} aria-hidden focusable={false} />,
+            label: t("properties.findTitle"),
+            onClick: () => setFindOpen(true),
+          },
+        ]
+      : []),
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
@@ -157,13 +169,14 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     return company;
   }
 
-  function handleAddPayments(payments: MortgagePayment[]) {
-    if (!findFor) return;
+  function handleAddPayments(
+    propertyId: string,
+    paymentsByMortgageId: Record<string, MortgagePayment[]>,
+  ) {
     dispatch({
-      type: "addMortgagePayments",
-      propertyId: findFor.property.id,
-      mortgageId: findFor.mortgage.id,
-      payments,
+      type: "addMortgagePaymentsForProperty",
+      propertyId,
+      paymentsByMortgageId,
     });
   }
 
@@ -212,9 +225,6 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
                   onDeleteMortgage={(property, mortgage) =>
                     setPendingDeleteMortgage({ property, mortgage })
                   }
-                  onFindPayments={(property, mortgage) =>
-                    setFindFor({ property, mortgage })
-                  }
                 />
               ))}
               <button
@@ -232,6 +242,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
         <PropertyEditorModal
           open={editingProperty !== null || creatingProperty}
           property={editingProperty}
+          companies={data.companies}
           settings={settings}
           onClose={() => {
             setEditingProperty(null);
@@ -239,6 +250,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           }}
           onSubmit={handleEditProperty}
           onCreate={handleCreateProperty}
+          onCreateCompany={handleCreateCompany}
         />
 
         <UpdatePropertyValueModal
@@ -254,7 +266,6 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           open={editingMortgage !== null || creatingMortgageFor !== null}
           mortgage={editingMortgage?.mortgage ?? null}
           accounts={data.accounts}
-          companies={data.companies}
           settings={settings}
           onClose={() => {
             setEditingMortgage(null);
@@ -262,20 +273,18 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           }}
           onSubmit={handleEditMortgage}
           onCreate={handleCreateMortgage}
-          onCreateCompany={handleCreateCompany}
         />
 
         <MortgageDiscoveryModal
-          open={liveFindRef !== null}
-          mortgage={liveFindRef?.mortgage ?? null}
-          purchaseDate={liveFindRef?.property.purchaseDate}
+          open={findOpen}
+          properties={data.properties}
           history={data.history}
           merchantHints={data.merchantHints}
           matchRules={data.matchRules}
           companies={data.companies}
           types={types}
           settings={settings}
-          onClose={() => setFindFor(null)}
+          onClose={() => setFindOpen(false)}
           onAdd={handleAddPayments}
         />
 
@@ -336,17 +345,4 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
       </section>
     </ActiveRowProvider>
   );
-}
-
-// Re-resolve a `MortgageRef` against the live data so the discovery modal
-// reads the mortgage's current payments (its dedupe set) after an add.
-function resolveMortgageRef(
-  properties: readonly Property[],
-  ref: MortgageRef,
-): MortgageRef | null {
-  const property = properties.find((p) => p.id === ref.property.id);
-  if (!property) return null;
-  const mortgage = property.mortgages.find((m) => m.id === ref.mortgage.id);
-  if (!mortgage) return null;
-  return { property, mortgage };
 }

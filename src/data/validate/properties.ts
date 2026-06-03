@@ -2,6 +2,7 @@ import type {
   Mortgage,
   MortgageAmortization,
   MortgagePayment,
+  MortgageRateChange,
   Property,
   PropertyValuePoint,
 } from "../types";
@@ -55,6 +56,23 @@ function validatePayment(raw: unknown): MortgagePayment | null {
   return payment;
 }
 
+// Validate one rate change. A blank `date` (the original rate) is kept as
+// such; a non-blank one must look like an ISO date. The rate is coerced
+// non-negative. A malformed entry is dropped rather than rejecting the
+// mortgage.
+function validateRateChange(raw: unknown): MortgageRateChange | null {
+  if (!isObject(raw)) return null;
+  const { id } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  const date =
+    typeof raw.date === "string" && (raw.date === "" || isIsoDate(raw.date))
+      ? raw.date
+      : null;
+  if (date === null) return null;
+  if (!isFiniteNumber(raw.rate)) return null;
+  return { id, date, rate: nonNegative(raw.rate) };
+}
+
 // Validate a mortgage's amortisation. A discriminated object — `percent`
 // of the initial loan (annual) or a `fixed` monthly sum, both
 // non-negative. A malformed / unknown shape drops to undefined (the
@@ -76,7 +94,6 @@ function validateAmortization(raw: unknown): MortgageAmortization | undefined {
 function validateMortgage(
   raw: unknown,
   knownAccountIds: ReadonlySet<string>,
-  knownCompanyIds: ReadonlySet<string>,
 ): Mortgage | null {
   if (!isObject(raw)) return null;
   const { id, name } = raw;
@@ -90,16 +107,6 @@ function validateMortgage(
   ) {
     mortgage.accountId = raw.accountId;
   }
-  // The lender, referencing a known company. A dangling reference (the
-  // company was deleted) is dropped so the field goes absent rather than
-  // pointing at nothing — mirrors `Row.companyId`.
-  if (
-    typeof raw.companyId === "string" &&
-    raw.companyId !== "" &&
-    knownCompanyIds.has(raw.companyId)
-  ) {
-    mortgage.companyId = raw.companyId;
-  }
   // Loan terms — all manually entered and optional. A malformed value is
   // dropped (the field stays absent) rather than rejecting the mortgage.
   if (isFiniteNumber(raw.loanAmount)) mortgage.loanAmount = raw.loanAmount;
@@ -107,6 +114,19 @@ function validateMortgage(
     mortgage.currentBalance = raw.currentBalance;
   if (isFiniteNumber(raw.interestRate))
     mortgage.interestRate = raw.interestRate;
+  // Past rate changes (effective-dated). Drop malformed entries and dedupe
+  // by id; an emptied list is left absent rather than stored as `[]`.
+  if (Array.isArray(raw.rateHistory)) {
+    const seen = new Set<string>();
+    const rateHistory: MortgageRateChange[] = [];
+    for (const rawChange of raw.rateHistory) {
+      const change = validateRateChange(rawChange);
+      if (!change || seen.has(change.id)) continue;
+      seen.add(change.id);
+      rateHistory.push(change);
+    }
+    if (rateHistory.length > 0) mortgage.rateHistory = rateHistory;
+  }
   if (isFiniteNumber(raw.rateChangeMonths))
     mortgage.rateChangeMonths = raw.rateChangeMonths;
   if (isIsoDate(raw.nextRateChangeDate))
@@ -141,6 +161,15 @@ export function validateProperty(
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
   const property: Property = { id, name, valueHistory: [], mortgages: [] };
+  // The lender, referencing a known company. A dangling reference (the
+  // company was deleted) is dropped — mirrors `Row.companyId`.
+  if (
+    typeof raw.companyId === "string" &&
+    raw.companyId !== "" &&
+    knownCompanyIds.has(raw.companyId)
+  ) {
+    property.companyId = raw.companyId;
+  }
   if (isFiniteNumber(raw.purchaseAmount))
     property.purchaseAmount = raw.purchaseAmount;
   if (isIsoDate(raw.purchaseDate)) property.purchaseDate = raw.purchaseDate;
@@ -159,11 +188,7 @@ export function validateProperty(
   if (Array.isArray(raw.mortgages)) {
     const seen = new Set<string>();
     for (const rawMortgage of raw.mortgages) {
-      const mortgage = validateMortgage(
-        rawMortgage,
-        knownAccountIds,
-        knownCompanyIds,
-      );
+      const mortgage = validateMortgage(rawMortgage, knownAccountIds);
       if (!mortgage || seen.has(mortgage.id)) continue;
       seen.add(mortgage.id);
       property.mortgages.push(mortgage);

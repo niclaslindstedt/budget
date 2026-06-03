@@ -52,7 +52,7 @@ describe("migration v62 → v63 (merge mortgage types + flatten payments)", () =
       settings: { itemFindTypeIds: [OLD] },
     });
 
-    expect(data.version).toBe(63);
+    expect(data.version).toBe(64);
     const sheets = data.sheets as Array<{
       items: Array<{ rows: Array<{ typeId?: string }> }>;
     }>;

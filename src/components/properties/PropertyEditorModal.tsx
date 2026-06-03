@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Home } from "lucide-react";
 
 import { newId } from "../../data/sheet";
-import type { Property, Settings } from "../../data/types";
+import type { Company, Property, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 
@@ -21,6 +22,7 @@ type Props = {
   // The property to edit, or null in create mode (blank fields, "New
   // property" title, Save mints a fresh property).
   property: Property | null;
+  companies: readonly Company[];
   settings: Settings;
   onClose: () => void;
   // Fires on Save in edit mode with the changed fields. A field set to
@@ -28,6 +30,7 @@ type Props = {
   onSubmit: (propertyId: string, patch: Partial<Omit<Property, "id">>) => void;
   // Fires on Save in create mode with the assembled property (fresh id).
   onCreate: (property: Property) => void;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 function seedAmount(value: number | undefined, settings: Settings): string {
@@ -38,19 +41,23 @@ function seedAmount(value: number | undefined, settings: Settings): string {
 export function PropertyEditorModal({
   open,
   property,
+  companies,
   settings,
   onClose,
   onSubmit,
   onCreate,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const [name, setName] = useState("");
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [size, setSize] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
     setName(property?.name ?? "");
+    setCompanyId(property?.companyId ?? null);
     setPurchaseAmount(seedAmount(property?.purchaseAmount, settings));
     setPurchaseDate(property?.purchaseDate ?? "");
     setSize(seedAmount(property?.size, settings));
@@ -70,6 +77,8 @@ export function PropertyEditorModal({
     if (!canSubmit) return;
     const patch: Partial<Omit<Property, "id">> = {
       name: trimmedName,
+      // `null` from the picker clears the field via the `undefined` patch.
+      companyId: companyId ?? undefined,
       purchaseAmount: num(purchaseAmount),
       purchaseDate: purchaseDate !== "" ? purchaseDate : undefined,
       size: num(size),
@@ -86,6 +95,7 @@ export function PropertyEditorModal({
       valueHistory: [],
       mortgages: [],
     };
+    if (companyId) fresh.companyId = companyId;
     if (patch.purchaseAmount !== undefined)
       fresh.purchaseAmount = patch.purchaseAmount;
     if (patch.purchaseDate !== undefined)
@@ -128,6 +138,22 @@ export function PropertyEditorModal({
               className={amountInputClass}
             />
           </label>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.lenderLabel")}
+            </span>
+            <CompanyPicker
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
+              placeholder={t("properties.lenderPlaceholder")}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.lenderHint")}
+            </p>
+          </div>
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">

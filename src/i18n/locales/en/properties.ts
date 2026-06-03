@@ -20,7 +20,6 @@ const properties = {
   mortgages: "Mortgages",
   noMortgages: "No mortgages on this property.",
   addMortgage: "Add mortgage",
-  findPayments: "Find payments",
   editMortgage: "Edit mortgage",
   deleteMortgage: "Delete mortgage",
   noAccountBound: "No account bound",
@@ -69,6 +68,12 @@ const properties = {
   currentBalancePlaceholder: "What's left to pay",
   interestRateLabel: "Interest rate (%)",
   interestRatePlaceholder: "e.g. 3.45",
+  rateChangeDateLabel: "Rate change date",
+  rateChangeRateLabel: "Rate (%)",
+  addRateChange: "Add rate change",
+  removeRateChange: "Remove rate change",
+  rateHistoryHint:
+    "Add a rate change with the date it took effect — the newest is the current rate. Leave the first date blank for the original rate. Past rates let the finder split each payment accurately.",
   rateChangeMonthsLabel: "Rate resets every (months)",
   rateChangeMonthsPlaceholder: "e.g. 3",
   rateChangeMonthsHint:
@@ -92,15 +97,22 @@ const properties = {
   lenderLabel: "Lender",
   lenderPlaceholder: "Pick a company…",
   lenderHint:
-    "The company you hold this loan with. “Find payments” uses it — and the Mortgage entry type — to locate the right charges.",
+    "The bank the mortgages on this property are held with. “Find mortgage payments” uses it — and the Mortgage entry type — to locate the right charges.",
 
   // Find-payments walk.
   findTitle: "Find mortgage payments",
+  findNoProperties: "Add a property with a mortgage first.",
+  findSelectProperty: "Property",
+  findNoMortgages: "This property has no mortgages yet.",
   findNoAccount:
-    "Bind a bank account to this mortgage first — “Find payments” scans that account's history for the charge.",
-  findNoneFound: "No matching charges found in this account's history.",
+    "Give this property's mortgages a bank account first — the finder scans that account's history for the charge.",
+  findNoneFound: "No matching charges found in the account history.",
   findNeedsTags:
     "Nothing to go on yet. In your budget, tag this property's mortgage charges with their company and the Mortgage type (one month is enough), then come back — the finder uses those tags to locate the rest.",
+  findSplitHint:
+    "Each charge is split across the property's {count} mortgages by their amortisation and interest.",
+  findTxnCountOne: "{count} transaction",
+  findTxnCountOther: "{count} transactions",
   findSelectCharges: "Charges to add",
   findSeedTags:
     "Matched from charges you tagged with this mortgage's company or the Mortgage type.",

@@ -81,9 +81,10 @@ export type MortgageDiscoveryInput = {
   matchRules: readonly MatchRule[];
   companies: readonly Company[];
   types: readonly EntryType[];
-  // The mortgage's tied lender. When set, an entry resolving to this
-  // company anchors a series. Absent / null ⇒ company isn't a signal.
-  companyId?: string | null;
+  // The property's lenders (the tied companies across its mortgages). An
+  // entry resolving to any of these companies anchors a series. Empty ⇒
+  // company isn't a signal.
+  companyIds?: readonly string[];
   // The "Mortgage" preset type id. An entry resolving to this type anchors
   // a series — the second strong signal alongside the company.
   mortgageTypeId: string;
@@ -151,7 +152,8 @@ function median(values: readonly number[]): number {
 export function discoverMortgagePayments(
   input: MortgageDiscoveryInput,
 ): MortgageDiscoveryResult {
-  const { entries, companyId, mortgageTypeId, fromDate } = input;
+  const { entries, mortgageTypeId, fromDate } = input;
+  const companyIds = new Set(input.companyIds ?? []);
   const seedEntryIds = new Set(input.seedEntryIds ?? []);
   const targetAmounts = (input.targetAmounts ?? []).filter((a) => a > 0);
   const ruleCache = newRuleMatchCache();
@@ -196,7 +198,8 @@ export function discoverMortgagePayments(
       input.types,
       ruleCache,
     );
-    const companyMatch = companyId != null && labels.companyId === companyId;
+    const companyMatch =
+      labels.companyId !== null && companyIds.has(labels.companyId);
     const typeMatch = labels.typeId === mortgageTypeId;
     if (companyMatch || typeMatch) tagKeys.add(key);
   }
