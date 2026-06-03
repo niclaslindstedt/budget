@@ -108,6 +108,21 @@ const properties: PropertiesCatalog = {
   findAddOther: "Lägg till {count} betalningar",
   findEmptySelection: "Välj en dragning ovan för att förhandsgranska.",
 
+  // Amount matching against the mortgage's rate + amortisation.
+  findToleranceLabel: "Matchningstolerans",
+  findToleranceValue: "±{pct}%",
+  findToleranceHint:
+    "Dragningar inom det här bandet från lånets ränta, amortering eller de två tillsammans matchas och rankas först.",
+  findTargetInterest: "Ränta",
+  findTargetPrincipal: "Amortering",
+  findTargetCombined: "Kombinerad",
+  findTargetRecurring: "Återkommande",
+  findSpanMonthsOne: "över {count} månad",
+  findSpanMonthsOther: "över {count} månader",
+  findPatternHint:
+    "Lägg till dessa betalningar med den här dragningens mönster?",
+  findRange: "{start} – {end}",
+
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",
   deletePropertyConfirm:
