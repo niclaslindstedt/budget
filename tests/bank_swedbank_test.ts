@@ -31,7 +31,7 @@ const SAMPLE_ROWS: readonly (readonly XlsxCell[])[] = [
   ["Ägaren Äggström"],
   ["Skapad 2026-05-18 15:49 CEST", "", "", "Alla insättningar och uttag"],
   ["Valuta: SEK", "", "", "2026-05-12 till 2026-05-18"],
-  ["Clearingnummer: 81874"],
+  ["Clearingnummer: 83000"],
   ["Kontonummer: 1234567890"],
   [],
   HEADER_ROW,
@@ -85,7 +85,7 @@ describe("bank-swedbank", () => {
   it("parses the sample statement", async () => {
     const parsed = await parseBankFile(sampleFile());
     expect(parsed.bankParserId).toBe("swedbank-xlsx");
-    expect(parsed.bankClearing).toBe("81874");
+    expect(parsed.bankClearing).toBe("83000");
     expect(parsed.bankAccountNumber).toBe("1234567890");
     expect(parsed.entries.length).toBe(4);
 
@@ -158,22 +158,39 @@ describe("bank-swedbank", () => {
   it("reads clearing and account from prefixed cells", () => {
     expect(
       readAccountIds([
-        new Map<number, string>([[0, "Clearingnummer: 81874"]]),
+        new Map<number, string>([[0, "Clearingnummer: 83000"]]),
         new Map<number, string>([[0, "Kontonummer: 1234567890"]]),
       ]),
-    ).toEqual({ clearing: "81874", accountNumber: "1234567890" });
+    ).toEqual({ clearing: "83000", accountNumber: "1234567890" });
 
     // Whitespace in the prefixed cell is tolerated.
     expect(
       readAccountIds([
-        new Map<number, string>([[0, "  Clearingnummer:   8187  "]]),
+        new Map<number, string>([[0, "  Clearingnummer:   8300  "]]),
       ]),
-    ).toEqual({ clearing: "8187" });
+    ).toEqual({ clearing: "8300" });
 
     // No prefixes anywhere → both fields absent.
     expect(
       readAccountIds([new Map<number, string>([[0, "Other stuff"]])]),
     ).toEqual({});
+  });
+
+  it("reads clearing regardless of digit count or cell order", () => {
+    // Swedbank exports a 4-digit clearing for some account kinds and a
+    // 5-digit clearing (Sparbanken-style, trailing check digit) for
+    // others — the parser makes no length assumption.
+    expect(
+      readAccountIds([new Map<number, string>([[0, "Clearingnummer: 8300"]])]),
+    ).toEqual({ clearing: "8300" });
+
+    // The account row can precede the clearing row; both are picked up.
+    expect(
+      readAccountIds([
+        new Map<number, string>([[0, "Kontonummer: 1234567890"]]),
+        new Map<number, string>([[0, "Clearingnummer: 83000"]]),
+      ]),
+    ).toEqual({ clearing: "83000", accountNumber: "1234567890" });
   });
 
   it("falls back to Swedish-formatted numeric strings", () => {
