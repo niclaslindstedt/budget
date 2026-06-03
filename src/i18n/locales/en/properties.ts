@@ -108,6 +108,20 @@ const properties = {
   findAddOther: "Add {count} payments",
   findEmptySelection: "Pick a charge above to preview the payments.",
 
+  // Amount matching against the mortgage's rate + amortisation.
+  findToleranceLabel: "Match tolerance",
+  findToleranceValue: "±{pct}%",
+  findToleranceHint:
+    "Charges within this band of the loan's interest, amortisation, or the two combined are matched and ranked first.",
+  findTargetInterest: "Interest",
+  findTargetPrincipal: "Amortisation",
+  findTargetCombined: "Combined",
+  findTargetRecurring: "Recurring",
+  findSpanMonthsOne: "over {count} month",
+  findSpanMonthsOther: "over {count} months",
+  findPatternHint: "Add these payments using this charge's pattern?",
+  findRange: "{start} – {end}",
+
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",
   deletePropertyConfirm:
