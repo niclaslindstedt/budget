@@ -122,8 +122,8 @@ describe("describeActionSubject", () => {
           propertyId: "p1",
           mortgageId: "m1",
           payments: [
-            { id: "x", date: "2026-01-28", principal: 4000, interest: 1500 },
-            { id: "y", date: "2026-02-28", principal: 4000, interest: 1490 },
+            { id: "x", date: "2026-01-28", amount: 5500 },
+            { id: "y", date: "2026-02-28", amount: 5490 },
           ],
         },
         prev,

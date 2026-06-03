@@ -661,6 +661,200 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // Seeds empty; old exports simply lack it and a fresh-empty default
   // passes the v62 validator unchanged. Bare additive bump.
   61: (v61) => ({ ...v61, version: 62, properties: [] }),
+
+  // v62 → v63: merges the two mortgage preset types — "Mortgage principal"
+  // (`preset-type-mortgage`) and "Mortgage interest"
+  // (`preset-type-mortgage-interest`) — into a single "Mortgage" type
+  // (`preset-type-mortgage`). Every stored reference to the interest id is
+  // remapped to the surviving id so no row / entry / rule / hint orphans;
+  // the interest preset is then gone from the picker. Mirrors the
+  // `deleteType` cascade's reference-site list, extended to the sites that
+  // cascade skips for presets (history overrides, splits, transfers,
+  // hidden / kind-override / item-find lists).
+  //
+  // The same step collapses each `MortgagePayment` from its old
+  // `principal` + `interest` legs into a single `amount = principal +
+  // interest`, matching the simplified payment shape. The Properties
+  // feature is unreleased, but the `/preview` and `/branch` slots may hold
+  // v62 mortgage data, so the conversion runs rather than relying on the
+  // validator's fold-back.
+  62: (v62) => {
+    const OLD = "preset-type-mortgage-interest";
+    const NEW = "preset-type-mortgage";
+    const remap = (id: unknown): unknown => (id === OLD ? NEW : id);
+    // Remap an id array and drop the duplicate the merge can introduce
+    // (both the old and new id present collapse to one entry).
+    const remapIdList = (arr: unknown): unknown => {
+      if (!Array.isArray(arr)) return arr;
+      const seen = new Set<unknown>();
+      const out: unknown[] = [];
+      for (const raw of arr) {
+        const id = remap(raw);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push(id);
+      }
+      return out;
+    };
+    // Set `obj[key]` to its remapped value, returning a fresh object only
+    // when the value actually changes so untouched records stay identical.
+    const remapField = <T extends Record<string, unknown>>(
+      obj: T,
+      key: string,
+    ): T => {
+      if (!(key in obj)) return obj;
+      const next = remap(obj[key]);
+      return next === obj[key] ? obj : { ...obj, [key]: next };
+    };
+
+    const sheets = Array.isArray(v62.sheets)
+      ? v62.sheets.map((sheet) => {
+          if (!isObj(sheet) || !Array.isArray(sheet.items)) return sheet;
+          return {
+            ...sheet,
+            items: sheet.items.map((item) => {
+              if (!isObj(item) || !Array.isArray(item.rows)) return item;
+              return {
+                ...item,
+                rows: item.rows.map((row) =>
+                  isObj(row) ? remapField(row, "typeId") : row,
+                ),
+              };
+            }),
+          };
+        })
+      : v62.sheets;
+
+    const history = isObj(v62.history)
+      ? Object.fromEntries(
+          Object.entries(v62.history).map(([accountId, entries]) => {
+            if (!Array.isArray(entries)) return [accountId, entries];
+            return [
+              accountId,
+              entries.map((entry) => {
+                if (!isObj(entry)) return entry;
+                let next = remapField(entry, "userTypeId");
+                const rawSplits = next.splits;
+                if (Array.isArray(rawSplits)) {
+                  const splits = rawSplits.map((s) =>
+                    isObj(s) ? remapField(s, "typeId") : s,
+                  );
+                  if (splits.some((s, i) => s !== rawSplits[i]))
+                    next = { ...next, splits };
+                }
+                return next;
+              }),
+            ];
+          }),
+        )
+      : v62.history;
+
+    const transfers = Array.isArray(v62.transfers)
+      ? v62.transfers.map((tx) => (isObj(tx) ? remapField(tx, "typeId") : tx))
+      : v62.transfers;
+
+    const matchRules = Array.isArray(v62.matchRules)
+      ? v62.matchRules.map((rule) =>
+          isObj(rule) ? remapField(rule, "typeId") : rule,
+        )
+      : v62.matchRules;
+
+    const merchantHints = isObj(v62.merchantHints)
+      ? Object.fromEntries(
+          Object.entries(v62.merchantHints).map(([key, hint]) => [
+            key,
+            isObj(hint) ? remapField(hint, "typeId") : hint,
+          ]),
+        )
+      : v62.merchantHints;
+
+    const companies = Array.isArray(v62.companies)
+      ? v62.companies.map((c) => {
+          if (!isObj(c) || !Array.isArray(c.typeIds)) return c;
+          return { ...c, typeIds: remapIdList(c.typeIds) };
+        })
+      : v62.companies;
+
+    const subtypes = Array.isArray(v62.subtypes)
+      ? v62.subtypes.map((s) => (isObj(s) ? remapField(s, "typeId") : s))
+      : v62.subtypes;
+
+    const hiddenPresetTypeIds = remapIdList(v62.hiddenPresetTypeIds);
+
+    // The kind override is keyed by preset id. Drop the interest key; the
+    // surviving "Mortgage" type keeps its own override (or its built-in
+    // expense kind when none was set).
+    const presetTypeKindOverrides = isObj(v62.presetTypeKindOverrides)
+      ? Object.fromEntries(
+          Object.entries(v62.presetTypeKindOverrides).filter(
+            ([key]) => key !== OLD,
+          ),
+        )
+      : v62.presetTypeKindOverrides;
+
+    const settings = isObj(v62.settings)
+      ? {
+          ...v62.settings,
+          itemFindTypeIds: remapIdList(v62.settings.itemFindTypeIds),
+        }
+      : v62.settings;
+
+    // Collapse each mortgage payment's principal + interest legs into one
+    // amount, dropping the now-defunct `interestSourceHistoryId`.
+    const properties = Array.isArray(v62.properties)
+      ? v62.properties.map((property) => {
+          if (!isObj(property) || !Array.isArray(property.mortgages))
+            return property;
+          return {
+            ...property,
+            mortgages: property.mortgages.map((mortgage) => {
+              if (!isObj(mortgage) || !Array.isArray(mortgage.payments))
+                return mortgage;
+              return {
+                ...mortgage,
+                payments: mortgage.payments.map((pay) => {
+                  if (!isObj(pay)) return pay;
+                  const principal =
+                    typeof pay.principal === "number" ? pay.principal : 0;
+                  const interest =
+                    typeof pay.interest === "number" ? pay.interest : 0;
+                  const amount =
+                    typeof pay.amount === "number"
+                      ? pay.amount
+                      : principal + interest;
+                  const {
+                    principal: _p,
+                    interest: _i,
+                    interestSourceHistoryId: _isid,
+                    ...rest
+                  } = pay;
+                  void _p;
+                  void _i;
+                  void _isid;
+                  return { ...rest, amount };
+                }),
+              };
+            }),
+          };
+        })
+      : v62.properties;
+
+    return {
+      ...v62,
+      version: 63,
+      sheets,
+      history,
+      transfers,
+      matchRules,
+      merchantHints,
+      companies,
+      subtypes,
+      hiddenPresetTypeIds,
+      presetTypeKindOverrides,
+      settings,
+      properties,
+    };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

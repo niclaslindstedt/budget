@@ -120,26 +120,6 @@ export function validateUserData(raw: unknown): Result<UserData> {
     salaries.push(r.value);
   }
 
-  // Properties (homes / apartments). Validated after accounts so each
-  // mortgage's `accountId` can be checked against the resolvable set (a
-  // dangling reference is dropped to null rather than rejecting the
-  // file). Duplicate ids fail the load like the other top-level arrays.
-  const rawProperties = Array.isArray(raw.properties) ? raw.properties : [];
-  const properties: Property[] = [];
-  const seenPropertyIds = new Set<string>();
-  for (let i = 0; i < rawProperties.length; i++) {
-    const r = validateProperty(
-      rawProperties[i],
-      `properties[${i}]`,
-      seenAccountIds,
-    );
-    if (!r.ok) return r;
-    if (seenPropertyIds.has(r.value.id))
-      return fail(`properties[${i}].id`, `duplicate id "${r.value.id}"`);
-    seenPropertyIds.add(r.value.id);
-    properties.push(r.value);
-  }
-
   const rawCompanies = Array.isArray(raw.companies) ? raw.companies : [];
   const companies: Company[] = [];
   const seenCompanyIds = new Set<string>();
@@ -152,6 +132,28 @@ export function validateUserData(raw: unknown): Result<UserData> {
     companies.push(r.value);
   }
   const knownCompanyIds: ReadonlySet<string> = seenCompanyIds;
+
+  // Properties (homes / apartments). Validated after accounts and
+  // companies so each mortgage's `accountId` and `companyId` can be
+  // checked against the resolvable sets (a dangling reference is dropped
+  // rather than rejecting the file). Duplicate ids fail the load like the
+  // other top-level arrays.
+  const rawProperties = Array.isArray(raw.properties) ? raw.properties : [];
+  const properties: Property[] = [];
+  const seenPropertyIds = new Set<string>();
+  for (let i = 0; i < rawProperties.length; i++) {
+    const r = validateProperty(
+      rawProperties[i],
+      `properties[${i}]`,
+      seenAccountIds,
+      knownCompanyIds,
+    );
+    if (!r.ok) return r;
+    if (seenPropertyIds.has(r.value.id))
+      return fail(`properties[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenPropertyIds.add(r.value.id);
+    properties.push(r.value);
+  }
 
   const rawTags = Array.isArray(raw.tags) ? raw.tags : [];
   const tags: Tag[] = [];

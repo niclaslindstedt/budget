@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Home, Pencil, Plus } from "lucide-react";
 
+import { allTypes } from "../../data/presets/merge";
 import type { Action } from "../../data/reducer";
+import { newId } from "../../data/sheet";
 import type {
   Account,
+  Company,
   Mortgage,
   MortgagePayment,
   Property,
@@ -65,6 +68,16 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     for (const a of data.accounts) m.set(a.id, a);
     return m;
   }, [data.accounts]);
+
+  const companiesById = useMemo(() => {
+    const m = new Map<string, Company>();
+    for (const c of data.companies) m.set(c.id, c);
+    return m;
+  }, [data.companies]);
+
+  // The full type list (presets + user) the discovery walk resolves
+  // history entries against to spot the "Mortgage" tag.
+  const types = useMemo(() => allTypes(data), [data]);
 
   const properties = useMemo(
     () => [...data.properties].sort((a, b) => a.name.localeCompare(b.name)),
@@ -135,6 +148,15 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     dispatch({ type: "deletePropertyValue", propertyId, pointId });
   }
 
+  // Mint a company and dispatch its creation, returning it synchronously
+  // so the mortgage editor's picker can select it immediately. Mirrors
+  // `useTaxonomyCrud`'s `onCreateCompany`.
+  function handleCreateCompany(draft: Omit<Company, "id">): Company {
+    const company: Company = { id: newId(), ...draft };
+    dispatch({ type: "addCompany", company });
+    return company;
+  }
+
   function handleAddPayments(payments: MortgagePayment[]) {
     if (!findFor) return;
     dispatch({
@@ -178,6 +200,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
                   key={property.id}
                   property={property}
                   accountsById={accountsById}
+                  companiesById={companiesById}
                   settings={settings}
                   onEditProperty={setEditingProperty}
                   onDeleteProperty={setPendingDeleteProperty}
@@ -231,6 +254,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           open={editingMortgage !== null || creatingMortgageFor !== null}
           mortgage={editingMortgage?.mortgage ?? null}
           accounts={data.accounts}
+          companies={data.companies}
           settings={settings}
           onClose={() => {
             setEditingMortgage(null);
@@ -238,12 +262,18 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           }}
           onSubmit={handleEditMortgage}
           onCreate={handleCreateMortgage}
+          onCreateCompany={handleCreateCompany}
         />
 
         <MortgageDiscoveryModal
           open={liveFindRef !== null}
           mortgage={liveFindRef?.mortgage ?? null}
+          purchaseDate={liveFindRef?.property.purchaseDate}
           history={data.history}
+          merchantHints={data.merchantHints}
+          matchRules={data.matchRules}
+          companies={data.companies}
+          types={types}
           settings={settings}
           onClose={() => setFindFor(null)}
           onAdd={handleAddPayments}

@@ -37,25 +37,21 @@ function validateValuePoint(raw: unknown): PropertyValuePoint | null {
 }
 
 // Validate one mortgage payment. Drops a malformed payment rather than
-// rejecting the whole mortgage.
+// rejecting the whole mortgage. The `amount` is read directly; a
+// pre-merge payment that still carries the old `principal` / `interest`
+// legs (e.g. a hand-edited file the migration didn't touch) folds them
+// into a single amount so the value survives.
 function validatePayment(raw: unknown): MortgagePayment | null {
   if (!isObject(raw)) return null;
   const { id, date } = raw;
   if (typeof id !== "string" || id === "") return null;
   if (!isIsoDate(date)) return null;
-  const payment: MortgagePayment = {
-    id,
-    date,
-    principal: nonNegative(raw.principal),
-    interest: nonNegative(raw.interest),
-  };
+  const amount = isFiniteNumber(raw.amount)
+    ? nonNegative(raw.amount)
+    : nonNegative(raw.principal) + nonNegative(raw.interest);
+  const payment: MortgagePayment = { id, date, amount };
   if (typeof raw.sourceHistoryId === "string" && raw.sourceHistoryId !== "")
     payment.sourceHistoryId = raw.sourceHistoryId;
-  if (
-    typeof raw.interestSourceHistoryId === "string" &&
-    raw.interestSourceHistoryId !== ""
-  )
-    payment.interestSourceHistoryId = raw.interestSourceHistoryId;
   return payment;
 }
 
@@ -80,6 +76,7 @@ function validateAmortization(raw: unknown): MortgageAmortization | undefined {
 function validateMortgage(
   raw: unknown,
   knownAccountIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Mortgage | null {
   if (!isObject(raw)) return null;
   const { id, name } = raw;
@@ -92,6 +89,16 @@ function validateMortgage(
     knownAccountIds.has(raw.accountId)
   ) {
     mortgage.accountId = raw.accountId;
+  }
+  // The lender, referencing a known company. A dangling reference (the
+  // company was deleted) is dropped so the field goes absent rather than
+  // pointing at nothing — mirrors `Row.companyId`.
+  if (
+    typeof raw.companyId === "string" &&
+    raw.companyId !== "" &&
+    knownCompanyIds.has(raw.companyId)
+  ) {
+    mortgage.companyId = raw.companyId;
   }
   // Loan terms — all manually entered and optional. A malformed value is
   // dropped (the field stays absent) rather than rejecting the mortgage.
@@ -125,6 +132,7 @@ export function validateProperty(
   raw: unknown,
   path: string,
   knownAccountIds: ReadonlySet<string>,
+  knownCompanyIds: ReadonlySet<string>,
 ): Result<Property> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name } = raw;
@@ -151,7 +159,11 @@ export function validateProperty(
   if (Array.isArray(raw.mortgages)) {
     const seen = new Set<string>();
     for (const rawMortgage of raw.mortgages) {
-      const mortgage = validateMortgage(rawMortgage, knownAccountIds);
+      const mortgage = validateMortgage(
+        rawMortgage,
+        knownAccountIds,
+        knownCompanyIds,
+      );
       if (!mortgage || seen.has(mortgage.id)) continue;
       seen.add(mortgage.id);
       property.mortgages.push(mortgage);

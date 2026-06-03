@@ -26,8 +26,7 @@ const properties = {
   noAccountBound: "No account bound",
   paymentsCountOne: "{count} payment",
   paymentsCountOther: "{count} payments",
-  principalTotal: "Principal",
-  interestTotal: "Interest",
+  paidTotal: "Paid",
   balanceShort: "Balance",
   loanShort: "Loan",
   rateShort: "Rate",
@@ -86,40 +85,38 @@ const properties = {
   amortPreview: "≈ {amount} per month",
   accountLabel: "Account",
   accountHint:
-    "The account this loan is paid from. “Find payments” scans this account's bank history for the recurring charge.",
+    "The account this loan is paid from. “Find payments” scans this account's bank history for the charge.",
   chooseAccount: "Choose an account",
   noAccount: "No account",
   noAccountsYet: "No accounts yet",
+  lenderLabel: "Lender",
+  lenderPlaceholder: "Pick a company…",
+  lenderHint:
+    "The company you hold this loan with. “Find payments” uses it — and the Mortgage entry type — to locate the right charges.",
 
   // Find-payments walk.
   findTitle: "Find mortgage payments",
   findNoAccount:
-    "Bind a bank account to this mortgage first — “Find payments” scans that account's history for the recurring charge.",
-  findNoneFound:
-    "No recurring monthly charges found in this account's history.",
-  findPickPrincipal: "Which charge is the payment (amortisation)?",
-  findPickInterest: "Separate interest charge? (optional)",
-  findNoInterest: "None — single combined charge",
+    "Bind a bank account to this mortgage first — “Find payments” scans that account's history for the charge.",
+  findNoneFound: "No matching charges found in this account's history.",
+  findNeedsTags:
+    "Nothing to go on yet. In your budget, tag this property's mortgage charges with their company and the Mortgage type (one month is enough), then come back — the finder uses those tags to locate the rest.",
+  findSelectCharges: "Charges to add",
+  findSeedTags:
+    "Matched from charges you tagged with this mortgage's company or the Mortgage type.",
+  findSeedPayments: "Matched from the payments already on this mortgage.",
   findPreview: "Payments to add",
-  findMonthsOne: "{count} month",
-  findMonthsOther: "{count} months",
   findAlreadyAdded: "Already added",
   findAddOne: "Add {count} payment",
   findAddOther: "Add {count} payments",
-  findEmptySelection: "Pick a charge above to preview the payments.",
 
-  // Amount matching against the mortgage's rate + amortisation.
+  // Amount band around each matched charge.
   findToleranceLabel: "Match tolerance",
   findToleranceValue: "±{pct}%",
   findToleranceHint:
-    "Charges within this band of the loan's interest, amortisation, or the two combined are matched and ranked first.",
-  findTargetInterest: "Interest",
-  findTargetPrincipal: "Amortisation",
-  findTargetCombined: "Combined",
-  findTargetRecurring: "Recurring",
+    "How much a charge's amount may vary month to month and still count — widen it if the interest rate changed over the period.",
   findSpanMonthsOne: "over {count} month",
   findSpanMonthsOther: "over {count} months",
-  findPatternHint: "Add these payments using this charge's pattern?",
   findRange: "{start} – {end}",
 
   // Delete property confirm.

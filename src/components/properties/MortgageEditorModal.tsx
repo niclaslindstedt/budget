@@ -5,6 +5,7 @@ import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortiz
 import { newId } from "../../data/sheet";
 import type {
   Account,
+  Company,
   Mortgage,
   MortgageAmortization,
   Settings,
@@ -17,6 +18,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
@@ -33,10 +35,12 @@ type Props = {
   // The mortgage to edit, or null in create mode.
   mortgage: Mortgage | null;
   accounts: readonly Account[];
+  companies: readonly Company[];
   settings: Settings;
   onClose: () => void;
   onSubmit: (mortgageId: string, patch: Partial<Omit<Mortgage, "id">>) => void;
   onCreate: (mortgage: Mortgage) => void;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 function seedAmount(value: number | undefined, settings: Settings): string {
@@ -48,15 +52,18 @@ export function MortgageEditorModal({
   open,
   mortgage,
   accounts,
+  companies,
   settings,
   onClose,
   onSubmit,
   onCreate,
+  onCreateCompany,
 }: Props) {
   const t = useT();
   const [name, setName] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [loanAmount, setLoanAmount] = useState("");
   const [currentBalance, setCurrentBalance] = useState("");
   const [interestRate, setInterestRate] = useState("");
@@ -69,6 +76,7 @@ export function MortgageEditorModal({
     setName(mortgage?.name ?? "");
     setAccountId(mortgage?.accountId ?? null);
     setAccountOpen(false);
+    setCompanyId(mortgage?.companyId ?? null);
     setLoanAmount(seedAmount(mortgage?.loanAmount, settings));
     setCurrentBalance(seedAmount(mortgage?.currentBalance, settings));
     setInterestRate(
@@ -127,6 +135,9 @@ export function MortgageEditorModal({
       onSubmit(mortgage.id, {
         name: trimmedName,
         accountId,
+        // `null` from the picker clears the field; `applyPatch` treats the
+        // resulting `undefined` as "delete this key".
+        companyId: companyId ?? undefined,
         ...buildTerms(),
       });
       return;
@@ -139,6 +150,7 @@ export function MortgageEditorModal({
       accountId,
       payments: [],
     };
+    if (companyId) fresh.companyId = companyId;
     const terms = buildTerms();
     if (terms.loanAmount !== undefined) fresh.loanAmount = terms.loanAmount;
     if (terms.currentBalance !== undefined)
@@ -355,6 +367,22 @@ export function MortgageEditorModal({
             />
             <p className="m-0 text-xs text-muted">
               {t("properties.accountHint")}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.lenderLabel")}
+            </span>
+            <CompanyPicker
+              companies={companies}
+              selectedId={companyId}
+              onSelect={setCompanyId}
+              onCreate={onCreateCompany}
+              placeholder={t("properties.lenderPlaceholder")}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.lenderHint")}
             </p>
           </div>
         </div>
