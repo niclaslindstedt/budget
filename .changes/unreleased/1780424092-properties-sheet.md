@@ -15,8 +15,9 @@ the sheet's "…" menu: pick a property and it scans that account's history
 for the single monthly charge that pays its loans — homing in on the
 charges you tagged with a lender or the Mortgage type, learning their bank
 description, and sweeping the rest of the history for every matching month,
-ranking the likeliest first and leaving a previous home's loan out by its
-different amount. Each found transaction is split across the property's
+ranking the likeliest first, leaving a previous home's loan out by its
+different amount, and ignoring charges that are nowhere near what the loan's
+amortisation and interest add up to. Each found transaction is split across the property's
 mortgages by their amortisation and interest, recording one payment per
 loan that adds up to exactly what was paid. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property

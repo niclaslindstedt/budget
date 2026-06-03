@@ -102,10 +102,17 @@ export type MortgageDiscoveryInput = {
   // own. Absent ⇒ the centre is the median across every month.
   fromDate?: string;
   // Expected monthly figures the loan terms resolve to — the amortisation,
-  // the interest, and/or the two combined. Used only to RANK the matched
-  // series (closest to an expected amount first), never to filter: the
-  // amortisation and interest draws are large, predictable amounts, so a
-  // charge near one of them is the likeliest real payment.
+  // the interest, and/or the two combined. Drive two things: they RANK the
+  // matched series (closest to an expected amount first — the amortisation
+  // and interest draws are large, predictable amounts, so a charge near one
+  // of them is the likeliest real payment), and they GATE out the series
+  // whose typical charge is an order of magnitude away from every expected
+  // figure (see `MORTGAGE_PLAUSIBILITY_FACTOR`). A 20 kr charge cannot be the
+  // payment on a loan whose amortisation + interest runs to thousands a
+  // month, however it got anchored, so it is dropped rather than offered.
+  // The gate is generous (a wide factor, not the tight selection band) and
+  // only applies when the loan terms actually resolve an expected figure —
+  // with no terms recorded every anchored series is kept, as before.
   targetAmounts?: readonly number[];
   // Relative half-width of the match band, as a fraction (0.1 ⇒ ±10%).
   // Applied by `monthsWithinBand` at preview time; defaults to
@@ -117,6 +124,17 @@ export type MortgageDiscoveryInput = {
 // month (only when the interest rate resets), so a tight band still keeps
 // every ordinary month while dropping a stray double-draw.
 export const DEFAULT_MORTGAGE_TOLERANCE = 0.1;
+
+// How far a series' typical charge may sit from the closest expected figure
+// (the loan's amortisation + interest) before the finder rejects it as
+// implausible — a deliberately WIDE order-of-magnitude window, not the tight
+// month-selection band above. A real charge drifts from the today-rate
+// computed figure as the rate and balance move over the years, but only
+// within a small factor; a charge 5× larger or smaller than every expected
+// figure is some other outflow that happened to get anchored (a fee, a
+// subscription, a mistagged transfer), not the mortgage. Set generously so
+// an unusual-but-real charge survives and only the wildly-off noise is cut.
+export const MORTGAGE_PLAUSIBILITY_FACTOR = 5;
 
 // Relative distance between an amount and a reference (0 = exact match).
 function relativeDelta(amount: number, reference: number): number {
@@ -258,19 +276,32 @@ export function discoverMortgagePayments(
     });
   }
 
+  // Drop series whose typical charge is an order of magnitude away from
+  // every expected figure the loan terms resolved — these can't be the
+  // mortgage no matter how they got anchored (a mistagged fee, a leftover
+  // payment seed on the wrong charge). `targetDelta` is the distance to the
+  // closest expected figure, so `targetDelta <= (f-1)/f` is exactly "within
+  // a factor f". When the loan has no terms `targetDelta` is undefined and
+  // every anchored series is kept, as before.
+  const maxPlausibleDelta =
+    (MORTGAGE_PLAUSIBILITY_FACTOR - 1) / MORTGAGE_PLAUSIBILITY_FACTOR;
+  const plausible = series.filter(
+    (s) => s.targetDelta === undefined || s.targetDelta <= maxPlausibleDelta,
+  );
+
   // Rank by closeness to an expected figure when the loan terms gave us
   // one — the charge whose amount matches the maths is the likeliest
   // payment. Series with no expected figure fall back to largest typical
   // charge first, so the amortisation draw still leads the smaller
   // interest draw when a loan is paid in two separate charges.
-  series.sort((a, b) => {
+  plausible.sort((a, b) => {
     if (a.targetDelta !== undefined && b.targetDelta !== undefined)
       return a.targetDelta - b.targetDelta;
     if (a.targetDelta !== undefined) return -1;
     if (b.targetDelta !== undefined) return 1;
     return b.suggestedAmount - a.suggestedAmount;
   });
-  return { series, seed };
+  return { series: plausible, seed };
 }
 
 // Keep only the months of a series whose charge sits within `tolerance` of

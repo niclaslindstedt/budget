@@ -154,6 +154,52 @@ describe("discoverMortgagePayments", () => {
     expect(series[0].targetDelta).toBe(0);
   });
 
+  it("drops a series whose charge is orders of magnitude off the expected payment", () => {
+    // The real ~8,000 mortgage draw plus a tiny 20-kr fee that got tagged as
+    // Mortgage by mistake — both anchored, but only the draw is plausible
+    // against the loan's expected monthly figure.
+    const dates = monthlyDates(2023, 1, 12);
+    const entries: HistoryEntry[] = [];
+    dates.forEach((d, i) => {
+      entries.push(
+        entry(`pay-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      );
+      entries.push(
+        entry(`fee-${i}`, d, -20, "BANKAVGIFT", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      );
+    });
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [8_000] }),
+    );
+    expect(series.map((s) => s.suggestedAmount)).toEqual([8_000]);
+  });
+
+  it("keeps every anchored series when the loan has no expected figure", () => {
+    // Same mix, but with no loan terms to gate against, the finder offers
+    // both groups (largest typical charge first) rather than silently hiding
+    // one — the user still decides.
+    const dates = monthlyDates(2023, 1, 12);
+    const entries: HistoryEntry[] = [];
+    dates.forEach((d, i) => {
+      entries.push(
+        entry(`pay-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      );
+      entries.push(
+        entry(`fee-${i}`, d, -20, "BANKAVGIFT", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      );
+    });
+    const { series } = discoverMortgagePayments(baseInput(entries));
+    expect(series.map((s) => s.suggestedAmount)).toEqual([8_000, 20]);
+  });
+
   it("centres the amount band on charges from the purchase date onward", () => {
     // Six months of a previous home's 5,000 loan, then six of this home's
     // 8,000 loan — same bank description either side of the move.
