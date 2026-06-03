@@ -178,6 +178,36 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("homeOwner");
   });
 
+  it("fires loanRanger when a mortgage records its first payment", () => {
+    const prev = withItem([]);
+    prev.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [{ id: "m1", name: "Loan", accountId: null, payments: [] }],
+      },
+    ];
+    const next = withItem([]);
+    next.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            accountId: null,
+            payments: [{ id: "pay1", date: "2026-01-28", amount: 5500 }],
+          },
+        ],
+      },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("loanRanger");
+  });
+
   it("fires groundhogDay when a row becomes recurring", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);

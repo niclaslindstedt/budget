@@ -35,6 +35,7 @@ import {
   Hash,
   History,
   Home,
+  Landmark,
   LayoutDashboard,
   LayoutGrid,
   Link as LinkIcon,
@@ -226,6 +227,11 @@ const hasMultipartItem = (s: UserData) =>
     const corrections = i.rows.filter((r) => r.kind === "correction").length;
     return corrections > 0;
   });
+// A mortgage has at least one payment recorded — the payoff of the
+// "Find mortgage payments" walk (or a hand-entered charge) on any
+// property's loan.
+const hasMortgagePayment = (s: UserData) =>
+  s.properties.some((p) => p.mortgages.some((m) => m.payments.length > 0));
 
 // Did the named device bucket's headerAction transition away from the
 // default in this `(prev, next)` step? Used by the `shortcut`
@@ -737,6 +743,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "pro",
     glyph: CopyCheck,
     trigger: { kind: "manual" },
+  },
+  {
+    id: "loanRanger",
+    tier: "pro",
+    glyph: Landmark,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasMortgagePayment(prev) && hasMortgagePayment(next),
+    },
   },
   {
     id: "archaeologist",

@@ -148,7 +148,7 @@ const catalog = {
     name: "Home Owner",
     condition: "Add your first property on the Properties sheet.",
     learnMore:
-      "The Properties sheet tracks the homes and apartments you own: what each cost, what it's worth now (update the value any time to add a point to its history), and the mortgages against it. Bind a mortgage to a bank account and Find mortgage payments scans its history for the recurring charge, month by month.",
+      "The Properties sheet tracks the homes and apartments you own: what each cost, what it's worth now (update the value any time to add a point to its history), and the mortgages against it. Give a mortgage a lender and a bank account, then let Find mortgage payments pull its payments out of that account's history.",
   },
   secondDraft: {
     name: "Second Draft",
@@ -242,6 +242,12 @@ const catalog = {
   dedupe: {
     name: "Dedupe",
     condition: "Re-import a statement; the importer skips the duplicates.",
+  },
+  loanRanger: {
+    name: "Loan Ranger",
+    condition: "Record a mortgage's payments with Find mortgage payments.",
+    learnMore:
+      "Tag a month of your mortgage charges with their lender and the Mortgage type, then open Find mortgage payments on the mortgage: it homes in on those tagged charges, learns their bank description, and pulls every matching month from the account's history — ranking the likeliest first and leaving a previous home's loan out by its different amount.",
   },
   archaeologist: {
     name: "Archaeologist",
