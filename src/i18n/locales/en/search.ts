@@ -11,6 +11,17 @@ const search = {
   sortOldest: "Oldest first",
   filterAria: "Filter results",
   filterTitle: "Filter",
+  filterTimeRange: "Time range",
+  filterTimeRangeAria: "Limit results to recent years",
+  filterTimeRangeAll: "All time",
+  filterTimeRangeThisYear: "This year",
+  filterTimeRangeYears: "Last {n} years",
+  filterAmount: "Amount",
+  filterAmountMin: "Minimum amount",
+  filterAmountMax: "Maximum amount",
+  filterDates: "Dates",
+  filterDateMin: "Earliest date",
+  filterDateMax: "Latest date",
 } as const;
 
 export type SearchCatalog = Widen<typeof search>;

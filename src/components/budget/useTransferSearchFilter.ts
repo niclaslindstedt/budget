@@ -3,6 +3,22 @@ import { useCallback, useMemo } from "react";
 import type { SearchEntry, SearchFilter } from "../../data/search";
 import { searchBounds } from "../../data/search";
 import type { Settings } from "../../data/types";
+import {
+  isoToMonthNum,
+  monthNumToIsoEnd,
+  monthNumToIsoStart,
+} from "../../utils/date";
+
+// The month-number domain helpers live in `utils/date` so the universal
+// search controls (and other pages) can reuse them without importing
+// from the budget page directory. Re-exported here so existing budget
+// call sites and tests keep their import path.
+export {
+  isoToMonthNum,
+  monthNumToIsoEnd,
+  monthNumToIsoStart,
+  monthNumToKey,
+} from "../../utils/date";
 
 // Filter-state logic for the transaction-search filter menu, lifted out
 // of `BudgetTransferSearchFilterMenu` so the menu stays pure rendering.
@@ -37,40 +53,6 @@ export type FilterIdKey =
 // don't have to import `IndexBounds` from the search module.
 type AmountBounds = { amountMin: number | null; amountMax: number | null };
 type DateBounds = { dateMin: string | null; dateMax: string | null };
-
-// The date range slider works in whole months, not days — day-level
-// resolution is more granularity than a transaction-browsing filter
-// needs, and a month-stepped thumb is far easier to land on. A "month
-// number" is `year * 12 + (month - 1)` so the slider gets a dense
-// integer domain; the menu maps ISO dates to/from it.
-export function isoToMonthNum(iso: string): number {
-  const y = Number(iso.slice(0, 4));
-  const m = Number(iso.slice(5, 7));
-  return y * 12 + (m - 1);
-}
-
-export function monthNumToKey(month: number): string {
-  const y = Math.floor(month / 12);
-  const m = (month % 12) + 1;
-  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}`;
-}
-
-// First day of the month — the inclusive lower ISO bound a min thumb
-// commits to.
-export function monthNumToIsoStart(month: number): string {
-  return `${monthNumToKey(month)}-01`;
-}
-
-// Last day of the month — the inclusive upper ISO bound a max thumb
-// commits to, so the band covers the whole selected month. Day 0 of
-// the following month resolves to the last day of this one, handling
-// February and 30-day months without a lookup table.
-export function monthNumToIsoEnd(month: number): string {
-  const y = Math.floor(month / 12);
-  const m = month % 12;
-  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return `${monthNumToKey(month)}-${String(lastDay).padStart(2, "0")}`;
-}
 
 // Distinct sheets / companies / types / categories / tags present in the
 // index, in first-seen order. The filter only offers values that
