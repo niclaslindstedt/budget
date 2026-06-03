@@ -154,6 +154,21 @@ export function formatNumber(
   return `${intPart}${settings.decimalSeparator}${fracPartRaw}`;
 }
 
+// An annual interest rate, always rendered with two fractional digits so
+// "2.00%" never collapses to a bare "2%". Unlike `formatNumber` this
+// deliberately ignores `showDecimals` and `abbreviateNumbers`: those
+// govern money, where hiding the öre is a tidiness choice, but a rate
+// stripped of its decimals is a different number, not a tidier one. The
+// percent sign is the caller's to append. Honours the user's decimal and
+// thousands separators.
+export function formatRate(n: number, settings: Settings): string {
+  const [intPartRaw, fracPart] = roundTo2(n).toFixed(2).split(".");
+  const intPart = settings.formatNumbers
+    ? groupThousands(intPartRaw, settings.thousandsSeparator)
+    : intPartRaw;
+  return `${intPart}${settings.decimalSeparator}${fracPart}`;
+}
+
 // Wraps a pre-formatted numeric body with the user's currency symbol,
 // honouring position + spacing. Returns the body unchanged when
 // `showCurrency` is off so the same call site covers both states.

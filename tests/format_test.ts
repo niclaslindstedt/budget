@@ -9,6 +9,7 @@ import {
   formatDate,
   formatDayOnly,
   formatNumber,
+  formatRate,
   formatRunningBalance,
   formatShortDate,
   normalizeAmountInput,
@@ -18,6 +19,27 @@ import {
 function settings(overrides: Partial<Settings> = {}): Settings {
   return { ...DEFAULT_SETTINGS, ...overrides };
 }
+
+describe("formatRate", () => {
+  it("always renders two fractional digits", () => {
+    expect(formatRate(2, settings())).toBe("2,00");
+    expect(formatRate(3, settings())).toBe("3,00");
+    expect(formatRate(2.5, settings())).toBe("2,50");
+    expect(formatRate(1.234, settings())).toBe("1,23");
+  });
+
+  it("ignores showDecimals — a rate keeps its decimals", () => {
+    expect(formatRate(2, settings({ showDecimals: false }))).toBe("2,00");
+  });
+
+  it("ignores abbreviateNumbers", () => {
+    expect(formatRate(2, settings({ abbreviateNumbers: true }))).toBe("2,00");
+  });
+
+  it("honours the decimal separator", () => {
+    expect(formatRate(2.15, settings({ decimalSeparator: "." }))).toBe("2.15");
+  });
+});
 
 describe("formatNumber", () => {
   it("uses configured thousands + decimal separators", () => {
