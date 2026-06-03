@@ -1,6 +1,8 @@
+import { GripVertical } from "lucide-react";
+
 import { unlock } from "../../../data/achievements";
 import type { HeaderAction, Settings, Sheet } from "../../../data/types";
-import { useDevMode } from "../../../hooks";
+import { useDevMode, useDragReorder } from "../../../hooks";
 import { type Lang, useT } from "../../../i18n";
 import { IS_PREVIEW } from "../../../utils/build-env";
 import { type SelectOption, SelectPicker } from "../../form";
@@ -19,6 +21,7 @@ export function GeneralTab({
   onUpdate,
   detectedPayday,
   sheets,
+  onReorderSheets,
 }: {
   draft: Settings;
   onUpdate: Update;
@@ -27,11 +30,15 @@ export function GeneralTab({
   // one-click "Use detected" suggestion under the picker — never
   // applied automatically so the user keeps control.
   detectedPayday: number | null;
-  // The user's sheets, in order, used to populate the per-sheet
-  // entries of the header-action picker. Each sheet renders with
-  // its own glyph + colour so the dropdown reads like the bottom
-  // tab bar.
+  // The user's sheets, in order, used both to populate the per-sheet
+  // entries of the header-action picker and the drag-to-reorder list.
+  // Each sheet renders with its own glyph + colour so the rows read
+  // like the bottom tab bar.
   sheets: readonly Sheet[];
+  // Drop the `fromId` sheet in front of the `toId` sheet — wired to a
+  // `reorderSheets` dispatch by the host. The new order drives the
+  // bottom-bar tab strip.
+  onReorderSheets: (fromId: string, toId: string) => void;
 }) {
   const t = useT();
   const { devMode, setDevMode } = useDevMode();
@@ -142,6 +149,11 @@ export function GeneralTab({
         )}
       </Section>
 
+      <Section title={t("settings.sheets.title")}>
+        <SheetReorderList sheets={sheets} onReorder={onReorderSheets} />
+        <p className="text-xs text-muted">{t("settings.sheets.hint")}</p>
+      </Section>
+
       <Section title={t("settings.headerAction.title")}>
         <DeviceScopeHint />
         <Field label={t("settings.headerAction.label")}>
@@ -170,6 +182,61 @@ export function GeneralTab({
         </Section>
       )}
     </>
+  );
+}
+
+// Drag-to-reorder list of every sheet, mirroring the bottom-bar tab
+// order. Built on the shared `useDragReorder` HTML5 primitive — drop
+// the dragged sheet in front of the hovered one — same pattern as the
+// company-type priority list under the Companies tab.
+function SheetReorderList({
+  sheets,
+  onReorder,
+}: {
+  sheets: readonly Sheet[];
+  onReorder: (fromId: string, toId: string) => void;
+}) {
+  const t = useT();
+  const reorder = useDragReorder({
+    onReorder: (fromId, toId) => {
+      onReorder(fromId, toId);
+      unlock("tabShuffler");
+    },
+  });
+  if (sheets.length === 0) {
+    return <p className="text-xs text-muted">{t("settings.sheets.empty")}</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-1">
+      {sheets.map((sheet) => (
+        <li
+          key={sheet.id}
+          {...reorder.getItemProps(sheet.id)}
+          aria-label={t("settings.sheets.reorderAria", { name: sheet.name })}
+          className={`flex cursor-grab items-center gap-2 rounded border bg-surface-2 px-2 py-1.5 text-sm select-none active:cursor-grabbing ${
+            reorder.overId === sheet.id ? "border-accent" : "border-line"
+          } ${reorder.draggingId === sheet.id ? "opacity-50" : ""}`}
+        >
+          <GripVertical
+            size={14}
+            className="shrink-0 text-muted"
+            aria-hidden
+            focusable={false}
+          />
+          <CategoryIconGlyph
+            name={sheet.glyph}
+            size={16}
+            style={{ color: sheet.color }}
+          />
+          <span
+            className="truncate text-fg-bright"
+            style={{ color: sheet.color }}
+          >
+            {sheet.name}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

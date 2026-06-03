@@ -74,6 +74,12 @@ const settings: SettingsCatalog = {
     maxResultsHint:
       "Hur många träffar som visas. Räknaren visar fortfarande totalen.",
   },
+  sheets: {
+    title: "Blad",
+    hint: "Dra för att ändra ordning på dina blad. Ordningen här är ordningen på flikarna i nedre fältet.",
+    reorderAria: "Ändra ordning på {name}",
+    empty: "Inga blad ännu.",
+  },
   headerAction: {
     title: "Klick på rubriken",
     label: "När jag klickar på rubriken",

@@ -102,6 +102,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Fågelperspektiv",
     condition: "Besök Konto-översikten.",
   },
+  tabShuffler: {
+    name: "Flikflyttare",
+    condition: "Dra ett blad till en ny plats under Inställningar → Allmänt.",
+    learnMore:
+      "Ändra ordning på dina blad så att det du använder mest hamnar först. Ordningen du väljer styr flikraden i nedre fältet.",
+  },
   shuffler: {
     name: "Omflyttare",
     condition: "Registrera en överföring mellan konton.",

@@ -107,6 +107,12 @@ const catalog = {
     name: "Bird's Eye",
     condition: "Visit the Accounts overview.",
   },
+  tabShuffler: {
+    name: "Tab Shuffler",
+    condition: "Drag a sheet into a new position under Settings → General.",
+    learnMore:
+      "Reorder your sheets to put the one you reach for most first. The order you set drives the tab strip in the bottom bar.",
+  },
   shuffler: {
     name: "Shuffler",
     condition: "Record an inter-account transaction.",

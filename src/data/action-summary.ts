@@ -335,6 +335,8 @@ export function describeActionSubject(
       return name(byId(prev.sheets, action.sheetId)?.name);
     case "renameSheet":
       return name(action.name);
+    case "reorderSheets":
+      return name(byId(next.sheets, action.fromId)?.name);
 
     // Bank history.
     case "importBankHistory":

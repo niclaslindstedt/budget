@@ -536,6 +536,9 @@ export function UniversalModalHost(props: Props) {
         onMoveMatchRule={onMoveMatchRule}
         onReapplyMatchRules={onReapplyMatchRules}
         onDeleteAccount={onDeleteAccount}
+        onReorderSheets={(fromId, toId) =>
+          dispatch({ type: "reorderSheets", fromId, toId })
+        }
       />
       <CompanyEditorModal
         open={editCompanyId !== null}

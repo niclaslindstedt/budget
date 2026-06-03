@@ -412,6 +412,10 @@ export type Action =
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
   | { type: "selectSheet"; sheetId: string }
+  // Drop the `fromId` sheet in front of the `toId` sheet — the id-based
+  // drag-to-reorder contract `useDragReorder` emits. Drives the
+  // bottom-bar tab order and the sheet list in General settings.
+  | { type: "reorderSheets"; fromId: string; toId: string }
   | {
       // Merge a parsed bank statement into the named account. The
       // reducer dedups entries against existing history (by content
