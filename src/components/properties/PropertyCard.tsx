@@ -9,7 +9,7 @@ import type {
   Settings,
 } from "../../data/types";
 import { useT } from "../../i18n";
-import { formatBalance, formatNumber } from "../../utils/format";
+import { formatBalance, formatNumber, formatRate } from "../../utils/format";
 
 // One property's block on the Properties page: its name, what it cost,
 // its current value (the latest recorded snapshot), and the mortgages
@@ -263,10 +263,7 @@ function MortgageRow({
               <span>
                 {t("properties.rateShort")}{" "}
                 <span className="tabular-nums text-fg">
-                  {formatNumber(mortgage.interestRate, settings, {
-                    neverAbbreviate: true,
-                  })}
-                  %
+                  {formatRate(mortgage.interestRate, settings)}%
                 </span>
               </span>
             )}
@@ -319,14 +316,14 @@ function MortgageRow({
           </span>
         </span>
       )}
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onEdit(property, mortgage)}
           aria-label={t("properties.editMortgage")}
           className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
         >
-          <Pencil size={15} aria-hidden focusable={false} />
+          <Pencil size={16} aria-hidden focusable={false} />
         </button>
         <button
           type="button"
@@ -334,7 +331,7 @@ function MortgageRow({
           aria-label={t("properties.deleteMortgage")}
           className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
         >
-          <Trash2 size={15} aria-hidden focusable={false} />
+          <Trash2 size={16} aria-hidden focusable={false} />
         </button>
       </span>
     </li>
