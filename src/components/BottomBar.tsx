@@ -36,6 +36,14 @@ type Props = {
 const actionButton =
   "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
 
+// The horizontally scrolling region (sheet tabs, or the bulk-action set
+// in select mode). `min-w-0` lets it shrink below content width inside
+// the flex row so the overflow actually scrolls instead of pushing its
+// static siblings (the divider + "+") off the edge. Scrollbar chrome is
+// hidden so the strip reads like a native tab swipe.
+const scrollRegion =
+  "flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
 // Single solid bar pinned to the bottom of the viewport. Tabs (or the
 // bulk-select action set) scroll horizontally on the left; the right
 // edge holds the always-available undo / redo / history / select
@@ -145,16 +153,18 @@ export function BottomBar({
       className="sticky bottom-0 z-30 -mx-1 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 md:-mx-5"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           {selectMode ? (
-            <BulkActionBar
-              selectedCount={bulkSelectedCount}
-              onEdit={onBulkEdit}
-              onMove={onBulkMove}
-              onCopy={onBulkCopy}
-              onDelete={onBulkDelete}
-              onCancel={onBulkCancel}
-            />
+            <div className={scrollRegion}>
+              <BulkActionBar
+                selectedCount={bulkSelectedCount}
+                onEdit={onBulkEdit}
+                onMove={onBulkMove}
+                onCopy={onBulkCopy}
+                onDelete={onBulkDelete}
+                onCancel={onBulkCancel}
+              />
+            </div>
           ) : (
             // Sheet picker as an ARIA tablist — each tab carries
             // `aria-selected`, the inactive tabs roll `tabIndex={-1}`
@@ -170,7 +180,7 @@ export function BottomBar({
               <div
                 role="tablist"
                 aria-label={t("sheetTabs.tablistLabel")}
-                className="flex min-w-0 items-center gap-1"
+                className={scrollRegion}
               >
                 {sheets.map((sheet, idx) => (
                   <SheetTab
