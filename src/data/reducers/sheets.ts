@@ -1,7 +1,15 @@
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
+import { reorderById } from "../../utils/reorder";
 
 export function reduceSheets(state: UserData, action: Action): UserData | null {
+  if (action.type === "reorderSheets") {
+    const sheets = reorderById(state.sheets, action.fromId, action.toId);
+    // `reorderById` returns the same reference on a no-op move, so this
+    // also short-circuits a redundant history entry.
+    if (sheets === state.sheets) return state;
+    return { ...state, sheets: [...sheets] };
+  }
   if (action.type === "renameSheet") {
     return {
       ...state,

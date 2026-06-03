@@ -52,6 +52,19 @@ describe("describeActionSubject", () => {
     });
   });
 
+  it("names the moved sheet when reordering sheets", () => {
+    const fresh = freshUserData();
+    const [first] = fresh.sheets;
+    const second = { ...first, id: "sheet2", name: "Savings" };
+    const prev: UserData = { ...fresh, sheets: [first, second] };
+    expect(
+      describe2(
+        { type: "reorderSheets", fromId: "sheet2", toId: first.id },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Savings" });
+  });
+
   it("names the single changed setting", () => {
     const prev = freshUserData();
     expect(

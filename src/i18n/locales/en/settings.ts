@@ -74,6 +74,12 @@ const settings = {
     maxResultsHint:
       "How many hits to render. The counter still reports the full total.",
   },
+  sheets: {
+    title: "Sheets",
+    hint: "Drag to reorder your sheets. The order here is the order of the tabs in the bottom bar.",
+    reorderAria: "Reorder {name}",
+    empty: "No sheets yet.",
+  },
   headerAction: {
     title: "Title click",
     label: "When I click the title",

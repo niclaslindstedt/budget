@@ -211,6 +211,10 @@ type Props = {
   // Danger-zone callback for the Storage tab: deletes the active
   // account (or clears guest data when no password is set).
   onDeleteAccount: (password: string) => Promise<void>;
+  // Drag-to-reorder sheets from the General tab — drop the `fromId`
+  // sheet in front of the `toId` sheet. Wired to a `reorderSheets`
+  // dispatch by the host.
+  onReorderSheets: (fromId: string, toId: string) => void;
 };
 
 type TabId = SettingsTabId;
@@ -298,6 +302,7 @@ export function SettingsModal({
   onMoveMatchRule,
   onReapplyMatchRules,
   onDeleteAccount,
+  onReorderSheets,
 }: Props) {
   // Local draft so cancelling discards localization changes. Re-syncs
   // each time the modal opens with whatever the store holds.
@@ -466,6 +471,7 @@ export function SettingsModal({
                 onUpdate={update}
                 detectedPayday={detectedPayday}
                 sheets={data.sheets}
+                onReorderSheets={onReorderSheets}
               />
             )}
             {activeTab === "search" && (

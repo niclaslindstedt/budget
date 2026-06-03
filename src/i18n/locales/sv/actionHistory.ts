@@ -98,6 +98,7 @@ const actionHistory: ActionHistoryCatalog = {
     addSheet: "Lade till blad",
     updateSheetMeta: "Redigerade blad",
     deleteSheet: "Tog bort blad",
+    reorderSheets: "Ändrade ordning på blad",
     importBankHistory: "Importerade bankutdrag",
     promoteRecurringCandidate: "Befordrade återkommande kandidat",
     promoteHistoryToRecurring: "Befordrade historikpost till återkommande",

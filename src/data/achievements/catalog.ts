@@ -40,6 +40,7 @@ import {
   LayoutGrid,
   Link as LinkIcon,
   ListChecks,
+  ListOrdered,
   Lock,
   LockKeyhole,
   Merge,
@@ -472,6 +473,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "birdsEye",
     tier: "intermediate",
     glyph: LayoutGrid,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "tabShuffler",
+    tier: "intermediate",
+    glyph: ListOrdered,
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {
