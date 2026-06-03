@@ -143,7 +143,7 @@ const catalog: AchievementsCatalogEntries = {
     name: "Husägare",
     condition: "Lägg till din första fastighet på Fastigheter-sidan.",
     learnMore:
-      "Fastigheter-sidan håller koll på bostäderna du äger: vad var och en kostade, vad den är värd nu (uppdatera värdet när som helst för att lägga till en punkt i historiken), och bolånen på den. Koppla ett bolån till ett bankkonto så söker Hitta bolånebetalningar igenom dess historik efter den återkommande dragningen, månad för månad.",
+      "Fastigheter-sidan håller koll på bostäderna du äger: vad var och en kostade, vad den är värd nu (uppdatera värdet när som helst för att lägga till en punkt i historiken), och bolånen på den. Ge ett bolån en långivare och ett bankkonto, och låt Hitta bolånebetalningar plocka fram dess betalningar ur kontots historik.",
   },
   secondDraft: {
     name: "Andra utkastet",
@@ -238,6 +238,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Dubblettjägare",
     condition:
       "Importera ett kontoutdrag igen; importören hoppar över dubbletterna.",
+  },
+  loanRanger: {
+    name: "Lånjägaren",
+    condition: "Registrera ett bolåns betalningar med Hitta bolånebetalningar.",
+    learnMore:
+      "Märk en månad av dina bolånedragningar med deras långivare och bolånetypen, och öppna sedan Hitta bolånebetalningar på bolånet: den hittar de märkta dragningarna, lär sig deras bankbeskrivning och plockar fram varje matchande månad ur kontots historik — rankar de mest sannolika först och lämnar en tidigare bostads lån utanför tack vare dess annorlunda belopp.",
   },
   archaeologist: {
     name: "Arkeolog",
