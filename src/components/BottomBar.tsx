@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useRef } from "react";
-import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  History,
+  ListChecks,
+  Plus,
+  Redo2,
+  Search,
+  Undo2,
+} from "lucide-react";
 
 import type { Sheet } from "../data/types";
 import { useIsStandalone, useLongPress, useScrollHide } from "../hooks";
@@ -109,6 +118,31 @@ export function BottomBar({
     [sheets, onSelectSheet],
   );
 
+  // Subtle "there's more this way" cue: track whether the tab strip has
+  // content scrolled out of view on either side so the chevron hints can
+  // fade in. Recomputed on scroll, on resize (the strip's available
+  // width changes when the window does), and whenever the sheet count
+  // changes (adding a sheet can newly overflow the bar).
+  const tabScrollerRef = useRef<HTMLDivElement | null>(null);
+  const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
+  const syncTabOverflow = useCallback(() => {
+    const el = tabScrollerRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setTabOverflow((prev) =>
+      prev.left === left && prev.right === right ? prev : { left, right },
+    );
+  }, []);
+  useEffect(() => {
+    const el = tabScrollerRef.current;
+    if (!el) return;
+    syncTabOverflow();
+    const ro = new ResizeObserver(syncTabOverflow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [syncTabOverflow, selectMode, sheets.length]);
+
   return (
     // Two-mode positioning:
     //
@@ -177,27 +211,54 @@ export function BottomBar({
             // `aria-required-children` flags any non-tab child of a
             // tablist, and the button is an action, not a tab.
             <>
-              <div
-                role="tablist"
-                aria-label={t("sheetTabs.tablistLabel")}
-                className={scrollRegion}
-              >
-                {sheets.map((sheet, idx) => (
-                  <SheetTab
-                    key={sheet.id}
-                    sheet={sheet}
-                    active={sheet.id === activeSheetId}
-                    index={idx}
-                    onSelect={() => onSelectSheet(sheet.id)}
-                    onEdit={() =>
-                      dispatchModal({
-                        kind: "open-edit-sheet",
-                        sheetId: sheet.id,
-                      })
-                    }
-                    onTabKey={onTabKey}
-                  />
-                ))}
+              {/* `relative` host for the edge hints — the chevrons are
+                  positioned to the scroller's edges and sit above the
+                  tabs sliding under the gradient fade. */}
+              <div className="relative flex min-w-0 items-center">
+                <div
+                  ref={tabScrollerRef}
+                  onScroll={syncTabOverflow}
+                  role="tablist"
+                  aria-label={t("sheetTabs.tablistLabel")}
+                  className={scrollRegion}
+                >
+                  {sheets.map((sheet, idx) => (
+                    <SheetTab
+                      key={sheet.id}
+                      sheet={sheet}
+                      active={sheet.id === activeSheetId}
+                      index={idx}
+                      onSelect={() => onSelectSheet(sheet.id)}
+                      onEdit={() =>
+                        dispatchModal({
+                          kind: "open-edit-sheet",
+                          sheetId: sheet.id,
+                        })
+                      }
+                      onTabKey={onTabKey}
+                    />
+                  ))}
+                </div>
+                {/* Non-interactive "more this way" cues. `aria-hidden` +
+                    `pointer-events-none` keep them out of the a11y tree
+                    and let a drag started on the edge fall through to the
+                    scroller beneath. */}
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-surface-2 to-transparent pr-4 text-muted transition-opacity ${
+                    tabOverflow.left ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <ChevronLeft size={14} aria-hidden focusable={false} />
+                </span>
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-surface-2 to-transparent pl-4 text-muted transition-opacity ${
+                    tabOverflow.right ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <ChevronRight size={14} aria-hidden focusable={false} />
+                </span>
               </div>
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
               <button
@@ -308,14 +369,24 @@ function SheetTab({
   // any pointer interaction.
   useEffect(() => {
     if (!active) return;
-    buttonRef.current?.scrollIntoView({
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const fromKeyboard = btn.dataset.keyboardFocused === "true";
+    // `inline: "nearest"` keeps the scroll to the minimum needed — when
+    // the tapped tab is already on screen it does nothing, so the common
+    // case never animates at all. For pointer taps the remaining cases
+    // jump instantly: a smooth animation here holds the scroller and
+    // swallows the user's own drag until it finishes, which reads as the
+    // strip being "locked". Keyboard navigation keeps the smooth glide
+    // (the user isn't mid-drag) and re-homes focus on the moved tab.
+    btn.scrollIntoView({
       block: "nearest",
-      inline: "center",
-      behavior: "smooth",
+      inline: "nearest",
+      behavior: fromKeyboard ? "smooth" : "auto",
     });
-    if (buttonRef.current?.dataset.keyboardFocused === "true") {
-      buttonRef.current.focus();
-      delete buttonRef.current.dataset.keyboardFocused;
+    if (fromKeyboard) {
+      btn.focus();
+      delete btn.dataset.keyboardFocused;
     }
   }, [active]);
 

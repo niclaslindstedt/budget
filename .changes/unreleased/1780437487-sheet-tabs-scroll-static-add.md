@@ -2,4 +2,8 @@
 type: Fixed
 ---
 
-The new-sheet "+" button now stays put when you have more sheet tabs than fit across the bottom bar — only the tabs scroll sideways, so the button to add a sheet is always within reach.
+Smoother sheet tabs when you have more than fit across the bottom bar: the
+new-sheet "+" button now stays put while only the tabs scroll sideways, a
+tap no longer feels "locked" mid-animation (you can grab and keep
+scrolling right away), and a subtle "‹" / "›" hint fades in at either edge
+to show there are more tabs that way.
