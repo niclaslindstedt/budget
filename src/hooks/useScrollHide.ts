@@ -2,9 +2,21 @@ import { useEffect, useState } from "react";
 
 // Tracks vertical scroll direction on the window and returns `true`
 // when the user has scrolled down past a small threshold — intended
-// to hide a pinned-bottom toolbar. Flips back to `false` on any
-// upward scroll or while the page is in the always-visible band near
-// the top.
+// to hide a pinned-bottom toolbar. Collapse-on-scroll-down is
+// immediate; the reveal is deferred until the scroll comes to rest
+// (see `SHOW_IDLE_MS`) rather than firing on the first upward delta.
+//
+// Why the reveal waits for the scroll to settle: the consumer
+// (`BottomBar`) is `position: fixed; bottom: 0` in standalone PWA
+// mode. On iOS a fixed element that un-hides mid-momentum (or during
+// the rubber-band bounce at either edge, where the delta briefly
+// reverses sign) gets composited at a stale, document-anchored
+// position — so it "pops up" in the middle of the screen and only
+// snaps to the bottom edge once the gesture ends. Holding the reveal
+// until the scroll is idle means the slide-in always starts from the
+// settled bottom edge. The collapse stays immediate because sliding
+// the bar toward and past the edge it's anchored to has no such
+// ghost.
 //
 // Mirrors the visual feel of mobile Safari's URL-bar collapse — the
 // browser-mode BottomBar already rides that animation via
@@ -21,6 +33,13 @@ const HIDE_THRESHOLD = 24;
 // stays put even if the user is dragging downward, so opening the
 // app or pulling-to-refresh doesn't immediately collapse the chrome.
 const TOP_BAND = 60;
+
+// Idle gap (ms) with no scroll events before the bar is allowed to
+// reveal. iOS keeps firing scroll events throughout a momentum fling,
+// so a short debounce only elapses once the fling (and its trailing
+// rubber-band bounce) has fully stopped and the fixed bar has settled
+// at the bottom edge.
+const SHOW_IDLE_MS = 120;
 
 // How long a `suppressScrollHide()` call keeps the hook ignoring
 // scroll events. Long enough to cover both the initial scrollIntoView
@@ -63,6 +82,26 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
     let accDown = 0;
     let rafId = 0;
     let suppressUntil = 0;
+    let showTimer = 0;
+
+    const cancelShow = () => {
+      if (showTimer !== 0) {
+        window.clearTimeout(showTimer);
+        showTimer = 0;
+      }
+    };
+
+    // Reveal only once the scroll has been idle for `SHOW_IDLE_MS`.
+    // Each upward delta restarts the timer, so a continuous fling
+    // keeps the bar hidden until the gesture (and its rubber-band
+    // tail) stops and the fixed bar has re-settled at the bottom edge.
+    const scheduleShow = () => {
+      cancelShow();
+      showTimer = window.setTimeout(() => {
+        showTimer = 0;
+        setHidden(false);
+      }, SHOW_IDLE_MS);
+    };
 
     const update = () => {
       rafId = 0;
@@ -81,16 +120,19 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
 
       if (y <= TOP_BAND) {
         accDown = 0;
-        setHidden(false);
+        scheduleShow();
         return;
       }
 
       if (delta > 0) {
         accDown += delta;
-        if (accDown >= HIDE_THRESHOLD) setHidden(true);
+        if (accDown >= HIDE_THRESHOLD) {
+          cancelShow();
+          setHidden(true);
+        }
       } else if (delta < 0) {
         accDown = 0;
-        setHidden(false);
+        scheduleShow();
       }
     };
 
@@ -103,6 +145,7 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
       suppressUntil = performance.now() + SUPPRESS_MS;
       accDown = 0;
       lastY = window.scrollY;
+      cancelShow();
       setHidden(false);
     };
 
@@ -112,6 +155,7 @@ export function useScrollHide({ enabled = true }: Options = {}): boolean {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener(SUPPRESS_EVENT, onSuppress);
       if (rafId !== 0) window.cancelAnimationFrame(rafId);
+      cancelShow();
     };
   }, [enabled]);
 
