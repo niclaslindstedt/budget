@@ -20,7 +20,6 @@ const properties: PropertiesCatalog = {
   mortgages: "Bolån",
   noMortgages: "Inga bolån på den här fastigheten.",
   addMortgage: "Lägg till bolån",
-  findPayments: "Hitta betalningar",
   editMortgage: "Redigera bolån",
   deleteMortgage: "Ta bort bolån",
   noAccountBound: "Inget konto kopplat",
@@ -69,6 +68,12 @@ const properties: PropertiesCatalog = {
   currentBalancePlaceholder: "Vad som är kvar att betala",
   interestRateLabel: "Räntesats (%)",
   interestRatePlaceholder: "t.ex. 3,45",
+  rateChangeDateLabel: "Datum för ränteändring",
+  rateChangeRateLabel: "Ränta (%)",
+  addRateChange: "Lägg till ränteändring",
+  removeRateChange: "Ta bort ränteändring",
+  rateHistoryHint:
+    "Lägg till en ränteändring med datumet den trädde i kraft — den nyaste är den aktuella räntan. Lämna det första datumet tomt för ursprungsräntan. Tidigare räntor låter sökningen dela upp varje betalning korrekt.",
   rateChangeMonthsLabel: "Räntan ändras var (månad)",
   rateChangeMonthsPlaceholder: "t.ex. 3",
   rateChangeMonthsHint:
@@ -92,15 +97,22 @@ const properties: PropertiesCatalog = {
   lenderLabel: "Långivare",
   lenderPlaceholder: "Välj ett företag…",
   lenderHint:
-    "Företaget du har lånet hos. ”Hitta betalningar” använder det — och bolånetypen — för att hitta rätt dragningar.",
+    "Banken som fastighetens bolån finns hos. ”Hitta bolånebetalningar” använder den — och bolånetypen — för att hitta rätt dragningar.",
 
   // Find-payments walk.
   findTitle: "Hitta bolånebetalningar",
+  findNoProperties: "Lägg till en fastighet med ett bolån först.",
+  findSelectProperty: "Fastighet",
+  findNoMortgages: "Den här fastigheten har inga bolån ännu.",
   findNoAccount:
-    "Koppla ett bankkonto till det här bolånet först — ”Hitta betalningar” söker igenom kontots historik efter dragningen.",
-  findNoneFound: "Inga matchande dragningar hittades i kontots historik.",
+    "Ge fastighetens bolån ett bankkonto först — sökningen går igenom kontots historik efter dragningen.",
+  findNoneFound: "Inga matchande dragningar hittades i kontohistoriken.",
   findNeedsTags:
     "Inget att utgå från ännu. Märk den här fastighetens bolånedragningar med deras företag och bolånetypen i din budget (en månad räcker), och kom sedan tillbaka — sökningen använder de märkningarna för att hitta resten.",
+  findSplitHint:
+    "Varje dragning delas upp på fastighetens {count} bolån efter deras amortering och ränta.",
+  findTxnCountOne: "{count} transaktion",
+  findTxnCountOther: "{count} transaktioner",
   findSelectCharges: "Dragningar att lägga till",
   findSeedTags:
     "Matchat från dragningar du märkt med det här bolånets företag eller bolånetypen.",

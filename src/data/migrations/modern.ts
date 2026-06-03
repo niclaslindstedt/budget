@@ -855,6 +855,38 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       properties,
     };
   },
+
+  // v63 → v64: a property's lender moves from each mortgage up to the
+  // property — every loan against a home is paid to the same bank, so one
+  // `companyId` belongs on the property, not repeated per mortgage. Lift
+  // the first mortgage's `companyId` onto the property (when it doesn't
+  // already carry one) and strip it from every mortgage. The Properties
+  // feature is unreleased, but the `/preview` and `/branch` slots may hold
+  // v63 mortgage-level lenders, so the lift runs rather than dropping them.
+  63: (v63) => {
+    const properties = Array.isArray(v63.properties)
+      ? v63.properties.map((property) => {
+          if (!isObj(property) || !Array.isArray(property.mortgages))
+            return property;
+          let companyId =
+            typeof property.companyId === "string"
+              ? property.companyId
+              : undefined;
+          const mortgages = property.mortgages.map((mortgage) => {
+            if (!isObj(mortgage) || typeof mortgage.companyId !== "string")
+              return mortgage;
+            if (companyId === undefined) companyId = mortgage.companyId;
+            const { companyId: _drop, ...rest } = mortgage;
+            void _drop;
+            return rest;
+          });
+          return companyId === undefined
+            ? { ...property, mortgages }
+            : { ...property, companyId, mortgages };
+        })
+      : v63.properties;
+    return { ...v63, version: 64, properties };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

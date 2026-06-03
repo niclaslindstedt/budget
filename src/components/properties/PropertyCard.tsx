@@ -1,4 +1,4 @@
-import { Home, Pencil, Plus, Search, TrendingUp, Trash2 } from "lucide-react";
+import { Home, Pencil, Plus, TrendingUp, Trash2 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import type {
@@ -27,7 +27,6 @@ type Props = {
   onAddMortgage: (property: Property) => void;
   onEditMortgage: (property: Property, mortgage: Mortgage) => void;
   onDeleteMortgage: (property: Property, mortgage: Mortgage) => void;
-  onFindPayments: (property: Property, mortgage: Mortgage) => void;
 };
 
 // The most recent recorded value, or undefined when none recorded.
@@ -50,10 +49,12 @@ export function PropertyCard({
   onAddMortgage,
   onEditMortgage,
   onDeleteMortgage,
-  onFindPayments,
 }: Props) {
   const t = useT();
   const value = currentValue(property);
+  const lender = property.companyId
+    ? companiesById.get(property.companyId)
+    : undefined;
 
   return (
     <section className="overflow-clip rounded border border-line bg-surface">
@@ -123,6 +124,11 @@ export function PropertyCard({
             <span className="text-fg">{property.purchaseDate}</span>
           </Stat>
         )}
+        {lender && (
+          <Stat label={t("properties.lenderLabel")}>
+            <span className="truncate text-fg">{lender.name}</span>
+          </Stat>
+        )}
         {property.size !== undefined && (
           <Stat label={t("properties.size")}>
             <span className="tabular-nums text-fg">
@@ -159,11 +165,9 @@ export function PropertyCard({
                 property={property}
                 mortgage={mortgage}
                 accountsById={accountsById}
-                companiesById={companiesById}
                 settings={settings}
                 onEdit={onEditMortgage}
                 onDelete={onDeleteMortgage}
-                onFind={onFindPayments}
               />
             ))}
           </ul>
@@ -192,27 +196,20 @@ function MortgageRow({
   property,
   mortgage,
   accountsById,
-  companiesById,
   settings,
   onEdit,
   onDelete,
-  onFind,
 }: {
   property: Property;
   mortgage: Mortgage;
   accountsById: ReadonlyMap<string, Account>;
-  companiesById: ReadonlyMap<string, Company>;
   settings: Settings;
   onEdit: (property: Property, mortgage: Mortgage) => void;
   onDelete: (property: Property, mortgage: Mortgage) => void;
-  onFind: (property: Property, mortgage: Mortgage) => void;
 }) {
   const t = useT();
   const account = mortgage.accountId
     ? accountsById.get(mortgage.accountId)
-    : undefined;
-  const company = mortgage.companyId
-    ? companiesById.get(mortgage.companyId)
     : undefined;
   const count = mortgage.payments.length;
   const paid = mortgage.payments.reduce((s, p) => s + p.amount, 0);
@@ -230,12 +227,6 @@ function MortgageRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-fg-bright">{mortgage.name}</span>
         <span className="block truncate text-xs text-muted">
-          {company && (
-            <>
-              {company.name}
-              {" · "}
-            </>
-          )}
           {account ? account.name : t("properties.noAccountBound")}
           {count > 0 && (
             <>
@@ -329,16 +320,6 @@ function MortgageRow({
         </span>
       )}
       <span className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => onFind(property, mortgage)}
-          className="inline-flex cursor-pointer items-center gap-1 rounded border border-line bg-surface px-2 py-1 text-xs text-accent hover:bg-surface-3"
-        >
-          <Search size={14} aria-hidden focusable={false} />
-          <span className="hidden sm:inline">
-            {t("properties.findPayments")}
-          </span>
-        </button>
         <button
           type="button"
           onClick={() => onEdit(property, mortgage)}

@@ -387,6 +387,15 @@ export type Action =
       payments: MortgagePayment[];
     }
   | {
+      // Property-level bulk-add from the "Find mortgage payments" walk:
+      // each found combined transaction is split across the property's
+      // mortgages, so payments land on several mortgages in one pass (one
+      // undo entry, no intermediate re-render). Keyed by mortgage id.
+      type: "addMortgagePaymentsForProperty";
+      propertyId: string;
+      paymentsByMortgageId: Record<string, MortgagePayment[]>;
+    }
+  | {
       type: "updateMortgagePayment";
       propertyId: string;
       mortgageId: string;

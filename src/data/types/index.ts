@@ -27,6 +27,7 @@ export type {
   Mortgage,
   MortgageAmortization,
   MortgagePayment,
+  MortgageRateChange,
   Property,
   PropertyValuePoint,
 } from "./properties";

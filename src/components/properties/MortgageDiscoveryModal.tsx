@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
-import { Check, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Home, Search } from "lucide-react";
 
-import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import {
   discoverMortgagePayments,
   DEFAULT_MORTGAGE_TOLERANCE,
   monthsWithinBand,
   type MortgagePaymentSeries,
 } from "../../data/property-mortgage/discovery";
-import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
+import {
+  resolveMonthlyPaymentAt,
+  splitPaymentAcrossMortgages,
+} from "../../data/property-mortgage/payment";
 import { PRESET_TYPE_MORTGAGE_ID } from "../../data/presets/types";
 import { newId } from "../../data/sheet";
 import type {
@@ -17,35 +19,35 @@ import type {
   HistoryEntry,
   MatchRule,
   MerchantHint,
-  Mortgage,
   MortgagePayment,
+  Property,
   Settings,
 } from "../../data/types";
-import { useResetOnOpen } from "../../hooks";
+import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useLang, useT } from "../../i18n";
+import { todayIso } from "../../utils/date";
 import { formatBalance, formatMonthLabel } from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
 import { Button, Slider } from "../form";
 import { Modal } from "../Modal";
 
-// The guided "Find mortgage payments" walk. Anchors on the metadata the
-// user applied while going through their imported history: the mortgage's
-// tied company (the lender) and the "Mortgage" entry type. From the tagged
-// charges it learns the bank description + a typical amount and sweeps the
-// rest of the account's history for matching months, so a single tagged
-// month surfaces every other month of the same charge. When nothing is
-// tagged it falls back to the mortgage's already-added payments; with
-// neither it nudges the user to tag a month first. The user ticks the
-// charge groups to record, then confirms adding every matching month
-// within the amount band, deduping months already recorded.
+// The guided "Find mortgage payments" walk, opened from the Properties
+// sheet's "…" menu. A property's monthly mortgage cost is paid to the bank
+// as a single transaction covering every loan against it, so the walk runs
+// per property: pick the property, and it scans its mortgages' bound
+// account history for the recurring combined charge — anchored on the
+// charges the user tagged with one of the property's lenders or the
+// Mortgage type, ranked by closeness to the expected total (the sum of
+// every mortgage's amortisation + interest). Each found transaction is
+// then split across the property's mortgages by their expected share at
+// that month's rate, recording one payment per mortgage that adds up to
+// exactly what was paid.
 //
 // `centered`: the walk is all selection controls, no soft-keyboard inputs.
 
 type Props = {
   open: boolean;
-  mortgage: Mortgage | null;
-  // The parent property's purchase date (ISO), when recorded — the finder
-  // ignores charges before the home was owned.
-  purchaseDate?: string;
+  properties: readonly Property[];
   history: Record<string, HistoryEntry[]>;
   merchantHints: Readonly<Record<string, MerchantHint>>;
   matchRules: readonly MatchRule[];
@@ -53,13 +55,15 @@ type Props = {
   types: readonly EntryType[];
   settings: Settings;
   onClose: () => void;
-  onAdd: (payments: MortgagePayment[]) => void;
+  onAdd: (
+    propertyId: string,
+    paymentsByMortgageId: Record<string, MortgagePayment[]>,
+  ) => void;
 };
 
 export function MortgageDiscoveryModal({
   open,
-  mortgage,
-  purchaseDate,
+  properties,
   history,
   merchantHints,
   matchRules,
@@ -71,93 +75,96 @@ export function MortgageDiscoveryModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [propertyPickerOpen, setPropertyPickerOpen] = useState(false);
   // null = "use the default (everything selected)"; a Set once the user
   // has toggled at least one group.
   const [selectedKeys, setSelectedKeys] = useState<Set<string> | null>(null);
-  // Match-band half-width as a percentage; the data layer takes a fraction.
   const [tolerancePct, setTolerancePct] = useState(
     Math.round(DEFAULT_MORTGAGE_TOLERANCE * 100),
   );
   const tolerance = tolerancePct / 100;
 
-  const accountId = mortgage?.accountId ?? null;
+  // Resolve the chosen property against the live list (default to the
+  // first), so an edit elsewhere doesn't strand a stale snapshot.
+  const property =
+    properties.find((p) => p.id === propertyId) ?? properties[0] ?? null;
+  const mortgages = useMemo(() => property?.mortgages ?? [], [property]);
 
-  // Bank entries already backing a payment on this mortgage — both the
-  // fallback anchor (their descriptions seed the expansion) and the months
-  // to skip so the same charge isn't offered twice.
+  useResetOnOpen(open, property?.id, () => {
+    setSelectedKeys(null);
+    setTolerancePct(Math.round(DEFAULT_MORTGAGE_TOLERANCE * 100));
+    setPropertyPickerOpen(false);
+  });
+
+  // The distinct accounts the property's loans are paid from, and the
+  // combined history across them (one combined charge lives in one
+  // account, but a property could split loans across accounts).
+  const entries = useMemo(() => {
+    const accountIds = new Set<string>();
+    for (const m of mortgages) if (m.accountId) accountIds.add(m.accountId);
+    return [...accountIds].flatMap((id) => history[id] ?? []);
+  }, [mortgages, history]);
+
+  const hasAccount = mortgages.some((m) => Boolean(m.accountId));
+
+  // Bank entries already backing a payment on any of the property's
+  // mortgages — the fallback anchor and the months to skip.
   const addedSourceIds = useMemo(() => {
     const set = new Set<string>();
-    for (const p of mortgage?.payments ?? []) {
-      if (p.sourceHistoryId) set.add(p.sourceHistoryId);
-    }
+    for (const m of mortgages)
+      for (const p of m.payments)
+        if (p.sourceHistoryId) set.add(p.sourceHistoryId);
     return set;
-  }, [mortgage?.payments]);
+  }, [mortgages]);
 
-  // Expected monthly figures from the loan terms — the amortisation, the
-  // interest, and the two combined — used to rank the likeliest charge
-  // first. Either may be unresolved (no terms recorded yet).
+  // Expected figures from the loan terms, at today's rate — the combined
+  // monthly total plus each mortgage's own, used to rank the likeliest
+  // charge first.
   const targetAmounts = useMemo(() => {
-    if (!mortgage) return [];
-    const amort = resolveMonthlyAmortization(mortgage);
-    const interest = resolveMonthlyInterest(mortgage);
-    const out: number[] = [];
-    if (amort !== null) out.push(amort);
-    if (interest !== null) out.push(interest);
-    if (amort !== null && interest !== null) out.push(amort + interest);
-    return out;
-  }, [mortgage]);
+    const today = todayIso();
+    const each = mortgages.map((m) => resolveMonthlyPaymentAt(m, today));
+    const combined = each.reduce((s, v) => s + v, 0);
+    return [combined, ...each];
+  }, [mortgages]);
+
+  const companyIds = useMemo(
+    () => (property?.companyId ? [property.companyId] : []),
+    [property],
+  );
 
   const result = useMemo(() => {
-    if (!accountId || !mortgage) return { series: [], seed: "none" as const };
+    if (!property || !hasAccount) return { series: [], seed: "none" as const };
     return discoverMortgagePayments({
-      entries: history[accountId] ?? [],
+      entries,
       merchantHints,
       matchRules,
       companies,
       types,
-      companyId: mortgage.companyId,
+      companyIds,
       mortgageTypeId: PRESET_TYPE_MORTGAGE_ID,
       seedEntryIds: [...addedSourceIds],
-      fromDate: purchaseDate,
+      fromDate: property.purchaseDate,
       targetAmounts,
     });
   }, [
-    accountId,
-    mortgage,
-    purchaseDate,
-    history,
+    property,
+    hasAccount,
+    entries,
     merchantHints,
     matchRules,
     companies,
     types,
+    companyIds,
     addedSourceIds,
     targetAmounts,
   ]);
 
-  useResetOnOpen(open, mortgage?.id, () => {
-    setSelectedKeys(null);
-    setTolerancePct(Math.round(DEFAULT_MORTGAGE_TOLERANCE * 100));
-  });
-
-  // Default to every matched group selected until the user toggles one.
-  const isSelected = (key: string) =>
-    selectedKeys === null ? true : selectedKeys.has(key);
-
-  function toggle(key: string) {
-    setSelectedKeys((prev) => {
-      const base = prev ?? new Set(result.series.map((s) => s.key));
-      const next = new Set(base);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  // Build the per-month payments from the selected series: each month
-  // within the amount band becomes one payment at the charge's magnitude,
-  // skipping months already recorded (dedup by source bank entry).
+  // Build the per-mortgage payments: each selected charge's months within
+  // the band become a combined transaction, split across the property's
+  // mortgages by their expected share at that month's rate.
   const preview = useMemo(() => {
-    const fresh: MortgagePayment[] = [];
+    const byMortgage: Record<string, MortgagePayment[]> = {};
     const freshMonthKeys: string[] = [];
     let alreadyAdded = 0;
     for (const series of result.series) {
@@ -171,12 +178,19 @@ export function MortgageDiscoveryModal({
           alreadyAdded++;
           continue;
         }
-        fresh.push({
-          id: newId(),
-          date: month.date,
-          amount: month.amount,
-          sourceHistoryId: month.entryId,
-        });
+        const split = splitPaymentAcrossMortgages(
+          mortgages,
+          month.amount,
+          month.date,
+        );
+        for (const [mortgageId, amount] of split) {
+          (byMortgage[mortgageId] ??= []).push({
+            id: newId(),
+            date: month.date,
+            amount,
+            sourceHistoryId: month.entryId,
+          });
+        }
         freshMonthKeys.push(month.monthKey);
       }
     }
@@ -185,20 +199,30 @@ export function MortgageDiscoveryModal({
       sortedKeys.length === 0
         ? 0
         : monthSpan(sortedKeys[0], sortedKeys[sortedKeys.length - 1]);
-    return { fresh, alreadyAdded, spanMonths };
-  }, [result, selectedKeys, addedSourceIds, tolerance]);
+    return {
+      byMortgage,
+      transactions: freshMonthKeys.length,
+      alreadyAdded,
+      spanMonths,
+      firstMonth: sortedKeys[0],
+      lastMonth: sortedKeys[sortedKeys.length - 1],
+    };
+  }, [result, selectedKeys, addedSourceIds, tolerance, mortgages]);
 
-  const { fresh, alreadyAdded, spanMonths } = preview;
+  if (!open) return null;
 
-  if (!open || !mortgage) return null;
-
-  const hasAccount = accountId !== null;
-  const firstFresh = fresh[0];
-  const lastFresh = fresh[fresh.length - 1];
+  const {
+    byMortgage,
+    transactions,
+    alreadyAdded,
+    spanMonths,
+    firstMonth,
+    lastMonth,
+  } = preview;
 
   function handleAdd() {
-    if (fresh.length === 0) return;
-    onAdd(fresh);
+    if (!property || transactions === 0) return;
+    onAdd(property.id, byMortgage);
     onClose();
   }
 
@@ -216,105 +240,161 @@ export function MortgageDiscoveryModal({
         onClose={onClose}
       />
       <Modal.Body>
-        {!hasAccount ? (
+        {!property ? (
           <p className="m-0 text-sm text-muted">
-            {t("properties.findNoAccount")}
-          </p>
-        ) : result.seed === "none" ? (
-          <p className="m-0 text-sm text-muted">
-            {t("properties.findNeedsTags")}
-          </p>
-        ) : result.series.length === 0 ? (
-          <p className="m-0 text-sm text-muted">
-            {t("properties.findNoneFound")}
+            {t("properties.findNoProperties")}
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold tracking-wider uppercase text-muted">
-                {t("properties.findSelectCharges")}
-              </span>
-              <span className="text-xs text-muted">
-                {result.seed === "tags"
-                  ? t("properties.findSeedTags")
-                  : t("properties.findSeedPayments")}
-              </span>
-              <ul
-                className="m-0 flex list-none flex-col gap-1 p-0"
-                role="group"
-                aria-label={t("properties.findSelectCharges")}
-              >
-                {result.series.map((s) => (
-                  <ChargeRow
-                    key={s.key}
-                    series={s}
-                    settings={settings}
-                    checked={isSelected(s.key)}
-                    onToggle={() => toggle(s.key)}
-                  />
-                ))}
-              </ul>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+            {properties.length > 1 && (
+              <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-bold tracking-wider uppercase text-muted">
-                  {t("properties.findToleranceLabel")}
+                  {t("properties.findSelectProperty")}
                 </span>
-                <span className="text-sm text-fg-bright">
-                  {t("properties.findToleranceValue", { pct: tolerancePct })}
-                </span>
+                <PropertyPicker
+                  properties={properties}
+                  value={property.id}
+                  open={propertyPickerOpen}
+                  onToggle={() => setPropertyPickerOpen((v) => !v)}
+                  onClose={() => setPropertyPickerOpen(false)}
+                  onPick={(id) => {
+                    setPropertyId(id);
+                    setSelectedKeys(null);
+                    setPropertyPickerOpen(false);
+                  }}
+                />
               </div>
-              <Slider
-                min={2}
-                max={25}
-                step={1}
-                value={tolerancePct}
-                onChange={setTolerancePct}
-                ariaLabel={t("properties.findToleranceLabel")}
-                formatValueText={(v) =>
-                  t("properties.findToleranceValue", { pct: v })
-                }
-              />
-              <span className="text-xs text-muted">
-                {t("properties.findToleranceHint")}
-              </span>
-            </div>
+            )}
 
-            <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
-              <span className="text-xs font-bold tracking-wider uppercase text-muted">
-                {t("properties.findPreview")}
-              </span>
-              <span className="text-sm text-fg-bright">
-                {fresh.length === 1
-                  ? t("properties.paymentsCountOne", { count: fresh.length })
-                  : t("properties.paymentsCountOther", { count: fresh.length })}
-                {fresh.length > 0 && (
-                  <>
-                    {" · "}
-                    {spanMonths === 1
-                      ? t("properties.findSpanMonthsOne", { count: spanMonths })
-                      : t("properties.findSpanMonthsOther", {
-                          count: spanMonths,
-                        })}
-                  </>
-                )}
-                {alreadyAdded > 0 && (
-                  <span className="text-muted">
-                    {" · "}
-                    {t("properties.findAlreadyAdded")} ({alreadyAdded})
+            {mortgages.length === 0 ? (
+              <p className="m-0 text-sm text-muted">
+                {t("properties.findNoMortgages")}
+              </p>
+            ) : !hasAccount ? (
+              <p className="m-0 text-sm text-muted">
+                {t("properties.findNoAccount")}
+              </p>
+            ) : result.seed === "none" ? (
+              <p className="m-0 text-sm text-muted">
+                {t("properties.findNeedsTags")}
+              </p>
+            ) : result.series.length === 0 ? (
+              <p className="m-0 text-sm text-muted">
+                {t("properties.findNoneFound")}
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold tracking-wider uppercase text-muted">
+                    {t("properties.findSelectCharges")}
                   </span>
-                )}
-              </span>
-              {firstFresh && lastFresh && (
-                <span className="text-xs text-meta">
-                  {t("properties.findRange", {
-                    start: formatMonthLabel(firstFresh.date.slice(0, 7), lang),
-                    end: formatMonthLabel(lastFresh.date.slice(0, 7), lang),
-                  })}
-                </span>
-              )}
-            </div>
+                  <span className="text-xs text-muted">
+                    {result.seed === "tags"
+                      ? t("properties.findSeedTags")
+                      : t("properties.findSeedPayments")}
+                  </span>
+                  <ul
+                    className="m-0 flex list-none flex-col gap-1 p-0"
+                    role="group"
+                    aria-label={t("properties.findSelectCharges")}
+                  >
+                    {result.series.map((s) => (
+                      <ChargeRow
+                        key={s.key}
+                        series={s}
+                        settings={settings}
+                        checked={
+                          selectedKeys === null || selectedKeys.has(s.key)
+                        }
+                        onToggle={() =>
+                          setSelectedKeys((prev) => {
+                            const base =
+                              prev ?? new Set(result.series.map((x) => x.key));
+                            const next = new Set(base);
+                            if (next.has(s.key)) next.delete(s.key);
+                            else next.add(s.key);
+                            return next;
+                          })
+                        }
+                      />
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold tracking-wider uppercase text-muted">
+                      {t("properties.findToleranceLabel")}
+                    </span>
+                    <span className="text-sm text-fg-bright">
+                      {t("properties.findToleranceValue", {
+                        pct: tolerancePct,
+                      })}
+                    </span>
+                  </div>
+                  <Slider
+                    min={2}
+                    max={25}
+                    step={1}
+                    value={tolerancePct}
+                    onChange={setTolerancePct}
+                    ariaLabel={t("properties.findToleranceLabel")}
+                    formatValueText={(v) =>
+                      t("properties.findToleranceValue", { pct: v })
+                    }
+                  />
+                  <span className="text-xs text-muted">
+                    {t("properties.findToleranceHint")}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
+                  <span className="text-xs font-bold tracking-wider uppercase text-muted">
+                    {t("properties.findPreview")}
+                  </span>
+                  <span className="text-sm text-fg-bright">
+                    {transactions === 1
+                      ? t("properties.findTxnCountOne", { count: transactions })
+                      : t("properties.findTxnCountOther", {
+                          count: transactions,
+                        })}
+                    {transactions > 0 && (
+                      <>
+                        {" · "}
+                        {spanMonths === 1
+                          ? t("properties.findSpanMonthsOne", {
+                              count: spanMonths,
+                            })
+                          : t("properties.findSpanMonthsOther", {
+                              count: spanMonths,
+                            })}
+                      </>
+                    )}
+                    {alreadyAdded > 0 && (
+                      <span className="text-muted">
+                        {" · "}
+                        {t("properties.findAlreadyAdded")} ({alreadyAdded})
+                      </span>
+                    )}
+                  </span>
+                  {transactions > 0 && mortgages.length > 1 && (
+                    <span className="text-xs text-muted">
+                      {t("properties.findSplitHint", {
+                        count: mortgages.length,
+                      })}
+                    </span>
+                  )}
+                  {firstMonth && lastMonth && (
+                    <span className="text-xs text-meta">
+                      {t("properties.findRange", {
+                        start: formatMonthLabel(firstMonth, lang),
+                        end: formatMonthLabel(lastMonth, lang),
+                      })}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </Modal.Body>
@@ -325,11 +405,11 @@ export function MortgageDiscoveryModal({
         <Button
           variant="primary"
           onClick={handleAdd}
-          disabled={fresh.length === 0}
+          disabled={transactions === 0}
         >
-          {fresh.length === 1
-            ? t("properties.findAddOne", { count: fresh.length })
-            : t("properties.findAddOther", { count: fresh.length })}
+          {transactions === 1
+            ? t("properties.findAddOne", { count: transactions })
+            : t("properties.findAddOther", { count: transactions })}
         </Button>
       </Modal.Footer>
     </Modal>
@@ -343,6 +423,71 @@ function monthSpan(first: string, last: string): number {
   const ly = Number(last.slice(0, 4));
   const lm = Number(last.slice(5, 7));
   return (ly - fy) * 12 + (lm - fm) + 1;
+}
+
+const PROPERTY_PICKER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 240 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
+function PropertyPicker({
+  properties,
+  value,
+  open,
+  onToggle,
+  onClose,
+  onPick,
+}: {
+  properties: readonly Property[];
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onPick: (id: string) => void;
+}) {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const selected = properties.find((p) => p.id === value) ?? null;
+  return (
+    <div ref={triggerRef} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+      >
+        <Home size={14} className="shrink-0 text-accent" aria-hidden />
+        <span className="flex-1 truncate">{selected?.name}</span>
+        <ChevronDown size={14} className="shrink-0 text-muted" aria-hidden />
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={PROPERTY_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-64 overflow-auto py-1">
+          {properties.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={p.id === value}
+                onClick={() => onPick(p.id)}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <span className="flex-1 truncate">{p.name}</span>
+                {p.id === value && (
+                  <Check size={14} className="text-accent" aria-hidden />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </FloatingPanel>
+    </div>
+  );
 }
 
 function ChargeRow({
@@ -374,10 +519,8 @@ function ChargeRow({
             })}
             {" · "}
             {series.months.length === 1
-              ? t("properties.paymentsCountOne", {
-                  count: series.months.length,
-                })
-              : t("properties.paymentsCountOther", {
+              ? t("properties.findTxnCountOne", { count: series.months.length })
+              : t("properties.findTxnCountOther", {
                   count: series.months.length,
                 })}
             {" · "}

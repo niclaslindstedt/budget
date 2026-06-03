@@ -61,6 +61,22 @@ export type MortgageAmortization =
   | { mode: "percent"; percent: number } // annual % of loanAmount
   | { mode: "fixed"; amount: number }; // fixed sum per month
 
+// One effective-dated interest-rate period on a mortgage. The rate of
+// `rate`% became effective on `date` and holds until the next change (or
+// indefinitely if it's the most recent). A blank `date` marks the
+// original rate — effective "from the start", before any recorded change.
+// Recorded so a historical payment's interest is computed at the rate that
+// was actually in effect that month, not today's headline rate. The latest
+// change by date is the current rate (and is mirrored onto
+// `Mortgage.interestRate` so the card and current resolvers don't have to
+// walk the list). Resolve a rate at an arbitrary date with `resolveRateAt`
+// in `src/data/property-mortgage/interest.ts`.
+export type MortgageRateChange = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd the rate took effect, or "" for the original rate
+  rate: number; // annual interest rate as a percent (3.45 ⇒ 3.45%), >= 0
+};
+
 // The loan-terms fields below are all manually entered and all optional —
 // a mortgage can exist with just a name and have its terms filled in
 // later. `currentBalance` is recorded directly (not derived from
@@ -74,16 +90,15 @@ export type Mortgage = {
   id: string;
   name: string; // user label, e.g. "SBAB loan 1"
   accountId?: string | null; // bank account scanned for payments
-  // The lender this loan is held with (e.g. "SBAB"), referencing
-  // `UserData.companies`. The strongest signal "Find mortgage payments"
-  // uses: it filters the bound account's history to charges the user has
-  // tagged with this company. Absent until the user picks one; a dangling
-  // reference (the company was deleted) is swept to absent on load and on
-  // the `deleteCompany` cascade, mirroring `Row.companyId`.
-  companyId?: string;
   loanAmount?: number; // the sum originally borrowed
   currentBalance?: number; // outstanding balance now (manually recorded)
   interestRate?: number; // current annual interest rate, as a percent (3.45 ⇒ 3.45%)
+  // Past rate changes, effective-dated. The most recent entry is the
+  // current rate and is kept in sync with `interestRate`; earlier entries
+  // let the finder compute a historical payment's interest at the rate that
+  // was in effect that month. Absent / empty ⇒ no history recorded, and
+  // `interestRate` is used for every date.
+  rateHistory?: MortgageRateChange[];
   rateChangeMonths?: number; // how often the rate resets, in months
   nextRateChangeDate?: string; // ISO yyyy-mm-dd of the next rate change
   amortization?: MortgageAmortization; // monthly amortisation (percent-of-initial or fixed)
@@ -99,6 +114,15 @@ export type Mortgage = {
 export type Property = {
   id: string;
   name: string;
+  // The lender the property's mortgages are held with (e.g. "SBAB"),
+  // referencing `UserData.companies`. One lender per property — every loan
+  // against it is paid to the same bank — so it lives here, not per
+  // mortgage. A strong signal "Find mortgage payments" uses: it filters
+  // the bound account's history to charges tagged with this company.
+  // Absent until the user picks one; a dangling reference (the company was
+  // deleted) is swept to absent on load and on the `deleteCompany`
+  // cascade, mirroring `Row.companyId`.
+  companyId?: string;
   purchaseAmount?: number; // what the property was bought for
   purchaseDate?: string; // ISO date of purchase
   // Living area of the property, in square metres. Stored as a bare

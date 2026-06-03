@@ -310,6 +310,8 @@ export function describeActionSubject(
       );
     case "addMortgagePayments":
       return count(action.payments.length);
+    case "addMortgagePaymentsForProperty":
+      return name(byId(next.properties, action.propertyId)?.name);
     case "updateMortgagePayment":
     case "deleteMortgagePayment":
       return name(

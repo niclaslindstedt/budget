@@ -120,6 +120,19 @@ export function reduceProperties(
       })),
     );
   }
+  if (action.type === "addMortgagePaymentsForProperty") {
+    const byMortgage = action.paymentsByMortgageId;
+    const hasAny = Object.values(byMortgage).some((list) => list.length > 0);
+    if (!hasAny) return state;
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      mortgages: p.mortgages.map((m) => {
+        const added = byMortgage[m.id];
+        if (!added || added.length === 0) return m;
+        return { ...m, payments: [...m.payments, ...added] };
+      }),
+    }));
+  }
   if (action.type === "updateMortgagePayment") {
     return updatePropertyById(state, action.propertyId, (p) =>
       updateMortgageById(p, action.mortgageId, (m) => ({

@@ -195,35 +195,64 @@ describe("properties reducer — mortgages and payments", () => {
     );
   });
 
-  it("strips a mortgage's lender when the company is deleted", () => {
+  it("adds split payments to several mortgages in one pass", () => {
+    let data = reducer(seeded(), {
+      type: "addMortgage",
+      propertyId: "p1",
+      mortgage: { ...MORTGAGE, id: "m1" },
+    });
+    data = reducer(data, {
+      type: "addMortgage",
+      propertyId: "p1",
+      mortgage: { ...MORTGAGE, id: "m2", name: "SBAB loan 2" },
+    });
+    data = reducer(data, {
+      type: "addMortgagePaymentsForProperty",
+      propertyId: "p1",
+      paymentsByMortgageId: {
+        m1: [
+          { id: "a", date: "2026-01-28", amount: 8000, sourceHistoryId: "h1" },
+        ],
+        m2: [
+          { id: "b", date: "2026-01-28", amount: 4000, sourceHistoryId: "h1" },
+        ],
+      },
+    });
+    const mortgages = data.properties[0].mortgages;
+    expect(mortgages.find((m) => m.id === "m1")?.payments).toHaveLength(1);
+    expect(mortgages.find((m) => m.id === "m2")?.payments[0].amount).toBe(4000);
+    // The same source transaction backs both legs (1-1 connection).
+    expect(mortgages.every((m) => m.payments[0].sourceHistoryId === "h1")).toBe(
+      true,
+    );
+    expect(revalidate(data).properties[0].mortgages).toEqual(mortgages);
+  });
+
+  it("strips a property's lender when the company is deleted", () => {
     let data = reducer(seeded(), {
       type: "addCompany",
       company: { id: "co1", name: "SBAB" },
     });
     data = reducer(data, {
-      type: "addMortgage",
+      type: "updateProperty",
       propertyId: "p1",
-      mortgage: { ...MORTGAGE, companyId: "co1" },
+      patch: { companyId: "co1" },
     });
-    expect(data.properties[0].mortgages[0].companyId).toBe("co1");
+    expect(data.properties[0].companyId).toBe("co1");
 
     data = reducer(data, { type: "deleteCompany", companyId: "co1" });
-    expect("companyId" in data.properties[0].mortgages[0]).toBe(false);
+    expect("companyId" in data.properties[0]).toBe(false);
     // The cleaned record matches one reloaded from storage.
-    expect(revalidate(data).properties[0].mortgages[0]).toEqual(
-      data.properties[0].mortgages[0],
-    );
+    expect(revalidate(data).properties[0]).toEqual(data.properties[0]);
   });
 
   it("drops a dangling lender reference on load", () => {
     const data = reducer(seeded(), {
-      type: "addMortgage",
+      type: "updateProperty",
       propertyId: "p1",
-      mortgage: { ...MORTGAGE, companyId: "ghost" },
+      patch: { companyId: "ghost" },
     });
     // No such company exists, so the validator sweeps the reference.
-    expect("companyId" in revalidate(data).properties[0].mortgages[0]).toBe(
-      false,
-    );
+    expect("companyId" in revalidate(data).properties[0]).toBe(false);
   });
 });

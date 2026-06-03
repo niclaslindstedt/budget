@@ -233,18 +233,12 @@ export function reduceCategoriesAndTypes(
       }
       nextRenamePatterns[accountId] = nextBucket;
     }
-    // Mortgages that named the deleted company as their lender drop the
+    // Properties that named the deleted company as their lender drop the
     // reference so "Find mortgage payments" falls back to its other
     // signals rather than filtering on a company that no longer exists.
-    const nextProperties = state.properties.map((property) => {
-      if (!property.mortgages.some((m) => m.companyId === id)) return property;
-      return {
-        ...property,
-        mortgages: property.mortgages.map((m) =>
-          m.companyId === id ? stripCompany(m) : m,
-        ),
-      };
-    });
+    const nextProperties = state.properties.map((property) =>
+      property.companyId === id ? stripCompany(property) : property,
+    );
     return {
       ...state,
       companies: state.companies.filter((c) => c.id !== id),

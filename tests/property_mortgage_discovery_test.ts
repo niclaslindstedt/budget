@@ -116,7 +116,7 @@ describe("discoverMortgagePayments", () => {
   it("anchors on the tied company", () => {
     const { series, seed } = discoverMortgagePayments(
       baseInput(splitMortgageHistory({ amortCompany: true }), {
-        companyId: COMPANY.id,
+        companyIds: [COMPANY.id],
       }),
     );
     expect(seed).toBe("tags");

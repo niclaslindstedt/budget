@@ -129,6 +129,18 @@ describe("describeActionSubject", () => {
         prev,
       ),
     ).toEqual({ kind: "count", value: 2 });
+    expect(
+      describe2(
+        {
+          type: "addMortgagePaymentsForProperty",
+          propertyId: "p1",
+          paymentsByMortgageId: {
+            m1: [{ id: "x", date: "2026-01-28", amount: 5500 }],
+          },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
   });
 
   it("returns undefined for an action with no nameable target", () => {
