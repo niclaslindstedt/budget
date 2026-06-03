@@ -12,8 +12,6 @@ import { X } from "lucide-react";
 import {
   useEscapeKey,
   useIsMobile,
-  useIsStandalone,
-  useVirtualKeyboardInset,
   useVisualViewportHeight,
   useVisualViewportOffsetTop,
 } from "../hooks";
@@ -153,8 +151,6 @@ export function Modal({
   useEscapeKey(open, onClose);
 
   const isMobile = useIsMobile();
-  const isStandalone = useIsStandalone();
-  const keyboardInset = useVirtualKeyboardInset();
   const visualViewportHeight = useVisualViewportHeight();
   const visualViewportOffsetTop = useVisualViewportOffsetTop();
 
@@ -347,39 +343,16 @@ export function Modal({
   // lands right on the keyboard. `offsetTop` is `0` when the keyboard is
   // closed (or the field already sits above it), so this is a no-op in
   // the common case.
-  //
-  // STANDALONE CARVE-OUT — installed PWAs (`useIsStandalone`) skip the
-  // inline pin entirely while the soft keyboard is closed
-  // (`keyboardInset === 0`), so the `[data-modal-shell="fullscreen"]
-  // { height: 100vh }` rule in `chrome.css` can actually take effect. iOS
-  // 26 standalone poisons every viewport signal — `visualViewport.height`
-  // and `innerHeight` BOTH read from the same regressed compositor
-  // rectangle at cold launch — so the inline `min(100vh, vvh)` pinned the
-  // shell to a too-short height even with no keyboard up, leaving a band
-  // of `--page-bg` below the footer (the symptom the standalone `100vh`
-  // CSS was written to cure, but which the inline style silently
-  // overrode). `100vh` is the one unit iOS 26 standalone still resolves to
-  // the true screen, so deferring to the CSS makes the shell genuinely
-  // fill the screen. When the keyboard IS open the inline pin returns
-  // (`keyboardInset > 0`): `visualViewport.height` is live at that point,
-  // not poisoned, so it correctly shrinks the shell to the band above the
-  // keyboard and keeps the footer reachable. Browser-mode iOS (not
-  // standalone) keeps the inline pin unconditionally — its viewport math
-  // is tuned separately and isn't affected by the standalone poisoning.
-  const pinShellHeight =
-    !centered &&
-    isMobile &&
-    visualViewportHeight > 0 &&
-    (!isStandalone || keyboardInset > 0);
-  const shellStyle: React.CSSProperties | undefined = pinShellHeight
-    ? {
-        height: `min(100vh, ${visualViewportHeight}px)`,
-        transform:
-          visualViewportOffsetTop > 0
-            ? `translateY(${visualViewportOffsetTop}px)`
-            : undefined,
-      }
-    : undefined;
+  const shellStyle: React.CSSProperties | undefined =
+    !centered && isMobile && visualViewportHeight > 0
+      ? {
+          height: `min(100vh, ${visualViewportHeight}px)`,
+          transform:
+            visualViewportOffsetTop > 0
+              ? `translateY(${visualViewportOffsetTop}px)`
+              : undefined,
+        }
+      : undefined;
 
   // Portal to document.body so the modal escapes any `inert` ancestor —
   // the app-wide [data-modal-background] wrapper flips inert on the
