@@ -231,6 +231,21 @@ export function isFilterActive(filter: SearchFilter): boolean {
   );
 }
 
+// Quick-pick calendar windows for the "exclude old data" time-range
+// dropdown, shared by every search modal that offers one. Each value is
+// a count of calendar years to keep, current year inclusive (1 = this
+// year only, 2 = this year + last, …); null = no age limit. The list
+// intentionally skips 4 — beyond "last 3 years" the user is browsing in
+// coarser strides, so 5 / 10 cover the long tail without a long menu.
+export const MAX_AGE_OPTIONS: readonly (number | null)[] = [
+  null,
+  1,
+  2,
+  3,
+  5,
+  10,
+];
+
 // Inclusive ISO floor for the `maxAgeYears` filter, or null when no age
 // limit is set. `maxAgeYears` counts calendar years to keep with the
 // current year inclusive (1 = this year only, 2 = this year + last, …),

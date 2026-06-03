@@ -2,7 +2,11 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Building2, ChevronDown, Filter } from "lucide-react";
 
 import type { SearchEntry, SearchFilter } from "../../data/search";
-import { EMPTY_FILTER, isFilterActive } from "../../data/search";
+import {
+  EMPTY_FILTER,
+  isFilterActive,
+  MAX_AGE_OPTIONS,
+} from "../../data/search";
 import type { CategoryIcon, Settings } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { usePointerOutside } from "../../hooks";
@@ -43,13 +47,6 @@ const FILTER_MENU_PLACEMENT: FloatingPlacement = {
   anchor: "right",
   coordinateSpace: "viewport",
 };
-
-// Quick-pick calendar windows for the "exclude old data" dropdown. Each
-// value is a count of calendar years to keep, current year inclusive (1
-// = this year only, 2 = this year + last, …); null = no age limit. The
-// list intentionally skips 4 — beyond "last 3 years" the user is browsing
-// in coarser strides, so 5 / 10 cover the long tail without a long menu.
-const MAX_AGE_OPTIONS: readonly (number | null)[] = [null, 1, 2, 3, 5, 10];
 
 function maxAgeLabel(value: number | null, t: TFunction): string {
   if (value === null) return t("searchTransaction.filterMaxAgeAll");

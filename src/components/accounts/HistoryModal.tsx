@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
 import { compareDateStrings } from "../../data/fiscal-month";
+import { ageFloorIso } from "../../data/search";
 import type {
   Account,
   HistoryEntry,
@@ -11,7 +12,15 @@ import type {
 } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import {
+  isoToMonthNum,
+  monthNumToIsoEnd,
+  monthNumToIsoStart,
+  monthNumToKey,
+  todayIso,
+} from "../../utils/date";
+import {
   formatBalance,
+  formatMonthLabel,
   formatNumber,
   formatShortDate,
   formatYearMonth,
@@ -63,10 +72,26 @@ export function HistoryModal({
   }, [entries, sortOrder]);
 
   const [query, setQuery] = useState("");
+
+  // Viewer-local filter bands, reset on close like the sort order — none
+  // of this touches persisted state. `maxAgeYears` is the coarse
+  // calendar window (shared `MAX_AGE_OPTIONS` semantics); the amount /
+  // date bands are inclusive, with null on a side meaning "unbounded"
+  // so a thumb parked at the natural edge reads as default.
+  const [maxAgeYears, setMaxAgeYears] = useState<number | null>(null);
+  const [amountMin, setAmountMin] = useState<number | null>(null);
+  const [amountMax, setAmountMax] = useState<number | null>(null);
+  const [dateMin, setDateMin] = useState<string | null>(null);
+  const [dateMax, setDateMax] = useState<string | null>(null);
   useEffect(() => {
     if (!open) {
       setQuery("");
       setSortOrder(settings.transactionSortOrder);
+      setMaxAgeYears(null);
+      setAmountMin(null);
+      setAmountMax(null);
+      setDateMin(null);
+      setDateMax(null);
     }
   }, [open, settings.transactionSortOrder]);
   const accountSettings = useMemo(
@@ -92,21 +117,125 @@ export function HistoryModal({
       })),
     [allSortedEntries, accountSettings],
   );
-  const filteredEntries = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q === "") return allSortedEntries;
-    const out: HistoryEntry[] = [];
-    for (const indexed of indexedEntries) {
-      if (
-        indexed.descriptionLc.includes(q) ||
-        indexed.amountLc.includes(q) ||
-        indexed.entry.date.includes(q)
-      ) {
-        out.push(indexed.entry);
+  // Inclusive ISO floor for the time-range quick-pick (null = all time),
+  // resolved against today so the window tracks the calendar.
+  const ageFloor = useMemo(
+    () => ageFloorIso(maxAgeYears, todayIso()),
+    [maxAgeYears],
+  );
+
+  // Natural amount / date extents over the rows the time-range floor
+  // surfaces — what the amount and date sliders seed their domains from.
+  // The bands deliberately ignore their own value here (so a slider
+  // can't collapse onto itself as the user drags); the time-range floor
+  // is honoured so narrowing it tightens both sliders' domains, mirroring
+  // the budget search's `searchBounds`. Amount is tracked by magnitude
+  // so the band matches both income and spend of the same size.
+  const bounds = useMemo(() => {
+    let aMin: number | null = null;
+    let aMax: number | null = null;
+    let dMin: string | null = null;
+    let dMax: string | null = null;
+    for (const e of allSortedEntries) {
+      if (ageFloor !== null && (e.date === "" || e.date < ageFloor)) continue;
+      const v = Math.abs(e.amount);
+      if (aMin === null || v < aMin) aMin = v;
+      if (aMax === null || v > aMax) aMax = v;
+      if (e.date !== "") {
+        if (dMin === null || e.date < dMin) dMin = e.date;
+        if (dMax === null || e.date > dMax) dMax = e.date;
       }
     }
+    return { amountMin: aMin, amountMax: aMax, dateMin: dMin, dateMax: dMax };
+  }, [allSortedEntries, ageFloor]);
+
+  // Slider domains + current values. A flat / empty domain has nothing
+  // to drag, so the section is hidden (`hasAmount` / `hasDate`).
+  const hasAmount =
+    bounds.amountMin !== null &&
+    bounds.amountMax !== null &&
+    bounds.amountMax > bounds.amountMin;
+  const amountSliderMin = bounds.amountMin ?? 0;
+  const amountSliderMax = bounds.amountMax ?? 0;
+  const amountValue: [number, number] = [
+    amountMin ?? amountSliderMin,
+    amountMax ?? amountSliderMax,
+  ];
+
+  const dateMinNum =
+    bounds.dateMin !== null ? isoToMonthNum(bounds.dateMin) : 0;
+  const dateMaxNum =
+    bounds.dateMax !== null ? isoToMonthNum(bounds.dateMax) : 0;
+  const hasDate =
+    bounds.dateMin !== null &&
+    bounds.dateMax !== null &&
+    dateMaxNum > dateMinNum;
+  const dateValue: [number, number] = [
+    dateMin !== null ? isoToMonthNum(dateMin) : dateMinNum,
+    dateMax !== null ? isoToMonthNum(dateMax) : dateMaxNum,
+  ];
+
+  // Store a band as null when its thumb sits at the natural edge so the
+  // filter stays "default" on that side and the Filter glyph dims back.
+  const commitAmount = useCallback(
+    (next: [number, number]) => {
+      setAmountMin(
+        bounds.amountMin !== null && next[0] <= bounds.amountMin
+          ? null
+          : next[0],
+      );
+      setAmountMax(
+        bounds.amountMax !== null && next[1] >= bounds.amountMax
+          ? null
+          : next[1],
+      );
+    },
+    [bounds.amountMin, bounds.amountMax],
+  );
+  const commitDate = useCallback(
+    (next: [number, number]) => {
+      setDateMin(next[0] <= dateMinNum ? null : monthNumToIsoStart(next[0]));
+      setDateMax(next[1] >= dateMaxNum ? null : monthNumToIsoEnd(next[1]));
+    },
+    [dateMinNum, dateMaxNum],
+  );
+
+  const amountLabel = useCallback(
+    (v: number) =>
+      withCurrency(formatNumber(v, accountSettings), accountSettings),
+    [accountSettings],
+  );
+  const dateLabel = useCallback(
+    (monthNum: number) => formatMonthLabel(monthNumToKey(monthNum), lang),
+    [lang],
+  );
+
+  const filteredEntries = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const out: HistoryEntry[] = [];
+    for (const indexed of indexedEntries) {
+      const e = indexed.entry;
+      if (ageFloor !== null && (e.date === "" || e.date < ageFloor)) continue;
+      if (amountMin !== null || amountMax !== null) {
+        const v = Math.abs(e.amount);
+        if (amountMin !== null && v < amountMin) continue;
+        if (amountMax !== null && v > amountMax) continue;
+      }
+      if (dateMin !== null && (e.date === "" || e.date < dateMin)) continue;
+      if (dateMax !== null && (e.date === "" || e.date > dateMax)) continue;
+      if (
+        q !== "" &&
+        !(
+          indexed.descriptionLc.includes(q) ||
+          indexed.amountLc.includes(q) ||
+          e.date.includes(q)
+        )
+      )
+        continue;
+      out.push(e);
+    }
     return out;
-  }, [allSortedEntries, indexedEntries, query]);
+  }, [indexedEntries, query, ageFloor, amountMin, amountMax, dateMin, dateMax]);
 
   const groups = useMemo(() => {
     const result: { monthKey: string; entries: HistoryEntry[] }[] = [];
@@ -192,6 +321,33 @@ export function HistoryModal({
                   o === "newestFirst" ? "oldestFirst" : "newestFirst",
                 ),
             }}
+            timeRange={
+              allSortedEntries.length > 0
+                ? { value: maxAgeYears, onChange: setMaxAgeYears }
+                : undefined
+            }
+            amount={
+              hasAmount
+                ? {
+                    min: amountSliderMin,
+                    max: amountSliderMax,
+                    value: amountValue,
+                    onChange: commitAmount,
+                    format: amountLabel,
+                  }
+                : undefined
+            }
+            dates={
+              hasDate
+                ? {
+                    min: dateMinNum,
+                    max: dateMaxNum,
+                    value: dateValue,
+                    onChange: commitDate,
+                    format: dateLabel,
+                  }
+                : undefined
+            }
           />
         }
       />
