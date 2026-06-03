@@ -86,27 +86,16 @@ function validateAmortization(raw: unknown): MortgageAmortization | undefined {
   return undefined;
 }
 
-// Validate one mortgage. `accountId` is nullable so a mortgage can exist
-// before the user binds the account "Find mortgage payments" scans; a
-// dangling reference (a deleted account) is dropped to `null` rather than
-// rejecting the file — mirrors `validateSalaryView`'s account check. A
-// malformed mortgage is dropped rather than failing the whole property.
-function validateMortgage(
-  raw: unknown,
-  knownAccountIds: ReadonlySet<string>,
-): Mortgage | null {
+// Validate one mortgage. The bound account lives on the parent property
+// now (`Property.accountId`), so a mortgage carries only its name, terms,
+// and payments. A malformed mortgage is dropped rather than failing the
+// whole property.
+function validateMortgage(raw: unknown): Mortgage | null {
   if (!isObject(raw)) return null;
   const { id, name } = raw;
   if (typeof id !== "string" || id === "") return null;
   if (typeof name !== "string") return null;
-  const mortgage: Mortgage = { id, name, accountId: null, payments: [] };
-  if (
-    typeof raw.accountId === "string" &&
-    raw.accountId !== "" &&
-    knownAccountIds.has(raw.accountId)
-  ) {
-    mortgage.accountId = raw.accountId;
-  }
+  const mortgage: Mortgage = { id, name, payments: [] };
   // Loan terms — all manually entered and optional. A malformed value is
   // dropped (the field stays absent) rather than rejecting the mortgage.
   if (isFiniteNumber(raw.loanAmount)) mortgage.loanAmount = raw.loanAmount;
@@ -170,6 +159,17 @@ export function validateProperty(
   ) {
     property.companyId = raw.companyId;
   }
+  // The bound account "Find mortgage payments" scans. Nullable so a
+  // property can exist before the user binds it; a dangling reference (a
+  // deleted account) is dropped to `null` rather than rejecting the file —
+  // mirrors `validateSalaryView`'s account check.
+  if (
+    typeof raw.accountId === "string" &&
+    raw.accountId !== "" &&
+    knownAccountIds.has(raw.accountId)
+  ) {
+    property.accountId = raw.accountId;
+  }
   if (isFiniteNumber(raw.purchaseAmount))
     property.purchaseAmount = raw.purchaseAmount;
   if (isIsoDate(raw.purchaseDate)) property.purchaseDate = raw.purchaseDate;
@@ -188,7 +188,7 @@ export function validateProperty(
   if (Array.isArray(raw.mortgages)) {
     const seen = new Set<string>();
     for (const rawMortgage of raw.mortgages) {
-      const mortgage = validateMortgage(rawMortgage, knownAccountIds);
+      const mortgage = validateMortgage(rawMortgage);
       if (!mortgage || seen.has(mortgage.id)) continue;
       seen.add(mortgage.id);
       property.mortgages.push(mortgage);

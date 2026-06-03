@@ -41,10 +41,10 @@ export type MortgagePayment = {
 
 // A loan taken against a property. A property can carry several (a first
 // loan plus a top-up / second loan, a refinance kept alongside), so
-// mortgages are a named list under the property. `accountId` binds the
-// bank account whose history "Find mortgage payments" scans for this
-// loan's recurring charge; nullable until the user picks one (mirrors
-// `SalaryView.accountId`).
+// mortgages are a named list under the property. The bank account whose
+// history "Find mortgage payments" scans lives on the parent **Property**
+// (`Property.accountId`), not here — a property is paid to the bank as a
+// single charge covering every loan against it, so the account is shared.
 //
 // How much of the loan is amortised (paid down) each month. The user
 // picks one of two mutually-exclusive modes:
@@ -89,7 +89,6 @@ export type MortgageRateChange = {
 export type Mortgage = {
   id: string;
   name: string; // user label, e.g. "SBAB loan 1"
-  accountId?: string | null; // bank account scanned for payments
   loanAmount?: number; // the sum originally borrowed
   currentBalance?: number; // outstanding balance now (manually recorded)
   interestRate?: number; // current annual interest rate, as a percent (3.45 ⇒ 3.45%)
@@ -123,6 +122,14 @@ export type Property = {
   // deleted) is swept to absent on load and on the `deleteCompany`
   // cascade, mirroring `Row.companyId`.
   companyId?: string;
+  // The bank account whose history "Find mortgage payments" scans for the
+  // property's recurring mortgage charge. A property is paid to the bank as
+  // a single charge covering every loan against it, so the account is
+  // shared across all the property's mortgages and lives here, not per
+  // mortgage. Nullable until the user picks one (mirrors
+  // `SalaryView.accountId`); a dangling reference (the account was deleted)
+  // is dropped to `null` on load rather than rejecting the file.
+  accountId?: string | null;
   purchaseAmount?: number; // what the property was bought for
   purchaseDate?: string; // ISO date of purchase
   // Living area of the property, in square metres. Stored as a bare

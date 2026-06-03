@@ -887,6 +887,42 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v63.properties;
     return { ...v63, version: 64, properties };
   },
+
+  // v64 → v65: the bound bank account moves from each mortgage up to the
+  // property — a property is paid to the bank as a single charge covering
+  // every loan against it, so one `accountId` belongs on the property, not
+  // repeated per mortgage (mirrors the v63 → v64 lender lift). Lift the
+  // first mortgage's `accountId` onto the property (when it doesn't already
+  // carry one) and strip it from every mortgage. The Properties feature is
+  // unreleased, but the `/preview` and `/branch` slots may hold v64
+  // mortgage-level accounts, so the lift runs rather than dropping them.
+  64: (v64) => {
+    const properties = Array.isArray(v64.properties)
+      ? v64.properties.map((property) => {
+          if (!isObj(property) || !Array.isArray(property.mortgages))
+            return property;
+          let accountId =
+            typeof property.accountId === "string"
+              ? property.accountId
+              : undefined;
+          const mortgages = property.mortgages.map((mortgage) => {
+            if (!isObj(mortgage) || !("accountId" in mortgage)) return mortgage;
+            if (
+              accountId === undefined &&
+              typeof mortgage.accountId === "string"
+            )
+              accountId = mortgage.accountId;
+            const { accountId: _drop, ...rest } = mortgage;
+            void _drop;
+            return rest;
+          });
+          return accountId === undefined
+            ? { ...property, mortgages }
+            : { ...property, accountId, mortgages };
+        })
+      : v64.properties;
+    return { ...v64, version: 65, properties };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

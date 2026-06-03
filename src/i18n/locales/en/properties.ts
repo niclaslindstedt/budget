@@ -22,7 +22,7 @@ const properties = {
   addMortgage: "Add mortgage",
   editMortgage: "Edit mortgage",
   deleteMortgage: "Delete mortgage",
-  noAccountBound: "No account bound",
+  noPaymentsYet: "No payments yet",
   paymentsCountOne: "{count} payment",
   paymentsCountOther: "{count} payments",
   paidTotal: "Paid",
@@ -90,7 +90,7 @@ const properties = {
   amortPreview: "≈ {amount} per month",
   accountLabel: "Account",
   accountHint:
-    "The account this loan is paid from. “Find payments” scans this account's bank history for the charge.",
+    "The account this property's mortgages are paid from. “Find mortgage payments” scans this account's bank history for the charges.",
   chooseAccount: "Choose an account",
   noAccount: "No account",
   noAccountsYet: "No accounts yet",

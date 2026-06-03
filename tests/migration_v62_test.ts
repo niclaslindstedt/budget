@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 
 // The v62 → v63 step merges the two mortgage preset types into one. It
 // remaps every stored reference to `preset-type-mortgage-interest` onto the
@@ -52,7 +52,7 @@ describe("migration v62 → v63 (merge mortgage types + flatten payments)", () =
       settings: { itemFindTypeIds: [OLD] },
     });
 
-    expect(data.version).toBe(64);
+    expect(data.version).toBe(LATEST_VERSION);
     const sheets = data.sheets as Array<{
       items: Array<{ rows: Array<{ typeId?: string }> }>;
     }>;

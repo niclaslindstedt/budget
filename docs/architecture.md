@@ -266,14 +266,14 @@ src/
 │   │   │                       #   descriptors can import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
-│   │   │                       #   payments; drops dangling mortgage accountId)
+│   │   │                       #   payments; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (62) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (65) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v61 steps
+│   │   ├── modern.ts           # v31 → v64 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)

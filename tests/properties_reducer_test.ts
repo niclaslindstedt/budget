@@ -22,7 +22,6 @@ const PROPERTY: Property = {
 const MORTGAGE: Mortgage = {
   id: "m1",
   name: "SBAB loan 1",
-  accountId: null,
   payments: [],
 };
 

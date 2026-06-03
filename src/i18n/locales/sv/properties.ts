@@ -22,7 +22,7 @@ const properties: PropertiesCatalog = {
   addMortgage: "Lägg till bolån",
   editMortgage: "Redigera bolån",
   deleteMortgage: "Ta bort bolån",
-  noAccountBound: "Inget konto kopplat",
+  noPaymentsYet: "Inga betalningar ännu",
   paymentsCountOne: "{count} betalning",
   paymentsCountOther: "{count} betalningar",
   paidTotal: "Betalt",
@@ -90,7 +90,7 @@ const properties: PropertiesCatalog = {
   amortPreview: "≈ {amount} per månad",
   accountLabel: "Konto",
   accountHint:
-    "Kontot det här lånet betalas från. ”Hitta betalningar” söker igenom kontots bankhistorik efter dragningen.",
+    "Kontot fastighetens bolån betalas från. ”Hitta bolånebetalningar” söker igenom kontots bankhistorik efter dragningarna.",
   chooseAccount: "Välj ett konto",
   noAccount: "Inget konto",
   noAccountsYet: "Inga konton ännu",

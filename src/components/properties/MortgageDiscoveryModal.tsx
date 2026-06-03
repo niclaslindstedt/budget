@@ -97,16 +97,15 @@ export function MortgageDiscoveryModal({
     setPropertyPickerOpen(false);
   });
 
-  // The distinct accounts the property's loans are paid from, and the
-  // combined history across them (one combined charge lives in one
-  // account, but a property could split loans across accounts).
-  const entries = useMemo(() => {
-    const accountIds = new Set<string>();
-    for (const m of mortgages) if (m.accountId) accountIds.add(m.accountId);
-    return [...accountIds].flatMap((id) => history[id] ?? []);
-  }, [mortgages, history]);
+  // The account the property's loans are paid from, and its history — a
+  // property is paid to the bank as one charge covering every loan, so the
+  // account is shared across the property's mortgages (`Property.accountId`).
+  const entries = useMemo(
+    () => (property?.accountId ? (history[property.accountId] ?? []) : []),
+    [property, history],
+  );
 
-  const hasAccount = mortgages.some((m) => Boolean(m.accountId));
+  const hasAccount = Boolean(property?.accountId);
 
   // Bank entries already backing a payment on any of the property's
   // mortgages — the fallback anchor and the months to skip.

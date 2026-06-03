@@ -9,7 +9,7 @@ mortgages are held with), and the mortgages themselves. For each mortgage
 you can record the sum you borrowed, the current balance, the amortisation
 (a percentage of the initial loan or a fixed sum per month), and a history
 of interest-rate changes so older payments are valued at the rate that was
-in effect then. Give the mortgages a bank account and open "Find mortgage
+in effect then. Give the property a bank account and open "Find mortgage
 payments" from
 the sheet's "…" menu: pick a property and it scans that account's history
 for the single monthly charge that pays its loans — homing in on the

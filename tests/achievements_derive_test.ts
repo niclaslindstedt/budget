@@ -185,7 +185,7 @@ describe("deriveUnlocks", () => {
         id: "p1",
         name: "Apartment",
         valueHistory: [],
-        mortgages: [{ id: "m1", name: "Loan", accountId: null, payments: [] }],
+        mortgages: [{ id: "m1", name: "Loan", payments: [] }],
       },
     ];
     const next = withItem([]);
@@ -198,7 +198,6 @@ describe("deriveUnlocks", () => {
           {
             id: "m1",
             name: "Loan",
-            accountId: null,
             payments: [{ id: "pay1", date: "2026-01-28", amount: 5500 }],
           },
         ],

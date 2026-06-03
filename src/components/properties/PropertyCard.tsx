@@ -55,6 +55,9 @@ export function PropertyCard({
   const lender = property.companyId
     ? companiesById.get(property.companyId)
     : undefined;
+  const account = property.accountId
+    ? accountsById.get(property.accountId)
+    : undefined;
 
   return (
     <section className="overflow-clip rounded border border-line bg-surface">
@@ -129,6 +132,11 @@ export function PropertyCard({
             <span className="truncate text-fg">{lender.name}</span>
           </Stat>
         )}
+        {account && (
+          <Stat label={t("properties.accountLabel")}>
+            <span className="truncate text-fg">{account.name}</span>
+          </Stat>
+        )}
         {property.size !== undefined && (
           <Stat label={t("properties.size")}>
             <span className="tabular-nums text-fg">
@@ -164,7 +172,6 @@ export function PropertyCard({
                 key={mortgage.id}
                 property={property}
                 mortgage={mortgage}
-                accountsById={accountsById}
                 settings={settings}
                 onEdit={onEditMortgage}
                 onDelete={onDeleteMortgage}
@@ -195,22 +202,17 @@ function Stat({
 function MortgageRow({
   property,
   mortgage,
-  accountsById,
   settings,
   onEdit,
   onDelete,
 }: {
   property: Property;
   mortgage: Mortgage;
-  accountsById: ReadonlyMap<string, Account>;
   settings: Settings;
   onEdit: (property: Property, mortgage: Mortgage) => void;
   onDelete: (property: Property, mortgage: Mortgage) => void;
 }) {
   const t = useT();
-  const account = mortgage.accountId
-    ? accountsById.get(mortgage.accountId)
-    : undefined;
   const count = mortgage.payments.length;
   const paid = mortgage.payments.reduce((s, p) => s + p.amount, 0);
   const monthlyAmort = resolveMonthlyAmortization(mortgage);
@@ -227,15 +229,11 @@ function MortgageRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-fg-bright">{mortgage.name}</span>
         <span className="block truncate text-xs text-muted">
-          {account ? account.name : t("properties.noAccountBound")}
-          {count > 0 && (
-            <>
-              {" · "}
-              {count === 1
-                ? t("properties.paymentsCountOne", { count })
-                : t("properties.paymentsCountOther", { count })}
-            </>
-          )}
+          {count === 0
+            ? t("properties.noPaymentsYet")
+            : count === 1
+              ? t("properties.paymentsCountOne", { count })
+              : t("properties.paymentsCountOther", { count })}
         </span>
         {hasTerms && (
           <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
