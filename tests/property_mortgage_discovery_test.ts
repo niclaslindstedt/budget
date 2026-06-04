@@ -5,8 +5,17 @@ import {
   monthsWithinBand,
   type MortgageDiscoveryInput,
 } from "../src/data/property-mortgage/discovery";
+import {
+  resolveMonthlyPaymentAt,
+  splitPaymentAcrossMortgages,
+} from "../src/data/property-mortgage/payment";
 import { PRESET_TYPE_MORTGAGE_ID } from "../src/data/presets/types";
-import type { Company, HistoryEntry } from "../src/data/types";
+import type {
+  Company,
+  HistoryEntry,
+  Mortgage,
+  Property,
+} from "../src/data/types";
 
 // Monthly ISO dates ("YYYY-MM-DD") on a fixed day from a start month.
 function monthlyDates(
@@ -256,6 +265,551 @@ describe("discoverMortgagePayments", () => {
       baseInput(entries, { fromDate: "2024-01-01" }),
     );
     expect(series).toEqual([]);
+  });
+});
+
+// ── Amount fallback: clean payments (no company / type / existing payment) ──
+//
+// The "Find mortgage payments" walk leans on tags first, then on payments
+// already recorded; with neither it falls back to the loan terms. When the
+// mortgages resolve an expected monthly figure (amortisation + interest, per
+// loan and combined), a recurring outflow whose typical amount lands near one
+// of those figures is offered as a candidate — so a property whose imported
+// payments carry no company or type still surfaces its mortgage charge from
+// the maths alone. This battery exercises that path across loan sizes,
+// property values, amortisation modes, and one / two / three mortgages paid
+// as a single combined charge or as one draw per loan.
+
+// A fixed reference date for resolving the expected figures, mirroring the
+// modal's use of "today" — deterministic because no scenario records a rate
+// history, so the headline rate applies on every date.
+const REF_DATE = "2025-06-04";
+
+function mort(id: string, over: Partial<Mortgage> = {}): Mortgage {
+  return { id, name: id, payments: [], ...over };
+}
+
+function property(
+  mortgages: Mortgage[],
+  over: Partial<Property> = {},
+): Property {
+  return { id: "prop", name: "Home", valueHistory: [], mortgages, ...over };
+}
+
+// The bank charge a property is actually drawn for: the combined expected
+// monthly payment across its mortgages, rounded to whole kronor the way a
+// real statement reads. A per-mortgage variant for properties paid as one
+// draw per loan.
+function combinedCharge(mortgages: readonly Mortgage[]): number {
+  return Math.round(
+    mortgages.reduce((s, m) => s + resolveMonthlyPaymentAt(m, REF_DATE), 0),
+  );
+}
+function eachCharge(mortgages: readonly Mortgage[]): number[] {
+  return mortgages.map((m) => Math.round(resolveMonthlyPaymentAt(m, REF_DATE)));
+}
+
+// Twelve months of one clean recurring outflow — no company, no type, no
+// existing payment — exactly the "all clean" history the finder must still
+// crack from the loan terms.
+function cleanCharges(
+  prefix: string,
+  description: string,
+  amount: number,
+  count = 12,
+  startYear = 2024,
+  startMonth = 1,
+): HistoryEntry[] {
+  return monthlyDates(startYear, startMonth, count).map((d, i) =>
+    entry(`${prefix}-${i}`, d, -amount, description),
+  );
+}
+
+// Run the finder for a property the way the modal does: expected figures
+// (combined + per-loan) from the loan terms, the purchase date as the hard
+// cut-off, the lender (if any) as a company anchor. Clean histories carry no
+// tags, so the amount fallback is what surfaces the series.
+function runFinder(
+  prop: Property,
+  entries: HistoryEntry[],
+  over: Partial<MortgageDiscoveryInput> = {},
+) {
+  const each = prop.mortgages.map((m) => resolveMonthlyPaymentAt(m, REF_DATE));
+  const combined = each.reduce((s, v) => s + v, 0);
+  return discoverMortgagePayments(
+    baseInput(entries, {
+      companyIds: prop.companyId ? [prop.companyId] : [],
+      fromDate: prop.purchaseDate,
+      targetAmounts: [combined, ...each],
+      ...over,
+    }),
+  );
+}
+
+describe("discoverMortgagePayments — amount fallback on clean payments", () => {
+  it("finds a small fixed-amortisation loan paid as one combined charge", () => {
+    // 200k loan, 1,000/mo amortisation, 3% on the balance ⇒ 500 interest ⇒
+    // a 1,500 combined charge.
+    const m = mort("m1", {
+      loanAmount: 200_000,
+      currentBalance: 200_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 1_000 },
+    });
+    const prop = property([m], { purchaseAmount: 350_000 });
+    const charge = combinedCharge([m]);
+    expect(charge).toBe(1_500);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "HEMBANKEN BOLAN", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(1_500);
+    expect(series[0].anchor).toBe("amount");
+    expect(series[0].months).toHaveLength(12);
+  });
+
+  it("finds a percent-of-initial amortisation loan", () => {
+    // 500k loan, 2% annual amortisation of the initial ⇒ 833.33/mo, 2.5% on
+    // the balance ⇒ 1,041.67 interest ⇒ 1,875 combined.
+    const m = mort("m1", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 2.5,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const prop = property([m], { purchaseAmount: 900_000 });
+    const charge = combinedCharge([m]);
+    expect(charge).toBe(1_875);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "BANK AMORTERING", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(1_875);
+  });
+
+  it("finds a medium fixed loan with a large interest leg", () => {
+    // 1.2M loan, 3,000/mo amortisation, 4% ⇒ 4,000 interest ⇒ 7,000.
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 3_000 },
+    });
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const charge = combinedCharge([m]);
+    expect(charge).toBe(7_000);
+    const { series } = runFinder(
+      prop,
+      cleanCharges("loan", "BOLAN DRAG", charge),
+    );
+    expect(series[0].suggestedAmount).toBe(7_000);
+  });
+
+  it("finds an interest-only loan (no amortisation recorded)", () => {
+    // 800k loan, no amortisation set, 3.5% ⇒ 2,333.33 ⇒ rounds to 2,333.
+    const m = mort("m1", {
+      loanAmount: 800_000,
+      currentBalance: 800_000,
+      interestRate: 3.5,
+    });
+    const prop = property([m], { purchaseAmount: 1_500_000 });
+    const charge = combinedCharge([m]);
+    expect(charge).toBe(2_333);
+    const { series } = runFinder(
+      prop,
+      cleanCharges("loan", "RANTA BOLAN", charge),
+    );
+    expect(series[0].suggestedAmount).toBe(2_333);
+    expect(series[0].months).toHaveLength(12);
+  });
+
+  it("finds a large loan paid as one combined charge", () => {
+    // 4M loan, 8,000/mo amortisation, 2% ⇒ 6,666.67 interest ⇒ 14,667.
+    const m = mort("m1", {
+      loanAmount: 4_000_000,
+      currentBalance: 4_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 8_000 },
+    });
+    const prop = property([m], { purchaseAmount: 6_000_000 });
+    const charge = combinedCharge([m]);
+    expect(charge).toBe(14_667);
+    const { series } = runFinder(
+      prop,
+      cleanCharges("loan", "STORBANKEN BOLAN", charge),
+    );
+    expect(series[0].suggestedAmount).toBe(14_667);
+  });
+
+  it("surfaces only the mortgage charge, not an unrelated subscription", () => {
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 3_000 },
+    });
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const charge = combinedCharge([m]); // 7,000
+    const entries = [
+      ...cleanCharges("loan", "BOLAN DRAG", charge),
+      ...cleanCharges("sub", "STREAMINGTJANST", 149),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(7_000);
+  });
+
+  it("tolerates a charge that drifts within the anchor band", () => {
+    // The expected combined is ~7,000 but the historical charge sits at 7,700
+    // (10% high, within the ±20% anchor band) — still surfaced.
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 3_000 },
+    });
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "BOLAN DRAG", 7_700),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(7_700);
+  });
+
+  it("drops a charge that lands outside the anchor band", () => {
+    // Expected ~1,500, but the only recurring outflow is 4,000 — 62% off,
+    // outside the ±20% anchor band — so the finder offers nothing.
+    const m = mort("m1", {
+      loanAmount: 200_000,
+      currentBalance: 200_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 1_000 },
+    });
+    const prop = property([m], { purchaseAmount: 350_000 });
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("rent", "HYRA", 4_000),
+    );
+    expect(seed).toBe("amount");
+    expect(series).toEqual([]);
+  });
+
+  it("drops a charge far below the expected figure", () => {
+    // Expected ~7,000; a lone 200 fee is nowhere near it.
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 3_000 },
+    });
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const { series } = runFinder(prop, cleanCharges("fee", "AVGIFT", 200));
+    expect(series).toEqual([]);
+  });
+
+  it("reports seed 'none' when the loan has no terms to anchor on", () => {
+    // A mortgage with no balance and no rate resolves no expected figure, so
+    // there is nothing to anchor a clean history against.
+    const m = mort("m1");
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "BOLAN DRAG", 7_000),
+    );
+    expect(seed).toBe("none");
+    expect(series).toEqual([]);
+  });
+
+  it("finds the combined charge of a two-mortgage property", () => {
+    // First loan 2M @2% + 4,000 amort ⇒ 7,333.33; second 500k @3% + 2,000
+    // amort ⇒ 3,250; combined ⇒ 10,583, paid as one draw.
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 4_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 2_000 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 3_500_000 });
+    const charge = combinedCharge([m1, m2]);
+    expect(charge).toBe(10_583);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "TVABANKEN BOLAN", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(10_583);
+    // The combined charge splits across the two loans by their expected share.
+    const split = splitPaymentAcrossMortgages([m1, m2], charge, "2024-06-28");
+    expect([...split.values()].reduce((s, v) => s + v, 0)).toBe(10_583);
+    expect(split.size).toBe(2);
+  });
+
+  it("finds two separate per-loan draws of a two-mortgage property", () => {
+    // The same two loans, but paid as one draw each — both surface, since the
+    // per-loan expected figures anchor them.
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 4_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 2_000 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 3_500_000 });
+    const [c1, c2] = eachCharge([m1, m2]); // 7,333 and 3,250
+    const entries = [
+      ...cleanCharges("a", "BOLAN ETT", c1),
+      ...cleanCharges("b", "BOLAN TVA", c2),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series.map((s) => s.suggestedAmount).sort((a, b) => a - b)).toEqual([
+      3_250, 7_333,
+    ]);
+  });
+
+  it("finds a two-mortgage property mixing fixed and percent amortisation", () => {
+    // Fixed amort on one, percent-of-initial on the other.
+    const m1 = mort("m1", {
+      loanAmount: 1_500_000,
+      currentBalance: 1_500_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 5_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 600_000,
+      currentBalance: 600_000,
+      interestRate: 3,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 2_800_000 });
+    const charge = combinedCharge([m1, m2]);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "BLANDBANKEN BOLAN", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(charge);
+  });
+
+  it("finds a two-mortgage property with very different rates", () => {
+    const m1 = mort("m1", {
+      loanAmount: 3_000_000,
+      currentBalance: 3_000_000,
+      interestRate: 1.5,
+      amortization: { mode: "fixed", amount: 6_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 300_000,
+      currentBalance: 300_000,
+      interestRate: 5.5,
+      amortization: { mode: "fixed", amount: 1_500 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 4_000_000 });
+    const charge = combinedCharge([m1, m2]);
+    const { series } = runFinder(
+      prop,
+      cleanCharges("loan", "RANTEBANKEN BOLAN", charge),
+    );
+    expect(series[0].suggestedAmount).toBe(charge);
+  });
+
+  it("surfaces only the combined draw amid noise for two mortgages", () => {
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 4_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 2_000 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 3_500_000 });
+    const charge = combinedCharge([m1, m2]);
+    // Noise kept clear of every expected figure (combined 10,583 and the
+    // per-loan 7,333 / 3,250) so only the mortgage draw lands in band.
+    const entries = [
+      ...cleanCharges("loan", "TVABANKEN BOLAN", charge),
+      ...cleanCharges("food", "MATBUTIK", 1_250),
+      ...cleanCharges("gym", "TRANINGSKORT", 399),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(charge);
+  });
+
+  it("finds the combined charge of a three-mortgage property", () => {
+    // 3M @1.8% + 5,000 ⇒ 9,500; 1M @2.2% + 2% percent ⇒ 3,500; 400k @3% +
+    // 1,500 ⇒ 2,500; combined ⇒ 15,500.
+    const m1 = mort("m1", {
+      loanAmount: 3_000_000,
+      currentBalance: 3_000_000,
+      interestRate: 1.8,
+      amortization: { mode: "fixed", amount: 5_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 1_000_000,
+      currentBalance: 1_000_000,
+      interestRate: 2.2,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const m3 = mort("m3", {
+      loanAmount: 400_000,
+      currentBalance: 400_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 1_500 },
+    });
+    const prop = property([m1, m2, m3], { purchaseAmount: 5_200_000 });
+    const charge = combinedCharge([m1, m2, m3]);
+    expect(charge).toBe(15_500);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "TREBANKEN BOLAN", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(15_500);
+    const split = splitPaymentAcrossMortgages(
+      [m1, m2, m3],
+      charge,
+      "2024-06-28",
+    );
+    expect(split.size).toBe(3);
+    expect([...split.values()].reduce((s, v) => s + v, 0)).toBe(15_500);
+  });
+
+  it("finds three separate per-loan draws of a three-mortgage property", () => {
+    const m1 = mort("m1", {
+      loanAmount: 3_000_000,
+      currentBalance: 3_000_000,
+      interestRate: 1.8,
+      amortization: { mode: "fixed", amount: 5_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 1_000_000,
+      currentBalance: 1_000_000,
+      interestRate: 2.2,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const m3 = mort("m3", {
+      loanAmount: 400_000,
+      currentBalance: 400_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 1_500 },
+    });
+    const prop = property([m1, m2, m3], { purchaseAmount: 5_200_000 });
+    const [c1, c2, c3] = eachCharge([m1, m2, m3]); // 9,500 / 3,500 / 2,500
+    const entries = [
+      ...cleanCharges("a", "BOLAN A", c1),
+      ...cleanCharges("b", "BOLAN B", c2),
+      ...cleanCharges("c", "BOLAN C", c3),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series.map((s) => s.suggestedAmount).sort((a, b) => a - b)).toEqual([
+      2_500, 3_500, 9_500,
+    ]);
+  });
+
+  it("finds a three-mortgage property with all-percent amortisation", () => {
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "percent", percent: 3 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 1_000_000,
+      currentBalance: 1_000_000,
+      interestRate: 2.5,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const m3 = mort("m3", {
+      loanAmount: 600_000,
+      currentBalance: 600_000,
+      interestRate: 3,
+      amortization: { mode: "percent", percent: 1 },
+    });
+    const prop = property([m1, m2, m3], { purchaseAmount: 4_500_000 });
+    const charge = combinedCharge([m1, m2, m3]);
+    const { series, seed } = runFinder(
+      prop,
+      cleanCharges("loan", "PROCENTBANKEN BOLAN", charge),
+    );
+    expect(seed).toBe("amount");
+    expect(series[0].suggestedAmount).toBe(charge);
+  });
+
+  it("drops pre-purchase months for a three-mortgage combined charge", () => {
+    // The same combined charge runs for twelve months, but the home was only
+    // bought half-way through — the earlier months (a previous home's loan at
+    // the same description and size) are dropped outright.
+    const m1 = mort("m1", {
+      loanAmount: 3_000_000,
+      currentBalance: 3_000_000,
+      interestRate: 1.8,
+      amortization: { mode: "fixed", amount: 5_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 1_000_000,
+      currentBalance: 1_000_000,
+      interestRate: 2.2,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const m3 = mort("m3", {
+      loanAmount: 400_000,
+      currentBalance: 400_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 1_500 },
+    });
+    const prop = property([m1, m2, m3], {
+      purchaseAmount: 5_200_000,
+      purchaseDate: "2024-07-01",
+    });
+    const charge = combinedCharge([m1, m2, m3]);
+    const { series } = runFinder(
+      prop,
+      cleanCharges("loan", "TREBANKEN BOLAN", charge),
+    );
+    expect(series[0].suggestedAmount).toBe(charge);
+    expect(series[0].months).toHaveLength(6);
+    expect(series[0].spanMonths).toBe(6);
+    expect(series[0].months.every((m) => m.date >= "2024-07-01")).toBe(true);
+  });
+
+  it("ranks the charge closest to the expected figure first", () => {
+    // Two recurring outflows both inside the ±20% band of a ~7,000 expected
+    // combined: the on-the-nose 7,000 draw and a 6,100 one. Both surface, the
+    // closer one leads.
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 3_000 },
+    });
+    const prop = property([m], { purchaseAmount: 2_400_000 });
+    const charge = combinedCharge([m]); // 7,000
+    const entries = [
+      ...cleanCharges("loan", "BOLAN DRAG", charge),
+      ...cleanCharges("near", "ANNAN DRAG", 6_100),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series.map((s) => s.suggestedAmount)).toEqual([7_000, 6_100]);
+    expect(series[0].targetDelta).toBeLessThan(series[1].targetDelta!);
   });
 });
 

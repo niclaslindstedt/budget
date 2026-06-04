@@ -17,7 +17,10 @@ charges you tagged with a lender or the Mortgage type, learning their bank
 description, and sweeping the rest of the history for every matching month,
 ranking the likeliest first, leaving a previous home's loan out by its
 different amount, and ignoring charges that are nowhere near what the loan's
-amortisation and interest add up to. Each found transaction is split across the property's
+amortisation and interest add up to. Haven't tagged anything yet? As long
+as the loan's terms are filled in, the finder still picks out the charges
+whose amount matches the expected monthly payment, so a freshly imported
+account turns up its mortgage straight from the maths. Each found transaction is split across the property's
 mortgages by their amortisation and interest, recording one payment per
 loan that adds up to exactly what was paid. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
