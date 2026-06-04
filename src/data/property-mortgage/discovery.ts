@@ -92,14 +92,19 @@ export type MortgageDiscoveryInput = {
   // fallback anchor (their descriptions seed the expansion) when no tagged
   // entry exists.
   seedEntryIds?: readonly string[];
-  // The property's purchase date (ISO yyyy-mm-dd), when known. NOT a hard
-  // cut-off: a charge with the same bank description before this date is
-  // usually the user's *previous* home's mortgage, and the amount shifts
-  // when they move (a new loan, a new balance). So the date is used to
-  // pick the band CENTRE — the typical charge is taken from the months on
-  // or after the purchase, the amount THIS property's loan is paid at — and
-  // the amount band then drops the differently-sized earlier months on its
-  // own. Absent ⇒ the centre is the median across every month.
+  // The property's purchase date (ISO yyyy-mm-dd), when known. A HARD
+  // cut-off: a charge before this date cannot be a payment on this
+  // property's mortgage — you can't have paid the loan before you owned the
+  // home — so earlier months are dropped outright. A charge with the same
+  // bank description before the purchase is the user's *previous* home's
+  // mortgage; relying on the amount band to drop it (the assumption being a
+  // move changes the loan and the amount) fails when the old and new charge
+  // happen to be the same size, so the date filter is what keeps those
+  // earlier months out. The surviving months also pick the band CENTRE — the
+  // typical charge is the median across the months on or after the purchase,
+  // the amount THIS property's loan is paid at. A series with no month on or
+  // after the purchase is dropped entirely. Absent ⇒ every month is kept and
+  // the centre is the median across all of them.
   fromDate?: string;
   // Expected monthly figures the loan terms resolve to — the amortisation,
   // the interest, and/or the two combined. Drive two things: they RANK the
@@ -237,21 +242,20 @@ export function discoverMortgagePayments(
     const months = byKeyMonth.get(key);
     if (!months || months.size === 0) continue;
     const sortedMonths = [...months.keys()].sort();
-    // Centre the band on the months on or after the purchase — the amount
-    // this property's loan is paid at — so an earlier home's
-    // same-description charge (a different amount) doesn't drag the centre
-    // and is dropped by the band. Fall back to every month when none fall
-    // on or after the purchase (or no purchase date is known).
-    const fromMonth = fromDate ? fromDate.slice(0, 7) : null;
-    const centreMonths =
-      fromMonth !== null
-        ? sortedMonths.filter((m) => m >= fromMonth)
-        : sortedMonths;
+    // Keep only the months whose charge falls on or after the purchase date —
+    // a payment can't predate ownership, and an earlier home's
+    // same-description charge (the previous mortgage) is not a payment on this
+    // property. The surviving months also centre the band: the typical charge
+    // is the median across them, the amount this property's loan is paid at.
+    // With no purchase date we keep every month. A series left with no
+    // surviving month is the previous home's charge and is dropped outright.
+    const eligibleMonths = fromDate
+      ? sortedMonths.filter((m) => months.get(m)!.date >= fromDate)
+      : sortedMonths;
+    if (eligibleMonths.length === 0) continue;
     const amountsFor = (keys: readonly string[]) =>
       keys.map((m) => Math.abs(months.get(m)!.amount));
-    const suggestedAmount = median(
-      amountsFor(centreMonths.length > 0 ? centreMonths : sortedMonths),
-    );
+    const suggestedAmount = median(amountsFor(eligibleMonths));
     let targetDelta: number | undefined;
     for (const target of targetAmounts) {
       const delta = relativeDelta(suggestedAmount, target);
@@ -261,8 +265,8 @@ export function discoverMortgagePayments(
       key,
       label: labelByKey.get(key) ?? key,
       suggestedAmount,
-      spanMonths: spanOfMonths(sortedMonths),
-      months: sortedMonths.map((m) => {
+      spanMonths: spanOfMonths(eligibleMonths),
+      months: eligibleMonths.map((m) => {
         const e = months.get(m)!;
         return {
           monthKey: m,
