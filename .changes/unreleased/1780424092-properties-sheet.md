@@ -29,6 +29,7 @@ mortgages by their amortisation and interest, recording one payment per
 loan that adds up to exactly what was paid. Open a property's payments to
 review every recorded charge and how it split across the loans, and edit or
 remove individual payments — change one loan's share and the others
-re-balance so the total still matches the bank. A property can carry several
+re-balance so the total still matches the bank — or clear every recorded
+payment in one go to re-run the finder from scratch. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.

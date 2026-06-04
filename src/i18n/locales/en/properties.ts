@@ -148,6 +148,10 @@ const properties = {
   deletePaymentTitle: "Delete payment?",
   deletePaymentConfirm:
     "{name}'s share of the {date} charge ({amount}) will be removed. This cannot be undone.",
+  deleteAllPayments: "Delete all",
+  deleteAllPaymentsTitle: "Delete all payments?",
+  deleteAllPaymentsConfirm:
+    "Every recorded payment on {name} will be removed so you can re-run Find mortgage payments from scratch. This cannot be undone.",
 
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",

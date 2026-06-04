@@ -7,6 +7,7 @@ import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { Button } from "../form";
 import { Modal } from "../Modal";
 import {
   MortgagePaymentEditModal,
@@ -26,6 +27,7 @@ type Props = {
   onClose: () => void;
   onSetChargeSplit: (updates: ChargeSplitUpdate[]) => void;
   onDeletePayment: (mortgageId: string, paymentId: string) => void;
+  onDeleteAll: () => void;
 };
 
 // A snapshot of the row queued for deletion — held by value (not by
@@ -46,6 +48,7 @@ export function MortgagePaymentsModal({
   onClose,
   onSetChargeSplit,
   onDeletePayment,
+  onDeleteAll,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -62,10 +65,12 @@ export function MortgagePaymentsModal({
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
     null,
   );
+  const [confirmingDeleteAll, setConfirmingDeleteAll] = useState(false);
 
   useResetOnOpen(open, property?.id, () => {
     setEditing(null);
     setPendingDelete(null);
+    setConfirmingDeleteAll(false);
   });
 
   const editingGroup = editing
@@ -164,6 +169,19 @@ export function MortgagePaymentsModal({
         )}
       </Modal.Body>
 
+      {groups.length > 0 && (
+        <Modal.Footer className="justify-start">
+          <Button
+            variant="danger"
+            withIcon
+            onClick={() => setConfirmingDeleteAll(true)}
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+            {t("properties.deleteAllPayments")}
+          </Button>
+        </Modal.Footer>
+      )}
+
       <MortgagePaymentEditModal
         open={editingGroup !== null}
         group={editingGroup}
@@ -209,6 +227,25 @@ export function MortgagePaymentsModal({
           },
         ]}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmingDeleteAll}
+        title={t("properties.deleteAllPaymentsTitle")}
+        description={t("properties.deleteAllPaymentsConfirm", {
+          name: property.name,
+        })}
+        actions={[
+          {
+            label: t("properties.delete"),
+            tone: "danger",
+            onSelect: () => {
+              onDeleteAll();
+              setConfirmingDeleteAll(false);
+            },
+          },
+        ]}
+        onCancel={() => setConfirmingDeleteAll(false)}
       />
     </Modal>
   );

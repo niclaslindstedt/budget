@@ -148,6 +148,10 @@ const properties: PropertiesCatalog = {
   deletePaymentTitle: "Ta bort betalning?",
   deletePaymentConfirm:
     "{name}s del av dragningen {date} ({amount}) tas bort. Det går inte att ångra.",
+  deleteAllPayments: "Ta bort alla",
+  deleteAllPaymentsTitle: "Ta bort alla betalningar?",
+  deleteAllPaymentsConfirm:
+    "Alla registrerade betalningar på {name} tas bort så att du kan köra Hitta bolånebetalningar från början igen. Det går inte att ångra.",
 
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",

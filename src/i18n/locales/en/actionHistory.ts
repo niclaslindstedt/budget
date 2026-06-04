@@ -101,6 +101,7 @@ const actionHistory = {
     addMortgagePaymentsForProperty: "Added mortgage payments",
     updateMortgagePayment: "Edited mortgage payment",
     deleteMortgagePayment: "Deleted mortgage payment",
+    deleteAllMortgagePayments: "Deleted all mortgage payments",
     setMortgageChargeSplit: "Edited mortgage payment",
     createTransfer: "Created transfer",
     updateTransfer: "Edited transfer",
