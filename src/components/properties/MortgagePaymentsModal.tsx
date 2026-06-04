@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   Coins,
   Pencil,
@@ -11,16 +11,20 @@ import {
 
 import {
   groupPaymentsByCharge,
+  type MortgageChargeItem,
   reconcileMortgageAmortization,
   splitRecordedPayment,
 } from "../../data/property-mortgage/payment";
 import type { Property, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
+import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button } from "../form";
 import { Modal } from "../Modal";
+import { useClaimActiveRow } from "../useClaimActiveRow";
 import {
   MortgagePaymentEditModal,
   type ChargeSplitUpdate,
@@ -121,144 +125,96 @@ export function MortgagePaymentsModal({
             {t("properties.paymentsEmpty")}
           </p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {groups.map((group) => (
-              <li
-                key={group.key}
-                className="overflow-clip rounded border border-line bg-surface-2"
-              >
-                <div className="flex items-baseline justify-between gap-2 border-b border-line bg-surface-3 px-2.5 py-1.5 text-xs">
-                  <span className="tabular-nums text-muted">
-                    {formatShortDate(
-                      group.date,
-                      settings.shortDateFormat,
-                      lang,
-                    )}
-                  </span>
-                  <span className="tabular-nums font-bold text-fg-bright">
-                    {formatBalance(group.total, settings, {
-                      neverAbbreviate: true,
-                    })}
-                  </span>
-                </div>
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="text-muted">
-                      <th className="px-2.5 py-1 text-left" />
-                      <th
-                        className="px-1 py-1 text-right font-normal"
-                        title={t("properties.amortShort")}
-                      >
-                        <TrendingDown
-                          size={13}
-                          className="ml-auto"
-                          aria-label={t("properties.amortShort")}
-                          focusable={false}
-                        />
-                      </th>
-                      <th
-                        className="px-1 py-1 text-right font-normal"
-                        title={t("properties.interestShort")}
-                      >
-                        <Percent
-                          size={13}
-                          className="ml-auto"
-                          aria-label={t("properties.interestShort")}
-                          focusable={false}
-                        />
-                      </th>
-                      <th
-                        className="px-1 py-1 text-right font-normal"
-                        title={t("properties.paymentAmount")}
-                      >
-                        <Coins
-                          size={13}
-                          className="ml-auto"
-                          aria-label={t("properties.paymentAmount")}
-                          focusable={false}
-                        />
-                      </th>
-                      <th className="px-2.5 py-1" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.items.map((item) => {
-                      const split = splitRecordedPayment(
-                        item.mortgage,
-                        item.payment,
-                      );
-                      return (
-                        <tr
-                          key={item.payment.id}
-                          className="border-t border-line"
+          <ActiveRowProvider>
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {groups.map((group) => (
+                <li
+                  key={group.key}
+                  className="overflow-clip rounded border border-line bg-surface-2"
+                >
+                  <div className="flex items-baseline justify-between gap-2 border-b border-line bg-surface-3 px-2.5 py-1.5 text-xs">
+                    <span className="tabular-nums text-muted">
+                      {formatShortDate(
+                        group.date,
+                        settings.shortDateFormat,
+                        lang,
+                      )}
+                    </span>
+                    <span className="tabular-nums font-bold text-fg-bright">
+                      {formatBalance(group.total, settings, {
+                        neverAbbreviate: true,
+                      })}
+                    </span>
+                  </div>
+                  <table className="mortgage-payments-table w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="text-muted">
+                        <th className="px-2.5 py-1 text-left" />
+                        <th
+                          className="px-1 py-1 text-right font-normal"
+                          title={t("properties.amortShort")}
                         >
-                          <td className="px-2.5 py-1.5 text-fg">
-                            {item.mortgage.name}
-                          </td>
-                          <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
-                            {formatBalance(split.amortization, settings, {
-                              neverAbbreviate: true,
-                            })}
-                          </td>
-                          <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
-                            {formatBalance(split.interest, settings, {
-                              neverAbbreviate: true,
-                            })}
-                          </td>
-                          <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums text-fg-bright">
-                            {formatBalance(item.payment.amount, settings, {
-                              neverAbbreviate: true,
-                            })}
-                          </td>
-                          <td className="px-2.5 py-1">
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEditing({
-                                    key: group.key,
-                                    mortgageId: item.mortgage.id,
-                                  })
-                                }
-                                aria-label={t("properties.editPayment")}
-                                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-                              >
-                                <Pencil
-                                  size={16}
-                                  aria-hidden
-                                  focusable={false}
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPendingDelete({
-                                    mortgageId: item.mortgage.id,
-                                    paymentId: item.payment.id,
-                                    mortgageName: item.mortgage.name,
-                                    date: item.payment.date,
-                                    amount: item.payment.amount,
-                                  })
-                                }
-                                aria-label={t("properties.deletePayment")}
-                                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
-                              >
-                                <Trash2
-                                  size={16}
-                                  aria-hidden
-                                  focusable={false}
-                                />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </li>
-            ))}
-          </ul>
+                          <TrendingDown
+                            size={13}
+                            className="ml-auto"
+                            aria-label={t("properties.amortShort")}
+                            focusable={false}
+                          />
+                        </th>
+                        <th
+                          className="px-1 py-1 text-right font-normal"
+                          title={t("properties.interestShort")}
+                        >
+                          <Percent
+                            size={13}
+                            className="ml-auto"
+                            aria-label={t("properties.interestShort")}
+                            focusable={false}
+                          />
+                        </th>
+                        <th
+                          className="px-1 py-1 text-right font-normal"
+                          title={t("properties.paymentAmount")}
+                        >
+                          <Coins
+                            size={13}
+                            className="ml-auto"
+                            aria-label={t("properties.paymentAmount")}
+                            focusable={false}
+                          />
+                        </th>
+                        <th className="mortgage-payments-action-cell w-32 px-2.5 py-1" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((item) => (
+                        <MortgagePaymentRow
+                          key={item.payment.id}
+                          item={item}
+                          settings={settings}
+                          onEdit={() =>
+                            setEditing({
+                              key: group.key,
+                              mortgageId: item.mortgage.id,
+                            })
+                          }
+                          onDelete={() =>
+                            setPendingDelete({
+                              mortgageId: item.mortgage.id,
+                              paymentId: item.payment.id,
+                              mortgageName: item.mortgage.name,
+                              date: item.payment.date,
+                              amount: item.payment.amount,
+                            })
+                          }
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </li>
+              ))}
+            </ul>
+          </ActiveRowProvider>
         )}
 
         {unaccounted.length > 0 && (
@@ -379,3 +335,87 @@ export function MortgagePaymentsModal({
     </Modal>
   );
 }
+
+type RowProps = {
+  item: MortgageChargeItem;
+  settings: Settings;
+  onEdit: () => void;
+  onDelete: () => void;
+};
+
+// One mortgage's share within a charge. Desktop keeps the edit / delete
+// icons inline in the trailing column; on mobile the row swipes left to
+// reveal them from behind, mirroring the budget / accounts / items /
+// salary tables (see the `.mortgage-payments-table` rules in
+// styles/components.css).
+function MortgagePaymentRowImpl({
+  item,
+  settings,
+  onEdit,
+  onDelete,
+}: RowProps) {
+  const t = useT();
+  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
+  // A swiped row exposes edit / delete; claim the active-row slot so a tap
+  // elsewhere only retracts the swipe instead of also firing the control
+  // underneath.
+  useClaimActiveRow(item.payment.id, swiped, () => setSwiped(false));
+  const split = splitRecordedPayment(item.mortgage, item.payment);
+
+  return (
+    <tr
+      className={`border-t border-line${swiped ? " is-swiped" : ""}`}
+      data-row-id={item.payment.id}
+      data-swipe-handled
+      {...touchHandlers}
+    >
+      <td className="px-2.5 py-1.5 text-fg">
+        <span className="block truncate">{item.mortgage.name}</span>
+      </td>
+      <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+        {formatBalance(split.amortization, settings, {
+          neverAbbreviate: true,
+        })}
+      </td>
+      <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+        {formatBalance(split.interest, settings, {
+          neverAbbreviate: true,
+        })}
+      </td>
+      <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums text-fg-bright">
+        {formatBalance(item.payment.amount, settings, {
+          neverAbbreviate: true,
+        })}
+      </td>
+      <td className="mortgage-payments-action-cell w-32 p-0 align-middle">
+        <div className="flex h-full w-full items-stretch justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onEdit();
+            }}
+            aria-label={t("properties.editPayment")}
+            className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+          >
+            <Pencil size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onDelete();
+            }}
+            aria-label={t("properties.deletePayment")}
+            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// Memoised so a swipe on one row doesn't re-render every sibling.
+const MortgagePaymentRow = memo(MortgagePaymentRowImpl);

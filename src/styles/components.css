@@ -764,6 +764,96 @@
       background: var(--surface-2);
       color: var(--fg-bright);
     }
+
+    /* Mortgage payments view — the per-charge tables inside
+       `MortgagePaymentsModal` mirror the items sheet's two-button swipe
+       strip (edit / delete). Desktop keeps the inline icons; mobile
+       converts each charge's table to a block / per-row grid so
+       `position: relative` on `<tr>` establishes a containing block the
+       absolutely-positioned action cell anchors to. Without the grid
+       conversion the action cell auto-places into a non-existent column
+       track and wraps to a second row. Each charge group is its own
+       table, so the grid columns are resolved per-row — the numeric
+       columns carry floors wide enough that a group's header glyphs and
+       its body figures land on the same tracks. */
+    .mortgage-payments-table,
+    .mortgage-payments-table > thead,
+    .mortgage-payments-table > tbody {
+      display: block;
+      width: 100%;
+    }
+    .mortgage-payments-table > thead > tr,
+    .mortgage-payments-table > tbody > tr {
+      /* flex mortgage name · amortisation · interest · amount, the three
+         money columns sized to their content with a floor. The action
+         cell sits outside the grid as an absolute overlay so it reserves
+         no track on mobile. */
+      display: grid;
+      grid-template-columns:
+        minmax(0, 1fr) minmax(52px, max-content) minmax(52px, max-content)
+        minmax(60px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .mortgage-payments-table th,
+    .mortgage-payments-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .mortgage-payments-table th > *,
+    .mortgage-payments-table td > * {
+      width: 100%;
+    }
+    .mortgage-payments-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .mortgage-payments-table
+      > tbody
+      > tr.is-swiped
+      > td:not(.mortgage-payments-action-cell) {
+      transform: translateX(-128px);
+    }
+    .mortgage-payments-table > thead > tr > .mortgage-payments-action-cell,
+    .mortgage-payments-table > tbody > tr > .mortgage-payments-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 128px fits the two-button (edit / delete) strip at a comfortable
+         ~42px tap target each, mirroring the items / salary sheets. */
+      width: 128px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .mortgage-payments-table
+      > tbody
+      > tr.is-swiped
+      > .mortgage-payments-action-cell {
+      transform: translateX(0);
+    }
+    .mortgage-payments-table
+      > tbody
+      > tr
+      > .mortgage-payments-action-cell
+      .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .mortgage-payments-table
+      > tbody
+      > tr
+      > .mortgage-payments-action-cell
+      .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
   }
 
   /* Month-header rows pin below the sticky app header + column-header
