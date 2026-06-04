@@ -200,7 +200,7 @@ describe("discoverMortgagePayments", () => {
     expect(series.map((s) => s.suggestedAmount)).toEqual([8_000, 20]);
   });
 
-  it("centres the amount band on charges from the purchase date onward", () => {
+  it("drops months that predate the purchase date and centres on the rest", () => {
     // Six months of a previous home's 5,000 loan, then six of this home's
     // 8,000 loan — same bank description either side of the move.
     const dates = monthlyDates(2023, 1, 12);
@@ -214,9 +214,48 @@ describe("discoverMortgagePayments", () => {
     );
     const s = series[0];
     expect(s.suggestedAmount).toBe(8_000);
+    // The pre-purchase months are gone from the series entirely, not merely
+    // down-weighted — span and month list reflect only the six owned months.
+    expect(s.months).toHaveLength(6);
+    expect(s.spanMonths).toBe(6);
+    expect(s.months.every((m) => m.date >= "2023-07-01")).toBe(true);
     const kept = monthsWithinBand(s, s.suggestedAmount, 0.1);
     expect(kept).toHaveLength(6);
     expect(kept.every((m) => m.amount === 8_000)).toBe(true);
+  });
+
+  it("drops pre-purchase months even when the amount is unchanged", () => {
+    // A previous home's loan charged at the SAME amount and description as the
+    // current one, so the amount band can't tell them apart — only the
+    // purchase date keeps the earlier months out.
+    const dates = monthlyDates(2023, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`p-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { fromDate: "2023-07-01" }),
+    );
+    const s = series[0];
+    expect(s.months).toHaveLength(6);
+    expect(s.months[0].date).toBe("2023-07-28");
+    expect(monthsWithinBand(s, s.suggestedAmount, 0.1)).toHaveLength(6);
+  });
+
+  it("drops a series whose charges all predate the purchase date", () => {
+    // Every matching charge is from before the move — the previous home's
+    // mortgage — so the series is the old home's and must not surface.
+    const dates = monthlyDates(2023, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`p-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { fromDate: "2024-01-01" }),
+    );
+    expect(series).toEqual([]);
   });
 });
 
