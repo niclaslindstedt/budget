@@ -119,6 +119,7 @@ const properties = {
   findSeedPayments: "Matched from the payments already on this mortgage.",
   findSeedAmount:
     "Matched from the loan terms — charges near this mortgage's expected monthly amount. Check each one before adding.",
+  findHighlyProbable: "Highly probable",
   findPreview: "Payments to add",
   findAlreadyAdded: "Already added",
   findAddOne: "Add {count} payment",

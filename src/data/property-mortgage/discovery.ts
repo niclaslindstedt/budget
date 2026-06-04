@@ -26,6 +26,16 @@
 // appears. Only with no tag, no payment, AND no expected figure does the walk
 // report `seed: "none"` and nudge the user to tag a month first.
 //
+// On top of the strictness tiers sits one stronger signal: **monthly
+// recurrence**. A mortgage is paid once a month, every month, for the same
+// amount — so a charge that recurs on a clean once-a-month cadence (no gaps)
+// over a meaningful span, under one stable description, whose typical amount
+// lands within the tight band of an expected figure is flagged **highly
+// probable** and TRUMPS the tag / company anchor in the ranking. The recurrence
+// + matching amount + stable text is a surer signal that the charge IS the
+// mortgage than any single tag the user happened to apply, so it leads even
+// over a tagged charge — and the modal marks it so it stands out.
+//
 // Pure: fed an account's history plus the company / type / rule / hint
 // tables needed to resolve each entry's tags, it emits the matching charge
 // series with their per-month winning entries. Reuses `resolveEntryLabels`
@@ -71,6 +81,21 @@ export type MortgagePaymentSeries = {
   // terms resolve them. Drives ordering so the charge whose amount lines
   // up with the maths leads. `undefined` when no expected figure is known.
   targetDelta?: number;
+  // True when the charge recurs on a clean monthly cadence — exactly one
+  // charge in every calendar month across its (post-purchase) span, no gaps —
+  // over a span long enough to establish the pattern
+  // (`MORTGAGE_RECURRENCE_MIN_MONTHS`). A mortgage is paid once a month, every
+  // month, so an unbroken monthly cadence is itself strong evidence the charge
+  // IS the mortgage, independent of any tag.
+  monthlyCadence: boolean;
+  // The standout candidate: a charge that recurs every month
+  // (`monthlyCadence`) under one stable description (not an amount-salvaged
+  // group) whose typical amount lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE`
+  // of an expected figure. Monthly recurrence + matching amount + stable text
+  // is the surest signal a charge is the mortgage, so it TRUMPS the tag /
+  // company anchor in the ranking and is marked "highly probable" in the modal.
+  // `false` for any series missing a leg.
+  highlyProbable: boolean;
 };
 
 // Which strictness level the LEADING surfaced series came from — drives the
@@ -120,6 +145,8 @@ export type MortgageCandidateDiagnostic = {
   eligibleMonthCount: number; // months surviving the purchase-date cut
   targetDelta?: number; // distance to the closest expected figure
   synthetic: boolean; // grouped by amount (meaningless description) vs by text
+  monthlyCadence: boolean; // one charge in every month across the span, no gaps
+  highlyProbable: boolean; // monthly + stable text + amount in band — leads
   outcome: MortgageCandidateOutcome;
 };
 
@@ -225,6 +252,13 @@ export const MORTGAGE_PLAUSIBILITY_FACTOR = 5;
 // amount-anchored fallback uses it; tagged / payment-seeded walks anchor on
 // the metadata and ignore this band.
 export const MORTGAGE_AMOUNT_ANCHOR_TOLERANCE = 0.2;
+
+// The minimum number of months a charge must recur over before a clean
+// once-a-month cadence counts as evidence in its own right. Two consecutive
+// months can line up by chance; a quarter or more of unbroken monthly draws is
+// the signature of a standing payment like a mortgage. Below this the
+// `highlyProbable` promotion stays off — a too-short run isn't a pattern yet.
+export const MORTGAGE_RECURRENCE_MIN_MONTHS = 3;
 
 // Relative distance between an amount and a reference (0 = exact match).
 function relativeDelta(amount: number, reference: number): number {
@@ -476,6 +510,23 @@ export function discoverMortgagePayments(
       if (targetDelta === undefined || delta < targetDelta) targetDelta = delta;
     }
 
+    // Monthly recurrence: one charge in every calendar month across the
+    // (post-purchase) span with no gaps — months.length === span — over a span
+    // long enough to be a pattern, not a coincidence. The standout "highly
+    // probable" candidate adds a stable description (not an amount-salvaged
+    // group) and a typical amount inside the tight selection band of an
+    // expected figure: a mortgage paid once a month for the same sum.
+    const spanMonths = spanOfMonths(eligibleMonths);
+    const monthlyCadence =
+      eligibleMonths.length >= MORTGAGE_RECURRENCE_MIN_MONTHS &&
+      spanMonths === eligibleMonths.length;
+    const synthetic = syntheticKeys.has(key);
+    const highlyProbable =
+      monthlyCadence &&
+      !synthetic &&
+      targetDelta !== undefined &&
+      targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE;
+
     // Amount-only groups are EVERY outflow in the account; keep only the ones
     // whose typical charge lands near an expected figure, and don't even record
     // the rest — they're noise, not mortgage candidates, and would bury the
@@ -494,7 +545,9 @@ export function discoverMortgagePayments(
       suggestedAmount,
       monthCount: sortedMonths.length,
       eligibleMonthCount: eligibleMonths.length,
-      synthetic: syntheticKeys.has(key),
+      synthetic,
+      monthlyCadence,
+      highlyProbable,
       outcome: "kept",
       ...(targetDelta !== undefined ? { targetDelta } : {}),
     };
@@ -515,7 +568,7 @@ export function discoverMortgagePayments(
       key,
       label: labelByKey.get(key) ?? key,
       suggestedAmount,
-      spanMonths: spanOfMonths(eligibleMonths),
+      spanMonths,
       months: eligibleMonths.map((m) => {
         const e = months.get(m)!;
         return {
@@ -526,20 +579,26 @@ export function discoverMortgagePayments(
         };
       }),
       anchor: keyAnchor,
+      monthlyCadence,
+      highlyProbable,
       ...(targetDelta !== undefined ? { targetDelta } : {}),
     });
   }
 
-  // Rank by STRICTNESS first — a charge the user tagged (or already recorded a
-  // payment for) is a surer bet than one matched only by its amount, so it
-  // leads even when an amount-only charge sits a hair closer to the expected
-  // figure. Within a strictness tier, the charge whose amount lines up with the
-  // maths leads (closest `targetDelta` first); with no expected figure at all,
-  // the largest typical charge leads so the amortisation draw beats the
+  // Rank a HIGHLY PROBABLE charge first — monthly recurrence + a matching
+  // amount + stable text is a surer signal that a charge is the mortgage than
+  // any single tag, so it trumps the tag / company anchor and leads the list.
+  // Below that, rank by STRICTNESS — a charge the user tagged (or already
+  // recorded a payment for) is a surer bet than one matched only by its amount,
+  // so it leads even when an amount-only charge sits a hair closer to the
+  // expected figure. Within a strictness tier, the charge whose amount lines up
+  // with the maths leads (closest `targetDelta` first); with no expected figure
+  // at all, the largest typical charge leads so the amortisation draw beats the
   // interest draw when a loan is paid in two.
   const anchorRank = (a: MortgagePaymentSeries["anchor"]) =>
     a === "tag" ? 0 : a === "payment" ? 1 : 2;
   series.sort((a, b) => {
+    if (a.highlyProbable !== b.highlyProbable) return a.highlyProbable ? -1 : 1;
     const byStrictness = anchorRank(a.anchor) - anchorRank(b.anchor);
     if (byStrictness !== 0) return byStrictness;
     if (a.targetDelta !== undefined && b.targetDelta !== undefined)
