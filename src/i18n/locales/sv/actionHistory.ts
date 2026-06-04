@@ -92,6 +92,7 @@ const actionHistory: ActionHistoryCatalog = {
     addMortgagePaymentsForProperty: "Lade till bolånebetalningar",
     updateMortgagePayment: "Redigerade bolånebetalning",
     deleteMortgagePayment: "Tog bort bolånebetalning",
+    setMortgageChargeSplit: "Redigerade bolånebetalning",
     createTransfer: "Skapade överföring",
     updateTransfer: "Redigerade överföring",
     deleteTransfer: "Tog bort överföring",

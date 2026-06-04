@@ -52,6 +52,7 @@ import {
   Plus,
   Receipt,
   RefreshCw,
+  ReceiptText,
   Repeat,
   Ruler,
   Save,
@@ -777,6 +778,15 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         !hasMortgagePayment(prev) && hasMortgagePayment(next),
     },
+  },
+  {
+    // Fired from the payments view when the user edits or removes a
+    // recorded payment — a manual unlock because an in-place edit can't
+    // be spotted from a derived state slice.
+    id: "paymentLedger",
+    tier: "pro",
+    glyph: ReceiptText,
+    trigger: { kind: "manual" },
   },
   {
     id: "archaeologist",

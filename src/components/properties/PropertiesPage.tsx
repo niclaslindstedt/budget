@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Home, Pencil, Plus, Search } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { allTypes } from "../../data/presets/merge";
 import type { Action } from "../../data/reducer";
 import { newId } from "../../data/sheet";
@@ -26,6 +27,8 @@ import {
 } from "../SheetTitleMenu";
 import { MortgageDiscoveryModal } from "./MortgageDiscoveryModal";
 import { MortgageEditorModal } from "./MortgageEditorModal";
+import type { ChargeSplitUpdate } from "./MortgagePaymentEditModal";
+import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
 import { UpdatePropertyValueModal } from "./UpdatePropertyValueModal";
@@ -49,6 +52,9 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [creatingProperty, setCreatingProperty] = useState(false);
   const [valueProperty, setValueProperty] = useState<Property | null>(null);
+  const [paymentsProperty, setPaymentsProperty] = useState<Property | null>(
+    null,
+  );
   const [pendingDeleteProperty, setPendingDeleteProperty] =
     useState<Property | null>(null);
 
@@ -95,6 +101,9 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   // is reflected immediately (held by id, resolved against `data`).
   const liveValueProperty = valueProperty
     ? (data.properties.find((p) => p.id === valueProperty.id) ?? null)
+    : null;
+  const livePaymentsProperty = paymentsProperty
+    ? (data.properties.find((p) => p.id === paymentsProperty.id) ?? null)
     : null;
 
   const hasAnyMortgage = data.properties.some((p) => p.mortgages.length > 0);
@@ -185,6 +194,28 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     });
   }
 
+  function handleSetChargeSplit(
+    propertyId: string,
+    updates: ChargeSplitUpdate[],
+  ) {
+    dispatch({ type: "setMortgageChargeSplit", propertyId, updates });
+    unlock("paymentLedger");
+  }
+
+  function handleDeletePayment(
+    propertyId: string,
+    mortgageId: string,
+    paymentId: string,
+  ) {
+    dispatch({
+      type: "deleteMortgagePayment",
+      propertyId,
+      mortgageId,
+      paymentId,
+    });
+    unlock("paymentLedger");
+  }
+
   const hasProperties = properties.length > 0;
 
   return (
@@ -223,6 +254,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
                   onEditProperty={setEditingProperty}
                   onDeleteProperty={setPendingDeleteProperty}
                   onUpdateValue={setValueProperty}
+                  onViewPayments={setPaymentsProperty}
                   onAddMortgage={setCreatingMortgageFor}
                   onEditMortgage={(property, mortgage) =>
                     setEditingMortgage({ property, mortgage })
@@ -278,6 +310,25 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           }}
           onSubmit={handleEditMortgage}
           onCreate={handleCreateMortgage}
+        />
+
+        <MortgagePaymentsModal
+          open={livePaymentsProperty !== null}
+          property={livePaymentsProperty}
+          settings={settings}
+          onClose={() => setPaymentsProperty(null)}
+          onSetChargeSplit={(updates) => {
+            if (livePaymentsProperty)
+              handleSetChargeSplit(livePaymentsProperty.id, updates);
+          }}
+          onDeletePayment={(mortgageId, paymentId) => {
+            if (livePaymentsProperty)
+              handleDeletePayment(
+                livePaymentsProperty.id,
+                mortgageId,
+                paymentId,
+              );
+          }}
         />
 
         <MortgageDiscoveryModal

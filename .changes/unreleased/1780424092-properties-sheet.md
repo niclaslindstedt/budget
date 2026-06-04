@@ -26,6 +26,9 @@ as the loan's terms are filled in, the finder still picks out the charges
 whose amount matches the expected monthly payment, so a freshly imported
 account turns up its mortgage straight from the maths. Each found transaction is split across the property's
 mortgages by their amortisation and interest, recording one payment per
-loan that adds up to exactly what was paid. A property can carry several
+loan that adds up to exactly what was paid. Open a property's payments to
+review every recorded charge and how it split across the loans, and edit or
+remove individual payments — change one loan's share and the others
+re-balance so the total still matches the bank. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.

@@ -408,6 +408,22 @@ export type Action =
       mortgageId: string;
       paymentId: string;
     }
+  | {
+      // Re-balance one charge across a property's mortgages in a single
+      // pass (one undo entry). Editing one mortgage's share pins it and
+      // re-splits the rest across the others (amortisation first, then
+      // interest) so the parts still sum to the bank charge, so several
+      // payment records change at once. Each update sets a payment's
+      // amount + date by id.
+      type: "setMortgageChargeSplit";
+      propertyId: string;
+      updates: {
+        mortgageId: string;
+        paymentId: string;
+        amount: number;
+        date: string;
+      }[];
+    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }

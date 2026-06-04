@@ -261,6 +261,10 @@ const catalog = {
     learnMore:
       "Tag a month of your mortgage charges with their lender and the Mortgage type, then open Find mortgage payments on the mortgage: it homes in on those tagged charges, learns their bank description, and pulls every matching month from the account's history — ranking the likeliest first and leaving a previous home's loan out by its different amount.",
   },
+  paymentLedger: {
+    name: "Payment Ledger",
+    condition: "Edit or remove a recorded mortgage payment from a property.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

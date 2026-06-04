@@ -134,6 +134,21 @@ const properties = {
   findSpanMonthsOther: "over {count} months",
   findRange: "{start} – {end}",
 
+  // Payments view.
+  viewPayments: "View payments",
+  paymentsTitle: "Mortgage payments",
+  paymentsEmpty: "No payments recorded yet.",
+  chargeTotal: "Charge total",
+  paymentDate: "Date",
+  paymentAmount: "Amount",
+  editPayment: "Edit payment",
+  deletePayment: "Delete payment",
+  paymentRebalanceHint:
+    "The other loans in this charge re-balance so the total stays {total} — amortisation first, then interest.",
+  deletePaymentTitle: "Delete payment?",
+  deletePaymentConfirm:
+    "{name}'s share of the {date} charge ({amount}) will be removed. This cannot be undone.",
+
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",
   deletePropertyConfirm:

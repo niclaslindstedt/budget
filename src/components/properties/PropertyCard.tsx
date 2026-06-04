@@ -1,4 +1,11 @@
-import { Home, Pencil, Plus, TrendingUp, Trash2 } from "lucide-react";
+import {
+  Home,
+  Pencil,
+  Plus,
+  ReceiptText,
+  TrendingUp,
+  Trash2,
+} from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import type {
@@ -24,6 +31,7 @@ type Props = {
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
   onUpdateValue: (property: Property) => void;
+  onViewPayments: (property: Property) => void;
   onAddMortgage: (property: Property) => void;
   onEditMortgage: (property: Property, mortgage: Mortgage) => void;
   onDeleteMortgage: (property: Property, mortgage: Mortgage) => void;
@@ -46,12 +54,14 @@ export function PropertyCard({
   onEditProperty,
   onDeleteProperty,
   onUpdateValue,
+  onViewPayments,
   onAddMortgage,
   onEditMortgage,
   onDeleteMortgage,
 }: Props) {
   const t = useT();
   const value = currentValue(property);
+  const hasPayments = property.mortgages.some((m) => m.payments.length > 0);
   const lender = property.companyId
     ? companiesById.get(property.companyId)
     : undefined;
@@ -81,6 +91,16 @@ export function PropertyCard({
             {t("properties.updateValue")}
           </span>
         </button>
+        {hasPayments && (
+          <button
+            type="button"
+            onClick={() => onViewPayments(property)}
+            aria-label={t("properties.viewPayments")}
+            className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+          >
+            <ReceiptText size={16} aria-hidden focusable={false} />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onEditProperty(property)}

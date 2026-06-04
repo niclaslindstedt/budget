@@ -7,7 +7,7 @@
 // records add up to exactly what was paid while still being derived, never
 // hand-allocated.
 
-import type { Mortgage } from "../types";
+import type { Mortgage, MortgagePayment, Property } from "../types";
 import { resolveMonthlyAmortization } from "./amortization";
 import { resolveMonthlyInterestAt } from "./interest";
 
@@ -103,4 +103,55 @@ export function splitPaymentAcrossMortgages(
     if (cents[i] !== 0) result.set(m.id, cents[i] / 100);
   });
   return result;
+}
+
+// One mortgage's payment within a charge, paired with the mortgage it
+// belongs to (payments are stored on `Mortgage.payments`, so the parent is
+// otherwise implicit). Carried by `groupPaymentsByCharge` so the payments
+// view can render and re-balance a charge without re-walking the property.
+export type MortgageChargeItem = {
+  mortgage: Mortgage;
+  payment: MortgagePayment;
+};
+
+// One monthly bank charge across a property's mortgages — the records that
+// were split from a single combined transaction (so share a
+// `sourceHistoryId`) or, for hand-entered payments without one, that fall on
+// the same date. `total` is the sum of the parts (= what the bank charged),
+// `date` the representative (earliest) date in the group.
+export type MortgageChargeGroup = {
+  key: string;
+  date: string;
+  total: number;
+  items: MortgageChargeItem[];
+};
+
+// Group every recorded payment on a property into the charges they came
+// from, so the payments view can show each monthly charge with its split
+// across the mortgages. Payments sharing a `sourceHistoryId` are one charge;
+// a hand-entered payment without one is grouped by its date. Within a group
+// the items follow the property's mortgage order; groups are sorted by date,
+// most recent first (key as a stable tiebreak).
+export function groupPaymentsByCharge(
+  property: Property,
+): MortgageChargeGroup[] {
+  const groups = new Map<string, MortgageChargeGroup>();
+  for (const mortgage of property.mortgages) {
+    for (const payment of mortgage.payments) {
+      const key = payment.sourceHistoryId ?? `date:${payment.date}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = { key, date: payment.date, total: 0, items: [] };
+        groups.set(key, group);
+      }
+      group.items.push({ mortgage, payment });
+      group.total += payment.amount;
+      // Representative date = the earliest in the group (a manual edit can
+      // move one part's date; the charge keeps its original month).
+      if (payment.date < group.date) group.date = payment.date;
+    }
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.date > b.date ? -1 : a.date < b.date ? 1 : a.key < b.key ? -1 : 1,
+  );
 }

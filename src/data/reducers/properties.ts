@@ -151,5 +151,21 @@ export function reduceProperties(
       })),
     );
   }
+  if (action.type === "setMortgageChargeSplit") {
+    if (action.updates.length === 0) return state;
+    // Index the new amount/date by payment id so each mortgage patches its
+    // own payment in one pass over the property.
+    const byPaymentId = new Map(action.updates.map((u) => [u.paymentId, u]));
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      mortgages: p.mortgages.map((m) => ({
+        ...m,
+        payments: m.payments.map((pay) => {
+          const u = byPaymentId.get(pay.id);
+          return u ? { ...pay, amount: u.amount, date: u.date } : pay;
+        }),
+      })),
+    }));
+  }
   return null;
 }

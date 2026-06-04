@@ -257,6 +257,10 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Märk en månad av dina bolånedragningar med deras långivare och bolånetypen, och öppna sedan Hitta bolånebetalningar på bolånet: den hittar de märkta dragningarna, lär sig deras bankbeskrivning och plockar fram varje matchande månad ur kontots historik — rankar de mest sannolika först och lämnar en tidigare bostads lån utanför tack vare dess annorlunda belopp.",
   },
+  paymentLedger: {
+    name: "Betalningsbok",
+    condition: "Redigera eller ta bort en registrerad bolånebetalning.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

@@ -134,6 +134,21 @@ const properties: PropertiesCatalog = {
   findSpanMonthsOther: "över {count} månader",
   findRange: "{start} – {end}",
 
+  // Payments view.
+  viewPayments: "Visa betalningar",
+  paymentsTitle: "Bolånebetalningar",
+  paymentsEmpty: "Inga betalningar registrerade än.",
+  chargeTotal: "Dragningens summa",
+  paymentDate: "Datum",
+  paymentAmount: "Belopp",
+  editPayment: "Redigera betalning",
+  deletePayment: "Ta bort betalning",
+  paymentRebalanceHint:
+    "De andra lånen i dragningen balanseras om så att summan förblir {total} — amortering först, sedan ränta.",
+  deletePaymentTitle: "Ta bort betalning?",
+  deletePaymentConfirm:
+    "{name}s del av dragningen {date} ({amount}) tas bort. Det går inte att ångra.",
+
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",
   deletePropertyConfirm:
