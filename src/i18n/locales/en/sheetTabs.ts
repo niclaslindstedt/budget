@@ -5,6 +5,7 @@ const sheetTabs = {
   addAccount: "Add account",
   overview: "Overview",
   pickActive: "Pick active sheet",
+  switchSheet: "Switch sheet",
   newSheet: "New sheet",
   tabAriaLabel: "{name} (long-press to edit)",
   tablistLabel: "Sheets",

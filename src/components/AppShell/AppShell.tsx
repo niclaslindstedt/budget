@@ -39,6 +39,7 @@ import { ModalDispatchProvider } from "../ModalDispatchProvider";
 import { type ModalCommandHandlers } from "../modal-dispatch";
 import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
+import { SheetSwitcher } from "../SheetSwitcher";
 import { SyncStatus } from "../SyncStatus";
 import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
@@ -839,6 +840,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                 budget
               </h1>
             </button>
+            <SheetSwitcher
+              sheets={data.sheets}
+              activeSheetId={activeSheet.id}
+              onSelectSheet={onSelectSheet}
+            />
             <div
               role="toolbar"
               aria-label={t("app.headerToolbar")}

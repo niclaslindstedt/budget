@@ -5,6 +5,7 @@ const sheetTabs: SheetTabsCatalog = {
   addAccount: "Lägg till konto",
   overview: "Översikt",
   pickActive: "Välj aktivt blad",
+  switchSheet: "Byt blad",
   newSheet: "Nytt blad",
   tabAriaLabel: "{name} (håll inne för att redigera)",
   tablistLabel: "Blad",
