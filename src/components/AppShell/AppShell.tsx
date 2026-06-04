@@ -52,7 +52,7 @@ import {
   userDataHasUnsavableRows,
   userDataWithSavableRows,
 } from "../../data/budget/rows";
-import { findColumnByType } from "../../data/sheet";
+import { MAX_FAVORITE_SHEETS, findColumnByType } from "../../data/sheet";
 import type {
   AccountBudget,
   Item,
@@ -762,6 +762,18 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       openNewSheet: onOpenNewSheet,
       openEditSheet: onOpenEditSheet,
       openDownloadSheet: onOpenDownloadSheet,
+      toggleSheetFavorite: (sheetId: string) => {
+        const target = data.sheets.find((s) => s.id === sheetId);
+        if (!target) return;
+        if (!target.favorite) {
+          const count = data.sheets.filter((s) => s.favorite).length;
+          if (count >= MAX_FAVORITE_SHEETS) {
+            toast.push({ kind: "info", message: t("sheet.favoritesFull") });
+            return;
+          }
+        }
+        dispatch({ type: "toggleSheetFavorite", sheetId });
+      },
       editEntry: onEditRequest,
       editRow: onEditRowRequest,
       deleteRow: onDeleteRequest,
@@ -778,6 +790,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       onOpenNewSheet,
       onOpenEditSheet,
       onOpenDownloadSheet,
+      data.sheets,
+      dispatch,
+      toast,
+      t,
       onEditRequest,
       onEditRowRequest,
       onDeleteRequest,
@@ -1055,6 +1071,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           </main>
           {status.kind === "loading" ? null : (
             <BottomBar
+              favoriteSheets={data.sheets.filter((s) => s.favorite)}
+              activeSheetId={activeSheet.id}
+              onSelectSheet={onSelectSheet}
               canUndo={canUndo}
               canRedo={canRedo}
               onUndo={() => {

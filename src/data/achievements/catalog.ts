@@ -62,6 +62,7 @@ import {
   SlidersHorizontal,
   Smartphone,
   Split,
+  Star,
   Tag,
   Type as TypeIcon,
   Undo2,
@@ -467,6 +468,19 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.sheets],
       predicate: (prev, next) =>
         !hasMultipleSheetTabs(prev) && hasMultipleSheetTabs(next),
+    },
+  },
+  {
+    id: "pinnedFavorite",
+    tier: "beginner",
+    glyph: Star,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) =>
+        prev.sheets.every((s) => !s.favorite) &&
+        next.sheets.some((s) => s.favorite),
     },
   },
   {

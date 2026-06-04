@@ -333,6 +333,8 @@ export function describeActionSubject(
       return name(action.meta.name);
     case "deleteSheet":
       return name(byId(prev.sheets, action.sheetId)?.name);
+    case "toggleSheetFavorite":
+      return name(byId(next.sheets, action.sheetId)?.name);
     case "renameSheet":
       return name(action.name);
     case "reorderSheets":

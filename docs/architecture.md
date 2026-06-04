@@ -119,7 +119,7 @@ src/
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 62, incl. taxProfiles +
+│   │   ├── user-data.ts        # UserData (version 66, incl. taxProfiles +
 │   │   │                       #   properties), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
@@ -275,9 +275,9 @@ src/
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
 │   ├── migrations/        # forward-only schema migration runner
-│   │   ├── index.ts            # LATEST_VERSION (65) + migrate() driver
+│   │   ├── index.ts            # LATEST_VERSION (66) + migrate() driver
 │   │   ├── legacy.ts           # v1 → v30 steps
-│   │   ├── modern.ts           # v31 → v64 steps
+│   │   ├── modern.ts           # v31 → v65 steps
 │   │   └── shared.ts           # MigrationContext, Versioned, helpers
 │   ├── reconciliation.ts  # matches imported history against budget rows
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)

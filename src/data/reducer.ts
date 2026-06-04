@@ -412,6 +412,10 @@ export type Action =
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }
   | { type: "selectSheet"; sheetId: string }
+  // Toggle a sheet's favorite flag. Turning a 4th favorite on is a
+  // no-op (the bottom-bar favorites strip is capped at 3 so it can
+  // never overflow); turning one off is always allowed.
+  | { type: "toggleSheetFavorite"; sheetId: string }
   // Drop the `fromId` sheet in front of the `toId` sheet — the id-based
   // drag-to-reorder contract `useDragReorder` emits. Drives the
   // bottom-bar tab order and the sheet list in General settings.

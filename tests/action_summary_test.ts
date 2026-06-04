@@ -65,6 +65,18 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Savings" });
   });
 
+  it("names the sheet when toggling its favorite flag", () => {
+    const fresh = freshUserData();
+    const [first] = fresh.sheets;
+    const prev: UserData = {
+      ...fresh,
+      sheets: [{ ...first, name: "Vacation" }],
+    };
+    expect(
+      describe2({ type: "toggleSheetFavorite", sheetId: first.id }, prev),
+    ).toEqual({ kind: "name", value: "Vacation" });
+  });
+
   it("names the single changed setting", () => {
     const prev = freshUserData();
     expect(

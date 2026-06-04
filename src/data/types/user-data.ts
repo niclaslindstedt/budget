@@ -35,7 +35,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 65;
+  version: 66;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];

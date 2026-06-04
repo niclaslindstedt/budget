@@ -1,11 +1,20 @@
 import { History, ListChecks, Redo2, Search, Undo2 } from "lucide-react";
 
-import { useIsStandalone, useScrollHide } from "../hooks";
+import type { Sheet } from "../data/types";
+import { useIsStandalone, useLongPress, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
+import { tintFill } from "../utils/tint";
 import { BulkActionBar } from "./BulkActionBar";
+import { CategoryIconGlyph } from "./icons";
 import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
+  // Favorited sheets (already capped at 3) shown as quick-switch glyph
+  // icons on the left of the bar. Empty ⇒ the strip renders nothing.
+  favoriteSheets: Sheet[];
+  activeSheetId: string;
+  onSelectSheet: (sheetId: string) => void;
+
   canUndo: boolean;
   canRedo: boolean;
   selectMode: boolean;
@@ -36,6 +45,9 @@ const actionButton =
 // knocked iOS WebKit off composited scrolling, dragging the whole chrome
 // with the page, so the tabs moved to a portalled dropdown.
 export function BottomBar({
+  favoriteSheets,
+  activeSheetId,
+  onSelectSheet,
   canUndo,
   canRedo,
   selectMode,
@@ -117,12 +129,15 @@ export function BottomBar({
       className="sticky bottom-0 z-30 -mx-1 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 md:-mx-5"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
-        {/* Left half: only the bulk-action bar, and only in select mode.
-            Sheet switching moved to the header SheetSwitcher dropdown
-            (see the component banner). In normal mode this stays empty
-            and the flex spacer pushes the action cluster to the right. */}
+        {/* Left half: the bulk-action bar in select mode, otherwise the
+            favorites strip — up to 3 favorited sheets as quick-switch
+            glyph icons. Capped at 3 (enforced at toggle time) so it never
+            needs to scroll; a scrolling region here is what broke iOS
+            composited scrolling, so `overflow-hidden` (never auto) and a
+            small, fixed item count keep it safe. Full sheet switching
+            still lives in the header SheetSwitcher dropdown. */}
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-          {selectMode && (
+          {selectMode ? (
             <BulkActionBar
               selectedCount={bulkSelectedCount}
               onEdit={onBulkEdit}
@@ -131,6 +146,18 @@ export function BottomBar({
               onDelete={onBulkDelete}
               onCancel={onBulkCancel}
             />
+          ) : (
+            favoriteSheets.map((sheet) => (
+              <FavoriteSheetButton
+                key={sheet.id}
+                sheet={sheet}
+                active={sheet.id === activeSheetId}
+                onSelect={() => onSelectSheet(sheet.id)}
+                onEdit={() =>
+                  dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id })
+                }
+              />
+            ))
           )}
         </div>
         <div
@@ -199,5 +226,62 @@ export function BottomBar({
         </div>
       </div>
     </div>
+  );
+}
+
+// One favorited-sheet icon in the bottom bar's quick-switch strip.
+// Adapted from the old sheet-tab tablist, but deliberately NOT a
+// `role="tab"`: the active sheet may not be among the (≤3) favorites, so
+// there's no always-selected tab and no tabpanel to bind to. A plain
+// button with `aria-current` is the honest semantics. Tap switches; a
+// long-press / right-click opens the sheet's edit modal (same affordance
+// the old tab had). Glyph-only on mobile; the name shows from `md` up.
+function FavoriteSheetButton({
+  sheet,
+  active,
+  onSelect,
+  onEdit,
+}: {
+  sheet: Sheet;
+  active: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+}) {
+  const t = useT();
+  const longPress = useLongPress({ onLongPress: onEdit });
+
+  function handleClick() {
+    if (longPress.consumeTriggered()) return;
+    onSelect();
+  }
+
+  return (
+    <button
+      type="button"
+      aria-current={active ? "true" : undefined}
+      onClick={handleClick}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerUp}
+      onPointerLeave={longPress.onPointerUp}
+      onContextMenu={longPress.onContextMenu}
+      aria-label={t("sheetTabs.tabAriaLabel", { name: sheet.name })}
+      title={
+        sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name
+      }
+      className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
+        active ? "border-current" : "border-transparent hover:bg-surface"
+      }`}
+      style={{
+        color: sheet.color,
+        backgroundColor: active ? tintFill(sheet.color) : undefined,
+      }}
+    >
+      <CategoryIconGlyph name={sheet.glyph} size={16} />
+      <span className="hidden max-w-[10rem] truncate text-xs font-bold tracking-wide md:inline">
+        {sheet.name}
+      </span>
+    </button>
   );
 }

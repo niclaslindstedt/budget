@@ -16,7 +16,11 @@ import { ActiveRowProvider } from "../ActiveRowProvider";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import {
+  SheetTitleMenu,
+  favoriteMenuItem,
+  type SheetTitleMenuItem,
+} from "../SheetTitleMenu";
 import { EmployerManageModal } from "./EmployerManageModal";
 import { SalaryBulkEditModal } from "./SalaryBulkEditModal";
 import type { SalaryBulkApply } from "./SalaryBulkEditModal";
@@ -151,6 +155,7 @@ export function SalaryPage({
   }, [data.salaries]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    favoriteMenuItem(sheet, t, dispatchModal),
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

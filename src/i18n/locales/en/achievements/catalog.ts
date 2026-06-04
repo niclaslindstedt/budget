@@ -103,6 +103,12 @@ const catalog = {
     learnMore:
       "One sheet per account, one per goal. Tabs at the top switch between them.",
   },
+  pinnedFavorite: {
+    name: "Pinned",
+    condition: "Favorite a sheet from its … menu.",
+    learnMore:
+      "Favorite up to three sheets and they pin to the bottom bar as quick-switch icons — one tap to jump between the sheets you use most.",
+  },
   birdsEye: {
     name: "Bird's Eye",
     condition: "Visit the Accounts overview.",

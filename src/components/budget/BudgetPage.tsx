@@ -54,7 +54,11 @@ import { useScrollToRowRequest } from "./useScrollToRowRequest";
 import { useScrollToToday } from "./useScrollToToday";
 import { useVisibleMonthRange } from "./useVisibleMonthRange";
 import { BudgetMonthTable } from "./BudgetMonthTable";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import {
+  SheetTitleMenu,
+  favoriteMenuItem,
+  type SheetTitleMenuItem,
+} from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
 import { BudgetViewerModal } from "./BudgetViewerModal";
 import {
@@ -636,6 +640,7 @@ export function BudgetPage({
   const canTransfer = item.accountId !== null;
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    favoriteMenuItem(sheet, t, dispatchModal),
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

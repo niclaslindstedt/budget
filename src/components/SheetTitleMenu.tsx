@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Star } from "lucide-react";
 
+import type { Sheet } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
+import type { ModalDispatch } from "./modal-dispatch";
 
 // Each sheet view owns its own action set, so the menu is dumb chrome:
 // it renders whatever items the caller pushes in. Keeps the surface
@@ -21,6 +23,36 @@ type Props = {
   sheetName: string;
   items: SheetTitleMenuItem[];
 };
+
+// Build the universal "Favorite / Unfavorite sheet" menu item. Every
+// sheet type's title menu prepends this so the toggle is always there
+// regardless of page. A plain factory (not a hook) so pages can call it
+// inline in their `titleMenuItems` array with the `t` + `dispatchModal`
+// they already hold, free of rules-of-hooks placement constraints. The
+// 3-favorite cap and the "favorites full" toast live in the central
+// `toggle-sheet-favorite` handler (AppShell), so this only reflects the
+// current sheet's flag — no favorite-count needed here.
+export function favoriteMenuItem(
+  sheet: Sheet,
+  t: ReturnType<typeof useT>,
+  dispatchModal: ModalDispatch,
+): SheetTitleMenuItem {
+  const favorited = sheet.favorite === true;
+  return {
+    key: "favorite",
+    icon: (
+      <Star
+        size={16}
+        aria-hidden
+        focusable={false}
+        fill={favorited ? "currentColor" : "none"}
+      />
+    ),
+    label: favorited ? t("sheet.unfavorite") : t("sheet.favorite"),
+    onClick: () =>
+      dispatchModal({ kind: "toggle-sheet-favorite", sheetId: sheet.id }),
+  };
+}
 
 // Right-anchored: the title menu trigger sits centered under the sheet
 // name, so growing the panel leftward keeps it inside the viewport on

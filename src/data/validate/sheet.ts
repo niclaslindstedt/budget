@@ -82,6 +82,7 @@ export function validateSheet(
       : DEFAULT_SHEET_COLOR;
   const description =
     typeof raw.description === "string" ? raw.description : "";
+  const favorite = raw.favorite === true;
 
   return {
     ok: true,
@@ -92,6 +93,7 @@ export function validateSheet(
       glyph,
       color,
       description,
+      ...(favorite ? { favorite: true } : {}),
       items: validatedItems,
     },
   };
