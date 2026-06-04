@@ -125,12 +125,32 @@ describe("collectFilterTokens", () => {
 });
 
 describe("deriveAmountSlider", () => {
-  it("reports no usable range when bounds are flat", () => {
+  it("reports no usable range but the lone value when bounds are flat", () => {
     const s = deriveAmountSlider(EMPTY_FILTER, {
       amountMin: 100,
       amountMax: 100,
     });
     expect(s.hasAmount).toBe(false);
+    // The flat value is surfaced so the menu can show a hint rather than
+    // dropping the amount section entirely.
+    expect(s.single).toBe(100);
+  });
+
+  it("reports no value when there are no amounts to filter", () => {
+    const s = deriveAmountSlider(EMPTY_FILTER, {
+      amountMin: null,
+      amountMax: null,
+    });
+    expect(s.hasAmount).toBe(false);
+    expect(s.single).toBe(null);
+  });
+
+  it("has no flat value when the bounds span a range", () => {
+    const s = deriveAmountSlider(EMPTY_FILTER, {
+      amountMin: 100,
+      amountMax: 500,
+    });
+    expect(s.single).toBe(null);
   });
 
   it("falls back to bounds and honours filter overrides", () => {

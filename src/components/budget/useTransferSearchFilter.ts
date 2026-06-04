@@ -110,22 +110,33 @@ export function collectFilterTokens(index: readonly SearchEntry[]): {
 
 // Slider domain + current value for the amount band. The slider only
 // drives when the matched rows span a real range; a single-value domain
-// has nothing to drag.
+// has nothing to drag. `single` carries that lone value (when every
+// matched row shares one amount) so the menu can show a hint in place of
+// the slider instead of dropping the whole section.
 export function deriveAmountSlider(
   filter: SearchFilter,
   bounds: AmountBounds,
-): { hasAmount: boolean; min: number; max: number; value: [number, number] } {
+): {
+  hasAmount: boolean;
+  min: number;
+  max: number;
+  value: [number, number];
+  single: number | null;
+} {
   const min = bounds.amountMin ?? 0;
   const max = bounds.amountMax ?? 0;
-  const hasAmount =
-    bounds.amountMin !== null &&
-    bounds.amountMax !== null &&
-    bounds.amountMax > bounds.amountMin;
+  const bothPresent = bounds.amountMin !== null && bounds.amountMax !== null;
+  const hasAmount = bothPresent && bounds.amountMax! > bounds.amountMin!;
+  const single =
+    bothPresent && bounds.amountMin === bounds.amountMax
+      ? bounds.amountMin
+      : null;
   return {
     hasAmount,
     min,
     max,
     value: [filter.amountMin ?? min, filter.amountMax ?? max],
+    single,
   };
 }
 
@@ -244,6 +255,7 @@ export function useTransferSearchFilter({
     amountSliderMin: amount.min,
     amountSliderMax: amount.max,
     amountValue: amount.value,
+    amountSingle: amount.single,
     hasDate: date.hasDate,
     dateSliderMin: date.min,
     dateSliderMax: date.max,
