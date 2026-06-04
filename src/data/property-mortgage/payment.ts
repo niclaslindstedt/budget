@@ -105,6 +105,26 @@ export function splitPaymentAcrossMortgages(
   return result;
 }
 
+// How a single recorded payment divides between principal (amortisation)
+// and interest — the inverse of `splitPaymentAcrossMortgages`, which always
+// settles amortisation first. A recorded share is therefore its mortgage's
+// monthly amortisation plus a slice of the interest, so split it back the
+// same way: the amortisation is the mortgage's monthly amortisation capped
+// at the recorded amount (an under-covered charge records less than the full
+// amortisation and never any interest), and the rest is interest. Both legs
+// are ≥ 0 and sum to exactly `payment.amount`. Amortisation is date-
+// independent, so unlike the interest leg this doesn't need the charge date.
+export type PaymentSplit = { amortization: number; interest: number };
+
+export function splitRecordedPayment(
+  mortgage: Mortgage,
+  payment: MortgagePayment,
+): PaymentSplit {
+  const amort = Math.max(0, resolveMonthlyAmortization(mortgage) ?? 0);
+  const amortization = Math.min(payment.amount, amort);
+  return { amortization, interest: payment.amount - amortization };
+}
+
 // One mortgage's payment within a charge, paired with the mortgage it
 // belongs to (payments are stored on `Mortgage.payments`, so the parent is
 // otherwise implicit). Carried by `groupPaymentsByCharge` so the payments

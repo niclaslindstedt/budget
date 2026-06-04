@@ -8,6 +8,7 @@ import {
   groupPaymentsByCharge,
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
+  splitRecordedPayment,
 } from "../src/data/property-mortgage/payment";
 import type { Mortgage, Property } from "../src/data/types";
 
@@ -181,6 +182,65 @@ describe("splitPaymentAcrossMortgages", () => {
     const split = splitPaymentAcrossMortgages([x, y], 8000, "2024-08-28");
     expect(split.get("x")).toBeCloseTo(2000);
     expect(split.get("y")).toBeCloseTo(6000);
+  });
+});
+
+describe("splitRecordedPayment", () => {
+  it("splits a recorded share into its amortisation and the leftover interest", () => {
+    const m = mortgage({ amortization: { mode: "fixed", amount: 5000 } });
+    // A 7200 share = 5000 amortisation + 2200 interest.
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 7200,
+    });
+    expect(split.amortization).toBeCloseTo(5000);
+    expect(split.interest).toBeCloseTo(2200);
+  });
+
+  it("resolves a percent-mode amortisation against the initial loan", () => {
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      amortization: { mode: "percent", percent: 2 },
+    }); // 2% of 1.2M ÷ 12 = 2000/mo
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 5000,
+    });
+    expect(split.amortization).toBeCloseTo(2000);
+    expect(split.interest).toBeCloseTo(3000);
+  });
+
+  it("treats the whole share as interest when the loan has no amortisation", () => {
+    const m = mortgage({ interestRate: 3 });
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 4000,
+    });
+    expect(split.amortization).toBe(0);
+    expect(split.interest).toBeCloseTo(4000);
+  });
+
+  it("never reports negative interest when the charge undercuts the amortisation", () => {
+    const m = mortgage({ amortization: { mode: "fixed", amount: 5000 } });
+    // An under-covered charge records less than the full amortisation; the
+    // whole share is principal and there is no interest.
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 3000,
+    });
+    expect(split.amortization).toBeCloseTo(3000);
+    expect(split.interest).toBe(0);
+  });
+
+  it("always sums back to the recorded amount", () => {
+    const m = mortgage({ amortization: { mode: "fixed", amount: 5000 } });
+    const payment = { id: "p", date: "2024-08-28", amount: 8376 };
+    const split = splitRecordedPayment(m, payment);
+    expect(split.amortization + split.interest).toBeCloseTo(payment.amount);
   });
 });
 
