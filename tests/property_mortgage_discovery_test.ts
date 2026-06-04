@@ -813,6 +813,154 @@ describe("discoverMortgagePayments — amount fallback on clean payments", () =>
   });
 });
 
+// ── Reference-number descriptions (the real reported failure) ──────────────
+//
+// A Swedish mortgage auto-giro charge is labelled "Avibetalning <ref>" with a
+// DIFFERENT reference number every month. The shared normaliser leaves a
+// stray two-digit fragment ("avibetalning 91", "avibetalning 84", …), so a
+// description-keyed grouping puts every month in its own group and the charge
+// never forms a recurring series. The finder's stricter grouping key strips
+// the reference so all the months coalesce under "avibetalning"; a charge
+// that's nothing but a reference number is salvaged by its amount instead.
+
+// Twelve months of an auto-giro charge whose reference number differs every
+// month, optionally with a leading word. Mirrors the reported "Avibetalning
+// 9120-3273663" statement text.
+function aviCharges(
+  amount: number,
+  opts: {
+    word?: string;
+    count?: number;
+    startYear?: number;
+    startMonth?: number;
+  } = {},
+): HistoryEntry[] {
+  const {
+    word = "Avibetalning",
+    count = 12,
+    startYear = 2025,
+    startMonth = 9,
+  } = opts;
+  return monthlyDates(startYear, startMonth, count).map((d, i) => {
+    const ref = `${9120 + i * 137}-${3273663 + i * 911}`;
+    const description = word ? `${word} ${ref}` : ref;
+    return entry(`avi-${i}`, d, -amount, description);
+  });
+}
+
+// The property from the screenshot: two Skandiabanken loans (one interest-only
+// at 1.63 %, one amortising 10 755/mo at 2.85 %) whose combined monthly
+// payment is ~19 600, bought 2025-09-01.
+function screenshotProperty(): Property {
+  const m1 = mort("m1", {
+    loanAmount: 6_144_208,
+    currentBalance: 6_144_208,
+    interestRate: 1.63,
+    amortization: { mode: "fixed", amount: 0 },
+  });
+  const m2 = mort("m2", {
+    loanAmount: 308_792,
+    currentBalance: 211_977,
+    interestRate: 2.85,
+    amortization: { mode: "fixed", amount: 10_755 },
+  });
+  return property([m1, m2], {
+    purchaseAmount: 7_700_000,
+    purchaseDate: "2025-09-01",
+    valueHistory: [{ id: "v", date: "2026-01-01", value: 8_120_000 }],
+  });
+}
+
+describe("discoverMortgagePayments — reference-number descriptions", () => {
+  it("coalesces a monthly auto-giro charge with a varying reference into one series", () => {
+    const prop = screenshotProperty();
+    const { series, seed } = runFinder(prop, aviCharges(19_636));
+    expect(seed).toBe("amount");
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(19_636);
+    // All twelve months in one group — not fragmented one-per-reference.
+    expect(series[0].months).toHaveLength(12);
+    expect(series[0].spanMonths).toBe(12);
+    expect(series[0].label).toContain("Avibetalning");
+  });
+
+  it("groups by stable text even though every reference number differs", () => {
+    const prop = screenshotProperty();
+    const { diagnostics } = runFinder(prop, aviCharges(19_636));
+    expect(diagnostics.outflowEntries).toBe(12);
+    // The reference is stripped, so the twelve distinct descriptions form a
+    // SINGLE group, not twelve.
+    expect(diagnostics.groupCount).toBe(1);
+    expect(diagnostics.candidates).toHaveLength(1);
+    expect(diagnostics.candidates[0].monthCount).toBe(12);
+    expect(diagnostics.candidates[0].eligibleMonthCount).toBe(12);
+    expect(diagnostics.candidates[0].outcome).toBe("kept");
+    expect(diagnostics.candidates[0].synthetic).toBe(false);
+  });
+
+  it("salvages a charge whose description is nothing but a reference number", () => {
+    // No leading word at all — the description normalises to empty, so there
+    // is no text to group by; the amount fallback groups it by the expected
+    // figure instead.
+    const prop = screenshotProperty();
+    const { series, diagnostics } = runFinder(
+      prop,
+      aviCharges(19_636, { word: "" }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].months).toHaveLength(12);
+    expect(diagnostics.skippedMeaningless).toBe(12);
+    expect(diagnostics.salvagedByAmount).toBe(12);
+    expect(diagnostics.candidates[0].synthetic).toBe(true);
+    expect(diagnostics.candidates[0].outcome).toBe("kept");
+  });
+
+  it("reports a meaningless charge far from the expected figure in the funnel", () => {
+    // A bare-reference charge of a wholly unrelated size can't be salvaged —
+    // no expected figure is near it — so it's dropped before grouping and the
+    // funnel records why.
+    const prop = screenshotProperty();
+    const { series, diagnostics } = runFinder(
+      prop,
+      aviCharges(450, { word: "" }),
+    );
+    expect(series).toEqual([]);
+    expect(diagnostics.skippedMeaningless).toBe(12);
+    expect(diagnostics.salvagedByAmount).toBe(0);
+    expect(diagnostics.groupCount).toBe(0);
+  });
+
+  it("still keeps genuinely distinct descriptions in separate groups", () => {
+    // Two recurring charges with different stable text near two different
+    // expected figures must not be merged by the reference-stripping key.
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 4_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 2_000 },
+    });
+    const prop = property([m1, m2], {
+      purchaseAmount: 3_500_000,
+      purchaseDate: "2025-01-01",
+    });
+    const [c1, c2] = eachCharge([m1, m2]); // 7,333 and 3,250
+    const entries = [
+      ...aviCharges(c1, { word: "Bolan amortering", startMonth: 1 }),
+      ...aviCharges(c2, { word: "Bolan ranta", startMonth: 1 }),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series.map((s) => s.suggestedAmount).sort((a, b) => a - b)).toEqual([
+      3_250, 7_333,
+    ]);
+  });
+});
+
 describe("monthsWithinBand", () => {
   it("drops a month whose charge strays outside the band", () => {
     // Eleven steady 8,000 draws plus one 16,000 double-draw in an early
