@@ -117,6 +117,8 @@ const properties: PropertiesCatalog = {
   findSeedTags:
     "Matchat från dragningar du märkt med det här bolånets företag eller bolånetypen.",
   findSeedPayments: "Matchat från betalningarna som redan finns på bolånet.",
+  findSeedAmount:
+    "Matchat från lånevillkoren — dragningar nära bolånets förväntade månadsbelopp. Kontrollera varje post innan du lägger till.",
   findPreview: "Betalningar att lägga till",
   findAlreadyAdded: "Redan tillagd",
   findAddOne: "Lägg till {count} betalning",

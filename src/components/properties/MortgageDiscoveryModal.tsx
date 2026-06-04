@@ -290,7 +290,9 @@ export function MortgageDiscoveryModal({
                   <span className="text-xs text-muted">
                     {result.seed === "tags"
                       ? t("properties.findSeedTags")
-                      : t("properties.findSeedPayments")}
+                      : result.seed === "payments"
+                        ? t("properties.findSeedPayments")
+                        : t("properties.findSeedAmount")}
                   </span>
                   <ul
                     className="m-0 flex list-none flex-col gap-1 p-0"

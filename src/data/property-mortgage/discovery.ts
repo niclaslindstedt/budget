@@ -13,8 +13,14 @@
 // pulls in every other month of the same charge, even the untagged ones.
 // When the user has tagged nothing yet, the mortgage's already-added
 // payments seed the same description + amount expansion ("find more like
-// these"). With neither anchor the walk has nothing to go on and reports
-// `seed: "none"` so the modal can nudge the user to tag a month first.
+// these"). With neither tag nor payment to lean on, the finder falls back
+// to the **loan terms**: when the mortgages resolve an expected monthly
+// figure (amortisation + interest, per loan and combined), any recurring
+// outflow whose typical amount lands near one of those figures is offered
+// as a candidate — so a brand-new property whose payments carry no company
+// or type still surfaces its mortgage charge straight from the maths. Only
+// when there is no tag, no payment, AND no expected figure does the walk
+// report `seed: "none"` and nudge the user to tag a month first.
 //
 // Pure: fed an account's history plus the company / type / rule / hint
 // tables needed to resolve each entry's tags, it emits the matching charge
@@ -52,8 +58,10 @@ export type MortgagePaymentSeries = {
   months: SeriesMonth[]; // chronological, one winner per month
   spanMonths: number; // calendar months first..last, inclusive
   // Why this series surfaced: a company / type tag the user applied
-  // ("tag"), or a payment already recorded on the mortgage ("payment").
-  anchor: "tag" | "payment";
+  // ("tag"), a payment already recorded on the mortgage ("payment"), or —
+  // when neither exists — the loan terms' expected monthly figure that the
+  // charge's amount lands near ("amount").
+  anchor: "tag" | "payment" | "amount";
   // Relative distance (0 = exact) from the closest expected figure — the
   // monthly amortisation, interest, or the two combined, when the loan
   // terms resolve them. Drives ordering so the charge whose amount lines
@@ -64,8 +72,10 @@ export type MortgagePaymentSeries = {
 // How the finder found its anchor — drives the modal's empty-state copy.
 //   "tags"     — entries tagged with the mortgage's company and/or type
 //   "payments" — no tags, but the mortgage already has payments to learn from
-//   "none"     — neither; the modal nudges the user to tag a month
-export type MortgageDiscoverySeed = "tags" | "payments" | "none";
+//   "amount"   — no tags and no payments, but the loan terms resolve an
+//                expected monthly figure and a recurring charge lands near it
+//   "none"     — none of the above; the modal nudges the user to tag a month
+export type MortgageDiscoverySeed = "tags" | "payments" | "amount" | "none";
 
 export type MortgageDiscoveryResult = {
   series: MortgagePaymentSeries[]; // largest typical charge first
@@ -107,17 +117,23 @@ export type MortgageDiscoveryInput = {
   // the centre is the median across all of them.
   fromDate?: string;
   // Expected monthly figures the loan terms resolve to — the amortisation,
-  // the interest, and/or the two combined. Drive two things: they RANK the
+  // the interest, and/or the two combined. Drive three things: they RANK the
   // matched series (closest to an expected amount first — the amortisation
   // and interest draws are large, predictable amounts, so a charge near one
-  // of them is the likeliest real payment), and they GATE out the series
-  // whose typical charge is an order of magnitude away from every expected
-  // figure (see `MORTGAGE_PLAUSIBILITY_FACTOR`). A 20 kr charge cannot be the
+  // of them is the likeliest real payment), they GATE out the series whose
+  // typical charge is an order of magnitude away from every expected figure
+  // (see `MORTGAGE_PLAUSIBILITY_FACTOR`) — a 20 kr charge cannot be the
   // payment on a loan whose amortisation + interest runs to thousands a
-  // month, however it got anchored, so it is dropped rather than offered.
-  // The gate is generous (a wide factor, not the tight selection band) and
+  // month, however it got anchored, so it is dropped rather than offered —
+  // and, when there is no tag and no existing payment to anchor on, they
+  // ANCHOR the walk outright: every recurring outflow whose typical charge
+  // lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure is
+  // offered as a candidate (`seed: "amount"`), so clean payments with no
+  // company or type still surface straight from the maths. The gate is
+  // generous (a wide factor, not the tight selection band) and the anchor
   // only applies when the loan terms actually resolve an expected figure —
-  // with no terms recorded every anchored series is kept, as before.
+  // with no terms recorded and nothing tagged the walk reports `seed:
+  // "none"`, as before.
   targetAmounts?: readonly number[];
   // Relative half-width of the match band, as a fraction (0.1 ⇒ ±10%).
   // Applied by `monthsWithinBand` at preview time; defaults to
@@ -140,6 +156,18 @@ export const DEFAULT_MORTGAGE_TOLERANCE = 0.1;
 // subscription, a mistagged transfer), not the mortgage. Set generously so
 // an unusual-but-real charge survives and only the wildly-off noise is cut.
 export const MORTGAGE_PLAUSIBILITY_FACTOR = 5;
+
+// How close a recurring charge's typical amount must sit to an expected
+// monthly figure (the loan's amortisation + interest, per loan or combined)
+// to ANCHOR the walk when there is no tag and no existing payment to lean
+// on — a tight selection band, not the wide plausibility window above. The
+// computed figure uses today's rate and balance while a historical charge
+// drifts as the balance amortises and the rate resets, so the band is wide
+// enough to absorb that drift yet tight enough that an unrelated outflow of
+// a wholly different size isn't mistaken for the mortgage. Only the
+// amount-anchored fallback uses it; tagged / payment-seeded walks anchor on
+// the metadata and ignore this band.
+export const MORTGAGE_AMOUNT_ANCHOR_TOLERANCE = 0.2;
 
 // Relative distance between an amount and a reference (0 = exact match).
 function relativeDelta(amount: number, reference: number): number {
@@ -227,15 +255,31 @@ export function discoverMortgagePayments(
     if (companyMatch || typeMatch) tagKeys.add(key);
   }
 
-  // Tags are the stronger signal; only fall back to the payment seed when
-  // nothing is tagged.
+  // Tags are the stronger signal; fall back to the payment seed when nothing
+  // is tagged, then to the loan terms' expected figure when there's no
+  // payment either. The amount fallback only fires when the loan terms
+  // actually resolve an expected figure (`targetAmounts` is non-empty).
   const seed: MortgageDiscoverySeed =
-    tagKeys.size > 0 ? "tags" : paymentKeys.size > 0 ? "payments" : "none";
+    tagKeys.size > 0
+      ? "tags"
+      : paymentKeys.size > 0
+        ? "payments"
+        : targetAmounts.length > 0
+          ? "amount"
+          : "none";
   if (seed === "none") return { series: [], seed };
 
-  const anchorKeys = seed === "tags" ? tagKeys : paymentKeys;
+  // With the amount fallback every recurring outflow is a candidate — the
+  // amount band below winnows them down to the charges that land near an
+  // expected figure.
+  const anchorKeys =
+    seed === "tags"
+      ? tagKeys
+      : seed === "payments"
+        ? paymentKeys
+        : new Set(byKeyMonth.keys());
   const anchor: MortgagePaymentSeries["anchor"] =
-    seed === "tags" ? "tag" : "payment";
+    seed === "tags" ? "tag" : seed === "payments" ? "payment" : "amount";
 
   const series: MortgagePaymentSeries[] = [];
   for (const key of anchorKeys) {
@@ -261,6 +305,17 @@ export function discoverMortgagePayments(
       const delta = relativeDelta(suggestedAmount, target);
       if (targetDelta === undefined || delta < targetDelta) targetDelta = delta;
     }
+    // The amount fallback considered every outflow a candidate; here it keeps
+    // only the ones whose typical charge actually lands near an expected
+    // figure. Tagged / payment-seeded walks skip this — their anchor is the
+    // metadata, not the maths, so an off-band but genuinely-tagged charge
+    // still surfaces (the plausibility gate below catches the wild outliers).
+    if (
+      seed === "amount" &&
+      (targetDelta === undefined ||
+        targetDelta > MORTGAGE_AMOUNT_ANCHOR_TOLERANCE)
+    )
+      continue;
     series.push({
       key,
       label: labelByKey.get(key) ?? key,

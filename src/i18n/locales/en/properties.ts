@@ -117,6 +117,8 @@ const properties = {
   findSeedTags:
     "Matched from charges you tagged with this mortgage's company or the Mortgage type.",
   findSeedPayments: "Matched from the payments already on this mortgage.",
+  findSeedAmount:
+    "Matched from the loan terms — charges near this mortgage's expected monthly amount. Check each one before adding.",
   findPreview: "Payments to add",
   findAlreadyAdded: "Already added",
   findAddOne: "Add {count} payment",
