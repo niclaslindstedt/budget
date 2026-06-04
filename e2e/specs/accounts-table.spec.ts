@@ -8,11 +8,12 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // overflow menu (Import / Cut history).
 
 async function openAccountsSheet(page: import("@playwright/test").Page) {
-  // Open the New sheet modal from the BottomBar tablist, pick the
-  // Accounts flavour from the type picker, and confirm. The sheet
-  // auto-activates on creation so the heading shows up without an
-  // extra tab click.
-  await page.getByRole("button", { name: "New sheet", exact: true }).click();
+  // Open the header SheetSwitcher dropdown, hit its "New sheet" entry,
+  // pick the Accounts flavour from the type picker, and confirm. The
+  // sheet auto-activates on creation so the heading shows up without an
+  // extra switch.
+  await page.getByRole("button", { name: "Switch sheet" }).click();
+  await page.getByRole("menuitem", { name: "New sheet" }).click();
   const modal = page.getByRole("dialog");
   await modal.getByRole("textbox", { name: "Name" }).fill("Accounts");
   // The type listbox defaults to Budget — open it and pick the

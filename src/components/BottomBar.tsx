@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useRef } from "react";
-import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
+import { History, ListChecks, Redo2, Search, Undo2 } from "lucide-react";
 
-import type { Sheet } from "../data/types";
-import { useIsStandalone, useLongPress, useScrollHide } from "../hooks";
+import { useIsStandalone, useScrollHide } from "../hooks";
 import { useT } from "../i18n";
-import { tintFill } from "../utils/tint";
 import { BulkActionBar } from "./BulkActionBar";
-import { CategoryIconGlyph } from "./icons";
 import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
-  sheets: Sheet[];
-  activeSheetId: string;
-  onSelectSheet: (sheetId: string) => void;
-
   canUndo: boolean;
   canRedo: boolean;
   selectMode: boolean;
@@ -36,15 +28,14 @@ type Props = {
 const actionButton =
   "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
 
-// Single solid bar pinned to the bottom of the viewport. Tabs (or the
-// bulk-select action set) scroll horizontally on the left; the right
-// edge holds the always-available undo / redo / history / select
-// toggle. Replaces the previously separate top-pinned UndoRedoBar +
-// bottom-pinned SheetTabs / BulkActionBar pills.
+// Single solid bar pinned to the bottom of the viewport. The right edge
+// holds the always-available search / undo / redo / history / select
+// toggle; in select mode the bulk-action set takes the left half. Sheet
+// switching lives in the header SheetSwitcher dropdown, not here — a
+// horizontally scrolling tab strip inside this `position: sticky` bar
+// knocked iOS WebKit off composited scrolling, dragging the whole chrome
+// with the page, so the tabs moved to a portalled dropdown.
 export function BottomBar({
-  sheets,
-  activeSheetId,
-  onSelectSheet,
   canUndo,
   canRedo,
   selectMode,
@@ -81,25 +72,6 @@ export function BottomBar({
   // it.
   const isStandalone = useIsStandalone();
   const hideOnScroll = useScrollHide({ enabled: isStandalone });
-
-  // Arrow-Left / Right / Home / End cycle the active sheet when focus
-  // sits on a tab. WAI-ARIA tabs in "automatic" mode — focus = select —
-  // matches the rest of the chrome's switch-on-tap UX and avoids a
-  // separate Enter-to-activate step.
-  const onTabKey = useCallback(
-    (currentIdx: number, key: string) => {
-      if (sheets.length === 0) return;
-      let next = currentIdx;
-      if (key === "ArrowLeft") next = currentIdx - 1;
-      else if (key === "ArrowRight") next = currentIdx + 1;
-      else if (key === "Home") next = 0;
-      else if (key === "End") next = sheets.length - 1;
-      else return;
-      const wrapped = (next + sheets.length) % sheets.length;
-      onSelectSheet(sheets[wrapped].id);
-    },
-    [sheets, onSelectSheet],
-  );
 
   return (
     // Two-mode positioning:
@@ -145,15 +117,12 @@ export function BottomBar({
       className="sticky bottom-0 z-30 -mx-1 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 md:-mx-5"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
-        {/* `overflow-hidden`, never `overflow-x-auto`: a horizontally
-            scrolling region inside this `position: sticky` bar knocks iOS
-            WebKit off composited scrolling, so the whole chrome (this bar
-            *and* the top header) starts lagging the page scroll and only
-            settles when the gesture ends. Tabs that don't fit are clipped
-            here and reached through the header's SheetSwitcher dropdown
-            instead. */}
+        {/* Left half: only the bulk-action bar, and only in select mode.
+            Sheet switching moved to the header SheetSwitcher dropdown
+            (see the component banner). In normal mode this stays empty
+            and the flex spacer pushes the action cluster to the right. */}
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-          {selectMode ? (
+          {selectMode && (
             <BulkActionBar
               selectedCount={bulkSelectedCount}
               onEdit={onBulkEdit}
@@ -162,54 +131,13 @@ export function BottomBar({
               onDelete={onBulkDelete}
               onCancel={onBulkCancel}
             />
-          ) : (
-            // Sheet picker as an ARIA tablist — each tab carries
-            // `aria-selected`, the inactive tabs roll `tabIndex={-1}`
-            // off the keyboard tour (the active one is the single
-            // entry point), and `onTabKey` cycles between them. The
-            // tabpanel lives in `<main data-budget-main>` over in
-            // AppShell and points back here via `aria-labelledby`.
-            //
-            // The "New sheet" button lives outside the tablist — axe's
-            // `aria-required-children` flags any non-tab child of a
-            // tablist, and the button is an action, not a tab.
-            <>
-              <div
-                role="tablist"
-                aria-label={t("sheetTabs.tablistLabel")}
-                className="flex min-w-0 items-center gap-1"
-              >
-                {sheets.map((sheet, idx) => (
-                  <SheetTab
-                    key={sheet.id}
-                    sheet={sheet}
-                    active={sheet.id === activeSheetId}
-                    index={idx}
-                    onSelect={() => onSelectSheet(sheet.id)}
-                    onEdit={() =>
-                      dispatchModal({
-                        kind: "open-edit-sheet",
-                        sheetId: sheet.id,
-                      })
-                    }
-                    onTabKey={onTabKey}
-                  />
-                ))}
-              </div>
-              <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
-              <button
-                type="button"
-                onClick={() => dispatchModal({ kind: "open-new-sheet" })}
-                aria-label={t("sheetTabs.newSheet")}
-                title={t("sheetTabs.newSheet")}
-                className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-accent hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg"
-              >
-                <Plus size={18} aria-hidden focusable={false} />
-              </button>
-            </>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5 border-l border-line pl-1.5 sm:pl-2">
+        <div
+          className={`flex shrink-0 items-center gap-0.5 ${
+            selectMode ? "border-l border-line pl-1.5 sm:pl-2" : ""
+          }`}
+        >
           {/* In select mode the bulk action bar (with its own Cancel)
               owns the left side; collapse the search / undo / redo /
               history cluster so the toggle is the only thing left on the
@@ -271,108 +199,5 @@ export function BottomBar({
         </div>
       </div>
     </div>
-  );
-}
-
-function SheetTab({
-  sheet,
-  active,
-  index,
-  onSelect,
-  onEdit,
-  onTabKey,
-}: {
-  sheet: Sheet;
-  active: boolean;
-  index: number;
-  onSelect: () => void;
-  onEdit: () => void;
-  onTabKey: (currentIdx: number, key: string) => void;
-}) {
-  const t = useT();
-  // Long-press / right-click both open the edit modal. The
-  // `consumeTriggered` flag guards the trailing click so the tap that
-  // produced the long-press doesn't also fire a sheet switch.
-  const longPress = useLongPress({ onLongPress: onEdit });
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-
-  // Pull the active tab back into the visible window of the horizontal
-  // scroller after a sheet switch. Without this, opening a sheet whose
-  // tab has scrolled off the edge silently leaves the user looking at
-  // an empty-feeling bar. We also re-focus the active tab when it was
-  // moved via arrow keys so the roving tabindex follows the selection
-  // — `data-keyboard-focused` is set by `handleKeyDown` and cleared on
-  // any pointer interaction.
-  useEffect(() => {
-    if (!active) return;
-    buttonRef.current?.scrollIntoView({
-      block: "nearest",
-      inline: "center",
-      behavior: "smooth",
-    });
-    if (buttonRef.current?.dataset.keyboardFocused === "true") {
-      buttonRef.current.focus();
-      delete buttonRef.current.dataset.keyboardFocused;
-    }
-  }, [active]);
-
-  function handleClick() {
-    if (longPress.consumeTriggered()) return;
-    onSelect();
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
-    if (
-      e.key === "ArrowLeft" ||
-      e.key === "ArrowRight" ||
-      e.key === "Home" ||
-      e.key === "End"
-    ) {
-      e.preventDefault();
-      // The selected-tab effect picks the flag up after re-render and
-      // restores keyboard focus to the new active button. Without
-      // this hop, the focus would stay on the old (now `tabIndex=-1`)
-      // tab and the next arrow key would do nothing.
-      if (buttonRef.current) {
-        buttonRef.current.dataset.keyboardFocused = "true";
-      }
-      onTabKey(index, e.key);
-    }
-  }
-
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      role="tab"
-      id={`sheet-tab-${sheet.id}`}
-      aria-controls={`sheet-tabpanel-${sheet.id}`}
-      aria-selected={active}
-      tabIndex={active ? 0 : -1}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      onPointerDown={longPress.onPointerDown}
-      onPointerMove={longPress.onPointerMove}
-      onPointerUp={longPress.onPointerUp}
-      onPointerCancel={longPress.onPointerUp}
-      onPointerLeave={longPress.onPointerUp}
-      onContextMenu={longPress.onContextMenu}
-      aria-label={t("sheetTabs.tabAriaLabel", { name: sheet.name })}
-      title={
-        sheet.description ? `${sheet.name} — ${sheet.description}` : sheet.name
-      }
-      className={`sheet-tab inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg ${
-        active ? "border-current" : "border-transparent hover:bg-surface"
-      }`}
-      style={{
-        color: sheet.color,
-        backgroundColor: active ? tintFill(sheet.color) : undefined,
-      }}
-    >
-      <CategoryIconGlyph name={sheet.glyph} size={16} />
-      <span className="hidden max-w-[10rem] truncate text-xs font-bold tracking-wide md:inline">
-        {sheet.name}
-      </span>
-    </button>
   );
 }

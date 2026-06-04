@@ -904,20 +904,20 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             </div>
           </header>
           {/* `<main>` stays as the page-level landmark; the inner wrapper
-            carries `role="tabpanel"` so the tablist in `BottomBar`
-            has a target to bind to via `aria-labelledby`. `tabIndex={-1}`
-            on the inner wrapper lets `Skip to content`-style jumps move
-            focus into the panel without it being part of the normal
-            keyboard tour. */}
+            is a labelled region named after the active sheet (the
+            BottomBar tablist that used to label it was replaced by the
+            header SheetSwitcher dropdown). `tabIndex={-1}` lets
+            `Skip to content`-style jumps move focus into the panel
+            without it being part of the normal keyboard tour. */}
           <main
             data-budget-main
             className="flex flex-1 flex-col [overflow-x:clip]"
           >
             <div
               ref={sheetPanelRef}
-              role="tabpanel"
-              id={`sheet-tabpanel-${activeSheet.id}`}
-              aria-labelledby={`sheet-tab-${activeSheet.id}`}
+              role="region"
+              id={`sheet-panel-${activeSheet.id}`}
+              aria-label={activeSheet.name}
               tabIndex={-1}
               className="flex-1 will-change-transform"
             >
@@ -1055,9 +1055,6 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           </main>
           {status.kind === "loading" ? null : (
             <BottomBar
-              sheets={data.sheets}
-              activeSheetId={activeSheet.id}
-              onSelectSheet={onSelectSheet}
               canUndo={canUndo}
               canRedo={canRedo}
               onUndo={() => {
