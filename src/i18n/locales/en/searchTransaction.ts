@@ -41,6 +41,8 @@ const searchTransaction = {
   filterAmount: "Amount",
   filterAmountMin: "Minimum amount",
   filterAmountMax: "Maximum amount",
+  filterAmountSingle: "All results are {amount}",
+  filterAmountNone: "No amounts to filter",
   filterDates: "Dates",
   filterDateMin: "Earliest date",
   filterDateMax: "Latest date",

@@ -281,6 +281,7 @@ export function BudgetTransferSearchFilterMenu({
     amountSliderMin,
     amountSliderMax,
     amountValue,
+    amountSingle,
     hasDate,
     dateSliderMin,
     dateSliderMax,
@@ -513,17 +514,19 @@ export function BudgetTransferSearchFilterMenu({
               />
             )}
 
-            {hasAmount && (
-              <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-                <div className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="font-medium text-fg-bright">
-                    {t("searchTransaction.filterAmount")}
-                  </span>
+            <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="font-medium text-fg-bright">
+                  {t("searchTransaction.filterAmount")}
+                </span>
+                {hasAmount && (
                   <span className="font-mono text-muted">
                     {amountLabel(amountValue[0])} –{" "}
                     {amountLabel(amountValue[1])}
                   </span>
-                </div>
+                )}
+              </div>
+              {hasAmount ? (
                 <div className="px-2">
                   <RangeSlider
                     min={amountSliderMin}
@@ -535,8 +538,16 @@ export function BudgetTransferSearchFilterMenu({
                     formatValueText={amountLabel}
                   />
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="m-0 text-xs text-muted">
+                  {amountSingle !== null
+                    ? t("searchTransaction.filterAmountSingle", {
+                        amount: amountLabel(amountSingle),
+                      })
+                    : t("searchTransaction.filterAmountNone")}
+                </p>
+              )}
+            </div>
 
             {hasDate && (
               <div className="flex flex-col gap-1.5 border-t border-line pt-3">

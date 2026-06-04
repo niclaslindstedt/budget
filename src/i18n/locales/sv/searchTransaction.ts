@@ -41,6 +41,8 @@ const searchTransaction: SearchTransactionCatalog = {
   filterAmount: "Belopp",
   filterAmountMin: "Lägsta belopp",
   filterAmountMax: "Högsta belopp",
+  filterAmountSingle: "Alla träffar är {amount}",
+  filterAmountNone: "Inga belopp att filtrera",
   filterDates: "Datum",
   filterDateMin: "Tidigaste datum",
   filterDateMax: "Senaste datum",
