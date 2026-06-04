@@ -5,13 +5,18 @@ import {
   resolveMonthlyInterestAt,
 } from "../src/data/property-mortgage/interest";
 import {
+  groupPaymentsByCharge,
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
 } from "../src/data/property-mortgage/payment";
-import type { Mortgage } from "../src/data/types";
+import type { Mortgage, Property } from "../src/data/types";
 
 function mortgage(over: Partial<Mortgage> = {}): Mortgage {
   return { id: "m", name: "Loan", payments: [], ...over };
+}
+
+function property(mortgages: Mortgage[]): Property {
+  return { id: "p", name: "Home", valueHistory: [], mortgages };
 }
 
 describe("resolveRateAt", () => {
@@ -176,5 +181,50 @@ describe("splitPaymentAcrossMortgages", () => {
     const split = splitPaymentAcrossMortgages([x, y], 8000, "2024-08-28");
     expect(split.get("x")).toBeCloseTo(2000);
     expect(split.get("y")).toBeCloseTo(6000);
+  });
+});
+
+describe("groupPaymentsByCharge", () => {
+  it("groups the records of one charge by their shared sourceHistoryId", () => {
+    const a = mortgage({
+      id: "a",
+      payments: [
+        { id: "pa", date: "2026-03-28", amount: 8000, sourceHistoryId: "h1" },
+      ],
+    });
+    const b = mortgage({
+      id: "b",
+      payments: [
+        { id: "pb", date: "2026-03-28", amount: 12000, sourceHistoryId: "h1" },
+      ],
+    });
+    const groups = groupPaymentsByCharge(property([a, b]));
+    expect(groups).toHaveLength(1);
+    expect(groups[0].total).toBe(20000);
+    expect(groups[0].date).toBe("2026-03-28");
+    expect(groups[0].items.map((i) => i.mortgage.id)).toEqual(["a", "b"]);
+  });
+
+  it("separates distinct charges and sorts them most-recent first", () => {
+    const m = mortgage({
+      id: "a",
+      payments: [
+        { id: "p1", date: "2026-01-28", amount: 5000, sourceHistoryId: "h1" },
+        { id: "p2", date: "2026-03-28", amount: 5200, sourceHistoryId: "h2" },
+      ],
+    });
+    const groups = groupPaymentsByCharge(property([m]));
+    expect(groups.map((g) => g.date)).toEqual(["2026-03-28", "2026-01-28"]);
+    expect(groups.map((g) => g.total)).toEqual([5200, 5000]);
+  });
+
+  it("groups a hand-entered payment (no sourceHistoryId) by its date", () => {
+    const m = mortgage({
+      id: "a",
+      payments: [{ id: "p1", date: "2026-02-28", amount: 4000 }],
+    });
+    const groups = groupPaymentsByCharge(property([m]));
+    expect(groups).toHaveLength(1);
+    expect(groups[0].total).toBe(4000);
   });
 });

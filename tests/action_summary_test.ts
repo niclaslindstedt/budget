@@ -166,6 +166,23 @@ describe("describeActionSubject", () => {
         prev,
       ),
     ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "setMortgageChargeSplit",
+          propertyId: "p1",
+          updates: [
+            {
+              mortgageId: "m1",
+              paymentId: "x",
+              amount: 5400,
+              date: "2026-01-28",
+            },
+          ],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
   });
 
   it("returns undefined for an action with no nameable target", () => {
