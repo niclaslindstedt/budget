@@ -42,9 +42,9 @@ describe("buildSeedUserData", () => {
     );
   });
 
-  it("seeds three accounts with six months of bank history each", () => {
+  it("seeds five accounts with six months of bank history each", () => {
     const seed = buildSeedUserData();
-    expect(seed.accounts).toHaveLength(3);
+    expect(seed.accounts).toHaveLength(5);
     for (const account of seed.accounts) {
       const entries = seed.history[account.id] ?? [];
       // Each account gets several rows per month across six months.

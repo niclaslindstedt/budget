@@ -4,6 +4,11 @@
 // so an agent (or the maintainer) debugging the app can land in a
 // realistic state instead of an empty budget.
 //
+// Every name here is INVENTED — fictional banks, lenders, merchants,
+// employers, and products. Nothing in this file references a real
+// company, product, or person; it ships in an open-source repository,
+// so the seed reads like a plausible household without naming anyone.
+//
 // This is wired to the ephemeral in-memory developer storage backend
 // (`src/storage/dev-seed-adapter.ts`), never to a real persistence
 // surface: the bytes live in memory for the duration of the dev
@@ -110,10 +115,14 @@ export function buildSeedUserData(): UserData {
     min + Math.floor(rng() * (max - min + 1));
 
   // ---- Accounts ----------------------------------------------------
+  // Two banks back the household's accounts: the everyday accounts sit
+  // at one bank, the property accounts at another, so the seed exercises
+  // multiple institutions and the mortgage charges below land across two
+  // banks. Both bank names are invented.
   const checking: Account = {
     id: mkId("acc"),
     name: "Checking",
-    bank: "Swedbank",
+    bank: "Fjällbanken",
     clearing: "8327",
     accountNumber: "923 456 789-0",
     glyph: "wallet",
@@ -122,7 +131,7 @@ export function buildSeedUserData(): UserData {
   const savings: Account = {
     id: mkId("acc"),
     name: "Savings",
-    bank: "Swedbank",
+    bank: "Fjällbanken",
     clearing: "8327",
     accountNumber: "923 456 111-2",
     glyph: "piggy-bank",
@@ -131,11 +140,41 @@ export function buildSeedUserData(): UserData {
   const credit: Account = {
     id: mkId("acc"),
     name: "Credit card",
-    bank: "Bank Norwegian",
+    bank: "Kortia Bank",
     glyph: "credit-card",
     color: CATEGORY_COLORS[0],
   };
-  const accounts: Account[] = [checking, savings, credit];
+  // Two more accounts at a second (invented) bank, dedicated to the two
+  // owned city properties below. The city flat's mortgage is drawn from
+  // the first, the villa's from the second, so the three property
+  // mortgage charges spread across two banks (cabin → Fjällbanken;
+  // flat + villa → Brogata Sparbank). The villa account carries a large
+  // buffer because the villa's combined mortgage charge is sizeable.
+  const cityAccount: Account = {
+    id: mkId("acc"),
+    name: "City account",
+    bank: "Brogata Sparbank",
+    clearing: "9042",
+    accountNumber: "551 200 884-1",
+    glyph: "building-2",
+    color: CATEGORY_COLORS[8],
+  };
+  const villaAccount: Account = {
+    id: mkId("acc"),
+    name: "Villa account",
+    bank: "Brogata Sparbank",
+    clearing: "9042",
+    accountNumber: "551 200 991-7",
+    glyph: "vault",
+    color: CATEGORY_COLORS[3],
+  };
+  const accounts: Account[] = [
+    checking,
+    savings,
+    credit,
+    cityAccount,
+    villaAccount,
+  ];
 
   // ---- Custom taxonomy (exercise the non-preset path) --------------
   const vacationCategory: Category = {
@@ -165,28 +204,41 @@ export function buildSeedUserData(): UserData {
   // Companies carry preset company-category associations so the
   // Companies settings tab and the company-category analysis surface
   // render a populated link rather than "unclassified" across the board.
-  const companyIca: Company = {
+  const companyGrocery: Company = {
     id: mkId("co"),
-    name: "ICA Maxi",
+    name: "Matboden",
     companyCategoryId: "preset-company-cat-grocery",
   };
-  const companySpotify: Company = {
+  const companyStreaming: Company = {
     id: mkId("co"),
-    name: "Spotify",
+    name: "Ljudström",
     companyCategoryId: "preset-company-cat-entertainment",
   };
-  // The mortgage lender, referenced by the seeded property below. Tagged
-  // as a bank so the Properties page's lender pill resolves a category.
-  const companySbab: Company = {
+  // The three mortgage lenders, one per owned property below. Tagged as
+  // banks so the Properties page's lender pill resolves a category, and
+  // kept distinct so the lender pill and per-property mortgage list show
+  // more than one value. All three names are invented.
+  const companyHypotek: Company = {
     id: mkId("co"),
-    name: "SBAB",
+    name: "Hypoteksbolaget",
+    companyCategoryId: "preset-company-cat-bank",
+  };
+  const companyCityLender: Company = {
+    id: mkId("co"),
+    name: "Bolånekompaniet",
+    companyCategoryId: "preset-company-cat-bank",
+  };
+  const companyVillaLender: Company = {
+    id: mkId("co"),
+    name: "Fastighetslån AB",
     companyCategoryId: "preset-company-cat-bank",
   };
 
   // A third-tier subtype (category → type → subtype) so the seeded
-  // MacBook below has a taxonomy anchor and the item editor's subtype
+  // laptop below has a taxonomy anchor and the item editor's subtype
   // picker shows a populated option. Hangs off the Electronics preset
-  // type, matching how the credit-card "Elgiganten" rows are classified.
+  // type, matching how the credit-card "Elektronikhuset" rows are
+  // classified.
   const laptopSubtype: Subtype = {
     id: mkId("sub"),
     name: "Laptop",
@@ -194,7 +246,13 @@ export function buildSeedUserData(): UserData {
   };
 
   const tags: Tag[] = [tagReimbursable, tagVacation];
-  const companies: Company[] = [companyIca, companySpotify, companySbab];
+  const companies: Company[] = [
+    companyGrocery,
+    companyStreaming,
+    companyHypotek,
+    companyCityLender,
+    companyVillaLender,
+  ];
   const categories: Category[] = [vacationCategory];
   const types: EntryType[] = [boatFuelType];
   const subtypes: Subtype[] = [laptopSubtype];
@@ -238,6 +296,8 @@ export function buildSeedUserData(): UserData {
   const checkingRaw: RawEntry[] = [];
   const savingsRaw: RawEntry[] = [];
   const creditRaw: RawEntry[] = [];
+  const cityRaw: RawEntry[] = [];
+  const villaRaw: RawEntry[] = [];
 
   // The net salary deposit per fiscal month, captured here so the Salary
   // sheet's records (below) reconcile exactly with the bank rows the
@@ -250,11 +310,22 @@ export function buildSeedUserData(): UserData {
     string,
     { date: string; amount: number }
   >();
-  // The mortgage charge "Bolån SBAB Värmdö" recurs every month, but the
-  // household has classified the months to differing degrees — so "Find
-  // mortgage payments" has a charge in every state to surface: fully
-  // tagged (Mortgage type + lender company), company-only (no type), and
-  // raw (neither). Because the finder keys on the shared description, one
+  // The two new properties' mortgage charges per fiscal month, tracked so
+  // their recorded payments below can link back to the originating bank
+  // rows (mirroring how the cabin's anchor payments are linked).
+  const cityMortgageByMonth = new Map<
+    string,
+    { date: string; amount: number }
+  >();
+  const villaMortgageByMonth = new Map<
+    string,
+    { date: string; amount: number }
+  >();
+  // The cabin's mortgage charge recurs every month, but the household has
+  // classified the months to differing degrees — so "Find mortgage
+  // payments" has a charge in every state to surface: fully tagged
+  // (Mortgage type + lender company), company-only (no type), and raw
+  // (neither). Because the finder keys on the shared description, one
   // tagged month pulls in the untyped / un-companied ones too, so all are
   // found regardless of their own tags. The two earliest months are also
   // reconciled into recorded payments below (the anchor); every later
@@ -276,13 +347,13 @@ export function buildSeedUserData(): UserData {
     });
     checkingRaw.push({
       date: salaryDate,
-      description: "Lön Agilator AB",
+      description: "Lön Nordlund Konsult AB",
       amount: salaryNet,
       typeId: "preset-type-salary",
     });
     checkingRaw.push({
       date: iso(year, month, 28),
-      description: "Hyra Stockholmshem",
+      description: "Hyra Stadsbostäder",
       amount: -12400,
       typeId: "preset-type-rent",
     });
@@ -300,41 +371,41 @@ export function buildSeedUserData(): UserData {
     });
     const mortgageCharge: RawEntry = {
       date: mortgageDate,
-      description: "Bolån SBAB Värmdö",
+      description: "Bolån Hypoteksbolaget",
       amount: mortgageAmount,
     };
     if (mortgageTypedKeys.has(mortgageKey))
       mortgageCharge.typeId = "preset-type-mortgage";
     if (mortgageCompanyKeys.has(mortgageKey))
-      mortgageCharge.companyId = companySbab.id;
+      mortgageCharge.companyId = companyHypotek.id;
     checkingRaw.push(mortgageCharge);
     checkingRaw.push({
       date: iso(year, month, 4),
-      description: "Ellevio elnät",
+      description: "Elnät Kraftbolaget",
       amount: -money(between(700, 1600)),
       typeId: "preset-type-electricity",
     });
     checkingRaw.push({
       date: iso(year, month, 18),
-      description: "Spotify Premium",
+      description: "Ljudström Premium",
       amount: -119,
       typeId: "preset-type-music-streaming",
-      companyId: companySpotify.id,
+      companyId: companyStreaming.id,
     });
     // A handful of grocery runs.
     for (let g = 0; g < between(3, 5); g++) {
       checkingRaw.push({
         date: iso(year, month, between(2, 27)),
-        description: "ICA Maxi",
+        description: "Matboden",
         amount: -money(between(180, 1300) + rng()),
         typeId: "preset-type-groceries",
-        companyId: companyIca.id,
+        companyId: companyGrocery.id,
       });
     }
     // A restaurant outing, occasionally reimbursable.
     checkingRaw.push({
       date: iso(year, month, between(5, 26)),
-      description: "Restaurang Pelikan",
+      description: "Restaurang Eken",
       amount: -money(between(320, 900)),
       typeId: "preset-type-restaurant",
       tagIds: rng() > 0.6 ? [tagReimbursable.id] : undefined,
@@ -362,11 +433,11 @@ export function buildSeedUserData(): UserData {
     });
 
     // Credit card: a few purchases and a monthly payment. Credit
-    // exports (Bank Norwegian) carry no per-row balance, so this
-    // account exercises the no-balance code path.
+    // exports (Kortia Bank) carry no per-row balance, so this account
+    // exercises the no-balance code path.
     creditRaw.push({
       date: iso(year, month, between(3, 12)),
-      description: "Circle K drivmedel",
+      description: "Bensin Tanka",
       amount: -money(between(450, 950)),
       typeId: "preset-type-fuel",
     });
@@ -379,7 +450,7 @@ export function buildSeedUserData(): UserData {
     if (rng() > 0.5) {
       creditRaw.push({
         date: iso(year, month, between(10, 24)),
-        description: "Elgiganten",
+        description: "Elektronikhuset",
         amount: -money(between(300, 4000)),
         typeId: "preset-type-electronics",
       });
@@ -389,6 +460,65 @@ export function buildSeedUserData(): UserData {
       description: "Inbetalning kortkonto",
       amount: money(between(900, 5200)),
     });
+
+    // City account (Brogata Sparbank): a second household income, the
+    // overnight flat's mortgage charge, and a grocery run. The mortgage
+    // charge is fully tagged (lender company + Mortgage type) and linked
+    // into the flat's recorded payments below.
+    cityRaw.push({
+      date: iso(year, month, 25),
+      description: "Lön Almvik Design AB",
+      amount: money(27000 + between(-300, 500)),
+      typeId: "preset-type-salary",
+    });
+    const cityMortgageDate = iso(year, month, 28);
+    const cityMortgageAmount = -money(5400 + between(-120, 180));
+    cityMortgageByMonth.set(`${year}-${month}`, {
+      date: cityMortgageDate,
+      amount: cityMortgageAmount,
+    });
+    cityRaw.push({
+      date: cityMortgageDate,
+      description: "Bolån Bolånekompaniet",
+      amount: cityMortgageAmount,
+      typeId: "preset-type-mortgage",
+      companyId: companyCityLender.id,
+    });
+    cityRaw.push({
+      date: iso(year, month, between(6, 22)),
+      description: "Närlivs",
+      amount: -money(between(150, 900) + rng()),
+      typeId: "preset-type-groceries",
+    });
+
+    // Villa account (Brogata Sparbank): a monthly funding deposit, the
+    // villa's combined mortgage charge (one draw covering all three loans
+    // against it), and a running-cost line. The mortgage charge is fully
+    // tagged and linked into the villa's recorded payments below.
+    villaRaw.push({
+      date: iso(year, month, 24),
+      description: "Insättning villakonto",
+      amount: 60000,
+    });
+    const villaMortgageDate = iso(year, month, 28);
+    const villaMortgageAmount = -money(61500 + between(-600, 600));
+    villaMortgageByMonth.set(`${year}-${month}`, {
+      date: villaMortgageDate,
+      amount: villaMortgageAmount,
+    });
+    villaRaw.push({
+      date: villaMortgageDate,
+      description: "Bolån Fastighetslån",
+      amount: villaMortgageAmount,
+      typeId: "preset-type-mortgage",
+      companyId: companyVillaLender.id,
+    });
+    villaRaw.push({
+      date: iso(year, month, between(8, 20)),
+      description: "Driftkostnad villa",
+      amount: -money(between(2200, 3600)),
+      typeId: "preset-type-electricity",
+    });
   }
 
   // A one-off furniture purchase over the item-find threshold (2000) that
@@ -396,7 +526,7 @@ export function buildSeedUserData(): UserData {
   // always surfaces at least one candidate.
   checkingRaw.push({
     date: "2026-02-14",
-    description: "Mio Möbler soffa",
+    description: "Möbelhuset soffa",
     amount: -8900,
     typeId: "preset-type-furniture",
   });
@@ -405,12 +535,16 @@ export function buildSeedUserData(): UserData {
     [checking.id]: finalizeHistory(checkingRaw, 18500, true),
     [savings.id]: finalizeHistory(savingsRaw, 64000, true),
     [credit.id]: finalizeHistory(creditRaw, 0, false),
+    [cityAccount.id]: finalizeHistory(cityRaw, 85000, true),
+    [villaAccount.id]: finalizeHistory(villaRaw, 920000, true),
   };
 
   // Anchor opening balances so the running totals reconcile (mirrors
   // what the import flow stamps from the earliest statement row).
   checking.openingBalance = 18500;
   savings.openingBalance = 64000;
+  cityAccount.openingBalance = 85000;
+  villaAccount.openingBalance = 920000;
 
   // ---- Salary (employers, tax profile, paychecks) -----------------
   // Populates the Salary sheet: one employer with a role, a reusable
@@ -426,14 +560,14 @@ export function buildSeedUserData(): UserData {
   // paychecks carry no entered `gross` so the tax-profile net→gross
   // estimation renders next to the explicit-gross rows.
   const developerRole = { id: mkId("role"), title: "Systemutvecklare" };
-  const employerAgilator: Employer = {
+  const employerPrimary: Employer = {
     id: mkId("emp"),
-    name: "Agilator AB",
+    name: "Nordlund Konsult AB",
     color: CATEGORY_COLORS[5],
     glyph: "briefcase",
     roles: [developerRole],
   };
-  const employers: Employer[] = [employerAgilator];
+  const employers: Employer[] = [employerPrimary];
 
   const taxProfile: TaxProfile = {
     id: mkId("tax"),
@@ -462,7 +596,7 @@ export function buildSeedUserData(): UserData {
       id: mkId("sal"),
       date: iso(year, month, 25),
       net,
-      employerId: employerAgilator.id,
+      employerId: employerPrimary.id,
       roleId: developerRole.id,
     };
     // Omit gross on the two most recent paychecks (see note above).
@@ -476,13 +610,13 @@ export function buildSeedUserData(): UserData {
   // history match-rule list, and the rename predictor render populated
   // state instead of empty lists.
   const merchantHints: Record<string, MerchantHint> = {
-    [normaliseDescription("ICA Maxi")]: {
+    [normaliseDescription("Matboden")]: {
       typeId: "preset-type-groceries",
       hitCount: 12,
       lastUsedAt: importedAt,
-      companyId: companyIca.id,
+      companyId: companyGrocery.id,
     },
-    [normaliseDescription("Circle K drivmedel")]: {
+    [normaliseDescription("Bensin Tanka")]: {
       typeId: "preset-type-fuel",
       hitCount: 4,
       lastUsedAt: importedAt,
@@ -492,7 +626,7 @@ export function buildSeedUserData(): UserData {
   const matchRules: MatchRule[] = [
     {
       id: mkId("rule"),
-      pattern: "*Circle K*",
+      pattern: "*Tanka*",
       description: "Drivmedel",
       typeId: "preset-type-fuel",
       amountSign: "negative",
@@ -515,26 +649,38 @@ export function buildSeedUserData(): UserData {
   // The salary bank pattern, so early-arriving paychecks (a payday that
   // lands before the weekend) are shifted into the next fiscal month.
   const primaryIncomeMerchants: PrimaryIncomeMerchant[] = [
-    { key: normaliseDescription("Lön Agilator AB"), anchorDayOfMonth: 25 },
+    {
+      key: normaliseDescription("Lön Nordlund Konsult AB"),
+      anchorDayOfMonth: 25,
+    },
   ];
 
   // ---- Properties (homes + mortgages) ------------------------------
-  // One owned holiday cabin (the household rents its city flat — see the
-  // "Hyra Stockholmshem" history rows — and owns the cabin here) with a
-  // purchase price, a manually-recorded value history, and a single
-  // mortgage carrying a rate history, an annual amortisation requirement,
-  // and recorded payments. The payments are sourced from the "Bolån SBAB
-  // Värmdö" checking history rows: only the two earliest months are
-  // recorded here (linked via `sourceHistoryId`) — the fully-tagged anchor.
-  // Every later charge is left unrecorded and variously classified
-  // (fully tagged, company-only, or raw), so the Properties page's "Find
-  // mortgage payments" walk surfaces them all as candidates.
-  const mortgageHistory = history[checking.id];
+  // Three owned homes so the Properties page shows a spread of
+  // loan-to-value ratios and a multi-mortgage card:
+  //
+  // - a holiday cabin with one mortgage at ~60% of its value, whose
+  //   payments are sourced from the "Bolån Hypoteksbolaget" Checking
+  //   rows. Only the two earliest months are recorded here (linked via
+  //   `sourceHistoryId`) — the fully-tagged anchor. Every later charge is
+  //   left unrecorded and variously classified (fully tagged,
+  //   company-only, or raw), so the Properties page's "Find mortgage
+  //   payments" walk surfaces them all as candidates.
+  // - a small overnight city flat with one mortgage at ~35% of its
+  //   value, paid from the City account.
+  // - a large villa carrying three mortgages, paid from the Villa account
+  //   as one combined monthly charge (recorded against the first loan,
+  //   the way a single autogiro draw covering every loan would read).
+  //
+  // The cabin's charges live on Checking and the other two on the Brogata
+  // accounts, so the three properties' mortgage charges land across two
+  // banks.
+  const cabinHistory = history[checking.id];
   const recordedMortgageMonths = mortgageRecordedMonths;
   const cabin: Property = {
     id: mkId("prop"),
-    name: "Fritidshus Värmdö",
-    companyId: companySbab.id,
+    name: "Fritidshuset",
+    companyId: companyHypotek.id,
     accountId: checking.id,
     purchaseAmount: 2950000,
     purchaseDate: "2021-09-01",
@@ -547,9 +693,12 @@ export function buildSeedUserData(): UserData {
     mortgages: [
       {
         id: mkId("mort"),
-        name: "SBAB bolån",
+        name: "Hypoteksbolaget bolån",
         loanAmount: 2100000,
-        currentBalance: 1840000,
+        // ~60% of the cabin's current value (3,180,000) — see the two
+        // sibling properties below, which sit at 35% and (across three
+        // loans) ~60% so the page shows a spread of loan-to-value ratios.
+        currentBalance: 1908000,
         interestRate: 3.45,
         rateHistory: [
           { id: mkId("rate"), date: "", rate: 1.59 },
@@ -561,7 +710,7 @@ export function buildSeedUserData(): UserData {
         payments: recordedMortgageMonths.map(({ year, month }) => {
           const charge = mortgageChargeByMonth.get(`${year}-${month}`);
           const sourceHist = charge
-            ? mortgageHistory.find(
+            ? cabinHistory.find(
                 (e) => e.date === charge.date && e.amount === charge.amount,
               )
             : undefined;
@@ -576,7 +725,135 @@ export function buildSeedUserData(): UserData {
       },
     ],
   };
-  const properties: Property[] = [cabin];
+
+  // A small overnight flat in the city, kept for weeknights close to
+  // work. A single mortgage sized to ~35% of its current value
+  // (3,650,000 × 0.35 ≈ 1,277,500) so the page carries a low-leverage
+  // property next to the cabin. Every month's charge on the City account
+  // is recorded as a payment, linked to the originating bank row.
+  const cityHistory = history[cityAccount.id];
+  const apartment: Property = {
+    id: mkId("prop"),
+    name: "Övernattningslägenheten",
+    companyId: companyCityLender.id,
+    accountId: cityAccount.id,
+    purchaseAmount: 3200000,
+    purchaseDate: "2022-05-15",
+    size: 42,
+    valueHistory: [
+      { id: mkId("pval"), date: "2022-05-15", value: 3200000 },
+      { id: mkId("pval"), date: "2026-05-01", value: 3650000 },
+    ],
+    mortgages: [
+      {
+        id: mkId("mort"),
+        name: "Bolånekompaniet bolån",
+        loanAmount: 1400000,
+        currentBalance: 1277500,
+        interestRate: 4.05,
+        rateHistory: [
+          { id: mkId("rate"), date: "", rate: 1.79 },
+          { id: mkId("rate"), date: "2023-05-01", rate: 4.05 },
+        ],
+        rateChangeMonths: 24,
+        nextRateChangeDate: "2027-05-01",
+        amortization: { mode: "percent", percent: 1 },
+        payments: MONTHS.map(({ year, month }) => {
+          const charge = cityMortgageByMonth.get(`${year}-${month}`);
+          const sourceHist = charge
+            ? cityHistory.find(
+                (e) => e.date === charge.date && e.amount === charge.amount,
+              )
+            : undefined;
+          const payment: MortgagePayment = {
+            id: mkId("mpay"),
+            date: charge ? charge.date : iso(year, month, 28),
+            amount: charge ? Math.abs(charge.amount) : 5400,
+          };
+          if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+          return payment;
+        }),
+      },
+    ],
+  };
+
+  // A big house carrying three loans — a first mortgage, a second
+  // mortgage, and a top-up — so the Properties page renders a
+  // multi-mortgage card. The terms deliberately vary across the three
+  // (percent vs fixed amortisation, a long vs short vs empty rate
+  // history, with and without a next-reset date) to exercise every
+  // branch of the mortgage row. Outstanding balances sum to ~60% of the
+  // current value (19,200,000): 6,400,000 + 3,250,000 + 1,870,000 =
+  // 11,520,000. The property is paid as one combined charge from the
+  // Villa account; that single draw is recorded against the first loan.
+  const villaHistory = history[villaAccount.id];
+  const villa: Property = {
+    id: mkId("prop"),
+    name: "Villa Ekbacken",
+    companyId: companyVillaLender.id,
+    accountId: villaAccount.id,
+    purchaseAmount: 14500000,
+    purchaseDate: "2019-06-01",
+    size: 285,
+    valueHistory: [
+      { id: mkId("pval"), date: "2019-06-01", value: 14500000 },
+      { id: mkId("pval"), date: "2023-01-01", value: 17800000 },
+      { id: mkId("pval"), date: "2026-05-01", value: 19200000 },
+    ],
+    mortgages: [
+      {
+        id: mkId("mort"),
+        name: "Fastighetslån bolån 1",
+        loanAmount: 7000000,
+        currentBalance: 6400000,
+        interestRate: 3.79,
+        rateHistory: [
+          { id: mkId("rate"), date: "", rate: 1.95 },
+          { id: mkId("rate"), date: "2022-09-01", rate: 3.12 },
+          { id: mkId("rate"), date: "2024-03-01", rate: 3.79 },
+        ],
+        rateChangeMonths: 12,
+        nextRateChangeDate: "2026-09-01",
+        amortization: { mode: "percent", percent: 2 },
+        payments: MONTHS.map(({ year, month }) => {
+          const charge = villaMortgageByMonth.get(`${year}-${month}`);
+          const sourceHist = charge
+            ? villaHistory.find(
+                (e) => e.date === charge.date && e.amount === charge.amount,
+              )
+            : undefined;
+          const payment: MortgagePayment = {
+            id: mkId("mpay"),
+            date: charge ? charge.date : iso(year, month, 28),
+            amount: charge ? Math.abs(charge.amount) : 61500,
+          };
+          if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+          return payment;
+        }),
+      },
+      {
+        id: mkId("mort"),
+        name: "Fastighetslån bolån 2",
+        loanAmount: 3500000,
+        currentBalance: 3250000,
+        interestRate: 4.2,
+        rateChangeMonths: 3,
+        nextRateChangeDate: "2026-08-01",
+        amortization: { mode: "fixed", amount: 5000 },
+        payments: [],
+      },
+      {
+        id: mkId("mort"),
+        name: "Fastighetslån topplån",
+        loanAmount: 2000000,
+        currentBalance: 1870000,
+        interestRate: 5.45,
+        amortization: { mode: "percent", percent: 3 },
+        payments: [],
+      },
+    ],
+  };
+  const properties: Property[] = [cabin, apartment, villa];
 
   // ---- Transfers (cross-account log) -------------------------------
   const transfers: Transfer[] = MONTHS.map(({ year, month }) => ({
@@ -591,12 +868,12 @@ export function buildSeedUserData(): UserData {
   }));
 
   // ---- Items (owned-things catalog) --------------------------------
-  // The MacBook is anchored to the Laptop subtype (so it inherits the
+  // The laptop is anchored to the Laptop subtype (so it inherits the
   // Electronics type → category) and linked to the budget purchase row
   // below; the bike is left unclassified to exercise both paths.
-  const macbookItem: Item = {
+  const laptopItem: Item = {
     id: mkId("item"),
-    name: 'MacBook Pro 14"',
+    name: 'Bärbar dator 14"',
     subtypeId: laptopSubtype.id,
     acquiredAt: "2026-02-10",
     purchasePrice: 24990,
@@ -604,11 +881,11 @@ export function buildSeedUserData(): UserData {
   };
   const bikeItem: Item = {
     id: mkId("item"),
-    name: "Cykel Crescent",
+    name: "Cykel Norrsken",
     acquiredAt: "2025-12-20",
     purchasePrice: 6500,
   };
-  const items: Item[] = [macbookItem, bikeItem];
+  const items: Item[] = [laptopItem, bikeItem];
 
   // ---- Budget sheet bound to Checking ------------------------------
   // Forward-looking recurring rows (salary, rent, subscription, gym)
@@ -654,10 +931,10 @@ export function buildSeedUserData(): UserData {
     pushRow(
       {
         date: iso(year, month, 18),
-        description: "Spotify",
+        description: "Ljudström",
         amount: -119,
         typeId: "preset-type-music-streaming",
-        companyId: companySpotify.id,
+        companyId: companyStreaming.id,
         seriesId: subSeries,
       },
       { tagIds: [tagVacation.id] },
@@ -671,16 +948,16 @@ export function buildSeedUserData(): UserData {
     });
   }
 
-  // A one-off purchase linked to the MacBook item, so the line-item pill
+  // A one-off purchase linked to the laptop item, so the line-item pill
   // and the item ↔ transaction connection render in the seeded data.
   pushRow(
     {
       date: "2026-02-10",
-      description: "Elgiganten",
+      description: "Elektronikhuset",
       amount: -24990,
       typeId: "preset-type-electronics",
     },
-    { lineItems: [{ id: mkId("link"), itemId: macbookItem.id }] },
+    { lineItems: [{ id: mkId("link"), itemId: laptopItem.id }] },
   );
 
   const budgetSheet: Sheet = {

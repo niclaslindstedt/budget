@@ -379,7 +379,7 @@ describe("reapplyMatchRules action", () => {
     const descId = descColumnId(state);
     (state.sheets[0].items[0] as AccountBudget).rows = [
       { ...makeRow({ [descId]: "Lön" }), typeId: "type-rent" },
-      { ...makeRow({ [descId]: "Agilator" }), typeId: "type-grocery" },
+      { ...makeRow({ [descId]: "Matboden" }), typeId: "type-grocery" },
     ];
     state.matchRules = [
       {
