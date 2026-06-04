@@ -10,6 +10,18 @@
 // Because the substitution happens AFTER the encryption / cloud-mirror
 // wrapping in `useStorageBackend`, the fake bytes are never encrypted,
 // mirrored, or written to any real backend.
+//
+// DELIBERATELY NO `loadSync` / `"loadSync"` capability. This adapter is
+// only ever swapped in MID-SESSION (the toggle is off at mount), never
+// the initial adapter. The load effect in `useLoadState` only runs the
+// synchronous fast path on the first mount (`!hasLoadedRef`); once a
+// previous backend has loaded, a `loadSync` adapter hits the "load
+// skipped" branch and the seed never replaces the real data on screen.
+// The async `load()` path, by contrast, handles adapter swaps and
+// repopulates state. So this adapter stays async-only on purpose —
+// adding `loadSync` to "avoid a spinner" silently reintroduces the bug
+// where toggling the seed on leaves the real data in place. `load()`
+// resolves on a microtask anyway, so there is no visible spinner.
 
 import { buildSeedUserData } from "../data/dev/seed";
 import type { Snapshot, StorageAdapter } from "./adapter";
@@ -24,15 +36,10 @@ export function createDevSeedAdapter(): StorageAdapter {
     id: "dev",
     label: "Developer (fake data)",
     saveDebounceMs: 0,
-    // `loadSync` so the seed paints on the first frame, no spinner —
-    // mirrors the localStorage fast path. No backups / receipts /
-    // payslips: those gate cloud / folder UI we don't want for a
-    // throwaway in-memory store.
-    capabilities: new Set(["loadSync"]),
-
-    loadSync(): Snapshot | null {
-      return { text };
-    },
+    // No backups / receipts / payslips: those gate cloud / folder UI we
+    // don't want for a throwaway in-memory store. No `loadSync` either
+    // — see the file header.
+    capabilities: new Set(),
 
     load(): Promise<Snapshot | null> {
       return Promise.resolve({ text });
