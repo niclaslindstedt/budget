@@ -98,6 +98,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Ett blad per konto, ett per mål. Flikarna högst upp växlar mellan dem.",
   },
+  pinnedFavorite: {
+    name: "Fäst",
+    condition: "Markera ett blad som favorit från dess … meny.",
+    learnMore:
+      "Markera upp till tre blad som favoriter så fästs de i nedre fältet som snabbväxlingsikoner — ett tryck för att hoppa mellan bladen du använder mest.",
+  },
   birdsEye: {
     name: "Fågelperspektiv",
     condition: "Besök Konto-översikten.",

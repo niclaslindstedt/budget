@@ -1,5 +1,6 @@
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
+import { MAX_FAVORITE_SHEETS } from "../sheet";
 import { reorderById } from "../../utils/reorder";
 
 export function reduceSheets(state: UserData, action: Action): UserData | null {
@@ -34,6 +35,29 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
       sheets: state.sheets.map((sheet) =>
         sheet.id === action.sheetId ? { ...sheet, ...action.meta } : sheet,
       ),
+    };
+  }
+  if (action.type === "toggleSheetFavorite") {
+    const target = state.sheets.find((s) => s.id === action.sheetId);
+    if (!target) return state;
+    // Turning a favorite on is a no-op once the cap is reached; turning
+    // one off is always allowed. Keep `favorite` absent (not `false`)
+    // when off, matching the optional-field convention.
+    if (!target.favorite) {
+      const favoriteCount = state.sheets.filter((s) => s.favorite).length;
+      if (favoriteCount >= MAX_FAVORITE_SHEETS) return state;
+    }
+    return {
+      ...state,
+      sheets: state.sheets.map((sheet) => {
+        if (sheet.id !== action.sheetId) return sheet;
+        if (sheet.favorite) {
+          const { favorite: _drop, ...rest } = sheet;
+          void _drop;
+          return rest;
+        }
+        return { ...sheet, favorite: true };
+      }),
     };
   }
   if (action.type === "deleteSheet") {

@@ -107,6 +107,7 @@ const actionHistory = {
     addSheet: "Added sheet",
     updateSheetMeta: "Edited sheet",
     deleteSheet: "Deleted sheet",
+    toggleSheetFavorite: "Toggled favorite",
     reorderSheets: "Reordered sheets",
     importBankHistory: "Imported bank statement",
     promoteRecurringCandidate: "Promoted recurring candidate",

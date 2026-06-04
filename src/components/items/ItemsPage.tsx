@@ -27,7 +27,11 @@ import { ActiveRowProvider } from "../ActiveRowProvider";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import {
+  SheetTitleMenu,
+  favoriteMenuItem,
+  type SheetTitleMenuItem,
+} from "../SheetTitleMenu";
 import { ItemRow } from "./ItemRow";
 
 type Props = {
@@ -133,6 +137,7 @@ export function ItemsPage({
   }, [sheet.id]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    favoriteMenuItem(sheet, t, dispatchModal),
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

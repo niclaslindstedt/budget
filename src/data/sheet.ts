@@ -14,6 +14,12 @@ import type {
   UserRow,
 } from "./types";
 
+// Most favorited sheets the bottom-bar quick-switch strip will show. The
+// cap exists so the strip never needs to scroll — a horizontally
+// scrolling region inside the sticky bottom bar breaks iOS composited
+// scrolling (see BottomBar). Three glyph icons always fit.
+export const MAX_FAVORITE_SHEETS = 3;
+
 // Universal id minter for every entity the workspace holds (sheets,
 // rows, columns, transfers, history entries, …). Uses `crypto.randomUUID`
 // when available and a deterministic-ish fallback otherwise so the

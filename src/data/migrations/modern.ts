@@ -923,6 +923,10 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v64.properties;
     return { ...v64, version: 65, properties };
   },
+  // Introduces the optional `Sheet.favorite` flag (up to 3 sheets can be
+  // favorited and pinned to the bottom bar). Purely additive — absent ⇒
+  // not favorited — so no per-sheet transformation is needed.
+  65: (v65) => ({ ...v65, version: 66 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

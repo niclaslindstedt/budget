@@ -19,7 +19,11 @@ import { AccountRow } from "./AccountRow";
 import { AccountTransfersModal } from "./AccountTransfersModal";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { useModalDispatch } from "../modal-dispatch";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import {
+  SheetTitleMenu,
+  favoriteMenuItem,
+  type SheetTitleMenuItem,
+} from "../SheetTitleMenu";
 
 type Props = {
   sheet: Sheet;
@@ -110,6 +114,7 @@ export function AccountsPage({
   }, [sheet.id]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    favoriteMenuItem(sheet, t, dispatchModal),
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

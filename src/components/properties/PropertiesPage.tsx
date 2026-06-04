@@ -19,7 +19,11 @@ import { useT } from "../../i18n";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useModalDispatch } from "../modal-dispatch";
-import { SheetTitleMenu, type SheetTitleMenuItem } from "../SheetTitleMenu";
+import {
+  SheetTitleMenu,
+  favoriteMenuItem,
+  type SheetTitleMenuItem,
+} from "../SheetTitleMenu";
 import { MortgageDiscoveryModal } from "./MortgageDiscoveryModal";
 import { MortgageEditorModal } from "./MortgageEditorModal";
 import { PropertyCard } from "./PropertyCard";
@@ -96,6 +100,7 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const hasAnyMortgage = data.properties.some((p) => p.mortgages.length > 0);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
+    favoriteMenuItem(sheet, t, dispatchModal),
     ...(hasAnyMortgage
       ? [
           {

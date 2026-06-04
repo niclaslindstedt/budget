@@ -29,6 +29,11 @@ export type ModalCommand =
   | { kind: "open-new-sheet" }
   | { kind: "open-edit-sheet"; sheetId: string }
   | { kind: "open-download-sheet"; sheetId: string }
+  // Not a modal: toggles the sheet's favorite flag. Routed through the
+  // same command bus so the page title menus (which already hold a
+  // `dispatchModal`, not the reducer dispatch) can fire it; the handler
+  // owns the 3-favorite cap + the "favorites full" toast.
+  | { kind: "toggle-sheet-favorite"; sheetId: string }
   | { kind: "open-edit-entry"; row: Row }
   | { kind: "open-edit-row"; row: Row }
   | { kind: "open-delete-row"; row: Row }
@@ -61,6 +66,8 @@ export type ModalCommandHandlers = {
   openNewSheet: () => void;
   openEditSheet: (sheetId: string) => void;
   openDownloadSheet: (sheetId: string) => void;
+  // Toggle the sheet's favorite flag (capped at 3, enforced here).
+  toggleSheetFavorite: (sheetId: string) => void;
   // Budget-row triggers. Each receives the `Row` the user acted on; the
   // handler resolves what to open (and may no-op / dispatch directly,
   // e.g. discarding an unsaved row or guarding a synthesized row).
@@ -137,6 +144,9 @@ export function applyModalCommand(
       return;
     case "open-download-sheet":
       handlers.openDownloadSheet(command.sheetId);
+      return;
+    case "toggle-sheet-favorite":
+      handlers.toggleSheetFavorite(command.sheetId);
       return;
     case "open-edit-entry":
       handlers.editEntry(command.row);
