@@ -468,6 +468,10 @@ const settings: SettingsCatalog = {
     captureLogs: "Spara loggar",
     captureLogsHint:
       "Spara loggposter på den här enheten så att fliken Loggar kan visa dem. Användbart för felsökning på mobilen där webbläsarens utvecklarkonsol är svår att nå.",
+    fakeData: "Låtsasdata",
+    fakeDataHint:
+      "Byt till en tillfällig backend i minnet som är förfylld med cirka 6 månaders påhittade konton, kontohistorik och budgetposter. Din riktiga data lämnas orörd och kommer tillbaka så snart du stänger av det här eller laddar om sidan. Att byta riktig backend har ingen effekt medan det här är på.",
+    fakeDataBanner: "Utvecklarens låtsasdata – ändringar sparas inte",
   },
   logs: {
     title: "Loggar",

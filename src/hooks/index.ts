@@ -3,6 +3,7 @@ export { useChangelogAutoOpen } from "./useChangelogAutoOpen";
 export { type CrudAdminState, useCrudAdminState } from "./useCrudAdminState";
 export { useDesktopAutoFocus } from "./useDesktopAutoFocus";
 export { useDevMode } from "./useDevMode";
+export { useDevSeed } from "./useDevSeed";
 export {
   type DragItemProps,
   type UseDragReorder,

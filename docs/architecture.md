@@ -172,6 +172,10 @@ src/
 │   │   │                       #   DEFAULT_COMPANY_CATEGORY_ID
 │   │   └── merge.ts            # allTypes / allCategories /
 │   │                           #   allCompanyCategories (visible presets + user)
+│   ├── dev/               # developer-only helpers (preview builds)
+│   │   └── seed.ts             # buildSeedUserData — deterministic ~6-month
+│   │                           #   fake dataset for the Developer "Fake data"
+│   │                           #   toggle (in-memory dev-seed-adapter)
 │   ├── fiscal-month.ts    # fiscal-month + ISO date math (getMonthKey,
 │   │                       #   groupRowsByMonth, previous/nextMonthKey, …)
 │   ├── budget/
@@ -296,6 +300,8 @@ src/
 │   ├── local.ts               # bootstrap helpers — freshUserData() + parse
 │   ├── local-adapter.ts       # raw localStorage byte access
 │   ├── idb-adapter.ts         # IndexedDB byte store (large budgets, mirror cache)
+│   ├── dev-seed-adapter.ts    # ephemeral in-memory backend (id "dev") preloaded
+│   │                          #   with fake data — Developer "Fake data" toggle
 │   ├── folder-adapter.ts      # File System Access adapter (id "folder")
 │   ├── folder-handle-store.ts # IDB persistence + permission helpers for the handle
 │   ├── dropbox-adapter.ts     # Dropbox HTTP adapter + OAuth (PKCE)

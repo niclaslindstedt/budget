@@ -60,8 +60,11 @@ export type AdapterCapability =
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
-  // last-used adapter) can be keyed per backend.
-  readonly id: "browser" | "folder" | "dropbox" | "gdrive";
+  // last-used adapter) can be keyed per backend. `"dev"` is the
+  // ephemeral in-memory fake-data backend (`dev-seed-adapter.ts`); it
+  // is never a persisted backend preference, only substituted at
+  // runtime by the developer toggle.
+  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev";
 
   // Human-readable label for the future settings UI.
   readonly label: string;

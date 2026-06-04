@@ -77,12 +77,14 @@ import { useUserDataStorage } from "../../storage/useUserDataStorage";
 import { describeActionSubject } from "../../data/action-summary";
 import { useLang, useT } from "../../i18n";
 import {
+  useDevSeed,
   useEffectiveSettings,
   useIdleSignOut,
   useIsMobile,
   usePullToRefresh,
   useToast,
 } from "../../hooks";
+import { createDevSeedAdapter } from "../../storage/dev-seed-adapter";
 type AppShellProps = {
   auth: AppShellAuth;
   storage: AppShellStorage;
@@ -140,6 +142,21 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       describeActionSubject(action, prev, next, lang),
     [lang],
   );
+  // Developer "Fake data" toggle. When active, swap in an ephemeral
+  // in-memory adapter preloaded with seed data — substituting it here
+  // (after the encryption / cloud-mirror wrapping in
+  // `useStorageBackend`) keeps the fake bytes off every real backend.
+  // The load effect in `useUserDataStorage` reloads whenever this
+  // reference changes, so flipping the toggle off restores the real
+  // adapter and reloads the user's untouched data. The dev adapter is
+  // rebuilt fresh each activation; while active it stays referentially
+  // stable even if the real `adapter` re-memos, so no spurious reload.
+  const { active: devSeedActive } = useDevSeed();
+  const devAdapter = useMemo(
+    () => (devSeedActive ? createDevSeedAdapter() : null),
+    [devSeedActive],
+  );
+  const effectiveAdapter = devAdapter ?? adapter;
   const {
     data,
     dispatch,
@@ -158,7 +175,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     historyIndex,
     jumpToHistory,
     reload,
-  } = useUserDataStorage(adapter, reducer, {
+  } = useUserDataStorage(effectiveAdapter, reducer, {
     beforeSerialize: userDataWithSavableRows,
     hasUnsavableContent: userDataHasUnsavableRows,
     userId: user.id,
@@ -797,6 +814,14 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           state={ptr.state}
           pullDistance={ptr.pullDistance}
         />
+        {devSeedActive && (
+          <div
+            role="status"
+            className="border-2 border-danger bg-surface-3 px-2 py-1 text-center text-xs font-bold tracking-wide text-danger uppercase"
+          >
+            {t("settings.developer.fakeDataBanner")}
+          </div>
+        )}
         {/* `data-modal-background` is the toggle target for the modal
           lifecycle hook in src/utils/scroll-lock.ts — any open modal
           flips `inert` on every match, freezing focus and pointer
