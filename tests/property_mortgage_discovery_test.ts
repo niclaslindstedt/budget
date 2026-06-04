@@ -961,6 +961,153 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
   });
 });
 
+// ── A stray tag must not shadow the amount search ──────────────────────────
+//
+// The lender bank also bills unrelated charges (a monthly card fee), and a
+// user who tagged one of those with the lender company — or who has the
+// company auto-applied by a rule — would otherwise flip the whole walk into
+// "tags-only" mode: the only tagged anchor is the 20 kr fee, it's dropped as
+// implausible, and the ~monthly mortgage payment sitting in the history is
+// never even considered. The amount search must run alongside the tags.
+describe("discoverMortgagePayments — a stray tag does not shadow the maths", () => {
+  function feeCharges(): HistoryEntry[] {
+    // A small monthly bank-card fee, company-tagged to the lender.
+    return monthlyDates(2025, 9, 12).map((d, i) =>
+      entry(`fee-${i}`, d, -20, "Manadsavgift Bankkort", {
+        userCompanyId: COMPANY.id,
+      }),
+    );
+  }
+
+  it("finds the untagged mortgage even when an unrelated lender charge is tagged", () => {
+    const base = screenshotProperty();
+    const prop = property(base.mortgages, {
+      ...base,
+      companyId: COMPANY.id, // the property's lender
+    });
+    const entries = [...aviCharges(19_636), ...feeCharges()];
+    const { series, seed, diagnostics } = runFinder(prop, entries);
+    // The stray fee IS tagged...
+    expect(diagnostics.tagKeyCount).toBeGreaterThanOrEqual(1);
+    // ...but the mortgage still surfaces, from the loan maths, and leads.
+    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].anchor).toBe("amount");
+    expect(seed).toBe("amount");
+    // The 20 kr fee is offered to nobody — it's an order of magnitude off the
+    // expected payment.
+    expect(series.some((s) => s.suggestedAmount === 20)).toBe(false);
+    const fee = diagnostics.candidates.find((c) => c.suggestedAmount === 20);
+    expect(fee?.outcome).toBe("plausibility");
+  });
+
+  it("still surfaces a correctly-tagged mortgage as a tag match", () => {
+    // When the tagged charge IS the mortgage, it leads as a tag anchor (the
+    // amount search would find it too, deduped by its description key).
+    const base = screenshotProperty();
+    const prop = property(base.mortgages, { ...base, companyId: COMPANY.id });
+    const entries = monthlyDates(2025, 9, 12).map((d, i) =>
+      entry(`m-${i}`, d, -19_636, "Avibetalning bolan", {
+        userCompanyId: COMPANY.id,
+      }),
+    );
+    const { series, seed } = runFinder(prop, entries);
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].anchor).toBe("tag");
+    expect(seed).toBe("tags");
+  });
+});
+
+// ── Ranking: strictness first, then closeness to the expected figure ───────
+describe("discoverMortgagePayments — ranking across strictness and closeness", () => {
+  // Twelve clean monthly charges of one description at a fixed amount.
+  function monthly(
+    prefix: string,
+    description: string,
+    amount: number,
+    extra: Partial<HistoryEntry> = {},
+  ): HistoryEntry[] {
+    return monthlyDates(2024, 1, 12).map((d, i) =>
+      entry(`${prefix}-${i}`, d, -amount, description, extra),
+    );
+  }
+
+  it("ranks the closest amount-only candidate first among near-misses", () => {
+    // Expected payment 18 750. Four recurring charges all inside the ±20 %
+    // band — 18 756 (spot on), 18 200, 22 000, 15 300 — all surface, and the
+    // one closest to the estimate leads.
+    const entries = [
+      ...monthly("a", "Stora Bolanet", 18_756),
+      ...monthly("b", "Andra Lanet", 18_200),
+      ...monthly("c", "Tredje Lanet", 15_300),
+      ...monthly("d", "Fjarde Lanet", 22_000),
+    ];
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(seed).toBe("amount");
+    // Closest-to-18 750 first: 18 756, 18 200, 22 000, 15 300.
+    expect(series.map((s) => s.suggestedAmount)).toEqual([
+      18_756, 18_200, 22_000, 15_300,
+    ]);
+    expect(series.every((s) => s.anchor === "amount")).toBe(true);
+  });
+
+  it("ranks by strictness first, then closeness, across all three scopes", () => {
+    // The same near-misses, but now the 18 756 charge is company-tagged and
+    // the 18 200 charge already has a recorded payment. Strictness wins:
+    // tag, then payment, then the amount-only charges (closest of those
+    // first) — even though an amount-only charge sits nearer the estimate
+    // than the payment-seeded one.
+    const entries = [
+      ...monthly("tag", "Stora Bolanet", 18_756, {
+        userCompanyId: COMPANY.id,
+      }),
+      ...monthly("pay", "Andra Lanet", 18_200),
+      ...monthly("amtA", "Tredje Lanet", 22_000),
+      ...monthly("amtB", "Fjarde Lanet", 15_300),
+    ];
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(entries, {
+        companyIds: [COMPANY.id],
+        seedEntryIds: ["pay-0"],
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(seed).toBe("tags");
+    expect(series.map((s) => s.anchor)).toEqual([
+      "tag",
+      "payment",
+      "amount",
+      "amount",
+    ]);
+    expect(series.map((s) => s.suggestedAmount)).toEqual([
+      18_756, 18_200, 22_000, 15_300,
+    ]);
+  });
+
+  it("keeps a tagged charge on top even when an amount-only charge is closer", () => {
+    // The tagged charge is a worse amount match (18 000, delta 0.04) than an
+    // untagged one (18 756, delta ~0), yet the tag's higher strictness keeps
+    // it first — the surer signal leads.
+    const entries = [
+      ...monthly("tag", "Stora Bolanet", 18_000, {
+        userCompanyId: COMPANY.id,
+      }),
+      ...monthly("amt", "Andra Lanet", 18_756),
+    ];
+    const { series, seed } = discoverMortgagePayments(
+      baseInput(entries, {
+        companyIds: [COMPANY.id],
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(seed).toBe("tags");
+    expect(series.map((s) => s.anchor)).toEqual(["tag", "amount"]);
+    expect(series.map((s) => s.suggestedAmount)).toEqual([18_000, 18_756]);
+  });
+});
+
 describe("monthsWithinBand", () => {
   it("drops a month whose charge strays outside the band", () => {
     // Eleven steady 8,000 draws plus one 16,000 double-draw in an early

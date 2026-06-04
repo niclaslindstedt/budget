@@ -179,8 +179,12 @@ export function MortgageDiscoveryModal({
   useEffect(() => {
     if (!open || !property || !hasAccount) return;
     const d = result.diagnostics;
+    // targets[0] is the combined expected monthly payment — the figure the
+    // walk is hunting for.
+    const expected = d.targetAmounts[0];
     log.info(
       `find "${property.name}": seed=${d.seed} series=${result.series.length} ` +
+        `expectedPayment≈${expected === undefined ? "n/a" : Math.round(expected)} ` +
         `entries=${d.totalEntries} outflows=${d.outflowEntries} ` +
         `groups=${d.groupCount} tagged=${d.tagKeyCount} payments=${d.paymentKeyCount} ` +
         `skipped(hidden=${d.skippedHidden} collapsed=${d.skippedCollapsed} ` +
