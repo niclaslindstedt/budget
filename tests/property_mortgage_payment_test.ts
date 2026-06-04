@@ -106,4 +106,75 @@ describe("splitPaymentAcrossMortgages", () => {
     expect(split.get("a")).toBeCloseTo(500);
     expect(split.get("b")).toBeCloseTo(500);
   });
+
+  it("settles amortisation in full first, then splits the rest by interest", () => {
+    const x = mortgage({
+      id: "x",
+      currentBalance: 1_200_000,
+      interestRate: 1, // 1000/mo interest
+      amortization: { mode: "fixed", amount: 2000 },
+    });
+    const y = mortgage({
+      id: "y",
+      currentBalance: 1_200_000,
+      interestRate: 1, // 1000/mo interest
+      amortization: { mode: "fixed", amount: 6000 },
+    }); // expected total = 10000
+
+    // Charge runs 1000 over the expected total. Amortisation stays pinned
+    // (2000 / 6000); only the leftover interest (3000) is shared by interest
+    // weight, which is equal here ⇒ +1500 each.
+    const split = splitPaymentAcrossMortgages([x, y], 11_000, "2024-08-28");
+    expect(split.get("x")).toBeCloseTo(3500);
+    expect(split.get("y")).toBeCloseTo(7500);
+    const total = [...split.values()].reduce((s, v) => s + v, 0);
+    expect(total).toBeCloseTo(11_000);
+  });
+
+  it("pins an amortising loan to its amortisation when the other carries the interest", () => {
+    // x is interest-only (no amortisation); y amortises but charges no
+    // interest (no rate). The variance is interest, so it lands on x.
+    const x = mortgage({ id: "x", currentBalance: 1_200_000, interestRate: 1 }); // 1000 interest
+    const y = mortgage({
+      id: "y",
+      amortization: { mode: "fixed", amount: 5000 },
+    }); // 5000 amortisation, no interest
+
+    // Charge runs 500 over the expected 6000 ⇒ y stays at 5000, x absorbs
+    // its interest plus the whole variance.
+    const split = splitPaymentAcrossMortgages([x, y], 6500, "2024-08-28");
+    expect(split.get("x")).toBeCloseTo(1500);
+    expect(split.get("y")).toBeCloseTo(5000);
+  });
+
+  it("splits by amortisation weight when the charge can't cover it", () => {
+    const x = mortgage({
+      id: "x",
+      amortization: { mode: "fixed", amount: 2000 },
+    });
+    const y = mortgage({
+      id: "y",
+      amortization: { mode: "fixed", amount: 6000 },
+    });
+    // Charge below the combined amortisation ⇒ proportional, never negative.
+    const split = splitPaymentAcrossMortgages([x, y], 4000, "2024-08-28");
+    expect(split.get("x")).toBeCloseTo(1000);
+    expect(split.get("y")).toBeCloseTo(3000);
+  });
+
+  it("spreads the leftover by amortisation when no loan charges interest", () => {
+    const x = mortgage({
+      id: "x",
+      amortization: { mode: "fixed", amount: 2000 },
+    });
+    const y = mortgage({
+      id: "y",
+      amortization: { mode: "fixed", amount: 6000 },
+    });
+    // No interest anywhere ⇒ the whole charge stays proportional to
+    // amortisation (x:y = 1:3).
+    const split = splitPaymentAcrossMortgages([x, y], 8000, "2024-08-28");
+    expect(split.get("x")).toBeCloseTo(2000);
+    expect(split.get("y")).toBeCloseTo(6000);
+  });
 });
