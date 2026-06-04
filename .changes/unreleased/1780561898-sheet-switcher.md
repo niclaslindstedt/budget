@@ -1,6 +1,8 @@
 ---
-type: Added
+type: Changed
 ---
 
-A sheet switcher in the page header lists every sheet in a dropdown — the
-reliable way to jump to a sheet that doesn't fit the bottom tab strip.
+Sheet switching moved to a dropdown in the page header that lists every
+sheet (the active one checked, with a "New sheet" entry), replacing the
+bottom-bar tab strip. The bottom bar now holds just the row actions —
+search, undo/redo, history, and select.

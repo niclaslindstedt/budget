@@ -69,12 +69,14 @@ export async function signInAsGuest(page) {
   await page.getByText("budget", { exact: true }).waitFor();
 }
 
-// Open the New-sheet modal, name the sheet, pick its type, confirm.
-// `type` is the visible TypePicker label — "Budget" or "Accounts".
-// The Accounts type is a workspace singleton; this is a no-op if one
-// already exists (the option greys out and the click is dropped).
+// Open the New-sheet modal (via the header SheetSwitcher dropdown),
+// name the sheet, pick its type, confirm. `type` is the visible
+// TypePicker label — "Budget" or "Accounts". The Accounts type is a
+// workspace singleton; this is a no-op if one already exists (the
+// option greys out and the click is dropped).
 export async function addSheet(page, name, type = "Budget") {
-  await page.getByRole("button", { name: "New sheet", exact: true }).click();
+  await page.getByRole("button", { name: "Switch sheet" }).click();
+  await page.getByRole("menuitem", { name: "New sheet" }).click();
   const modal = page.getByRole("dialog");
   await modal.getByRole("textbox", { name: "Name" }).fill(name);
   if (type !== "Budget") {
