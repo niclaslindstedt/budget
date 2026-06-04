@@ -99,10 +99,12 @@ flipping it on swaps the app onto an ephemeral in-memory storage
 backend preloaded with ~6 months of believable data. The seed is
 deliberately broad so every feature is reachable with as few clicks as
 possible: a sheet of **each type** (budget, accounts, items, salary,
-properties) so every page is one tab away; three accounts with bank
-history, cross-account transfers, and recurring budget rows; salary
-history (employer, role, tax profile) and an owned property with a
-mortgage; custom tags / companies / categories / types / subtypes plus
+properties) so every page is one tab away; five accounts across two
+banks with bank history, cross-account transfers, and recurring budget
+rows; salary history (employer, role, tax profile) and three owned
+properties (a holiday cabin, a city flat, and a large villa) carrying
+one, one, and three mortgages whose monthly charges land across two of
+those banks; custom tags / companies / categories / types / subtypes plus
 company-category and merchant-memory associations. It also leaves one
 **unconsumed candidate** for every discovery walk (Find salaries, Find
 items, Find mortgage payments, the recurring-candidates panel, and

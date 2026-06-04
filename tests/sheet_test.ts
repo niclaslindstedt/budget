@@ -988,8 +988,8 @@ describe("synthesizeHistoryRow", () => {
   });
 
   it("skips the merchant hint when the user explicitly cleared the description", () => {
-    // Regression: a user who had `userDescription: "Agilator"` and
-    // then cleared it through the edit modal would still see "Agilator"
+    // Regression: a user who had `userDescription: "Matboden"` and
+    // then cleared it through the edit modal would still see "Matboden"
     // in the cell because the learned merchant hint refilled the row
     // at synthesis time. The empty-string clear signal now short-circuits
     // the rule / hint description chain so the cell falls back to the
@@ -998,7 +998,7 @@ describe("synthesizeHistoryRow", () => {
       hitCount: 1,
       lastUsedAt: 1,
       typeId: "hint-type",
-      description: "Agilator",
+      description: "Matboden",
     };
     const cleared: HistoryEntry = { ...baseEntry, userDescription: "" };
     const [row] = synthesizeHistoryRow(
