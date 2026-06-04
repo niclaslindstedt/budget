@@ -29,6 +29,7 @@ const properties = {
   balanceShort: "Balance",
   loanShort: "Loan",
   rateShort: "Rate",
+  interestShort: "Interest",
   rateResetsOne: "resets monthly",
   rateResetsOther: "resets every {count} mo",
   nextRateChangeShort: "Next change",

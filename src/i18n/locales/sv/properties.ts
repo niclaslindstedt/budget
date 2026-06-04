@@ -29,6 +29,7 @@ const properties: PropertiesCatalog = {
   balanceShort: "Skuld",
   loanShort: "Lån",
   rateShort: "Ränta",
+  interestShort: "Räntekostnad",
   rateResetsOne: "ändras varje månad",
   rateResetsOther: "ändras var {count}:e mån",
   nextRateChangeShort: "Nästa ändring",

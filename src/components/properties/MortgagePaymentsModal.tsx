@@ -1,7 +1,17 @@
 import { useMemo, useState } from "react";
-import { Pencil, ReceiptText, Trash2 } from "lucide-react";
+import {
+  Coins,
+  Pencil,
+  Percent,
+  ReceiptText,
+  TrendingDown,
+  Trash2,
+} from "lucide-react";
 
-import { groupPaymentsByCharge } from "../../data/property-mortgage/payment";
+import {
+  groupPaymentsByCharge,
+  splitRecordedPayment,
+} from "../../data/property-mortgage/payment";
 import type { Property, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
@@ -117,52 +127,121 @@ export function MortgagePaymentsModal({
                     })}
                   </span>
                 </div>
-                <ul className="m-0 flex list-none flex-col p-0">
-                  {group.items.map((item) => (
-                    <li
-                      key={item.payment.id}
-                      className="flex items-center gap-2 px-2.5 py-1.5 text-sm"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-fg">
-                        {item.mortgage.name}
-                      </span>
-                      <span className="tabular-nums text-fg-bright">
-                        {formatBalance(item.payment.amount, settings, {
-                          neverAbbreviate: true,
-                        })}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditing({
-                            key: group.key,
-                            mortgageId: item.mortgage.id,
-                          })
-                        }
-                        aria-label={t("properties.editPayment")}
-                        className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="text-muted">
+                      <th className="px-2.5 py-1 text-left" />
+                      <th
+                        className="px-1 py-1 text-right font-normal"
+                        title={t("properties.amortShort")}
                       >
-                        <Pencil size={16} aria-hidden focusable={false} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPendingDelete({
-                            mortgageId: item.mortgage.id,
-                            paymentId: item.payment.id,
-                            mortgageName: item.mortgage.name,
-                            date: item.payment.date,
-                            amount: item.payment.amount,
-                          })
-                        }
-                        aria-label={t("properties.deletePayment")}
-                        className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+                        <TrendingDown
+                          size={13}
+                          className="ml-auto"
+                          aria-label={t("properties.amortShort")}
+                          focusable={false}
+                        />
+                      </th>
+                      <th
+                        className="px-1 py-1 text-right font-normal"
+                        title={t("properties.interestShort")}
                       >
-                        <Trash2 size={16} aria-hidden focusable={false} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                        <Percent
+                          size={13}
+                          className="ml-auto"
+                          aria-label={t("properties.interestShort")}
+                          focusable={false}
+                        />
+                      </th>
+                      <th
+                        className="px-1 py-1 text-right font-normal"
+                        title={t("properties.paymentAmount")}
+                      >
+                        <Coins
+                          size={13}
+                          className="ml-auto"
+                          aria-label={t("properties.paymentAmount")}
+                          focusable={false}
+                        />
+                      </th>
+                      <th className="px-2.5 py-1" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map((item) => {
+                      const split = splitRecordedPayment(
+                        item.mortgage,
+                        item.payment,
+                      );
+                      return (
+                        <tr
+                          key={item.payment.id}
+                          className="border-t border-line"
+                        >
+                          <td className="px-2.5 py-1.5 text-fg">
+                            {item.mortgage.name}
+                          </td>
+                          <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+                            {formatBalance(split.amortization, settings, {
+                              neverAbbreviate: true,
+                            })}
+                          </td>
+                          <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+                            {formatBalance(split.interest, settings, {
+                              neverAbbreviate: true,
+                            })}
+                          </td>
+                          <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums text-fg-bright">
+                            {formatBalance(item.payment.amount, settings, {
+                              neverAbbreviate: true,
+                            })}
+                          </td>
+                          <td className="px-2.5 py-1">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditing({
+                                    key: group.key,
+                                    mortgageId: item.mortgage.id,
+                                  })
+                                }
+                                aria-label={t("properties.editPayment")}
+                                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+                              >
+                                <Pencil
+                                  size={16}
+                                  aria-hidden
+                                  focusable={false}
+                                />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPendingDelete({
+                                    mortgageId: item.mortgage.id,
+                                    paymentId: item.payment.id,
+                                    mortgageName: item.mortgage.name,
+                                    date: item.payment.date,
+                                    amount: item.payment.amount,
+                                  })
+                                }
+                                aria-label={t("properties.deletePayment")}
+                                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+                              >
+                                <Trash2
+                                  size={16}
+                                  aria-hidden
+                                  focusable={false}
+                                />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </li>
             ))}
           </ul>

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
+import { splitRecordedPayment } from "../../data/property-mortgage/payment";
 import type {
   Account,
   Company,
@@ -234,7 +235,19 @@ function MortgageRow({
 }) {
   const t = useT();
   const count = mortgage.payments.length;
-  const paid = mortgage.payments.reduce((s, p) => s + p.amount, 0);
+  // Sum what's been paid and how it divides between interest and
+  // amortisation, so a loan that carries all the principal (or all the
+  // interest) is obvious at a glance rather than hidden in one total.
+  const paidSplit = mortgage.payments.reduce(
+    (acc, p) => {
+      const split = splitRecordedPayment(mortgage, p);
+      acc.amortization += split.amortization;
+      acc.interest += split.interest;
+      return acc;
+    },
+    { amortization: 0, interest: 0 },
+  );
+  const paid = paidSplit.amortization + paidSplit.interest;
   const monthlyAmort = resolveMonthlyAmortization(mortgage);
   const hasTerms =
     mortgage.loanAmount !== undefined ||
@@ -327,10 +340,30 @@ function MortgageRow({
         )}
       </span>
       {count > 0 && (
-        <span className="text-xs text-muted">
-          {t("properties.paidTotal")}{" "}
-          <span className="tabular-nums text-fg">
-            {formatBalance(paid, settings, { neverAbbreviate: true })}
+        <span className="flex flex-col items-end gap-0.5 text-xs text-muted">
+          <span>
+            {t("properties.paidTotal")}{" "}
+            <span className="tabular-nums text-fg">
+              {formatBalance(paid, settings, { neverAbbreviate: true })}
+            </span>
+          </span>
+          <span className="flex flex-wrap justify-end gap-x-2">
+            <span>
+              {t("properties.interestShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {formatBalance(paidSplit.interest, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+            </span>
+            <span>
+              {t("properties.amortShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {formatBalance(paidSplit.amortization, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+            </span>
           </span>
         </span>
       )}
