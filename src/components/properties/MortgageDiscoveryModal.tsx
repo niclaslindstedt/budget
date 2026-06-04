@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Home, Search } from "lucide-react";
 
 import {
   discoverMortgagePayments,
   DEFAULT_MORTGAGE_TOLERANCE,
+  emptyMortgageDiagnostics,
   monthsWithinBand,
   type MortgagePaymentSeries,
 } from "../../data/property-mortgage/discovery";
@@ -27,6 +28,7 @@ import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatMonthLabel } from "../../utils/format";
+import { createLogger } from "../../utils/logger";
 import { FloatingPanel } from "../FloatingPanel";
 import { Button, Slider } from "../form";
 import { Modal } from "../Modal";
@@ -44,6 +46,13 @@ import { Modal } from "../Modal";
 // exactly what was paid.
 //
 // `centered`: the walk is all selection controls, no soft-keyboard inputs.
+
+// Diagnostics flow to the in-app Logs tab (Developer settings) so a user who
+// reports "no matches" can capture exactly what the scan saw — the funnel
+// (entries dropped as inflows / collapsed transfers / meaningless
+// descriptions) and every grouped candidate with its amount, distance to the
+// expected payment, and keep/drop reason.
+const log = createLogger("mortgage-finder");
 
 type Props = {
   open: boolean;
@@ -133,7 +142,12 @@ export function MortgageDiscoveryModal({
   );
 
   const result = useMemo(() => {
-    if (!property || !hasAccount) return { series: [], seed: "none" as const };
+    if (!property || !hasAccount)
+      return {
+        series: [],
+        seed: "none" as const,
+        diagnostics: emptyMortgageDiagnostics(),
+      };
     return discoverMortgagePayments({
       entries,
       merchantHints,
@@ -158,6 +172,31 @@ export function MortgageDiscoveryModal({
     addedSourceIds,
     targetAmounts,
   ]);
+
+  // Mirror the scan funnel to the Logs tab whenever the inputs change while
+  // the walk is open. One summary line plus a line per grouped candidate —
+  // enough to tell a "no matches" report apart from "matched but filtered".
+  useEffect(() => {
+    if (!open || !property || !hasAccount) return;
+    const d = result.diagnostics;
+    log.info(
+      `find "${property.name}": seed=${d.seed} series=${result.series.length} ` +
+        `entries=${d.totalEntries} outflows=${d.outflowEntries} ` +
+        `groups=${d.groupCount} tagged=${d.tagKeyCount} payments=${d.paymentKeyCount} ` +
+        `skipped(hidden=${d.skippedHidden} collapsed=${d.skippedCollapsed} ` +
+        `inflow=${d.skippedInflow} meaningless=${d.skippedMeaningless} ` +
+        `salvaged=${d.salvagedByAmount}) ` +
+        `targets=[${d.targetAmounts.map((a) => Math.round(a)).join(", ")}]`,
+    );
+    for (const c of d.candidates) {
+      log.info(
+        `  candidate "${c.label}": amount=${Math.round(c.suggestedAmount)} ` +
+          `months=${c.monthCount} eligible=${c.eligibleMonthCount} ` +
+          `delta=${c.targetDelta === undefined ? "n/a" : c.targetDelta.toFixed(3)} ` +
+          `${c.synthetic ? "amount-grouped " : ""}-> ${c.outcome}`,
+      );
+    }
+  }, [open, property, hasAccount, result]);
 
   // Build the per-mortgage payments: each selected charge's months within
   // the band become a combined transaction, split across the property's

@@ -80,6 +80,57 @@ export type MortgageDiscoverySeed = "tags" | "payments" | "amount" | "none";
 export type MortgageDiscoveryResult = {
   series: MortgagePaymentSeries[]; // largest typical charge first
   seed: MortgageDiscoverySeed;
+  // A structured account of how the walk reached its result — the scan
+  // funnel (how many entries it saw and why each was dropped before
+  // grouping) plus every grouped candidate with its typical amount, its
+  // distance to the closest expected figure, and the reason it did or
+  // didn't make the final list. Always computed (it's cheap) so the modal
+  // can log it to the in-app Logs tab when a user reports "no matches" —
+  // the funnel pinpoints whether the charge was filtered as an inflow,
+  // collapsed into a transfer, skipped for a meaningless description,
+  // dropped by the purchase-date cut-off, or simply too far from the
+  // expected payment.
+  diagnostics: MortgageDiscoveryDiagnostics;
+};
+
+// Why a grouped candidate did or didn't reach the final series list.
+//   "kept"              — offered to the user
+//   "no-eligible-month" — every month fell before the purchase date
+//   "amount-band"       — amount fallback only: not near any expected figure
+//   "plausibility"      — an order of magnitude off every expected figure
+export type MortgageCandidateOutcome =
+  | "kept"
+  | "no-eligible-month"
+  | "amount-band"
+  | "plausibility";
+
+// One grouped charge the scan produced, with the numbers behind the
+// keep/drop decision — the unit the modal logs so a "no matches" report
+// shows exactly which charges were considered and why each lost.
+export type MortgageCandidateDiagnostic = {
+  label: string; // a representative bank description (or the amount group)
+  suggestedAmount: number; // the group's typical charge magnitude
+  monthCount: number; // months in the group before the purchase-date cut
+  eligibleMonthCount: number; // months surviving the purchase-date cut
+  targetDelta?: number; // distance to the closest expected figure
+  synthetic: boolean; // grouped by amount (meaningless description) vs by text
+  outcome: MortgageCandidateOutcome;
+};
+
+export type MortgageDiscoveryDiagnostics = {
+  totalEntries: number; // every entry handed to the walk
+  skippedHidden: number; // hidden from the account view
+  skippedCollapsed: number; // collapsed into a cross-account transfer
+  skippedInflow: number; // a credit, not an outflow
+  skippedMeaningless: number; // description normalised too short to group by
+  salvagedByAmount: number; // meaningless description rescued by amount group
+  outflowEntries: number; // outflows that reached the grouping stage
+  groupCount: number; // distinct charge groups formed
+  targetAmounts: readonly number[]; // expected figures the loan terms resolved
+  tagKeyCount: number; // groups anchored by a company / type tag
+  paymentKeyCount: number; // groups anchored by an existing payment
+  seed: MortgageDiscoverySeed; // which anchor the walk settled on
+  candidates: MortgageCandidateDiagnostic[]; // every group, with its outcome
 };
 
 export type MortgageDiscoveryInput = {
@@ -189,6 +240,26 @@ function spanOfMonths(monthKeys: readonly string[]): number {
   return (ly - fy) * 12 + (lm - fm) + 1;
 }
 
+// The grouping key the finder buckets a charge's months under. The shared
+// `normaliseDescription` deliberately keeps short (1–3 digit) standalone
+// numbers — a store number can carry meaning elsewhere — but a mortgage
+// auto-giro reference like "Avibetalning 9120-3273663" survives normalisation
+// as "avibetalning 91", and because the reference differs every month
+// ("…84", "…10", …) each month lands in its OWN group and the charge never
+// coalesces into a recurring series. The finder doesn't care about reference
+// numbers, so it strips every standalone digit run on top of the shared
+// normaliser: "Avibetalning 9120-3273663" and "Avibetalning 8473-1192834"
+// both collapse to "avibetalning", grouping all the months together, while
+// genuinely distinct text ("Bolån amortering" vs "Bolån ränta") still keys
+// apart. A description that is nothing but a reference number normalises to
+// empty here and is handled by the amount-group salvage instead.
+function financeGroupKey(description: string): string {
+  return normaliseDescription(description)
+    .replace(/\b\d+\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Median of a non-empty list — a robust centre for the amount band that
 // shrugs off a single rate-change outlier.
 function median(values: readonly number[]): number {
@@ -200,6 +271,27 @@ function median(values: readonly number[]): number {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// A zero-valued diagnostics record — the result a caller returns before any
+// scan runs (no property bound, no account). Keeps `diagnostics` required on
+// the result so every code path that reads it is type-safe.
+export function emptyMortgageDiagnostics(): MortgageDiscoveryDiagnostics {
+  return {
+    totalEntries: 0,
+    skippedHidden: 0,
+    skippedCollapsed: 0,
+    skippedInflow: 0,
+    skippedMeaningless: 0,
+    salvagedByAmount: 0,
+    outflowEntries: 0,
+    groupCount: 0,
+    targetAmounts: [],
+    tagKeyCount: 0,
+    paymentKeyCount: 0,
+    seed: "none",
+    candidates: [],
+  };
+}
+
 export function discoverMortgagePayments(
   input: MortgageDiscoveryInput,
 ): MortgageDiscoveryResult {
@@ -209,35 +301,98 @@ export function discoverMortgagePayments(
   const targetAmounts = (input.targetAmounts ?? []).filter((a) => a > 0);
   const ruleCache = newRuleMatchCache();
 
-  // Re-derive the per-month winning charge for each description group: the
-  // largest outflow that month whose normalised description matches the
-  // group. One winner per month per group so a stray same-month charge
-  // doesn't double-count. Tracked across the FULL history so a single
-  // tagged month can pull in every other month of the same charge.
+  // The synthetic group an amount-only charge belongs to: the expected figure
+  // it sits closest to, when that figure is within the anchor band — else
+  // null, so a meaningless-description charge of an unrelated size is left out
+  // rather than lumped in. This is what lets the amount fallback rescue a
+  // recurring mortgage transfer whose bank text is just "Överföring" or a bare
+  // reference number — there's no merchant identity to group by, so the maths
+  // (the expected monthly figure) does the grouping instead. Returns null when
+  // no terms resolved, so a tag/payment walk never grows synthetic groups.
+  const nearestTargetKey = (amount: number): string | null => {
+    const magnitude = Math.abs(amount);
+    let bestIdx = -1;
+    let bestDelta = Infinity;
+    targetAmounts.forEach((target, i) => {
+      const delta = relativeDelta(magnitude, target);
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestIdx = i;
+      }
+    });
+    if (bestIdx < 0 || bestDelta > MORTGAGE_AMOUNT_ANCHOR_TOLERANCE)
+      return null;
+    return `~amount:${bestIdx}`;
+  };
+
+  // Re-derive the per-month winning charge for each group: the largest outflow
+  // that month whose normalised description (or, for a meaningless one, its
+  // amount group) matches. One winner per month per group so a stray same-
+  // month charge doesn't double-count. Tracked across the FULL history so a
+  // single tagged month can pull in every other month of the same charge.
   const byKeyMonth = new Map<string, Map<string, HistoryEntry>>();
   const labelByKey = new Map<string, string>();
+  // Keys grouped by amount rather than by description text — they only ever
+  // feed the amount fallback (a meaningless description can't carry a tag).
+  const syntheticKeys = new Set<string>();
   // Description keys anchored by a company / type tag, and by an existing
   // payment, kept apart so tags win when both are present.
   const tagKeys = new Set<string>();
   const paymentKeys = new Set<string>();
 
+  const diag = emptyMortgageDiagnostics();
+  diag.totalEntries = entries.length;
+  diag.targetAmounts = targetAmounts;
+
   for (const entry of entries) {
-    if (entry.hidden) continue;
-    if (entry.collapsedIntoTransferId) continue;
-    if (entry.amount >= 0) continue; // outflows only
-    const key = normaliseDescription(entry.description);
-    if (!isNormalisedKeyMeaningful(key)) continue;
+    if (entry.hidden) {
+      diag.skippedHidden++;
+      continue;
+    }
+    if (entry.collapsedIntoTransferId) {
+      diag.skippedCollapsed++;
+      continue;
+    }
+    if (entry.amount >= 0) {
+      diag.skippedInflow++; // outflows only
+      continue;
+    }
+    diag.outflowEntries++;
+
+    const textKey = financeGroupKey(entry.description);
+    let key: string;
+    let synthetic: boolean;
+    if (isNormalisedKeyMeaningful(textKey)) {
+      key = textKey;
+      synthetic = false;
+    } else {
+      // No usable merchant text. Salvage it for the amount fallback by
+      // grouping on the closest expected figure, or drop it when none is near.
+      diag.skippedMeaningless++;
+      const salvaged = nearestTargetKey(entry.amount);
+      if (salvaged === null) continue;
+      diag.salvagedByAmount++;
+      key = salvaged;
+      synthetic = true;
+    }
 
     let months = byKeyMonth.get(key);
     if (!months) {
       months = new Map<string, HistoryEntry>();
       byKeyMonth.set(key, months);
+      if (synthetic) syntheticKeys.add(key);
       if (entry.description.trim()) labelByKey.set(key, entry.description);
     }
     const month = entry.date.slice(0, 7);
     const current = months.get(month);
     // "Largest" outflow = most negative amount.
     if (!current || entry.amount < current.amount) months.set(month, entry);
+
+    // Synthetic (amount-grouped) keys never anchor on a tag or an existing
+    // payment — a meaningless description carries no merchant identity, so the
+    // amount fallback is the only signal they offer. Resolve tags / payment
+    // seeds for the text-grouped charges only.
+    if (synthetic) continue;
 
     if (seedEntryIds.has(entry.id)) paymentKeys.add(key);
 
@@ -255,6 +410,10 @@ export function discoverMortgagePayments(
     if (companyMatch || typeMatch) tagKeys.add(key);
   }
 
+  diag.groupCount = byKeyMonth.size;
+  diag.tagKeyCount = tagKeys.size;
+  diag.paymentKeyCount = paymentKeys.size;
+
   // Tags are the stronger signal; fall back to the payment seed when nothing
   // is tagged, then to the loan terms' expected figure when there's no
   // payment either. The amount fallback only fires when the loan terms
@@ -267,7 +426,8 @@ export function discoverMortgagePayments(
         : targetAmounts.length > 0
           ? "amount"
           : "none";
-  if (seed === "none") return { series: [], seed };
+  diag.seed = seed;
+  if (seed === "none") return { series: [], seed, diagnostics: diag };
 
   // With the amount fallback every recurring outflow is a candidate — the
   // amount band below winnows them down to the charges that land near an
@@ -280,6 +440,10 @@ export function discoverMortgagePayments(
         : new Set(byKeyMonth.keys());
   const anchor: MortgagePaymentSeries["anchor"] =
     seed === "tags" ? "tag" : seed === "payments" ? "payment" : "amount";
+
+  // Track each candidate's diagnostic by key so the plausibility pass can
+  // amend the outcome of the ones it drops after the build loop.
+  const candidateByKey = new Map<string, MortgageCandidateDiagnostic>();
 
   const series: MortgagePaymentSeries[] = [];
   for (const key of anchorKeys) {
@@ -296,14 +460,34 @@ export function discoverMortgagePayments(
     const eligibleMonths = fromDate
       ? sortedMonths.filter((m) => months.get(m)!.date >= fromDate)
       : sortedMonths;
-    if (eligibleMonths.length === 0) continue;
     const amountsFor = (keys: readonly string[]) =>
       keys.map((m) => Math.abs(months.get(m)!.amount));
-    const suggestedAmount = median(amountsFor(eligibleMonths));
+    // The typical charge centres on the eligible months; with none eligible
+    // it's computed across all months purely for the diagnostic record (the
+    // candidate is dropped below before it can reach the series).
+    const suggestedAmount = median(
+      amountsFor(eligibleMonths.length > 0 ? eligibleMonths : sortedMonths),
+    );
     let targetDelta: number | undefined;
     for (const target of targetAmounts) {
       const delta = relativeDelta(suggestedAmount, target);
       if (targetDelta === undefined || delta < targetDelta) targetDelta = delta;
+    }
+    const cand: MortgageCandidateDiagnostic = {
+      label: labelByKey.get(key) ?? key,
+      suggestedAmount,
+      monthCount: sortedMonths.length,
+      eligibleMonthCount: eligibleMonths.length,
+      synthetic: syntheticKeys.has(key),
+      outcome: "kept",
+      ...(targetDelta !== undefined ? { targetDelta } : {}),
+    };
+    candidateByKey.set(key, cand);
+    diag.candidates.push(cand);
+
+    if (eligibleMonths.length === 0) {
+      cand.outcome = "no-eligible-month";
+      continue;
     }
     // The amount fallback considered every outflow a candidate; here it keeps
     // only the ones whose typical charge actually lands near an expected
@@ -314,8 +498,10 @@ export function discoverMortgagePayments(
       seed === "amount" &&
       (targetDelta === undefined ||
         targetDelta > MORTGAGE_AMOUNT_ANCHOR_TOLERANCE)
-    )
+    ) {
+      cand.outcome = "amount-band";
       continue;
+    }
     series.push({
       key,
       label: labelByKey.get(key) ?? key,
@@ -344,9 +530,15 @@ export function discoverMortgagePayments(
   // every anchored series is kept, as before.
   const maxPlausibleDelta =
     (MORTGAGE_PLAUSIBILITY_FACTOR - 1) / MORTGAGE_PLAUSIBILITY_FACTOR;
-  const plausible = series.filter(
-    (s) => s.targetDelta === undefined || s.targetDelta <= maxPlausibleDelta,
-  );
+  const plausible = series.filter((s) => {
+    const keep =
+      s.targetDelta === undefined || s.targetDelta <= maxPlausibleDelta;
+    if (!keep) {
+      const cand = candidateByKey.get(s.key);
+      if (cand) cand.outcome = "plausibility";
+    }
+    return keep;
+  });
 
   // Rank by closeness to an expected figure when the loan terms gave us
   // one — the charge whose amount matches the maths is the likeliest
@@ -360,7 +552,7 @@ export function discoverMortgagePayments(
     if (b.targetDelta !== undefined) return 1;
     return b.suggestedAmount - a.suggestedAmount;
   });
-  return { series: plausible, seed };
+  return { series: plausible, seed, diagnostics: diag };
 }
 
 // Keep only the months of a series whose charge sits within `tolerance` of
