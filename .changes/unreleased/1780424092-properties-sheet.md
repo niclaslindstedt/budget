@@ -33,6 +33,9 @@ number. Open a property's payments to
 review every recorded charge and how it split across the loans, and edit or
 remove individual payments — change one loan's share and the others
 re-balance so the total still matches the bank — or clear every recorded
-payment in one go to re-run the finder from scratch. A property can carry several
+payment in one go to re-run the finder from scratch. The payments view also
+flags anything left unaccounted for when the amortisation you've recorded
+doesn't add up to the drop from the original loan to the current balance —
+a hint that a payment is missing or a figure is off. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.

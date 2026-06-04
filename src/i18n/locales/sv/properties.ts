@@ -144,6 +144,9 @@ const properties: PropertiesCatalog = {
   paymentAmount: "Belopp",
   editPayment: "Redigera betalning",
   deletePayment: "Ta bort betalning",
+  unaccountedTitle: "Ej redovisat",
+  unaccountedHint:
+    "Amorteringen som registrerats på det här lånet stämmer inte med skillnaden mellan ursprungsbeloppet och nuvarande skuld — en betalning kan saknas, eller så är den registrerade skulden fel.",
   paymentRebalanceHint:
     "De andra lånen i dragningen balanseras om så att summan förblir {total} — amortering först, sedan ränta.",
   deletePaymentTitle: "Ta bort betalning?",

@@ -144,6 +144,9 @@ const properties = {
   paymentAmount: "Amount",
   editPayment: "Edit payment",
   deletePayment: "Delete payment",
+  unaccountedTitle: "Unaccounted for",
+  unaccountedHint:
+    "The amortisation recorded against this loan doesn't match the drop from its original amount to the current balance — a payment may be missing, or the recorded balance is off.",
   paymentRebalanceHint:
     "The other loans in this charge re-balance so the total stays {total} — amortisation first, then interest.",
   deletePaymentTitle: "Delete payment?",

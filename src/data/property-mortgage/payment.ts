@@ -125,6 +125,58 @@ export function splitRecordedPayment(
   return { amortization, interest: payment.amount - amortization };
 }
 
+// One mortgage's reconciliation between what's been recorded and the loan's
+// own figures. The principal a mortgage has paid down so far is
+// `loanAmount - currentBalance` (the drop from the original loan to the
+// outstanding balance the user records directly). The recorded payments
+// should amortise exactly that much, so `unaccounted` is the gap:
+//
+//   unaccounted = (loanAmount - currentBalance) - Σ recorded amortisation
+//
+// A positive figure means the balance fell further than the recorded
+// payments explain — a payment is missing (or the recorded balance is too
+// low). A negative one means the recorded payments amortise more than the
+// balance dropped — the balance / loan figure is off, or a payment is wrong.
+export type MortgageReconciliation = {
+  mortgage: Mortgage;
+  expectedAmortized: number; // loanAmount - currentBalance
+  recordedAmortized: number; // Σ amortisation legs of the payments
+  unaccounted: number; // expected - recorded
+};
+
+// Reconcile each mortgage's recorded amortisation against its loan figures.
+// Only mortgages with both `loanAmount` and `currentBalance` can be
+// reconciled — without them there's no expected figure — so the rest are
+// skipped. The amortisation leg of each payment is derived with
+// `splitRecordedPayment` (interest never pays down principal, so it's left
+// out of the sum). Returned in the property's mortgage order.
+export function reconcileMortgageAmortization(
+  property: Property,
+): MortgageReconciliation[] {
+  const out: MortgageReconciliation[] = [];
+  for (const mortgage of property.mortgages) {
+    if (
+      mortgage.loanAmount === undefined ||
+      mortgage.currentBalance === undefined
+    ) {
+      continue;
+    }
+    const expectedAmortized = mortgage.loanAmount - mortgage.currentBalance;
+    const recordedAmortized = mortgage.payments.reduce(
+      (sum, payment) =>
+        sum + splitRecordedPayment(mortgage, payment).amortization,
+      0,
+    );
+    out.push({
+      mortgage,
+      expectedAmortized,
+      recordedAmortized,
+      unaccounted: expectedAmortized - recordedAmortized,
+    });
+  }
+  return out;
+}
+
 // One mortgage's payment within a charge, paired with the mortgage it
 // belongs to (payments are stored on `Mortgage.payments`, so the parent is
 // otherwise implicit). Carried by `groupPaymentsByCharge` so the payments

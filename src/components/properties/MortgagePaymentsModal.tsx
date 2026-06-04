@@ -4,12 +4,14 @@ import {
   Pencil,
   Percent,
   ReceiptText,
+  Scale,
   TrendingDown,
   Trash2,
 } from "lucide-react";
 
 import {
   groupPaymentsByCharge,
+  reconcileMortgageAmortization,
   splitRecordedPayment,
 } from "../../data/property-mortgage/payment";
 import type { Property, Settings } from "../../data/types";
@@ -65,6 +67,18 @@ export function MortgagePaymentsModal({
 
   const groups = useMemo(
     () => (property ? groupPaymentsByCharge(property) : []),
+    [property],
+  );
+
+  // Loans whose recorded amortisation doesn't reconcile with the drop from
+  // the original loan to the current balance — surfaced as a footer so a
+  // missing payment (or a stale balance) is visible. A sub-currency-unit
+  // gap is just percent-mode rounding, so only ≥ 1 differences show.
+  const unaccounted = useMemo(
+    () =>
+      (property ? reconcileMortgageAmortization(property) : []).filter(
+        (r) => Math.abs(r.unaccounted) >= 1,
+      ),
     [property],
   );
 
@@ -245,6 +259,42 @@ export function MortgagePaymentsModal({
               </li>
             ))}
           </ul>
+        )}
+
+        {unaccounted.length > 0 && (
+          <section className="mt-3 overflow-clip rounded border border-line bg-surface-2">
+            <div className="flex items-center gap-1.5 border-b border-line bg-surface-3 px-2.5 py-1.5">
+              <Scale
+                size={13}
+                className="text-muted"
+                aria-hidden
+                focusable={false}
+              />
+              <span className="text-xs font-bold tracking-wider text-muted uppercase">
+                {t("properties.unaccountedTitle")}
+              </span>
+            </div>
+            <ul className="m-0 flex list-none flex-col p-0">
+              {unaccounted.map((r) => (
+                <li
+                  key={r.mortgage.id}
+                  className="flex items-baseline justify-between gap-2 border-t border-line px-2.5 py-1.5 text-sm first:border-t-0"
+                >
+                  <span className="min-w-0 truncate text-fg">
+                    {r.mortgage.name}
+                  </span>
+                  <span className="whitespace-nowrap tabular-nums text-negative">
+                    {formatBalance(r.unaccounted, settings, {
+                      neverAbbreviate: true,
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="m-0 border-t border-line px-2.5 py-1.5 text-xs text-muted">
+              {t("properties.unaccountedHint")}
+            </p>
+          </section>
         )}
       </Modal.Body>
 
