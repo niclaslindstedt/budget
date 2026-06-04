@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  History,
-  ListChecks,
-  Plus,
-  Redo2,
-  Search,
-  Undo2,
-} from "lucide-react";
+import { History, ListChecks, Plus, Redo2, Search, Undo2 } from "lucide-react";
 
 import type { Sheet } from "../data/types";
 import { useIsStandalone, useLongPress, useScrollHide } from "../hooks";
@@ -44,14 +35,6 @@ type Props = {
 
 const actionButton =
   "inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted";
-
-// The horizontally scrolling region (sheet tabs, or the bulk-action set
-// in select mode). `min-w-0` lets it shrink below content width inside
-// the flex row so the overflow actually scrolls instead of pushing its
-// static siblings (the divider + "+") off the edge. Scrollbar chrome is
-// hidden so the strip reads like a native tab swipe.
-const scrollRegion =
-  "flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 // Single solid bar pinned to the bottom of the viewport. Tabs (or the
 // bulk-select action set) scroll horizontally on the left; the right
@@ -118,46 +101,6 @@ export function BottomBar({
     [sheets, onSelectSheet],
   );
 
-  // Subtle "there's more this way" cue: fade a chevron in at whichever
-  // edge has tabs scrolled out of view. The hints are driven straight
-  // from the DOM (toggling opacity on refs) rather than React state on
-  // purpose — a setState on every scroll event re-renders the whole tab
-  // list mid-flick, and on iOS that re-render (plus the layout read)
-  // interrupts momentum scrolling, so the strip "swallows" the gesture.
-  // The rAF throttle coalesces the layout reads to one per frame.
-  const tabScrollerRef = useRef<HTMLDivElement | null>(null);
-  const leftHintRef = useRef<HTMLSpanElement | null>(null);
-  const rightHintRef = useRef<HTMLSpanElement | null>(null);
-  const syncTabOverflow = useCallback(() => {
-    const el = tabScrollerRef.current;
-    if (!el) return;
-    const atStart = el.scrollLeft <= 1;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
-    if (leftHintRef.current)
-      leftHintRef.current.style.opacity = atStart ? "0" : "1";
-    if (rightHintRef.current)
-      rightHintRef.current.style.opacity = atEnd ? "0" : "1";
-  }, []);
-  const rafRef = useRef(0);
-  const onTabScroll = useCallback(() => {
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = 0;
-      syncTabOverflow();
-    });
-  }, [syncTabOverflow]);
-  useEffect(() => {
-    const el = tabScrollerRef.current;
-    if (!el) return;
-    syncTabOverflow();
-    const ro = new ResizeObserver(syncTabOverflow);
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [syncTabOverflow, selectMode, sheets.length]);
-
   return (
     // Two-mode positioning:
     //
@@ -202,18 +145,23 @@ export function BottomBar({
       className="sticky bottom-0 z-30 -mx-1 translate-y-[calc(100dvh-100svh)] border-t border-line bg-surface-2 md:-mx-5"
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+        {/* `overflow-hidden`, never `overflow-x-auto`: a horizontally
+            scrolling region inside this `position: sticky` bar knocks iOS
+            WebKit off composited scrolling, so the whole chrome (this bar
+            *and* the top header) starts lagging the page scroll and only
+            settles when the gesture ends. Tabs that don't fit are clipped
+            here and reached through the header's SheetSwitcher dropdown
+            instead. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
           {selectMode ? (
-            <div className={scrollRegion}>
-              <BulkActionBar
-                selectedCount={bulkSelectedCount}
-                onEdit={onBulkEdit}
-                onMove={onBulkMove}
-                onCopy={onBulkCopy}
-                onDelete={onBulkDelete}
-                onCancel={onBulkCancel}
-              />
-            </div>
+            <BulkActionBar
+              selectedCount={bulkSelectedCount}
+              onEdit={onBulkEdit}
+              onMove={onBulkMove}
+              onCopy={onBulkCopy}
+              onDelete={onBulkDelete}
+              onCancel={onBulkCancel}
+            />
           ) : (
             // Sheet picker as an ARIA tablist — each tab carries
             // `aria-selected`, the inactive tabs roll `tabIndex={-1}`
@@ -226,52 +174,27 @@ export function BottomBar({
             // `aria-required-children` flags any non-tab child of a
             // tablist, and the button is an action, not a tab.
             <>
-              {/* `relative` host for the edge hints — the chevrons are
-                  positioned to the scroller's edges and sit above the
-                  tabs sliding under the gradient fade. */}
-              <div className="relative flex min-w-0 items-center">
-                <div
-                  ref={tabScrollerRef}
-                  onScroll={onTabScroll}
-                  role="tablist"
-                  aria-label={t("sheetTabs.tablistLabel")}
-                  className={scrollRegion}
-                >
-                  {sheets.map((sheet, idx) => (
-                    <SheetTab
-                      key={sheet.id}
-                      sheet={sheet}
-                      active={sheet.id === activeSheetId}
-                      index={idx}
-                      onSelect={() => onSelectSheet(sheet.id)}
-                      onEdit={() =>
-                        dispatchModal({
-                          kind: "open-edit-sheet",
-                          sheetId: sheet.id,
-                        })
-                      }
-                      onTabKey={onTabKey}
-                    />
-                  ))}
-                </div>
-                {/* Non-interactive "more this way" cues. `aria-hidden` +
-                    `pointer-events-none` keep them out of the a11y tree
-                    and let a drag started on the edge fall through to the
-                    scroller beneath. */}
-                <span
-                  ref={leftHintRef}
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-surface-2 to-transparent pr-4 text-muted opacity-0 transition-opacity"
-                >
-                  <ChevronLeft size={14} aria-hidden focusable={false} />
-                </span>
-                <span
-                  ref={rightHintRef}
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-surface-2 to-transparent pl-4 text-muted opacity-0 transition-opacity"
-                >
-                  <ChevronRight size={14} aria-hidden focusable={false} />
-                </span>
+              <div
+                role="tablist"
+                aria-label={t("sheetTabs.tablistLabel")}
+                className="flex min-w-0 items-center gap-1"
+              >
+                {sheets.map((sheet, idx) => (
+                  <SheetTab
+                    key={sheet.id}
+                    sheet={sheet}
+                    active={sheet.id === activeSheetId}
+                    index={idx}
+                    onSelect={() => onSelectSheet(sheet.id)}
+                    onEdit={() =>
+                      dispatchModal({
+                        kind: "open-edit-sheet",
+                        sheetId: sheet.id,
+                      })
+                    }
+                    onTabKey={onTabKey}
+                  />
+                ))}
               </div>
               <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
               <button
@@ -382,24 +305,14 @@ function SheetTab({
   // any pointer interaction.
   useEffect(() => {
     if (!active) return;
-    const btn = buttonRef.current;
-    if (!btn) return;
-    const fromKeyboard = btn.dataset.keyboardFocused === "true";
-    // `inline: "nearest"` keeps the scroll to the minimum needed — when
-    // the tapped tab is already on screen it does nothing, so the common
-    // case never animates at all. For pointer taps the remaining cases
-    // jump instantly: a smooth animation here holds the scroller and
-    // swallows the user's own drag until it finishes, which reads as the
-    // strip being "locked". Keyboard navigation keeps the smooth glide
-    // (the user isn't mid-drag) and re-homes focus on the moved tab.
-    btn.scrollIntoView({
+    buttonRef.current?.scrollIntoView({
       block: "nearest",
-      inline: "nearest",
-      behavior: fromKeyboard ? "smooth" : "auto",
+      inline: "center",
+      behavior: "smooth",
     });
-    if (fromKeyboard) {
-      btn.focus();
-      delete btn.dataset.keyboardFocused;
+    if (buttonRef.current?.dataset.keyboardFocused === "true") {
+      buttonRef.current.focus();
+      delete buttonRef.current.dataset.keyboardFocused;
     }
   }, [active]);
 
