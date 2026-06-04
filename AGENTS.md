@@ -96,11 +96,20 @@ The app starts every fresh budget empty — no accounts, bank history,
 budget rows, or taxonomy — which makes reproducing a realistic UI
 state by hand slow. The **Developer → Fake data** toggle solves this:
 flipping it on swaps the app onto an ephemeral in-memory storage
-backend preloaded with ~6 months of believable data (three accounts,
-bank history per account, cross-account transfers, recurring budget
-rows, plus a few custom tags / companies / types). Turning it off — or
-just reloading the page — reverts to whatever backend was active
-before, with the real persisted data **completely untouched**.
+backend preloaded with ~6 months of believable data. The seed is
+deliberately broad so every feature is reachable with as few clicks as
+possible: a sheet of **each type** (budget, accounts, items, salary,
+properties) so every page is one tab away; three accounts with bank
+history, cross-account transfers, and recurring budget rows; salary
+history (employer, role, tax profile) and an owned property with a
+mortgage; custom tags / companies / categories / types / subtypes plus
+company-category and merchant-memory associations. It also leaves one
+**unconsumed candidate** for every discovery walk (Find salaries, Find
+items, Find mortgage payments, the recurring-candidates panel, and
+transfer-collapse) so those flows surface something without setting up
+data by hand first. Turning it off — or just reloading the page —
+reverts to whatever backend was active before, with the real persisted
+data **completely untouched**.
 
 How to reach it: the Developer tab is preview-only (gated on
 `IS_PREVIEW`, i.e. `VITE_BASE_PATH !== "/"`), so run the app through

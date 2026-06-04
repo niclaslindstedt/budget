@@ -10,9 +10,20 @@
 import { describe, expect, it } from "vitest";
 
 import { buildSeedUserData } from "../src/data/dev/seed";
+import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
+import { detectRecurringCandidates } from "../src/data/budget/recurring-detection";
+import { findItemPurchaseCandidates } from "../src/data/items/find";
 import { LATEST_VERSION } from "../src/data/migrations";
+import { PRESET_TYPE_MORTGAGE_ID } from "../src/data/presets/types";
+import { discoverMortgagePayments } from "../src/data/property-mortgage/discovery";
+import { discoverSalaries } from "../src/data/salary/discovery";
+import type { SalaryView } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
 import { serializeUserData } from "../src/storage/file";
+
+// Reference date mirroring the app's notion of "today" in this fixture —
+// the six fiscal months the seed covers end in May 2026.
+const REFERENCE_DATE = "2026-06-04";
 
 describe("buildSeedUserData", () => {
   it("produces a UserData that passes validation unchanged", () => {
@@ -70,5 +81,87 @@ describe("buildSeedUserData", () => {
       running = Math.round((running + entry.amount) * 100) / 100;
       expect(entry.balance).toBeCloseTo(running, 2);
     }
+  });
+
+  // The seed exists so an agent (or the maintainer) can try every feature
+  // with as few clicks as possible. That means every page must be one
+  // tab-click away (a sheet of each type), and every "discovery" walk must
+  // have at least one unconsumed candidate so the find-flows are reachable
+  // without setting up data by hand first.
+
+  it("covers every sheet type so each page is one tab-click away", () => {
+    const types = new Set(buildSeedUserData().sheets.map((s) => s.type));
+    expect([...types].sort()).toEqual([
+      "accounts",
+      "budget",
+      "items",
+      "properties",
+      "salary",
+    ]);
+  });
+
+  it("leaves a salary candidate for the Find salaries walk", () => {
+    const seed = buildSeedUserData();
+    const salarySheet = seed.sheets.find((s) => s.type === "salary");
+    const accountId = (salarySheet?.items[0] as SalaryView).accountId!;
+    const excludeHistoryIds = new Set(
+      seed.salaries
+        .map((s) => s.sourceHistoryId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const result = discoverSalaries({
+      entries: seed.history[accountId],
+      excludeHistoryIds,
+      referenceDate: REFERENCE_DATE,
+    });
+    expect(result.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("leaves an item-purchase candidate for the Find items scan", () => {
+    const seed = buildSeedUserData();
+    expect(
+      findItemPurchaseCandidates(seed, seed.settings).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("leaves a mortgage-payment candidate for the Find mortgage payments walk", () => {
+    const seed = buildSeedUserData();
+    const property = seed.properties[0];
+    const seedEntryIds = property.mortgages
+      .flatMap((m) => m.payments)
+      .map((p) => p.sourceHistoryId)
+      .filter((id): id is string => Boolean(id));
+    const result = discoverMortgagePayments({
+      entries: seed.history[property.accountId!],
+      merchantHints: seed.merchantHints,
+      matchRules: seed.matchRules,
+      companies: seed.companies,
+      types: seed.types,
+      companyIds: property.companyId ? [property.companyId] : [],
+      mortgageTypeId: PRESET_TYPE_MORTGAGE_ID,
+      seedEntryIds,
+      fromDate: property.purchaseDate,
+    });
+    expect(result.series.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces recurring-history candidates for promotion", () => {
+    const seed = buildSeedUserData();
+    const checking = seed.accounts[0];
+    const candidates = detectRecurringCandidates({
+      entries: seed.history[checking.id],
+      dismissedKeys: new Set(seed.recurringDismissals),
+      referenceDate: REFERENCE_DATE,
+    });
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces collapsible cross-account transfer pairs", () => {
+    const seed = buildSeedUserData();
+    const candidates = detectTransferCandidates({
+      history: seed.history,
+      dismissedPairKeys: new Set(seed.transferCollapseDismissals),
+    });
+    expect(candidates.length).toBeGreaterThan(0);
   });
 });
