@@ -468,6 +468,10 @@ const settings = {
     captureLogs: "Capture logs",
     captureLogsHint:
       "Save log entries to this device so the Logs tab can show them. Useful for debugging on mobile where the devtools console is out of reach.",
+    fakeData: "Fake data",
+    fakeDataHint:
+      "Swap to a throwaway in-memory backend preloaded with ~6 months of fake accounts, bank history, and budget entries. Your real data is left untouched and comes back the moment you turn this off or reload the page. Switching the real backend has no effect while this is on.",
+    fakeDataBanner: "Developer fake data — changes are not saved",
   },
   logs: {
     title: "Logs",

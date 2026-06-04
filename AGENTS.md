@@ -90,6 +90,39 @@ CI runs on every push and pull request:
 Deployment runs separately in **Pages**
 (`.github/workflows/pages.yml`) on every push to `main`.
 
+## Debugging with fake data
+
+The app starts every fresh budget empty — no accounts, bank history,
+budget rows, or taxonomy — which makes reproducing a realistic UI
+state by hand slow. The **Developer → Fake data** toggle solves this:
+flipping it on swaps the app onto an ephemeral in-memory storage
+backend preloaded with ~6 months of believable data (three accounts,
+bank history per account, cross-account transfers, recurring budget
+rows, plus a few custom tags / companies / types). Turning it off — or
+just reloading the page — reverts to whatever backend was active
+before, with the real persisted data **completely untouched**.
+
+How to reach it: the Developer tab is preview-only (gated on
+`IS_PREVIEW`, i.e. `VITE_BASE_PATH !== "/"`), so run the app through
+`make preview-serve` (or the deployed `/preview/` slot), open
+Settings, enable **Developer mode**, then switch to the **Developer**
+tab and turn on **Fake data**. A red banner across the top marks the
+fake-data session so it's never mistaken for real data.
+
+Moving parts:
+
+- `src/data/dev/seed.ts` — `buildSeedUserData()`, the deterministic
+  generator (seeded PRNG + per-call counter ids, so two calls produce
+  byte-identical output). Edit this to change what the seed contains.
+- `src/storage/dev-seed-adapter.ts` — the in-memory `StorageAdapter`
+  (`id: "dev"`) that holds the seed; never persisted, encrypted, or
+  mirrored.
+- `src/hooks/useDevSeed.ts` — the in-memory-only toggle (no
+  `localStorage`, so reload is always the escape hatch).
+- `AppShell` substitutes the dev adapter for the real one when the
+  toggle is active; the storage hook's load effect reloads on the
+  swap, so no reload / re-auth is needed.
+
 ## Architecture summary
 
 ```
