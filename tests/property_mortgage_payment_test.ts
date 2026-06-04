@@ -6,6 +6,7 @@ import {
 } from "../src/data/property-mortgage/interest";
 import {
   groupPaymentsByCharge,
+  reconcileMortgageAmortization,
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
   splitRecordedPayment,
@@ -238,9 +239,67 @@ describe("splitRecordedPayment", () => {
 
   it("always sums back to the recorded amount", () => {
     const m = mortgage({ amortization: { mode: "fixed", amount: 5000 } });
-    const payment = { id: "p", date: "2024-08-28", amount: 8376 };
+    const payment = { id: "p", date: "2024-08-28", amount: 7250.5 };
     const split = splitRecordedPayment(m, payment);
     expect(split.amortization + split.interest).toBeCloseTo(payment.amount);
+  });
+});
+
+describe("reconcileMortgageAmortization", () => {
+  it("reports the gap between the balance drop and the recorded amortisation", () => {
+    const m = mortgage({
+      loanAmount: 1_000_000,
+      currentBalance: 940_000, // 60 000 paid down
+      amortization: { mode: "fixed", amount: 5000 },
+      payments: [
+        // Two months recorded → 10 000 of amortisation; 50 000 unaccounted.
+        { id: "p1", date: "2026-01-28", amount: 8000 },
+        { id: "p2", date: "2026-02-28", amount: 8000 },
+      ],
+    });
+    const [r] = reconcileMortgageAmortization(property([m]));
+    expect(r.expectedAmortized).toBe(60_000);
+    expect(r.recordedAmortized).toBeCloseTo(10_000);
+    expect(r.unaccounted).toBeCloseTo(50_000);
+  });
+
+  it("reports a balanced loan as zero unaccounted", () => {
+    const m = mortgage({
+      loanAmount: 1_000_000,
+      currentBalance: 990_000, // 10 000 paid down
+      amortization: { mode: "fixed", amount: 5000 },
+      payments: [
+        { id: "p1", date: "2026-01-28", amount: 8000 },
+        { id: "p2", date: "2026-02-28", amount: 8000 },
+      ],
+    });
+    const [r] = reconcileMortgageAmortization(property([m]));
+    expect(r.unaccounted).toBeCloseTo(0);
+  });
+
+  it("goes negative when more amortisation is recorded than the balance dropped", () => {
+    const m = mortgage({
+      loanAmount: 1_000_000,
+      currentBalance: 996_000, // only 4 000 paid down
+      amortization: { mode: "fixed", amount: 5000 },
+      payments: [{ id: "p1", date: "2026-01-28", amount: 8000 }], // 5 000 amortised
+    });
+    const [r] = reconcileMortgageAmortization(property([m]));
+    expect(r.unaccounted).toBeCloseTo(-1000);
+  });
+
+  it("skips mortgages missing a loan amount or current balance", () => {
+    const noBalance = mortgage({ id: "a", loanAmount: 1_000_000 });
+    const noLoan = mortgage({ id: "b", currentBalance: 900_000 });
+    const full = mortgage({
+      id: "c",
+      loanAmount: 1_000_000,
+      currentBalance: 900_000,
+    });
+    const result = reconcileMortgageAmortization(
+      property([noBalance, noLoan, full]),
+    );
+    expect(result.map((r) => r.mortgage.id)).toEqual(["c"]);
   });
 });
 

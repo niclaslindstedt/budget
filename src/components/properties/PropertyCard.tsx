@@ -258,133 +258,135 @@ function MortgageRow({
     mortgage.amortization !== undefined;
 
   return (
-    <li className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-fg-bright">{mortgage.name}</span>
-        <span className="block truncate text-xs text-muted">
-          {count === 0
-            ? t("properties.noPaymentsYet")
-            : count === 1
-              ? t("properties.paymentsCountOne", { count })
-              : t("properties.paymentsCountOther", { count })}
-        </span>
-        {hasTerms && (
-          <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
-            {mortgage.currentBalance !== undefined && (
-              <span>
-                {t("properties.balanceShort")}{" "}
-                <span className="tabular-nums text-fg">
-                  {formatBalance(mortgage.currentBalance, settings, {
-                    neverAbbreviate: true,
-                  })}
-                </span>
-              </span>
-            )}
-            {mortgage.loanAmount !== undefined && (
-              <span>
-                {t("properties.loanShort")}{" "}
-                <span className="tabular-nums text-fg">
-                  {formatBalance(mortgage.loanAmount, settings, {
-                    neverAbbreviate: true,
-                  })}
-                </span>
-              </span>
-            )}
-            {mortgage.interestRate !== undefined && (
-              <span>
-                {t("properties.rateShort")}{" "}
-                <span className="tabular-nums text-fg">
-                  {formatRate(mortgage.interestRate, settings)}%
-                </span>
-              </span>
-            )}
-            {mortgage.rateChangeMonths !== undefined && (
-              <span>
-                {mortgage.rateChangeMonths === 1
-                  ? t("properties.rateResetsOne")
-                  : t("properties.rateResetsOther", {
-                      count: mortgage.rateChangeMonths,
-                    })}
-              </span>
-            )}
-            {mortgage.nextRateChangeDate !== undefined && (
-              <span>
-                {t("properties.nextRateChangeShort")}{" "}
-                <span className="tabular-nums text-fg">
-                  {mortgage.nextRateChangeDate}
-                </span>
-              </span>
-            )}
-            {monthlyAmort !== null && (
-              <span>
-                {t("properties.amortShort")}{" "}
-                <span className="tabular-nums text-fg">
-                  {t("properties.amortPerMonth", {
-                    amount: formatBalance(monthlyAmort, settings, {
-                      neverAbbreviate: true,
-                    }),
-                  })}
-                </span>
-                {mortgage.amortization?.mode === "percent" && (
-                  <>
-                    {" ("}
-                    {formatNumber(mortgage.amortization.percent, settings, {
-                      neverAbbreviate: true,
-                    })}
-                    {"%)"}
-                  </>
-                )}
-              </span>
-            )}
+    <li className="flex flex-col gap-1.5 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-fg-bright">{mortgage.name}</span>
+          <span className="block truncate text-xs text-muted">
+            {count === 0
+              ? t("properties.noPaymentsYet")
+              : count === 1
+                ? t("properties.paymentsCountOne", { count })
+                : t("properties.paymentsCountOther", { count })}
           </span>
-        )}
-      </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit(property, mortgage)}
+            aria-label={t("properties.editMortgage")}
+            className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+          >
+            <Pencil size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(property, mortgage)}
+            aria-label={t("properties.deleteMortgage")}
+            className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+        </div>
+      </div>
+
       {count > 0 && (
-        <span className="flex flex-col items-end gap-0.5 text-xs text-muted">
-          <span>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+          <span className="whitespace-nowrap">
             {t("properties.paidTotal")}{" "}
             <span className="tabular-nums text-fg">
               {formatBalance(paid, settings, { neverAbbreviate: true })}
             </span>
           </span>
-          <span className="flex flex-wrap justify-end gap-x-2">
-            <span>
-              {t("properties.interestShort")}{" "}
-              <span className="tabular-nums text-fg">
-                {formatBalance(paidSplit.interest, settings, {
-                  neverAbbreviate: true,
-                })}
-              </span>
-            </span>
-            <span>
-              {t("properties.amortShort")}{" "}
-              <span className="tabular-nums text-fg">
-                {formatBalance(paidSplit.amortization, settings, {
-                  neverAbbreviate: true,
-                })}
-              </span>
+          <span className="whitespace-nowrap">
+            {t("properties.interestShort")}{" "}
+            <span className="tabular-nums text-fg">
+              {formatBalance(paidSplit.interest, settings, {
+                neverAbbreviate: true,
+              })}
             </span>
           </span>
-        </span>
+          <span className="whitespace-nowrap">
+            {t("properties.amortShort")}{" "}
+            <span className="tabular-nums text-fg">
+              {formatBalance(paidSplit.amortization, settings, {
+                neverAbbreviate: true,
+              })}
+            </span>
+          </span>
+        </div>
       )}
-      <span className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onEdit(property, mortgage)}
-          aria-label={t("properties.editMortgage")}
-          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-        >
-          <Pencil size={16} aria-hidden focusable={false} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(property, mortgage)}
-          aria-label={t("properties.deleteMortgage")}
-          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
-        >
-          <Trash2 size={16} aria-hidden focusable={false} />
-        </button>
-      </span>
+
+      {hasTerms && (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+          {mortgage.currentBalance !== undefined && (
+            <span className="whitespace-nowrap">
+              {t("properties.balanceShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {formatBalance(mortgage.currentBalance, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+            </span>
+          )}
+          {mortgage.loanAmount !== undefined && (
+            <span className="whitespace-nowrap">
+              {t("properties.loanShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {formatBalance(mortgage.loanAmount, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+            </span>
+          )}
+          {mortgage.interestRate !== undefined && (
+            <span className="whitespace-nowrap">
+              {t("properties.rateShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {formatRate(mortgage.interestRate, settings)}%
+              </span>
+            </span>
+          )}
+          {mortgage.rateChangeMonths !== undefined && (
+            <span className="whitespace-nowrap">
+              {mortgage.rateChangeMonths === 1
+                ? t("properties.rateResetsOne")
+                : t("properties.rateResetsOther", {
+                    count: mortgage.rateChangeMonths,
+                  })}
+            </span>
+          )}
+          {mortgage.nextRateChangeDate !== undefined && (
+            <span className="whitespace-nowrap">
+              {t("properties.nextRateChangeShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {mortgage.nextRateChangeDate}
+              </span>
+            </span>
+          )}
+          {monthlyAmort !== null && (
+            <span className="whitespace-nowrap">
+              {t("properties.amortShort")}{" "}
+              <span className="tabular-nums text-fg">
+                {t("properties.amortPerMonth", {
+                  amount: formatBalance(monthlyAmort, settings, {
+                    neverAbbreviate: true,
+                  }),
+                })}
+              </span>
+              {mortgage.amortization?.mode === "percent" && (
+                <>
+                  {" ("}
+                  {formatNumber(mortgage.amortization.percent, settings, {
+                    neverAbbreviate: true,
+                  })}
+                  {"%)"}
+                </>
+              )}
+            </span>
+          )}
+        </div>
+      )}
     </li>
   );
 }
