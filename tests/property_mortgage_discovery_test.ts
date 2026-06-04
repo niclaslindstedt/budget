@@ -1108,6 +1108,104 @@ describe("discoverMortgagePayments — ranking across strictness and closeness",
   });
 });
 
+// ── Monthly recurrence: the highly-probable promotion ──────────────────────
+//
+// A mortgage is paid once a month, every month, for the same amount. A charge
+// that recurs on a clean once-a-month cadence (no gaps) over a meaningful span,
+// under one stable description, whose typical amount lands in the tight band of
+// an expected figure is the surest signal a charge IS the mortgage — surer than
+// any single tag the user happened to apply. It is flagged `highlyProbable` and
+// RANKS above the tag / company anchor.
+describe("discoverMortgagePayments — monthly recurrence promotion", () => {
+  function monthly(
+    prefix: string,
+    description: string,
+    amount: number,
+    extra: Partial<HistoryEntry> = {},
+    count = 12,
+  ): HistoryEntry[] {
+    return monthlyDates(2024, 1, count).map((d, i) =>
+      entry(`${prefix}-${i}`, d, -amount, description, extra),
+    );
+  }
+
+  it("flags a clean monthly charge in band as highly probable", () => {
+    const { series } = discoverMortgagePayments(
+      baseInput(monthly("loan", "HEMBANKEN BOLAN", 18_756), {
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].monthlyCadence).toBe(true);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("ranks a highly-probable amount charge above a tagged charge", () => {
+    // The tagged charge recurs monthly but its amount (14,000) is outside the
+    // ±20% band of the 18,750 estimate, so it is NOT highly probable. The
+    // untagged 18,756 charge is monthly AND in band — highly probable — so the
+    // recurrence + amount match trumps the tag and leads.
+    const entries = [
+      ...monthly("tag", "Stora Bolanet", 14_000, { userCompanyId: COMPANY.id }),
+      ...monthly("amt", "Andra Lanet", 18_756),
+    ];
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, {
+        companyIds: [COMPANY.id],
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(series.map((s) => s.suggestedAmount)).toEqual([18_756, 14_000]);
+    expect(series.map((s) => s.anchor)).toEqual(["amount", "tag"]);
+    expect(series[0].highlyProbable).toBe(true);
+    expect(series[1].highlyProbable).toBe(false);
+  });
+
+  it("does not flag a charge with a gap in its monthly cadence", () => {
+    // Eleven months of a charge, but March is missing — the cadence is broken,
+    // so even though the amount is on the nose it is not highly probable.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`g-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].monthlyCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(false);
+  });
+
+  it("does not flag a run too short to be a pattern", () => {
+    // Only two months — a coincidence, not a standing payment.
+    const { series } = discoverMortgagePayments(
+      baseInput(monthly("short", "HEMBANKEN BOLAN", 18_750, {}, 2), {
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].monthlyCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(false);
+  });
+
+  it("does not flag an amount-salvaged (no stable description) charge", () => {
+    // A bare-reference charge recurs monthly in band, but has no stable
+    // description to group by — it is salvaged by amount and stays unflagged.
+    const prop = screenshotProperty();
+    const { series, diagnostics } = runFinder(
+      prop,
+      aviCharges(19_636, { word: "" }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].monthlyCadence).toBe(true);
+    expect(series[0].highlyProbable).toBe(false);
+    expect(diagnostics.candidates[0].synthetic).toBe(true);
+    expect(diagnostics.candidates[0].highlyProbable).toBe(false);
+  });
+});
+
 describe("monthsWithinBand", () => {
   it("drops a month whose charge strays outside the band", () => {
     // Eleven steady 8,000 draws plus one 16,000 double-draw in an early

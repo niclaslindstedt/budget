@@ -197,6 +197,7 @@ export function MortgageDiscoveryModal({
         `  candidate "${c.label}": amount=${Math.round(c.suggestedAmount)} ` +
           `months=${c.monthCount} eligible=${c.eligibleMonthCount} ` +
           `delta=${c.targetDelta === undefined ? "n/a" : c.targetDelta.toFixed(3)} ` +
+          `${c.monthlyCadence ? "monthly " : ""}${c.highlyProbable ? "highly-probable " : ""}` +
           `${c.synthetic ? "amount-grouped " : ""}-> ${c.outcome}`,
       );
     }
@@ -546,6 +547,7 @@ function ChargeRow({
   onToggle: () => void;
 }) {
   const t = useT();
+  const highlyProbable = series.highlyProbable;
   return (
     <li>
       <button
@@ -553,10 +555,21 @@ function ChargeRow({
         role="checkbox"
         aria-checked={checked}
         onClick={onToggle}
-        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2.5 py-2 text-left text-sm text-fg hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded border bg-surface-2 px-2.5 py-2 text-left text-sm text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+          highlyProbable
+            ? "border-success hover:border-success"
+            : "border-line hover:border-accent"
+        }`}
       >
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-fg-bright">{series.label}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-fg-bright">{series.label}</span>
+            {highlyProbable && (
+              <span className="shrink-0 rounded-full border-0 bg-success px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase text-page-bg">
+                {t("properties.findHighlyProbable")}
+              </span>
+            )}
+          </span>
           <span className="text-xs text-muted">
             {formatBalance(series.suggestedAmount, settings, {
               neverAbbreviate: true,
