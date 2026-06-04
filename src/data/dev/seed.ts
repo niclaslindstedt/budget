@@ -250,6 +250,21 @@ export function buildSeedUserData(): UserData {
     string,
     { date: string; amount: number }
   >();
+  // The mortgage charge "Bolån SBAB Värmdö" recurs every month, but the
+  // household has classified the months to differing degrees — so "Find
+  // mortgage payments" has a charge in every state to surface: fully
+  // tagged (Mortgage type + lender company), company-only (no type), and
+  // raw (neither). Because the finder keys on the shared description, one
+  // tagged month pulls in the untyped / un-companied ones too, so all are
+  // found regardless of their own tags. The two earliest months are also
+  // reconciled into recorded payments below (the anchor); every later
+  // charge is left unrecorded so the walk surfaces it as a candidate.
+  const monthKeySet = (
+    list: ReadonlyArray<{ year: number; month: number }>,
+  ): Set<string> => new Set(list.map(({ year, month }) => `${year}-${month}`));
+  const mortgageRecordedMonths = MONTHS.slice(0, 2); // Dec 2025, Jan 2026
+  const mortgageTypedKeys = monthKeySet(MONTHS.slice(0, 3)); // + Feb 2026
+  const mortgageCompanyKeys = monthKeySet(MONTHS.slice(0, 4)); // + Mar 2026
 
   for (const { year, month } of MONTHS) {
     // Salary in, rent + utilities out on Checking.
@@ -272,22 +287,27 @@ export function buildSeedUserData(): UserData {
       typeId: "preset-type-rent",
     });
     // Mortgage charge for the owned holiday cabin (the household rents
-    // its city flat above and owns the cabin below). Tagged with the
-    // Mortgage type and the lender so "Find mortgage payments" can anchor
-    // on it.
+    // its city flat above and owns the cabin below). The type and lender
+    // are applied independently per month (see the key sets above) so the
+    // seed carries fully tagged, company-only, and raw charges side by
+    // side — the finder surfaces all of them via the shared description.
     const mortgageDate = iso(year, month, 27);
     const mortgageAmount = -money(5200 + between(-80, 80));
-    mortgageChargeByMonth.set(`${year}-${month}`, {
+    const mortgageKey = `${year}-${month}`;
+    mortgageChargeByMonth.set(mortgageKey, {
       date: mortgageDate,
       amount: mortgageAmount,
     });
-    checkingRaw.push({
+    const mortgageCharge: RawEntry = {
       date: mortgageDate,
       description: "Bolån SBAB Värmdö",
       amount: mortgageAmount,
-      typeId: "preset-type-mortgage",
-      companyId: companySbab.id,
-    });
+    };
+    if (mortgageTypedKeys.has(mortgageKey))
+      mortgageCharge.typeId = "preset-type-mortgage";
+    if (mortgageCompanyKeys.has(mortgageKey))
+      mortgageCharge.companyId = companySbab.id;
+    checkingRaw.push(mortgageCharge);
     checkingRaw.push({
       date: iso(year, month, 4),
       description: "Ellevio elnät",
@@ -504,12 +524,13 @@ export function buildSeedUserData(): UserData {
   // purchase price, a manually-recorded value history, and a single
   // mortgage carrying a rate history, an annual amortisation requirement,
   // and recorded payments. The payments are sourced from the "Bolån SBAB
-  // Värmdö" checking history rows: only the first four months are
-  // recorded here (linked via `sourceHistoryId`), so the last two charges
-  // are left for the Properties page's "Find mortgage payments" walk to
-  // surface as candidates.
+  // Värmdö" checking history rows: only the two earliest months are
+  // recorded here (linked via `sourceHistoryId`) — the fully-tagged anchor.
+  // Every later charge is left unrecorded and variously classified
+  // (fully tagged, company-only, or raw), so the Properties page's "Find
+  // mortgage payments" walk surfaces them all as candidates.
   const mortgageHistory = history[checking.id];
-  const recordedMortgageMonths = MONTHS.slice(0, 4);
+  const recordedMortgageMonths = mortgageRecordedMonths;
   const cabin: Property = {
     id: mkId("prop"),
     name: "Fritidshus Värmdö",

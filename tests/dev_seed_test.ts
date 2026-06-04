@@ -143,6 +143,27 @@ describe("buildSeedUserData", () => {
       fromDate: property.purchaseDate,
     });
     expect(result.series.length).toBeGreaterThan(0);
+
+    // The walk should surface the charges the user hasn't tagged: the seed
+    // carries the recurring mortgage charge in every classification state
+    // (fully tagged, company-only, and raw — see `buildSeedUserData`), and
+    // the finder must expand from the tagged anchor to all of them. Confirm
+    // the discovered, not-yet-recorded months include at least one charge
+    // with no type AND no company set.
+    const entriesById = new Map(
+      seed.history[property.accountId!].map((e) => [e.id, e]),
+    );
+    const recorded = new Set(seedEntryIds);
+    const discoveredEntries = result.series
+      .flatMap((s) => s.months)
+      .filter((m) => !recorded.has(m.entryId))
+      .map((m) => entriesById.get(m.entryId)!);
+    expect(discoveredEntries.length).toBeGreaterThan(0);
+    expect(
+      discoveredEntries.some(
+        (e) => e.userTypeId === undefined && e.userCompanyId === undefined,
+      ),
+    ).toBe(true);
   });
 
   it("surfaces recurring-history candidates for promotion", () => {
