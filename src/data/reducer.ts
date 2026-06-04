@@ -409,6 +409,14 @@ export type Action =
       paymentId: string;
     }
   | {
+      // Clear every recorded payment across all of a property's mortgages in
+      // one pass (one undo entry) — the escape hatch when the recorded
+      // payments are wrong and the user wants to re-run "Find mortgage
+      // payments" from scratch.
+      type: "deleteAllMortgagePayments";
+      propertyId: string;
+    }
+  | {
       // Re-balance one charge across a property's mortgages in a single
       // pass (one undo entry). Editing one mortgage's share pins it and
       // re-splits the rest across the others (amortisation first, then

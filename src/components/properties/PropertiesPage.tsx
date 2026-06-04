@@ -216,6 +216,10 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     unlock("paymentLedger");
   }
 
+  function handleDeleteAllPayments(propertyId: string) {
+    dispatch({ type: "deleteAllMortgagePayments", propertyId });
+  }
+
   const hasProperties = properties.length > 0;
 
   return (
@@ -328,6 +332,10 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
                 mortgageId,
                 paymentId,
               );
+          }}
+          onDeleteAll={() => {
+            if (livePaymentsProperty)
+              handleDeleteAllPayments(livePaymentsProperty.id);
           }}
         />
 

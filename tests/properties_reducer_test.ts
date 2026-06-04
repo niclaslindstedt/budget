@@ -194,6 +194,43 @@ describe("properties reducer — mortgages and payments", () => {
     );
   });
 
+  it("clears every payment across a property's mortgages in one pass", () => {
+    let data = reducer(seeded(), {
+      type: "addMortgage",
+      propertyId: "p1",
+      mortgage: { ...MORTGAGE, id: "m1" },
+    });
+    data = reducer(data, {
+      type: "addMortgage",
+      propertyId: "p1",
+      mortgage: { ...MORTGAGE, id: "m2", name: "SBAB loan 2" },
+    });
+    data = reducer(data, {
+      type: "addMortgagePaymentsForProperty",
+      propertyId: "p1",
+      paymentsByMortgageId: {
+        m1: [
+          { id: "a", date: "2026-01-28", amount: 8000, sourceHistoryId: "h1" },
+        ],
+        m2: [
+          { id: "b", date: "2026-01-28", amount: 2000, sourceHistoryId: "h1" },
+        ],
+      },
+    });
+    expect(data.properties[0].mortgages[0].payments).toHaveLength(1);
+    expect(data.properties[0].mortgages[1].payments).toHaveLength(1);
+
+    data = reducer(data, {
+      type: "deleteAllMortgagePayments",
+      propertyId: "p1",
+    });
+    expect(data.properties[0].mortgages[0].payments).toEqual([]);
+    expect(data.properties[0].mortgages[1].payments).toEqual([]);
+    expect(revalidate(data).properties[0].mortgages).toEqual(
+      data.properties[0].mortgages,
+    );
+  });
+
   it("adds split payments to several mortgages in one pass", () => {
     let data = reducer(seeded(), {
       type: "addMortgage",

@@ -151,6 +151,14 @@ export function reduceProperties(
       })),
     );
   }
+  if (action.type === "deleteAllMortgagePayments") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      mortgages: p.mortgages.map((m) =>
+        m.payments.length === 0 ? m : { ...m, payments: [] },
+      ),
+    }));
+  }
   if (action.type === "setMortgageChargeSplit") {
     if (action.updates.length === 0) return state;
     // Index the new amount/date by payment id so each mortgage patches its

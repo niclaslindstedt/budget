@@ -317,6 +317,7 @@ export function describeActionSubject(
       return name(
         mortgageName(next.properties, action.propertyId, action.mortgageId),
       );
+    case "deleteAllMortgagePayments":
     case "setMortgageChargeSplit":
       return name(byId(next.properties, action.propertyId)?.name);
 

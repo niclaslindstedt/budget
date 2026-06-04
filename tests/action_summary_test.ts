@@ -183,6 +183,9 @@ describe("describeActionSubject", () => {
         prev,
       ),
     ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2({ type: "deleteAllMortgagePayments", propertyId: "p1" }, prev),
+    ).toEqual({ kind: "name", value: "Apartment" });
   });
 
   it("returns undefined for an action with no nameable target", () => {
