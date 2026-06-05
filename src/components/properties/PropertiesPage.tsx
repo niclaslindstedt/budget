@@ -8,6 +8,7 @@ import { newId } from "../../data/sheet";
 import type {
   Account,
   Company,
+  HistoryEntry,
   Mortgage,
   MortgagePayment,
   Property,
@@ -105,6 +106,21 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const livePaymentsProperty = paymentsProperty
     ? (data.properties.find((p) => p.id === paymentsProperty.id) ?? null)
     : null;
+
+  // The account the payments-view property is paid from, plus its bank
+  // history keyed by id, so each charge group can resolve the original
+  // transaction it was split from (its `sourceHistoryId`) for the popover.
+  const paymentsAccount = livePaymentsProperty?.accountId
+    ? (accountsById.get(livePaymentsProperty.accountId) ?? null)
+    : null;
+  const paymentsSourceTransactions = useMemo(() => {
+    const m = new Map<string, HistoryEntry>();
+    const accountId = livePaymentsProperty?.accountId;
+    if (accountId) {
+      for (const entry of data.history[accountId] ?? []) m.set(entry.id, entry);
+    }
+    return m;
+  }, [livePaymentsProperty?.accountId, data.history]);
 
   const hasAnyMortgage = data.properties.some((p) => p.mortgages.length > 0);
 
@@ -320,6 +336,8 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           open={livePaymentsProperty !== null}
           property={livePaymentsProperty}
           settings={settings}
+          account={paymentsAccount}
+          sourceTransactions={paymentsSourceTransactions}
           onClose={() => setPaymentsProperty(null)}
           onSetChargeSplit={(updates) => {
             if (livePaymentsProperty)

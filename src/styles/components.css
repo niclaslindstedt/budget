@@ -784,14 +784,16 @@
     }
     .mortgage-payments-table > thead > tr,
     .mortgage-payments-table > tbody > tr {
-      /* flex mortgage name · amortisation · interest · amount, the three
-         money columns sized to their content with a floor. The action
-         cell sits outside the grid as an absolute overlay so it reserves
-         no track on mobile. */
+      /* mortgage name · amortisation · interest · amount. The three money
+         columns are FIXED widths (not content-sized): the header and every
+         body row are independent grids, so content-sized tracks would make
+         the tiny header glyphs and the wider body figures resolve to
+         different widths and drift apart column-to-column. Fixed tracks
+         resolve identically in every grid, so the left-aligned header glyph
+         sits directly above its left-aligned column. The action cell sits
+         outside the grid as an absolute overlay so it reserves no track. */
       display: grid;
-      grid-template-columns:
-        minmax(0, 1fr) minmax(52px, max-content) minmax(52px, max-content)
-        minmax(60px, max-content);
+      grid-template-columns: minmax(0, 1fr) 5rem 5rem 5.5rem;
       position: relative;
       overflow: hidden;
     }
