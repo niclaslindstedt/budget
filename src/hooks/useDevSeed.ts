@@ -17,9 +17,14 @@
 
 import { useEffect, useState } from "react";
 
-import { IS_PREVIEW } from "../utils/build-env";
+import { DEV_SEED, IS_PREVIEW } from "../utils/build-env";
 
-let active = false;
+// Starts active when the dev server was booted with `VITE_DEV_SEED=1`
+// (`make dev SEED=1`), so a design / debugging session lands on the
+// fully-populated in-memory backend from first paint without flipping
+// the Developer → Fake data toggle. Reload still drops back to the
+// real backend — the flag only seeds the initial value.
+let active = DEV_SEED;
 const subscribers = new Set<() => void>();
 
 function notify(): void {

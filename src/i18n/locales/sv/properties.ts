@@ -35,6 +35,9 @@ const properties: PropertiesCatalog = {
   nextRateChangeShort: "Nästa ändring",
   amortShort: "Amortering",
   amortPerMonth: "{amount}/mån",
+  payoffLabel: "Avbetalat",
+  payoffPercent: "{percent}%",
+  payoffBarLabel: "{percent}% av lånet avbetalat",
 
   // Property editor modal.
   newPropertyTitle: "Ny fastighet",

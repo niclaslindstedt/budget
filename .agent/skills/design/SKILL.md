@@ -87,6 +87,22 @@ above is reusable plumbing.
 
    If `make dev` is already running, skip this step.
 
+   **Designing against a populated screen?** Boot with the seed flag
+   instead:
+
+   ```sh
+   make dev SEED=1 &
+   ```
+
+   `SEED=1` sets `VITE_DEV_SEED=1`, which flips the developer "Fake
+   data" backend on from first paint — the same ~6 months of
+   believable data the Settings → Developer → Fake data toggle loads,
+   but without enabling developer mode or touching Settings (and a
+   plain `make dev` is unchanged). The recipe then jumps onto any
+   fully-populated page with `openSeededSheet(page, name)` instead of
+   building accounts / mortgages / payslips by hand. See "Designing
+   against seeded data" below.
+
 2. **Edit the recipe** at the bottom of
    `.agent/skills/design/screenshot.mjs`. The default recipe is a
    placeholder — replace it with the flow that lands on the state
@@ -143,12 +159,43 @@ file so they're in scope).
 | `signInAsGuest(page)`                    | Click "Continue without account" and wait until the budget shell is hydrated.                                                                                                                                                                                                                                                                                                       |
 | `addSheet(page, name, type)`             | Drive the New-sheet modal. `type` is the visible TypePicker label — `"Budget"` (default) or `"Accounts"`. The Accounts type is a workspace singleton, so calling this twice with `"Accounts"` is a no-op on the second call.                                                                                                                                                        |
 | `addAccount(page, name)`                 | Drive the Add-account modal. Caller must already be on the Accounts sheet.                                                                                                                                                                                                                                                                                                          |
+| `openSeededSheet(page, name)`            | Switch to an existing sheet by its visible name via the header SheetSwitcher dropdown. Pairs with `make dev SEED=1` — the seed ships one sheet of every type (`"Checking budget"`, `"Accounts"`, `"Items"`, `"Salary"`, `"Properties"`), so a recipe lands on a fully-populated page in one call.                                                                                   |
 | `swipeLeft(page, locator, distance=200)` | Dispatch the raw `TouchEvent` triple (`touchstart` → `touchmove` → `touchend`) that the `SheetRow` / `AccountRow` handlers listen for. Needed to capture `.is-swiped` state because Playwright's `touchscreen` API lacks a swipe primitive. Targets the locator's row id when present so the event lands on the row, not whatever element happens to be under the start coordinate. |
 
 When the helper set is missing something your recipe needs, add it
 to the HELPERS block of `screenshot.mjs` so the next agent gets it
 for free (and update the table above + the **Skill self-improvement**
 section).
+
+## Designing against seeded data
+
+Some screens are only interesting when they're full — the Properties
+mortgage cards, the accounts table with bank history, the salary
+year tables, the recurring-candidates panel. Building that state by
+hand in a recipe is slow and brittle. Instead boot the dev server
+with the seed flag and jump onto the page you want:
+
+```sh
+make dev SEED=1 &
+```
+
+```js
+async function recipe(page) {
+  await signInAsGuest(page);
+  await openSeededSheet(page, "Properties"); // or "Accounts", "Salary", …
+}
+```
+
+`SEED=1` flips on the in-memory fake-data backend (the same seed the
+Settings → Developer → Fake data toggle loads — see
+`src/data/dev/seed.ts`) from first paint, without enabling developer
+mode or persisting anything. A plain `make dev` is unchanged. The
+seed ships one sheet of every type, five accounts with bank history,
+salary history, and three owned properties carrying five mortgages
+with loan terms — so most "I need realistic data on screen" recipes
+collapse to a `signInAsGuest` + `openSeededSheet` pair. A red banner
+marks the fake-data session; it appears in the screenshots, which is
+the expected signal that the seed is live.
 
 ## Recipe patterns
 

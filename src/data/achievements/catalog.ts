@@ -35,6 +35,7 @@ import {
   Hash,
   History,
   Home,
+  KeyRound,
   Landmark,
   LayoutDashboard,
   LayoutGrid,
@@ -74,6 +75,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
+import { mortgagePayoffProgress } from "../property-mortgage/progress";
 import { someSheetItemRow } from "../sheet-types";
 import type { Row, SheetItem, UserData } from "../types";
 import type { Achievement } from "./types";
@@ -235,6 +237,15 @@ const hasMultipartItem = (s: UserData) =>
 // property's loan.
 const hasMortgagePayment = (s: UserData) =>
   s.properties.some((p) => p.mortgages.some((m) => m.payments.length > 0));
+// A mortgage is fully paid off — its payoff "power bar" hit 100%, i.e.
+// the balance reached zero against a known loan amount.
+const hasFullyPaidMortgage = (s: UserData) =>
+  s.properties.some((p) =>
+    p.mortgages.some((m) => {
+      const progress = mortgagePayoffProgress(m);
+      return progress !== null && progress >= 1;
+    }),
+  );
 
 // Did the named device bucket's headerAction transition away from the
 // default in this `(prev, next)` step? Used by the `shortcut`
@@ -777,6 +788,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.properties],
       predicate: (prev, next) =>
         !hasMortgagePayment(prev) && hasMortgagePayment(next),
+    },
+  },
+  {
+    id: "mortgageFree",
+    tier: "pro",
+    glyph: KeyRound,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasFullyPaidMortgage(prev) && hasFullyPaidMortgage(next),
     },
   },
   {

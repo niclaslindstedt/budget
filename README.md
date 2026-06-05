@@ -61,20 +61,20 @@ make dev          # Vite dev server at http://localhost:5173
 
 Common `make` targets:
 
-| Command            | What it does                                   |
-| ------------------ | ---------------------------------------------- |
-| `make install`     | `npm ci`                                       |
-| `make dev`         | Start the Vite dev server                      |
-| `make build`       | Type-check and produce a production build      |
-| `make preview`     | Preview the production build locally           |
-| `make lint`        | ESLint + TypeScript type-check                 |
-| `make typecheck`   | `tsc -b --noEmit` only                         |
-| `make fmt`         | Prettier rewrite in place                      |
-| `make fmt-check`   | Prettier check without writing                 |
-| `make test`        | Vitest suite                                   |
-| `make e2e`         | Playwright suite against the `/preview/` build |
-| `make e2e-install` | Install the Chromium browser Playwright drives |
-| `make clean`       | Remove `dist/` and Vite cache                  |
+| Command            | What it does                                       |
+| ------------------ | -------------------------------------------------- |
+| `make install`     | `npm ci`                                           |
+| `make dev`         | Start the Vite dev server (`SEED=1` for fake data) |
+| `make build`       | Type-check and produce a production build          |
+| `make preview`     | Preview the production build locally               |
+| `make lint`        | ESLint + TypeScript type-check                     |
+| `make typecheck`   | `tsc -b --noEmit` only                             |
+| `make fmt`         | Prettier rewrite in place                          |
+| `make fmt-check`   | Prettier check without writing                     |
+| `make test`        | Vitest suite                                       |
+| `make e2e`         | Playwright suite against the `/preview/` build     |
+| `make e2e-install` | Install the Chromium browser Playwright drives     |
+| `make clean`       | Remove `dist/` and Vite cache                      |
 
 ## Configuration
 

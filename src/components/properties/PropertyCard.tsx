@@ -1,4 +1,5 @@
 import {
+  Check,
   Home,
   Pencil,
   Plus,
@@ -9,6 +10,7 @@ import {
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { splitRecordedPayment } from "../../data/property-mortgage/payment";
+import { mortgagePayoffProgress } from "../../data/property-mortgage/progress";
 import type {
   Account,
   Company,
@@ -249,6 +251,16 @@ function MortgageRow({
   );
   const paid = paidSplit.amortization + paidSplit.interest;
   const monthlyAmort = resolveMonthlyAmortization(mortgage);
+  // Share of the original loan amortised away so far — drives the payoff
+  // "power bar". `null` when the loan / balance terms can't resolve it.
+  const progress = mortgagePayoffProgress(mortgage);
+  const payoffComplete = progress !== null && progress >= 1;
+  const payoffPercent =
+    progress === null
+      ? 0
+      : payoffComplete
+        ? 100
+        : Math.min(99, Math.round(progress * 100));
   const hasTerms =
     mortgage.loanAmount !== undefined ||
     mortgage.currentBalance !== undefined ||
@@ -352,6 +364,43 @@ function MortgageRow({
             </p>
           )}
         </>
+      )}
+
+      {progress !== null && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-xs text-muted">
+              {t("properties.payoffLabel")}
+            </span>
+            <span
+              className={`flex items-center gap-1 text-xs font-bold tabular-nums ${
+                payoffComplete ? "text-success" : "text-fg-bright"
+              }`}
+            >
+              {payoffComplete && (
+                <Check size={12} aria-hidden focusable={false} />
+              )}
+              {t("properties.payoffPercent", { percent: payoffPercent })}
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuenow={payoffPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={t("properties.payoffBarLabel", {
+              percent: payoffPercent,
+            })}
+            className="h-2 overflow-clip rounded-full bg-surface-3"
+          >
+            <div
+              className={`h-full rounded-full transition-[width] ${
+                payoffComplete ? "bg-success" : "bg-accent"
+              }`}
+              style={{ width: `${payoffPercent}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {count > 0 && (

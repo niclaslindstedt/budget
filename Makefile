@@ -3,8 +3,13 @@
 install:
 	npm ci
 
+# Start the Vite dev server. Pass `SEED=1` to boot straight into the
+# in-memory fake-data backend (the same seed the Developer → Fake data
+# toggle loads), so you land on a fully-populated app without enabling
+# developer mode or flipping the Settings toggle — handy for designing
+# against realistic data. See `src/hooks/useDevSeed.ts`.
 dev:
-	npm run dev
+	$(if $(SEED),VITE_DEV_SEED=1 )npm run dev
 
 # Codegen step that emits src/generated/changelog.ts from CHANGELOG.md.
 # Needed before tsc -b runs (typecheck / lint / build) because the
