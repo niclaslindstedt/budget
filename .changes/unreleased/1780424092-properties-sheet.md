@@ -29,7 +29,9 @@ mortgages by their amortisation and interest, recording one payment per
 loan that adds up to exactly what was paid. Both the mortgage card and the
 payments view break each total down into interest and amortisation, so a
 loan carrying all the principal is obvious instead of hidden in a single
-number. Open a property's payments to
+number; the card also shows the interest the loan is accruing right now —
+its rate applied to what's still owed — alongside the monthly amortisation.
+Open a property's payments to
 review every recorded charge and how it split across the loans — tap a
 charge to see the original bank transaction it came from — and edit or
 remove individual payments — change one loan's share and the others

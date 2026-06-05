@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
+import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
 import { splitRecordedPayment } from "../../data/property-mortgage/payment";
 import { mortgagePayoffProgress } from "../../data/property-mortgage/progress";
 import type {
@@ -251,6 +252,11 @@ function MortgageRow({
   );
   const paid = paidSplit.amortization + paidSplit.interest;
   const monthlyAmort = resolveMonthlyAmortization(mortgage);
+  // Interest the loan is accruing right now — the rate in effect applied to
+  // what's still owed (rate × outstanding balance, monthly), so the figure
+  // reads next to the monthly amortisation as "what each leg of the payment
+  // costs currently". `null` when neither a rate nor a balance is known.
+  const monthlyInterest = resolveMonthlyInterest(mortgage);
   // Share of the original loan amortised away so far — drives the payoff
   // "power bar". `null` when the loan / balance terms can't resolve it.
   const progress = mortgagePayoffProgress(mortgage);
@@ -346,6 +352,15 @@ function MortgageRow({
             {amortPerMonth !== null && (
               <MortgageStat label={t("properties.amortShort")}>
                 {amortPerMonth}
+              </MortgageStat>
+            )}
+            {monthlyInterest !== null && (
+              <MortgageStat label={t("properties.interestShort")}>
+                {t("properties.interestPerMonth", {
+                  amount: formatBalance(monthlyInterest, settings, {
+                    neverAbbreviate: true,
+                  }),
+                })}
               </MortgageStat>
             )}
             {mortgage.nextRateChangeDate !== undefined && (

@@ -6,6 +6,7 @@ import {
   Percent,
   ReceiptText,
   Scale,
+  Settings2,
   TrendingDown,
   Trash2,
 } from "lucide-react";
@@ -131,6 +132,7 @@ export function MortgagePaymentsModal({
       open={open}
       onClose={onClose}
       labelledBy="mortgage-payments-title"
+      size="max-w-2xl"
       fixedHeight
     >
       <Modal.Header
@@ -166,7 +168,7 @@ export function MortgagePaymentsModal({
                     <thead>
                       <tr className="text-muted">
                         <th
-                          className="px-2.5 py-1 text-left font-normal"
+                          className="w-full px-2.5 py-1 text-left font-normal"
                           title={t("properties.loanColumn")}
                         >
                           <span className="inline-flex items-center gap-1.5">
@@ -220,7 +222,22 @@ export function MortgagePaymentsModal({
                             />
                           </span>
                         </th>
-                        <th className="mortgage-payments-action-cell w-32 px-2.5 py-1" />
+                        <th
+                          className="mortgage-payments-action-cell w-32 px-2.5 py-1 text-right font-normal"
+                          title={t("properties.actionsColumn")}
+                        >
+                          <span className="inline-flex items-center justify-end gap-1.5">
+                            <Settings2
+                              size={13}
+                              className="shrink-0 text-accent"
+                              aria-label={t("properties.actionsColumn")}
+                              focusable={false}
+                            />
+                            <span className="hidden md:inline">
+                              {t("properties.actionsColumn")}
+                            </span>
+                          </span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -476,16 +493,6 @@ function MortgageChargeHeader({
             <dd className="m-0 text-right tabular-nums text-fg">
               {formatBalance(entry.amount, settings, { neverAbbreviate: true })}
             </dd>
-            {entry.balance !== undefined && (
-              <>
-                <dt className="text-muted">{t("properties.balanceShort")}</dt>
-                <dd className="m-0 text-right tabular-nums text-fg">
-                  {formatBalance(entry.balance, settings, {
-                    neverAbbreviate: true,
-                  })}
-                </dd>
-              </>
-            )}
             {account && (
               <>
                 <dt className="text-muted">{t("properties.accountLabel")}</dt>

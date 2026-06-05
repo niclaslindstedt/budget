@@ -32,9 +32,11 @@ describe("toggleSheetFavorite reducer", () => {
     expect("favorite" in next.sheets[0]).toBe(false);
   });
 
-  it("is a no-op once the 3-favorite cap is reached", () => {
-    expect(MAX_FAVORITE_SHEETS).toBe(3);
-    const favs = [favorited("F0"), favorited("F1"), favorited("F2")];
+  it("is a no-op once the favorite cap is reached", () => {
+    expect(MAX_FAVORITE_SHEETS).toBe(5);
+    const favs = Array.from({ length: MAX_FAVORITE_SHEETS }, (_, i) =>
+      favorited(`F${i}`),
+    );
     const extra = createDefaultSheet("Extra");
     const next = reducer(withSheets([...favs, extra]), {
       type: "toggleSheetFavorite",
@@ -43,17 +45,23 @@ describe("toggleSheetFavorite reducer", () => {
     expect(
       next.sheets.find((s) => s.id === extra.id)?.favorite,
     ).toBeUndefined();
-    expect(next.sheets.filter((s) => s.favorite).length).toBe(3);
+    expect(next.sheets.filter((s) => s.favorite).length).toBe(
+      MAX_FAVORITE_SHEETS,
+    );
   });
 
   it("still lets you unfavorite while at the cap", () => {
-    const favs = [favorited("F0"), favorited("F1"), favorited("F2")];
+    const favs = Array.from({ length: MAX_FAVORITE_SHEETS }, (_, i) =>
+      favorited(`F${i}`),
+    );
     const next = reducer(withSheets(favs), {
       type: "toggleSheetFavorite",
       sheetId: favs[0].id,
     });
     expect("favorite" in next.sheets[0]).toBe(false);
-    expect(next.sheets.filter((s) => s.favorite).length).toBe(2);
+    expect(next.sheets.filter((s) => s.favorite).length).toBe(
+      MAX_FAVORITE_SHEETS - 1,
+    );
   });
 
   it("ignores an unknown sheet id", () => {

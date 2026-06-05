@@ -9,7 +9,7 @@ import { CategoryIconGlyph } from "./icons";
 import { useModalDispatch } from "./modal-dispatch";
 
 type Props = {
-  // Favorited sheets (already capped at 3) shown as quick-switch glyph
+  // Favorited sheets (already capped at 5) shown as quick-switch glyph
   // icons on the left of the bar. Empty ⇒ the strip renders nothing.
   favoriteSheets: Sheet[];
   activeSheetId: string;
@@ -130,8 +130,8 @@ export function BottomBar({
     >
       <div className="flex items-center gap-1 px-2 pt-1 pb-[calc(0.25rem+max(env(safe-area-inset-bottom),0.25rem))] sm:px-3 sm:pt-1.5 sm:pb-[calc(0.5rem+max(env(safe-area-inset-bottom),0.25rem))]">
         {/* Left half: the bulk-action bar in select mode, otherwise the
-            favorites strip — up to 3 favorited sheets as quick-switch
-            glyph icons. Capped at 3 (enforced at toggle time) so it never
+            favorites strip — up to 5 favorited sheets as quick-switch
+            glyph icons. Capped at 5 (enforced at toggle time) so it never
             needs to scroll; a scrolling region here is what broke iOS
             composited scrolling, so `overflow-hidden` (never auto) and a
             small, fixed item count keep it safe. Full sheet switching
@@ -231,7 +231,7 @@ export function BottomBar({
 
 // One favorited-sheet icon in the bottom bar's quick-switch strip.
 // Adapted from the old sheet-tab tablist, but deliberately NOT a
-// `role="tab"`: the active sheet may not be among the (≤3) favorites, so
+// `role="tab"`: the active sheet may not be among the (≤5) favorites, so
 // there's no always-selected tab and no tabpanel to bind to. A plain
 // button with `aria-current` is the honest semantics. Tap switches; a
 // long-press / right-click opens the sheet's edit modal (same affordance
