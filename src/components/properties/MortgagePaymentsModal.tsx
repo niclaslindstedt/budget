@@ -1,6 +1,7 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import {
   Coins,
+  Landmark,
   Pencil,
   Percent,
   ReceiptText,
@@ -10,18 +11,26 @@ import {
 } from "lucide-react";
 
 import {
+  type MortgageChargeGroup,
   groupPaymentsByCharge,
   type MortgageChargeItem,
   reconcileMortgageAmortization,
   splitRecordedPayment,
 } from "../../data/property-mortgage/payment";
-import type { Property, Settings } from "../../data/types";
+import type {
+  Account,
+  HistoryEntry,
+  Property,
+  Settings,
+} from "../../data/types";
+import type { FloatingPlacement } from "../../hooks";
 import { useResetOnOpen } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { FloatingPanel } from "../FloatingPanel";
 import { Button } from "../form";
 import { Modal } from "../Modal";
 import { useClaimActiveRow } from "../useClaimActiveRow";
@@ -40,6 +49,14 @@ type Props = {
   open: boolean;
   property: Property | null;
   settings: Settings;
+  // The account the property's mortgages are paid from, when bound — used
+  // to label the original bank transaction in the per-charge popover.
+  account: Account | null;
+  // Bank-history entries keyed by id for the property's account, so a
+  // charge group can resolve the original transaction it was split from
+  // (its `sourceHistoryId`) for the popover. Empty when the account has no
+  // history (or no account is bound).
+  sourceTransactions: Map<string, HistoryEntry>;
   onClose: () => void;
   onSetChargeSplit: (updates: ChargeSplitUpdate[]) => void;
   onDeletePayment: (mortgageId: string, paymentId: string) => void;
@@ -61,6 +78,8 @@ export function MortgagePaymentsModal({
   open,
   property,
   settings,
+  account,
+  sourceTransactions,
   onClose,
   onSetChargeSplit,
   onDeletePayment,
@@ -132,56 +151,74 @@ export function MortgagePaymentsModal({
                   key={group.key}
                   className="overflow-clip rounded border border-line bg-surface-2"
                 >
-                  <div className="flex items-baseline justify-between gap-2 border-b border-line bg-surface-3 px-2.5 py-1.5 text-xs">
-                    <span className="tabular-nums text-muted">
-                      {formatShortDate(
-                        group.date,
-                        settings.shortDateFormat,
-                        lang,
-                      )}
-                    </span>
-                    <span className="tabular-nums font-bold text-fg-bright">
-                      {formatBalance(group.total, settings, {
-                        neverAbbreviate: true,
-                      })}
-                    </span>
-                  </div>
+                  <MortgageChargeHeader
+                    group={group}
+                    settings={settings}
+                    account={account}
+                    entry={
+                      group.sourceHistoryId
+                        ? (sourceTransactions.get(group.sourceHistoryId) ??
+                          null)
+                        : null
+                    }
+                  />
                   <table className="mortgage-payments-table w-full border-collapse text-sm">
                     <thead>
                       <tr className="text-muted">
-                        <th className="px-2.5 py-1 text-left" />
                         <th
-                          className="px-1 py-1 text-right font-normal"
+                          className="px-2.5 py-1 text-left font-normal"
+                          title={t("properties.loanColumn")}
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Landmark
+                              size={13}
+                              className="shrink-0 text-accent"
+                              aria-label={t("properties.loanColumn")}
+                              focusable={false}
+                            />
+                            <span className="hidden md:inline">
+                              {t("properties.loanColumn")}
+                            </span>
+                          </span>
+                        </th>
+                        <th
+                          className="px-1 py-1 text-left font-normal"
                           title={t("properties.amortShort")}
                         >
-                          <TrendingDown
-                            size={13}
-                            className="ml-auto"
-                            aria-label={t("properties.amortShort")}
-                            focusable={false}
-                          />
+                          <span className="inline-flex items-center justify-start">
+                            <TrendingDown
+                              size={13}
+                              className="shrink-0 text-accent"
+                              aria-label={t("properties.amortShort")}
+                              focusable={false}
+                            />
+                          </span>
                         </th>
                         <th
-                          className="px-1 py-1 text-right font-normal"
+                          className="px-1 py-1 text-left font-normal"
                           title={t("properties.interestShort")}
                         >
-                          <Percent
-                            size={13}
-                            className="ml-auto"
-                            aria-label={t("properties.interestShort")}
-                            focusable={false}
-                          />
+                          <span className="inline-flex items-center justify-start">
+                            <Percent
+                              size={13}
+                              className="shrink-0 text-accent"
+                              aria-label={t("properties.interestShort")}
+                              focusable={false}
+                            />
+                          </span>
                         </th>
                         <th
-                          className="px-1 py-1 text-right font-normal"
+                          className="px-1 py-1 text-left font-normal"
                           title={t("properties.paymentAmount")}
                         >
-                          <Coins
-                            size={13}
-                            className="ml-auto"
-                            aria-label={t("properties.paymentAmount")}
-                            focusable={false}
-                          />
+                          <span className="inline-flex items-center justify-start">
+                            <Coins
+                              size={13}
+                              className="shrink-0 text-accent"
+                              aria-label={t("properties.paymentAmount")}
+                              focusable={false}
+                            />
+                          </span>
                         </th>
                         <th className="mortgage-payments-action-cell w-32 px-2.5 py-1" />
                       </tr>
@@ -336,6 +373,134 @@ export function MortgagePaymentsModal({
   );
 }
 
+// The popover anchors below the charge header bar.
+const SOURCE_POPOVER_PLACEMENT: FloatingPlacement = {
+  width: { kind: "max", maxPx: 320 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
+type ChargeHeaderProps = {
+  group: MortgageChargeGroup;
+  settings: Settings;
+  account: Account | null;
+  // The bank transaction this charge was split from, when it's still in the
+  // account's history. `null` for hand-entered charges (no `sourceHistoryId`)
+  // or when the source entry has since been removed — the header is then a
+  // plain, non-interactive bar.
+  entry: HistoryEntry | null;
+};
+
+// The date + total bar atop each charge. When the originating bank
+// transaction is known it becomes a button that reveals the original
+// transaction in a popover (reusing the shared `FloatingPanel`), so the
+// user can trace a split back to what the bank actually charged.
+function MortgageChargeHeader({
+  group,
+  settings,
+  account,
+  entry,
+}: ChargeHeaderProps) {
+  const t = useT();
+  const lang = useLang();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const dateText = formatShortDate(group.date, settings.shortDateFormat, lang);
+  const totalText = formatBalance(group.total, settings, {
+    neverAbbreviate: true,
+  });
+
+  const barInner = (
+    <>
+      <span className="flex items-center gap-1.5">
+        {entry && (
+          <ReceiptText
+            size={12}
+            className="shrink-0 text-meta"
+            aria-hidden
+            focusable={false}
+          />
+        )}
+        <span className="tabular-nums text-muted">{dateText}</span>
+      </span>
+      <span className="tabular-nums font-bold text-fg-bright">{totalText}</span>
+    </>
+  );
+
+  if (!entry) {
+    return (
+      <div className="flex items-baseline justify-between gap-2 border-b border-line bg-surface-3 px-2.5 py-1.5 text-xs">
+        {barInner}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={triggerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={t("properties.sourceTransactionShow")}
+        className="flex w-full cursor-pointer items-baseline justify-between gap-2 border-0 border-b border-line bg-surface-3 px-2.5 py-1.5 text-left text-xs hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+      >
+        {barInner}
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={SOURCE_POPOVER_PLACEMENT}
+      >
+        <div className="flex flex-col gap-2 p-3 text-sm">
+          <span className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-muted uppercase">
+            <ReceiptText
+              size={13}
+              className="shrink-0 text-accent"
+              aria-hidden
+              focusable={false}
+            />
+            {t("properties.sourceTransactionTitle")}
+          </span>
+          <p className="m-0 font-bold break-words text-fg-bright">
+            {entry.description}
+          </p>
+          <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dt className="text-muted">{t("properties.paymentDate")}</dt>
+            <dd className="m-0 text-right tabular-nums text-fg">
+              {formatShortDate(entry.date, settings.shortDateFormat, lang)}
+            </dd>
+            <dt className="text-muted">{t("properties.paymentAmount")}</dt>
+            <dd className="m-0 text-right tabular-nums text-fg">
+              {formatBalance(entry.amount, settings, { neverAbbreviate: true })}
+            </dd>
+            {entry.balance !== undefined && (
+              <>
+                <dt className="text-muted">{t("properties.balanceShort")}</dt>
+                <dd className="m-0 text-right tabular-nums text-fg">
+                  {formatBalance(entry.balance, settings, {
+                    neverAbbreviate: true,
+                  })}
+                </dd>
+              </>
+            )}
+            {account && (
+              <>
+                <dt className="text-muted">{t("properties.accountLabel")}</dt>
+                <dd className="m-0 min-w-0 truncate text-right text-fg">
+                  {account.name}
+                </dd>
+              </>
+            )}
+          </dl>
+        </div>
+      </FloatingPanel>
+    </div>
+  );
+}
+
 type RowProps = {
   item: MortgageChargeItem;
   settings: Settings;
@@ -372,17 +537,17 @@ function MortgagePaymentRowImpl({
       <td className="px-2.5 py-1.5 text-fg">
         <span className="block truncate">{item.mortgage.name}</span>
       </td>
-      <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+      <td className="px-1 py-1.5 text-left text-xs whitespace-nowrap tabular-nums text-muted">
         {formatBalance(split.amortization, settings, {
           neverAbbreviate: true,
         })}
       </td>
-      <td className="px-1 py-1.5 text-right text-xs whitespace-nowrap tabular-nums text-muted">
+      <td className="px-1 py-1.5 text-left text-xs whitespace-nowrap tabular-nums text-muted">
         {formatBalance(split.interest, settings, {
           neverAbbreviate: true,
         })}
       </td>
-      <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums text-fg-bright">
+      <td className="px-1 py-1.5 text-left whitespace-nowrap tabular-nums text-fg-bright">
         {formatBalance(item.payment.amount, settings, {
           neverAbbreviate: true,
         })}

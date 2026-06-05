@@ -191,10 +191,14 @@ export type MortgageChargeItem = {
 // `sourceHistoryId`) or, for hand-entered payments without one, that fall on
 // the same date. `total` is the sum of the parts (= what the bank charged),
 // `date` the representative (earliest) date in the group.
+// `sourceHistoryId` is the bank transaction the split came from, when the
+// charge was discovered (absent for hand-entered payments) — the payments
+// view resolves it back to the original `HistoryEntry` for the popover.
 export type MortgageChargeGroup = {
   key: string;
   date: string;
   total: number;
+  sourceHistoryId?: string;
   items: MortgageChargeItem[];
 };
 
@@ -213,7 +217,13 @@ export function groupPaymentsByCharge(
       const key = payment.sourceHistoryId ?? `date:${payment.date}`;
       let group = groups.get(key);
       if (!group) {
-        group = { key, date: payment.date, total: 0, items: [] };
+        group = {
+          key,
+          date: payment.date,
+          total: 0,
+          sourceHistoryId: payment.sourceHistoryId,
+          items: [],
+        };
         groups.set(key, group);
       }
       group.items.push({ mortgage, payment });

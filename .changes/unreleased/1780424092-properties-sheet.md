@@ -30,7 +30,8 @@ loan that adds up to exactly what was paid. Both the mortgage card and the
 payments view break each total down into interest and amortisation, so a
 loan carrying all the principal is obvious instead of hidden in a single
 number. Open a property's payments to
-review every recorded charge and how it split across the loans, and edit or
+review every recorded charge and how it split across the loans — tap a
+charge to see the original bank transaction it came from — and edit or
 remove individual payments — change one loan's share and the others
 re-balance so the total still matches the bank — or clear every recorded
 payment in one go to re-run the finder from scratch. The payments view also
