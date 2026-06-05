@@ -14,7 +14,7 @@ const sheet = {
   editSheet: "Edit sheet",
   favorite: "Favorite sheet",
   unfavorite: "Unfavorite sheet",
-  favoritesFull: "You can favorite up to 3 sheets",
+  favoritesFull: "You can favorite up to 5 sheets",
   viewBudget: "Viewing mode",
   viewTransfers: "Transfers",
   metadataMode: "Metadata mode",

@@ -35,6 +35,7 @@ const properties = {
   nextRateChangeShort: "Next change",
   amortShort: "Amortisation",
   amortPerMonth: "{amount}/mo",
+  interestPerMonth: "{amount}/mo",
   // Payoff "power bar" on the mortgage card — the share of the original
   // loan amortised away so far (100% = the loan is fully paid off).
   payoffLabel: "Paid off",
@@ -148,6 +149,7 @@ const properties = {
   loanColumn: "Loan",
   paymentDate: "Date",
   paymentAmount: "Amount",
+  actionsColumn: "Actions",
   sourceTransactionTitle: "Original transaction",
   sourceTransactionShow: "Show original transaction",
   editPayment: "Edit payment",

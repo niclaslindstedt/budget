@@ -8,7 +8,7 @@ const sheet: SheetCatalog = {
   editSheet: "Redigera blad",
   favorite: "Markera som favorit",
   unfavorite: "Ta bort som favorit",
-  favoritesFull: "Du kan ha högst 3 favoritblad",
+  favoritesFull: "Du kan ha högst 5 favoritblad",
   viewBudget: "Visningsläge",
   viewTransfers: "Överföringar",
   metadataMode: "Metadataläge",

@@ -122,9 +122,9 @@ export type Sheet = {
   glyph: SheetGlyph;
   color: string;
   description: string;
-  // Up to three sheets can be marked as favorites; favorited sheets show
+  // Up to five sheets can be marked as favorites; favorited sheets show
   // as quick-switch glyph icons in the bottom bar (toggled from the "…"
-  // title menu). Absent ⇒ not favorited. The 3-cap is enforced at toggle
+  // title menu). Absent ⇒ not favorited. The cap is enforced at toggle
   // time, never here.
   favorite?: boolean;
   items: SheetItem[];
