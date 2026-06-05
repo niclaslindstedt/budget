@@ -106,6 +106,18 @@ export async function addAccount(page, name) {
     .waitFor();
 }
 
+// Switch to an existing sheet by its visible name, via the header
+// SheetSwitcher dropdown (each sheet is a `menuitemradio` labelled by
+// its name). Pairs with the seeded fake-data backend (`make dev
+// SEED=1`): the seed ships one sheet of every type — "Checking
+// budget", "Accounts", "Items", "Salary", "Properties" — so a recipe
+// can jump straight onto a fully-populated page instead of building
+// the data by hand.
+export async function openSeededSheet(page, name) {
+  await page.getByRole("button", { name: "Switch sheet" }).click();
+  await page.getByRole("menuitemradio", { name }).click();
+}
+
 // Synthesize a horizontal swipe on a sheet row. Playwright's
 // `touchscreen` lacks a built-in swipe primitive, so we dispatch the
 // raw `TouchEvent` triple the SheetRow / AccountRow handlers listen
@@ -214,7 +226,11 @@ async function recipe(page, _viewport) {
   // Replace this block with the flow you're iterating on. The
   // "Recipe patterns" section of SKILL.md has copy-pasteable
   // starting points; the helpers above (signInAsGuest, addSheet,
-  // addAccount, swipeLeft) cover the most common chrome.
+  // addAccount, openSeededSheet, swipeLeft) cover the most common
+  // chrome. Booting `make dev SEED=1` lands the app on the seeded
+  // fake-data backend so `openSeededSheet` can jump straight to a
+  // fully-populated page (see SKILL.md "Designing against seeded
+  // data").
   await signInAsGuest(page);
 }
 

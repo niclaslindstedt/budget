@@ -207,6 +207,45 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("loanRanger");
   });
 
+  it("fires mortgageFree when a mortgage's balance reaches zero", () => {
+    const prev = withItem([]);
+    prev.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            loanAmount: 1_000_000,
+            currentBalance: 50_000,
+            payments: [],
+          },
+        ],
+      },
+    ];
+    const next = withItem([]);
+    next.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            loanAmount: 1_000_000,
+            currentBalance: 0,
+            payments: [],
+          },
+        ],
+      },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("mortgageFree");
+  });
+
   it("fires groundhogDay when a row becomes recurring", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);

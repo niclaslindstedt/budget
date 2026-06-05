@@ -538,5 +538,6 @@ export default defineConfig({
     __IS_PREVIEW__: JSON.stringify(IS_PREVIEW),
     __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
     __STORAGE_NS__: JSON.stringify(STORAGE_NS),
+    __DEV_SEED__: JSON.stringify(process.env.VITE_DEV_SEED === "1"),
   },
 });

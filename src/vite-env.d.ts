@@ -45,7 +45,13 @@ interface ImportMeta {
 // production, "preview" for `/preview/`, "branch" for `/branch/` —
 // the branch namespace is stable across feature-branch swaps so the
 // installed PWA's data carries forward.
+// `__DEV_SEED__` is true when the dev server was started with
+// `VITE_DEV_SEED=1` (`make dev SEED=1`); it makes the in-memory
+// fake-data backend active from first paint so design / debugging
+// runs land on a fully-populated app without flipping the Settings
+// toggle.
 declare const __APP_VERSION__: string;
 declare const __IS_PREVIEW__: boolean;
 declare const __BUILD_LABEL__: string;
 declare const __STORAGE_NS__: string;
+declare const __DEV_SEED__: boolean;

@@ -37,3 +37,11 @@ export const BUILD_LABEL: string = __BUILD_LABEL__;
 // data, accepting that a branch shipping a breaking schema change
 // will be read by whatever lands next.
 export const STORAGE_NS: string = __STORAGE_NS__;
+
+// True when the dev server was booted with `VITE_DEV_SEED=1`
+// (`make dev SEED=1`). Seeds the developer "Fake data" toggle to
+// on from first paint, so a dev / design session lands on the
+// fully-populated in-memory backend without enabling developer mode
+// or flipping the Settings toggle. Always false in any built bundle
+// (the env var is only set for local `make dev`).
+export const DEV_SEED: boolean = __DEV_SEED__;

@@ -234,8 +234,10 @@ src/
 │   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
 │   │   ├── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages
 │   │   │                       #   — split a combined charge across a property's loans
-│   │   └── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
-│   │                           #   or fixed monthly amortisation → a per-month sum
+│   │   ├── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
+│   │   │                       #   or fixed monthly amortisation → a per-month sum
+│   │   └── progress.ts         # mortgagePayoffProgress — share of the original
+│   │                           #   loan amortised away (drives the payoff bar)
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross
 │   │   │                   #   from a net deposit). No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,

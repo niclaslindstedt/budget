@@ -257,6 +257,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Märk en månad av dina bolånedragningar med deras långivare och bolånetypen, och öppna sedan Hitta bolånebetalningar på bolånet: den hittar de märkta dragningarna, lär sig deras bankbeskrivning och plockar fram varje matchande månad ur kontots historik — rankar de mest sannolika först och lämnar en tidigare bostads lån utanför tack vare dess annorlunda belopp.",
   },
+  mortgageFree: {
+    name: "Skuldfri",
+    condition: "Betala av ett bolån helt — dess avbetalningsstapel når 100 %.",
+    learnMore:
+      "Varje bolånekort har en avbetalningsstapel som visar hur stor del av det ursprungliga lånet du amorterat bort. Håll lånebelopp och aktuell skuld uppdaterade allt eftersom du betalar av; när skulden når noll fylls stapeln grön och visar 100 % — bostaden är din, helt skuldfri.",
+  },
   paymentLedger: {
     name: "Betalningsbok",
     condition: "Redigera eller ta bort en registrerad bolånebetalning.",

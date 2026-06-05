@@ -12,6 +12,7 @@ export default defineConfig({
     __IS_PREVIEW__: JSON.stringify(false),
     __BUILD_LABEL__: JSON.stringify(`v${pkg.version}`),
     __STORAGE_NS__: JSON.stringify(""),
+    __DEV_SEED__: JSON.stringify(false),
   },
   test: {
     include: ["tests/**/*_test.ts", "tests/**/*_tests.ts"],

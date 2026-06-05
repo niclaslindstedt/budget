@@ -120,6 +120,19 @@ Settings, enable **Developer mode**, then switch to the **Developer**
 tab and turn on **Fake data**. A red banner across the top marks the
 fake-data session so it's never mistaken for real data.
 
+**Shortcut for local dev / design / debugging:** run `make dev
+SEED=1`. The `SEED=1` flag sets `VITE_DEV_SEED=1`, which seeds the
+same Fake-data backend to **on from first paint** — no developer
+mode, no Settings toggle, no preview build needed. This is the
+fastest way to land on a fully-populated app (a sheet of every type,
+five accounts with bank history, salary history, three properties
+carrying five mortgages with loan terms) when working on a feature
+that's only interesting with realistic data on screen. The
+`design` skill's screenshot harness pairs with it via the
+`openSeededSheet(page, name)` helper. A plain `make dev` (no `SEED`)
+is unchanged, and the flag is local-only — it never reaches a built
+bundle.
+
 Moving parts:
 
 - `src/data/dev/seed.ts` — `buildSeedUserData()`, the deterministic
@@ -129,7 +142,9 @@ Moving parts:
   (`id: "dev"`) that holds the seed; never persisted, encrypted, or
   mirrored.
 - `src/hooks/useDevSeed.ts` — the in-memory-only toggle (no
-  `localStorage`, so reload is always the escape hatch).
+  `localStorage`, so reload is always the escape hatch). Its initial
+  value is seeded from `DEV_SEED` (`src/utils/build-env.ts`, fed by
+  the `__DEV_SEED__` define), so `make dev SEED=1` starts it active.
 - `AppShell` substitutes the dev adapter for the real one when the
   toggle is active; the storage hook's load effect reloads on the
   swap, so no reload / re-auth is needed.

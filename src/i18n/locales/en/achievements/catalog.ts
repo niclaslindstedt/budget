@@ -261,6 +261,12 @@ const catalog = {
     learnMore:
       "Tag a month of your mortgage charges with their lender and the Mortgage type, then open Find mortgage payments on the mortgage: it homes in on those tagged charges, learns their bank description, and pulls every matching month from the account's history — ranking the likeliest first and leaving a previous home's loan out by its different amount.",
   },
+  mortgageFree: {
+    name: "Mortgage Free",
+    condition: "Pay a mortgage all the way off — its payoff bar hits 100%.",
+    learnMore:
+      "Each mortgage card carries a payoff bar showing how much of the original loan you've amortised away. Keep the loan amount and current balance up to date as you pay it down; when the balance reaches zero the bar fills green and reads 100% — the house is yours, free and clear.",
+  },
   paymentLedger: {
     name: "Payment Ledger",
     condition: "Edit or remove a recorded mortgage payment from a property.",

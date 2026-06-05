@@ -35,6 +35,11 @@ const properties = {
   nextRateChangeShort: "Next change",
   amortShort: "Amortisation",
   amortPerMonth: "{amount}/mo",
+  // Payoff "power bar" on the mortgage card — the share of the original
+  // loan amortised away so far (100% = the loan is fully paid off).
+  payoffLabel: "Paid off",
+  payoffPercent: "{percent}%",
+  payoffBarLabel: "{percent}% of the loan paid off",
 
   // Property editor modal.
   newPropertyTitle: "New property",
