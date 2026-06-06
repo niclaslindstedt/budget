@@ -6,6 +6,7 @@ import {
   ReceiptText,
   TrendingUp,
   Trash2,
+  Wrench,
 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
@@ -27,15 +28,24 @@ import { formatBalance, formatNumber, formatRate } from "../../utils/format";
 // against it. All editing routes back through the page's modals via the
 // callbacks — the card is presentational.
 
+// Precomputed repairs summary for the card — the page resolves receipt
+// status (which needs the bank history) so the card stays presentational.
+type RepairSummary = {
+  count: number;
+  missingReceiptCount: number;
+};
+
 type Props = {
   property: Property;
   accountsById: ReadonlyMap<string, Account>;
   companiesById: ReadonlyMap<string, Company>;
   settings: Settings;
+  repairSummary: RepairSummary;
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
   onUpdateValue: (property: Property) => void;
   onViewPayments: (property: Property) => void;
+  onViewRepairs: (property: Property) => void;
   onAddMortgage: (property: Property) => void;
   onEditMortgage: (property: Property, mortgage: Mortgage) => void;
   onDeleteMortgage: (property: Property, mortgage: Mortgage) => void;
@@ -55,10 +65,12 @@ export function PropertyCard({
   accountsById,
   companiesById,
   settings,
+  repairSummary,
   onEditProperty,
   onDeleteProperty,
   onUpdateValue,
   onViewPayments,
+  onViewRepairs,
   onAddMortgage,
   onEditMortgage,
   onDeleteMortgage,
@@ -105,6 +117,31 @@ export function PropertyCard({
             <ReceiptText size={16} aria-hidden focusable={false} />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => onViewRepairs(property)}
+          aria-label={t("properties.viewRepairs")}
+          title={
+            repairSummary.missingReceiptCount > 0
+              ? repairSummary.missingReceiptCount === 1
+                ? t("properties.repairsMissingReceiptsOne", {
+                    count: repairSummary.missingReceiptCount,
+                  })
+                : t("properties.repairsMissingReceiptsOther", {
+                    count: repairSummary.missingReceiptCount,
+                  })
+              : undefined
+          }
+          className="relative cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+        >
+          <Wrench size={16} aria-hidden focusable={false} />
+          {repairSummary.missingReceiptCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger"
+              aria-hidden
+            />
+          )}
+        </button>
         <button
           type="button"
           onClick={() => onEditProperty(property)}

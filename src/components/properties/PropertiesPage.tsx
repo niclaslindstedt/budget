@@ -3,7 +3,12 @@ import { Home, Pencil, Plus, Search } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
 import { allTypes } from "../../data/presets/merge";
+import { findRepairCandidates } from "../../data/property-repairs/candidates";
 import type { Action } from "../../data/reducer";
+import type {
+  ReceiptNaming,
+  TxnReceiptTarget,
+} from "../../data/receipts/target";
 import { newId } from "../../data/sheet";
 import type {
   Account,
@@ -12,6 +17,7 @@ import type {
   Mortgage,
   MortgagePayment,
   Property,
+  PropertyRepair,
   PropertyValuePoint,
   Settings,
   Sheet,
@@ -32,6 +38,8 @@ import type { ChargeSplitUpdate } from "./MortgagePaymentEditModal";
 import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
+import { RepairsAddModal } from "./RepairsAddModal";
+import { RepairsModal } from "./RepairsModal";
 import { UpdatePropertyValueModal } from "./UpdatePropertyValueModal";
 
 type Props = {
@@ -39,13 +47,32 @@ type Props = {
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
+  // Transaction-generic receipt handling, threaded from AppShell — a
+  // repair's receipt physically lives on its source bank entry.
+  canManageReceipt: boolean;
+  onUploadReceipt: (
+    target: TxnReceiptTarget,
+    file: File,
+    naming: ReceiptNaming,
+  ) => Promise<string>;
+  onDownloadReceipt: (path: string) => Promise<Blob>;
+  onRemoveReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
 };
 
 // A mortgage paired with the property it belongs to — the unit the
 // mortgage editor / discovery modals and the per-mortgage actions need.
 type MortgageRef = { property: Property; mortgage: Mortgage };
 
-export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
+export function PropertiesPage({
+  sheet,
+  data,
+  settings,
+  dispatch,
+  canManageReceipt,
+  onUploadReceipt,
+  onDownloadReceipt,
+  onRemoveReceipt,
+}: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
 
@@ -54,6 +81,10 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const [creatingProperty, setCreatingProperty] = useState(false);
   const [valueProperty, setValueProperty] = useState<Property | null>(null);
   const [paymentsProperty, setPaymentsProperty] = useState<Property | null>(
+    null,
+  );
+  const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
+  const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
     null,
   );
   const [pendingDeleteProperty, setPendingDeleteProperty] =
@@ -106,6 +137,49 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
   const livePaymentsProperty = paymentsProperty
     ? (data.properties.find((p) => p.id === paymentsProperty.id) ?? null)
     : null;
+  const liveRepairsProperty = repairsProperty
+    ? (data.properties.find((p) => p.id === repairsProperty.id) ?? null)
+    : null;
+
+  // The source bank entries behind every property's repairs, keyed by
+  // `${accountId}:${entryId}`, so each repair reads its live receipt status.
+  // Scoped to the referenced ids (not all of history) to keep the scan small.
+  const repairSourceEntries = useMemo(() => {
+    const referenced = new Set<string>();
+    for (const property of data.properties) {
+      for (const repair of property.repairs) {
+        referenced.add(`${repair.accountId}:${repair.sourceHistoryId}`);
+      }
+    }
+    const m = new Map<string, HistoryEntry>();
+    if (referenced.size === 0) return m;
+    for (const [accountId, entries] of Object.entries(data.history)) {
+      for (const entry of entries) {
+        const key = `${accountId}:${entry.id}`;
+        if (referenced.has(key)) m.set(key, entry);
+      }
+    }
+    return m;
+  }, [data.properties, data.history]);
+
+  // Per-property repairs summary for the card — repair count plus how many
+  // lack a receipt on their source entry (the deductibility flag).
+  function repairSummaryFor(property: Property) {
+    let missingReceiptCount = 0;
+    for (const repair of property.repairs) {
+      const entry = repairSourceEntries.get(
+        `${repair.accountId}:${repair.sourceHistoryId}`,
+      );
+      if (!entry?.receiptPath) missingReceiptCount++;
+    }
+    return { count: property.repairs.length, missingReceiptCount };
+  }
+
+  // Candidate charges for the add picker — only computed while it's open.
+  const repairCandidates = useMemo(
+    () => (addingRepairsFor ? findRepairCandidates(data) : []),
+    [addingRepairsFor, data],
+  );
 
   // The account the payments-view property is paid from, plus its bank
   // history keyed by id, so each charge group can resolve the original
@@ -236,6 +310,14 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
     dispatch({ type: "deleteAllMortgagePayments", propertyId });
   }
 
+  function handleAddRepairs(propertyId: string, repairs: PropertyRepair[]) {
+    dispatch({ type: "addRepairs", propertyId, repairs });
+  }
+
+  function handleDeleteRepair(propertyId: string, repairId: string) {
+    dispatch({ type: "deleteRepair", propertyId, repairId });
+  }
+
   const hasProperties = properties.length > 0;
 
   return (
@@ -271,10 +353,12 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
                   accountsById={accountsById}
                   companiesById={companiesById}
                   settings={settings}
+                  repairSummary={repairSummaryFor(property)}
                   onEditProperty={setEditingProperty}
                   onDeleteProperty={setPendingDeleteProperty}
                   onUpdateValue={setValueProperty}
                   onViewPayments={setPaymentsProperty}
+                  onViewRepairs={setRepairsProperty}
                   onAddMortgage={setCreatingMortgageFor}
                   onEditMortgage={(property, mortgage) =>
                     setEditingMortgage({ property, mortgage })
@@ -354,6 +438,34 @@ export function PropertiesPage({ sheet, data, settings, dispatch }: Props) {
           onDeleteAll={() => {
             if (livePaymentsProperty)
               handleDeleteAllPayments(livePaymentsProperty.id);
+          }}
+        />
+
+        <RepairsModal
+          open={liveRepairsProperty !== null}
+          property={liveRepairsProperty}
+          settings={settings}
+          sourceEntries={repairSourceEntries}
+          canManageReceipt={canManageReceipt}
+          onUploadReceipt={onUploadReceipt}
+          onDownloadReceipt={onDownloadReceipt}
+          onRemoveReceipt={onRemoveReceipt}
+          onDeleteRepair={(repairId) => {
+            if (liveRepairsProperty)
+              handleDeleteRepair(liveRepairsProperty.id, repairId);
+          }}
+          onAdd={() => setAddingRepairsFor(liveRepairsProperty)}
+          onClose={() => setRepairsProperty(null)}
+        />
+
+        <RepairsAddModal
+          open={addingRepairsFor !== null}
+          candidates={repairCandidates}
+          settings={settings}
+          onClose={() => setAddingRepairsFor(null)}
+          onAdd={(repairs) => {
+            if (addingRepairsFor)
+              handleAddRepairs(addingRepairsFor.id, repairs);
           }}
         />
 

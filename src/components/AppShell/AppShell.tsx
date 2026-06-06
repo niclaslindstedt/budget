@@ -15,6 +15,7 @@ import { useRowMutations } from "./hooks/useRowMutations";
 import { useSearchModal } from "./hooks/useSearchModal";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
+import { useReceiptManager } from "./hooks/useReceiptManager";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
@@ -62,13 +63,8 @@ import type {
   UserData,
 } from "../../data/types";
 import { buildPayslipPath, extensionOf } from "../../data/salary/payslip-name";
-import { buildReceiptPath } from "../../data/items/receipt-name";
-import {
-  collectReceiptPaths,
-  findItemLink,
-  type ItemTxnLink,
-} from "../../data/items/link";
-import { todayIso } from "../../utils/date";
+import { findItemLink, type ItemTxnLink } from "../../data/items/link";
+import type { TxnReceiptTarget } from "../../data/receipts/target";
 import { type Action, reducer } from "../../data/reducer";
 import {
   unlock as unlockAchievement,
@@ -111,6 +107,20 @@ function collectPayslipPaths(
   }
   if (exclude) paths.delete(exclude);
   return paths;
+}
+
+// Reduce an item's resolved transaction link to the page-agnostic receipt
+// target the receipt manager addresses — both carry the same ids, the link
+// just adds the item-specific line-item snapshot the manager re-reads live.
+function linkToReceiptTarget(link: ItemTxnLink): TxnReceiptTarget {
+  return link.kind === "history"
+    ? { kind: "history", accountId: link.accountId, entryId: link.entryId }
+    : {
+        kind: "row",
+        sheetId: link.sheetId,
+        sheetItemId: link.sheetItemId,
+        rowId: link.rowId,
+      };
 }
 
 export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
@@ -646,40 +656,28 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [adapter, dispatch],
   );
 
+  // Transaction-generic receipt handling — the file write plus the data
+  // commit for ANY transaction's receipt. Shared by the Items sheet and the
+  // Properties repairs view so each page only supplies its target + naming.
+  const receiptManager = useReceiptManager({
+    data,
+    adapter,
+    settings: effectiveSettings,
+    dispatch,
+  });
+  const { canManageReceipt, uploadReceipt, downloadReceipt, removeReceipt } =
+    receiptManager;
+
   // Item receipt attachment. A receipt hangs off the single transaction an
   // item is linked to (an item can belong to at most one purchase), so
   // managing an item's receipt reads / writes the linked row's or history
-  // entry's `receiptPath` — `findItemLink` resolves which. Committing the
-  // receiptPath alongside the existing line items leaves the links
-  // untouched. The file is named off the item (its name + acquired date)
-  // for a recognisable filename on the Items sheet.
-  const canManageItemReceipt = adapter?.capabilities.has("receipts") ?? false;
-  const commitItemReceipt = useCallback(
-    (link: ItemTxnLink, receiptPath: string): void => {
-      if (link.kind === "history") {
-        dispatch({
-          type: "linkLineItemsToHistoryEntry",
-          accountId: link.accountId,
-          entryId: link.entryId,
-          lineItems: link.lineItems,
-          receiptPath,
-        });
-        return;
-      }
-      dispatch({
-        type: "setRowLineItems",
-        sheetId: link.sheetId,
-        itemId: link.sheetItemId,
-        rowId: link.rowId,
-        lineItems: link.lineItems,
-        receiptPath,
-      });
-    },
-    [dispatch],
-  );
+  // entry's `receiptPath` — `findItemLink` resolves which, and
+  // `linkToReceiptTarget` reduces it to the generic address the receipt
+  // manager addresses. The file is named off the item (its name + acquired
+  // date + type) for a recognisable filename on the Items sheet.
+  const canManageItemReceipt = canManageReceipt;
   const onUploadItemReceipt = useCallback(
     async (item: Item, file: File): Promise<string> => {
-      if (!adapter?.receipts) throw new Error("receipts unavailable");
       const link = findItemLink(data, item.id);
       if (!link) throw new Error("item not linked to a transaction");
       const subtype = item.subtypeId
@@ -688,51 +686,23 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       const typeLabel = subtype
         ? allTypesMerged.find((ty) => ty.id === subtype.typeId)?.name
         : undefined;
-      const path = buildReceiptPath({
-        pattern: effectiveSettings.receiptNamePattern,
+      return uploadReceipt(linkToReceiptTarget(link), file, {
         companyName: item.name,
         entryId: item.id,
         entryDate: item.acquiredAt,
-        today: todayIso(),
-        extension: extensionOf(file.name),
         typeLabel,
-        uncategorizedLabel: t("items.receiptUncategorized"),
-        // Excluding the linked transaction's own current path reuses its
-        // tidy name on replace, so the new file overwrites it in place.
-        usedPaths: collectReceiptPaths(data, link.receiptPath),
       });
-      await adapter.receipts.upload(path, file);
-      unlockAchievement("receiptKeeper");
-      commitItemReceipt(link, path);
-      return path;
     },
-    [
-      adapter,
-      data,
-      allTypesMerged,
-      effectiveSettings.receiptNamePattern,
-      t,
-      commitItemReceipt,
-    ],
+    [data, allTypesMerged, uploadReceipt],
   );
-  const onDownloadItemReceipt = useCallback(
-    async (path: string): Promise<Blob> => {
-      if (!adapter?.receipts) throw new Error("receipts unavailable");
-      const blob = await adapter.receipts.download(path);
-      if (!blob) throw new Error("receipt missing");
-      return blob;
-    },
-    [adapter],
-  );
+  const onDownloadItemReceipt = downloadReceipt;
   const onRemoveItemReceipt = useCallback(
     async (item: Item, path: string): Promise<void> => {
-      if (!adapter?.receipts) throw new Error("receipts unavailable");
       const link = findItemLink(data, item.id);
-      await adapter.receipts.remove(path);
-      // Empty string clears the receiptPath; the line items are preserved.
-      if (link) commitItemReceipt(link, "");
+      if (!link) return;
+      await removeReceipt(linkToReceiptTarget(link), path);
     },
-    [adapter, data, commitItemReceipt],
+    [data, removeReceipt],
   );
   // Accounts / items pages have no row-level select-many — the toggle is
   // disabled there instead of dropping into an empty selection mode.
@@ -973,6 +943,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   data={data}
                   settings={effectiveSettings}
                   dispatch={dispatch}
+                  canManageReceipt={canManageReceipt}
+                  onUploadReceipt={uploadReceipt}
+                  onDownloadReceipt={downloadReceipt}
+                  onRemoveReceipt={removeReceipt}
                 />
               ) : activeSheet.type === "salary" ? (
                 <SalaryPage

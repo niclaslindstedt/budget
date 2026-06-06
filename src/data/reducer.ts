@@ -15,6 +15,7 @@ import type {
   Mortgage,
   MortgagePayment,
   Property,
+  PropertyRepair,
   PropertyValuePoint,
   Salary,
   SeriesMatchRule,
@@ -432,6 +433,16 @@ export type Action =
         date: string;
       }[];
     }
+  | {
+      // Bulk-add repairs / renovations bound to a property in one pass —
+      // each accepted from the "Add" candidate picker (a bank charge the
+      // user tagged Repairs / Renovations). One undo entry, no intermediate
+      // re-render. A no-op on an empty list.
+      type: "addRepairs";
+      propertyId: string;
+      repairs: PropertyRepair[];
+    }
+  | { type: "deleteRepair"; propertyId: string; repairId: string }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }

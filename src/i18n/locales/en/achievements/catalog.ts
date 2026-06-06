@@ -271,6 +271,12 @@ const catalog = {
     name: "Payment Ledger",
     condition: "Edit or remove a recorded mortgage payment from a property.",
   },
+  firstRepair: {
+    name: "Fixer-Upper",
+    condition: "Add your first repair or renovation to a property.",
+    learnMore:
+      "Tag a bank charge with the Repairs or Renovations type, then open a property's wrench view and add it. Each repair links to its source transaction, and attaching the receipt keeps the cost ready for a future tax deduction — a repair with no receipt is flagged so you don't lose the paperwork.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

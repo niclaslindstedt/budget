@@ -42,3 +42,12 @@ doesn't add up to the drop from the original loan to the current balance —
 a hint that a payment is missing or a figure is off. A property can carry several
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.
+
+Each property also tracks its **repairs and renovations** — open the
+wrench view on a property to add any bank charge you tagged Repairs or
+Renovations, across all your accounts. A repair links back to the
+transaction it came from, so attaching its receipt keeps the cost ready
+for a future tax deduction; a repair with no receipt is flagged "missing
+receipt" so the paperwork doesn't slip. The same transaction can't be
+used for two properties, and you can attach, view, replace, or remove a
+receipt straight from the list.

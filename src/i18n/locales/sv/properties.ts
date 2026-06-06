@@ -165,6 +165,32 @@ const properties: PropertiesCatalog = {
   deleteAllPaymentsConfirm:
     "Alla registrerade betalningar på {name} tas bort så att du kan köra Hitta bolånebetalningar från början igen. Det går inte att ångra.",
 
+  // Repairs & renovations view.
+  viewRepairs: "Visa reparationer och renoveringar",
+  repairsTitle: "Reparationer & renoveringar",
+  repairsEmpty: "Inga reparationer eller renoveringar registrerade ännu.",
+  repairsAdd: "Lägg till",
+  repairTypeRepairs: "Reparation",
+  repairTypeRenovations: "Renovering",
+  repairReceipt: "Kvitto",
+  manageReceipt: "Hantera kvitto",
+  missingReceipt: "Saknar kvitto",
+  repairsMissingReceiptsOne: "{count} saknat kvitto",
+  repairsMissingReceiptsOther: "{count} saknade kvitton",
+  deleteRepair: "Ta bort",
+  deleteRepairTitle: "Ta bort post?",
+  deleteRepairConfirm:
+    "{description} ({amount}) tas bort från fastigheten. Källtransaktionen och eventuellt kvitto behålls. Det går inte att ångra.",
+
+  // Add repairs / renovations picker.
+  addRepairsTitle: "Lägg till reparationer & renoveringar",
+  addRepairsEmpty:
+    "Inga oanvända Reparation- eller Renovering-transaktioner hittades. Tagga en utgift med typen Reparation eller Renovering i din budget och kom tillbaka.",
+  addRepairsSelect: "Transaktioner att lägga till",
+  addRepairsOne: "Lägg till {count} post",
+  addRepairsOther: "Lägg till {count} poster",
+  repairHasReceipt: "Har kvitto",
+
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",
   deletePropertyConfirm:

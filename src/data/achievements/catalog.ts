@@ -73,6 +73,7 @@ import {
   Wallet,
   Wand2,
   WifiOff,
+  Wrench,
 } from "lucide-react";
 
 import { mortgagePayoffProgress } from "../property-mortgage/progress";
@@ -246,6 +247,10 @@ const hasFullyPaidMortgage = (s: UserData) =>
       return progress !== null && progress >= 1;
     }),
   );
+// A property carries at least one recorded repair / renovation — the user
+// bound a tagged bank charge to a property through the wrench view.
+const hasRepair = (s: UserData) =>
+  s.properties.some((p) => p.repairs.length > 0);
 
 // Did the named device bucket's headerAction transition away from the
 // default in this `(prev, next)` step? Used by the `shortcut`
@@ -810,6 +815,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "pro",
     glyph: ReceiptText,
     trigger: { kind: "manual" },
+  },
+  {
+    // The user bound the first tagged Repairs / Renovations charge to a
+    // property through the wrench view — the start of a deductible-cost
+    // record for a future net-value calculation.
+    id: "firstRepair",
+    tier: "pro",
+    glyph: Wrench,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) => !hasRepair(prev) && hasRepair(next),
+    },
   },
   {
     id: "archaeologist",

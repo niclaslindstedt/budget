@@ -167,6 +167,33 @@ const properties = {
   deleteAllPaymentsConfirm:
     "Every recorded payment on {name} will be removed so you can re-run Find mortgage payments from scratch. This cannot be undone.",
 
+  // Repairs & renovations view.
+  viewRepairs: "View repairs and renovations",
+  repairsTitle: "Repairs & renovations",
+  repairsEmpty: "No repairs or renovations recorded yet.",
+  repairsAdd: "Add",
+  repairTypeRepairs: "Repair",
+  repairTypeRenovations: "Renovation",
+  repairReceipt: "Receipt",
+  manageReceipt: "Manage receipt",
+  missingReceipt: "Missing receipt",
+  // Shown on the card's wrench button when some repairs lack a receipt.
+  repairsMissingReceiptsOne: "{count} missing receipt",
+  repairsMissingReceiptsOther: "{count} missing receipts",
+  deleteRepair: "Delete",
+  deleteRepairTitle: "Delete repair?",
+  deleteRepairConfirm:
+    "{description} ({amount}) will be removed from this property. The source transaction and any receipt are kept. This cannot be undone.",
+
+  // Add repairs / renovations picker.
+  addRepairsTitle: "Add repairs & renovations",
+  addRepairsEmpty:
+    "No unused Repairs or Renovations transactions found. In your budget, tag a charge with the Repairs or Renovations type, then come back.",
+  addRepairsSelect: "Transactions to add",
+  addRepairsOne: "Add {count} record",
+  addRepairsOther: "Add {count} records",
+  repairHasReceipt: "Has receipt",
+
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",
   deletePropertyConfirm:
