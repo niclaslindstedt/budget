@@ -40,6 +40,8 @@ const properties: PropertiesCatalog = {
   payoffLabel: "Avbetalat",
   payoffPercent: "{percent}%",
   payoffBarLabel: "{percent}% av lånet avbetalat",
+  payoffToggleShow: "Visa betalningsfördelning",
+  payoffToggleHide: "Dölj betalningsfördelning",
 
   // Property editor modal.
   newPropertyTitle: "Ny fastighet",

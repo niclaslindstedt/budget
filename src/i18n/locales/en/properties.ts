@@ -42,6 +42,10 @@ const properties = {
   payoffLabel: "Paid off",
   payoffPercent: "{percent}%",
   payoffBarLabel: "{percent}% of the loan paid off",
+  // Pressing the payoff bar toggles the paid / interest / amortisation
+  // breakdown card below it (only when there are recorded payments).
+  payoffToggleShow: "Show paid breakdown",
+  payoffToggleHide: "Hide paid breakdown",
 
   // Property editor modal.
   newPropertyTitle: "New property",
