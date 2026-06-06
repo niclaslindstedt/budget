@@ -121,6 +121,16 @@ describe("describeActionSubject", () => {
     expect(
       describe2({ type: "deleteProperty", propertyId: "p1" }, prev),
     ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "setPropertySaleEstimate",
+          propertyId: "p1",
+          estimate: { broker: { mode: "none" } },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
   });
 
   it("names the mortgage and counts added payments", () => {

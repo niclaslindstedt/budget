@@ -831,6 +831,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    // The user opened the Net sale profit estimator on a property to model
+    // a sale's proceeds after broker, advertising, repairs, and
+    // capital-gains tax. A manual unlock — opening a read-only modal can't
+    // be spotted from a derived state slice.
+    id: "netSaleProfit",
+    tier: "pro",
+    glyph: Calculator,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "archaeologist",
     tier: "pro",
     glyph: History,

@@ -97,6 +97,7 @@ const actionHistory: ActionHistoryCatalog = {
     addRepairs: "Lade till reparationer",
     updateRepair: "Redigerade reparation",
     deleteRepair: "Tog bort reparation",
+    setPropertySaleEstimate: "Uppdaterade försäljningskalkyl",
     createTransfer: "Skapade överföring",
     updateTransfer: "Redigerade överföring",
     deleteTransfer: "Tog bort överföring",

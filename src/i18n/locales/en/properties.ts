@@ -15,6 +15,7 @@ const properties = {
   currentValue: "Current value",
   noValue: "No value recorded",
   updateValue: "Update value",
+  netSaleProfit: "Net sale profit",
   editProperty: "Edit property",
   deleteProperty: "Delete property",
   mortgages: "Mortgages",
@@ -169,6 +170,8 @@ const properties = {
 
   // Repairs & renovations view.
   viewRepairs: "View repairs and renovations",
+  // The repairs menu entry when some repairs lack a receipt.
+  viewRepairsMissing: "View repairs ({count} missing receipts)",
   repairsTitle: "Repairs & renovations",
   repairsEmpty: "No repairs or renovations recorded yet.",
   repairsAdd: "Add",
@@ -223,6 +226,38 @@ const properties = {
   deleteMortgageTitle: "Delete mortgage?",
   deleteMortgageConfirm:
     "{name} and its payments will be removed. This cannot be undone.",
+
+  // Net sale profit estimator.
+  netSale: {
+    sliderLabel: "Sale price",
+    purchasePrice: "Purchase price",
+    repairs: "Repairs & renovations",
+    advertisement: "Advertising (e.g. Hemnet)",
+    taxableGain: "Taxable gain",
+    netProfit: "Net profit",
+    netLoss: "Net loss",
+    broker: {
+      label: "Broker fee",
+      none: "No broker",
+      fixed: "Fixed amount",
+      percent: "Percentage of sale",
+      tiered: "Base + percentage above a threshold",
+      amount: "Broker fee",
+      percentRate: "Percentage (%)",
+      base: "Base fee",
+      threshold: "Threshold",
+      tieredHint:
+        "The base fee always applies; the percentage applies only to the part of the sale price above the threshold.",
+    },
+    line: {
+      sellPrice: "Sale price",
+      broker: "Broker fee",
+      advertisement: "Advertising",
+      repairs: "Repairs & renovations",
+      purchasePrice: "Purchase price",
+      tax: "Capital-gains tax",
+    },
+  },
 
   // Shared verbs.
   save: "Save",

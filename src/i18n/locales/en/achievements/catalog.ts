@@ -277,6 +277,12 @@ const catalog = {
     learnMore:
       "Tag a bank charge with the Repairs or Renovations type, then open a property's wrench view and add it. Each repair links to its source transaction, and attaching the receipt keeps the cost ready for a future tax deduction — a repair with no receipt is flagged so you don't lose the paperwork.",
   },
+  netSaleProfit: {
+    name: "For Sale",
+    condition: "Open the Net sale profit estimator on a property.",
+    learnMore:
+      "From a property's … menu, pick Net sale profit. Drag the sale-price slider and watch the breakdown: broker fee, advertising, repairs, the purchase price, and your location's capital-gains tax all come off before the bottom line. Try the broker modes — fixed, a percentage, or a base plus a percentage above a threshold — to match how your agent charges.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

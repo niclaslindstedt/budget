@@ -93,6 +93,17 @@ const settings: SettingsCatalog = {
     title: "Språk",
     hint: "Översätt gränssnittet mellan svenska och engelska. Datum- och talformat styrs separat under Format.",
   },
+  location: {
+    title: "Plats",
+    label: "Plats",
+    hint: "Avgör vilket lands skatteregler som gäller — vinstskatt vid fastighetsförsäljning, och standardvalet för nya skatteprofiler för lön.",
+    request: "Begär en ny plats…",
+    requestHint:
+      "Öppnar ett GitHub-ärende för att föreslå ett land och dess regler.",
+    name: {
+      SE: "Sverige",
+    },
+  },
   appliesToMobile: "Gäller mobila enheter",
   appliesToDesktop: "Gäller datorenheter",
   appearance: {

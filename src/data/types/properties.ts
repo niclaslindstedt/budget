@@ -10,6 +10,8 @@
 // readers tolerate and writers preserve fields they don't recognise, so
 // those land without a migration — exactly as `Item` documents.
 
+import type { BrokerCost } from "../tax/types";
+
 // One manually-entered snapshot of a property's market value. "Update
 // value" on the page appends one of these; the property's current value
 // is simply the latest point by date. Carries its own `id` (rather than
@@ -181,4 +183,23 @@ export type Property = {
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
   repairs: PropertyRepair[];
+  // The last "Net sale profit" estimate the user configured for this
+  // property — the broker model, advertising cost, and the sale price
+  // they were experimenting with. Absent until they open the estimator
+  // and change something. Repairs and purchase price are NOT stored here:
+  // they always prefill live from `repairs` / `purchaseAmount` so the
+  // estimate tracks the real data. Optional and additive — old budgets
+  // simply lack it; the validator leaves it absent, no migration needed.
+  saleEstimate?: PropertySaleEstimate;
+};
+
+// A saved "Net sale profit" estimate. `broker` carries the chosen broker
+// model and its inputs (see `BrokerCost`). `sellPrice` is the last value
+// the user parked the experiment slider on; absent means "default to the
+// property's current value on open". `advertisementCost` is the selling
+// advert spend (e.g. Hemnet).
+export type PropertySaleEstimate = {
+  sellPrice?: number;
+  advertisementCost?: number;
+  broker: BrokerCost;
 };

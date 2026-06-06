@@ -148,6 +148,10 @@ function computeAnnual(
   };
 }
 
+// SE capital-gains-on-property calc lives in its own module; re-exported
+// here so `engine.ts` imports every SE calculator from one place.
+export { swedishPropertySaleCalculator } from "./property-sale";
+
 export const swedishCalculator: TaxCalculator = {
   netFromGrossMonthly(
     grossMonthly: number,

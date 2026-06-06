@@ -274,6 +274,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Tagga en bankutgift med typen Reparation eller Renovering, öppna sedan en fastighets skiftnyckelvy och lägg till den. Varje post länkas till sin källtransaktion, och att bifoga kvittot håller kostnaden redo för ett framtida skatteavdrag — en post utan kvitto flaggas så att du inte tappar bort underlaget.",
   },
+  netSaleProfit: {
+    name: "Till salu",
+    condition: "Öppna kalkylen för nettovinst på en fastighet.",
+    learnMore:
+      "Välj Nettovinst vid försäljning i en fastighets …-meny. Dra i reglaget för försäljningspris och se uppdelningen: mäklararvode, annonsering, reparationer, inköpspriset och din plats vinstskatt dras alla av före slutsumman. Prova mäklarlägena — fast belopp, en procentsats, eller en bas plus en procentsats över en gräns — för att matcha hur din mäklare tar betalt.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

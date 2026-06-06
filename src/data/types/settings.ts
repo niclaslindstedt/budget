@@ -1,3 +1,4 @@
+import type { TaxLocation } from "../tax/types";
 import type {
   CustomTheme,
   DateFormat,
@@ -227,6 +228,14 @@ export type CommonSettings = {
   // it never changes the stored number. Edited in the Property settings
   // tab. Defaults to `"kvm"`.
   propertySizeUnit: PropertySizeUnit;
+  // The jurisdiction whose tax rules apply to estimates that aren't
+  // bound to a per-sheet tax profile — today the property-sale
+  // capital-gains calc on the Properties page. A `TaxLocation` literal
+  // ("SE" today). Defaults to `"SE"`, matching the app's Sweden-leaning
+  // defaults. Also seeds the default country when creating a new salary
+  // tax profile. Edited in the Location section of the General settings
+  // tab.
+  location: TaxLocation;
 };
 
 // Display label for a property's living area. Both mean square metres;

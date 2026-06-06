@@ -325,6 +325,8 @@ export function describeActionSubject(
     case "updateRepair":
     case "deleteRepair":
       return name(byId(next.properties, action.propertyId)?.name);
+    case "setPropertySaleEstimate":
+      return name(byId(next.properties, action.propertyId)?.name);
 
     // Transfers.
     case "createTransfer":

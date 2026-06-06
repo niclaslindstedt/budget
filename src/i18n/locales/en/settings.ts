@@ -93,6 +93,16 @@ const settings = {
     title: "Language",
     hint: "Translate the UI between English and Swedish. Date and number formats are controlled separately under Format.",
   },
+  location: {
+    title: "Location",
+    label: "Location",
+    hint: "Determines which country's tax rules apply — capital-gains tax on property sales, and the default for new salary tax profiles.",
+    request: "Request a new location…",
+    requestHint: "Opens a GitHub issue to suggest a country and its rules.",
+    name: {
+      SE: "Sweden",
+    },
+  },
   appliesToMobile: "Applies to mobile devices",
   appliesToDesktop: "Applies to desktop devices",
   appearance: {

@@ -43,9 +43,24 @@ a hint that a payment is missing or a figure is off. A property can carry severa
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.
 
+Every per-property action — record a value, estimate a sale, view
+payments or repairs, edit, delete — now lives behind a single "…" menu
+on the property card, so the header stays tidy as the feature grows.
+
+Estimate what a sale would net you with the new **Net sale profit**
+calculator (in a property's "…" menu): drag a slider to try different
+sale prices and watch a live breakdown — broker fee, advertising,
+repairs and renovations, and the original purchase price all come off,
+then capital-gains tax, ending in a net profit or loss that stands out in
+green or red. The broker fee can be a flat amount, a percentage of the
+sale, or a base fee plus a percentage above a threshold — or skipped
+entirely. The tax follows your **Location**, a new setting under General
+that decides which country's tax rules apply (to property sales and your
+salary); only Sweden is built in today, with a link to request more.
+
 Each property also tracks its **repairs and renovations** — open the
-wrench view on a property to add any bank charge you tagged Repairs or
-Renovations, across all your accounts. Add one at a time with a
+wrench view from a property's "…" menu to add any bank charge you tagged
+Repairs or Renovations, across all your accounts. Add one at a time with a
 description of the work ("repainted the kitchen"), a subtype that
 classifies it, and the company and tags it was with — or quick-add
 several charges in one go and fill in the details later. Company and
