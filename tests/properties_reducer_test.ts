@@ -356,4 +356,59 @@ describe("properties reducer — repairs", () => {
       "r1",
     ]);
   });
+
+  it("round-trips a multi-transaction repair's additional sources", () => {
+    const data = reducer(seeded(), {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [
+        {
+          ...REPAIR,
+          amount: 9800,
+          additionalSources: [
+            { accountId: "a1", entryId: "h2" },
+            { accountId: "a2", entryId: "h3" },
+          ],
+        },
+      ],
+    });
+    const repair = revalidate(data).properties[0].repairs[0];
+    expect(repair.additionalSources).toEqual([
+      { accountId: "a1", entryId: "h2" },
+      { accountId: "a2", entryId: "h3" },
+    ]);
+
+    // Clearing the field via an `updateRepair` patch leaves the record
+    // byte-identical to a single-source one reloaded from storage.
+    const cleared = reducer(data, {
+      type: "updateRepair",
+      propertyId: "p1",
+      repairId: "r1",
+      patch: { additionalSources: undefined, amount: 6800 },
+    });
+    const single = cleared.properties[0].repairs[0];
+    expect("additionalSources" in single).toBe(false);
+    expect(revalidate(cleared).properties[0].repairs[0]).toEqual(single);
+  });
+
+  it("drops malformed additional sources on load", () => {
+    const data = reducer(seeded(), {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [
+        {
+          ...REPAIR,
+          additionalSources: [
+            { accountId: "a1", entryId: "h2" },
+            // Malformed entries are swept; an all-bad list drops the field.
+            { accountId: "", entryId: "h3" },
+            { accountId: "a2", entryId: "" },
+          ],
+        } as never,
+      ],
+    });
+    expect(revalidate(data).properties[0].repairs[0].additionalSources).toEqual(
+      [{ accountId: "a1", entryId: "h2" }],
+    );
+  });
 });

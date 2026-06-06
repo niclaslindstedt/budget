@@ -8,6 +8,7 @@ import type {
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
+  RepairSource,
 } from "../types";
 import { fail, isObject, type Result } from "./helpers";
 
@@ -61,8 +62,9 @@ function validatePayment(raw: unknown): MortgagePayment | null {
 
 // Validate one repair / renovation. Its identity fields — `id`, `date`,
 // `typeId`, and the `accountId` / `sourceHistoryId` pair locating the
-// source bank charge — are all required (a repair with no source can't
-// resolve its receipt). The `accountId` is NOT gated on the known-account
+// **primary** source bank charge — are all required (a repair with no source
+// can't resolve its receipt). Any `additionalSources` (a multi-transaction
+// repair) are validated leniently below. The `accountId` is NOT gated on the known-account
 // set: a repair whose source account was later deleted keeps its snapshot
 // (the receipt simply resolves as missing), mirroring how a
 // `MortgagePayment.sourceHistoryId` is preserved unconditionally. The
@@ -92,6 +94,22 @@ function validateRepair(raw: unknown): PropertyRepair | null {
   };
   if (typeof raw.subtypeId === "string" && raw.subtypeId !== "")
     repair.subtypeId = raw.subtypeId;
+  // Additional source transactions (a multi-transaction repair). Each is the
+  // same `{ accountId, entryId }` shape as the primary; a malformed one is
+  // dropped rather than failing the repair, mirroring how the primary
+  // accountId is preserved unconditionally. Absent / empty ⇒ omitted, so a
+  // single-transaction repair stays byte-identical to a reloaded one.
+  if (Array.isArray(raw.additionalSources)) {
+    const sources: RepairSource[] = [];
+    for (const rawSource of raw.additionalSources) {
+      if (!isObject(rawSource)) continue;
+      const { accountId: srcAccount, entryId } = rawSource;
+      if (typeof srcAccount !== "string" || srcAccount === "") continue;
+      if (typeof entryId !== "string" || entryId === "") continue;
+      sources.push({ accountId: srcAccount, entryId });
+    }
+    if (sources.length > 0) repair.additionalSources = sources;
+  }
   return repair;
 }
 

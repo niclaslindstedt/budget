@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import {
   Building2,
   Drill,
+  Layers,
   PaintRoller,
   Plus,
   AlertTriangle,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
+import { repairSourceCount } from "../../data/property-repairs/sources";
 import type {
   ReceiptNaming,
   TxnReceiptTarget,
@@ -290,6 +292,7 @@ function RepairRowImpl({
   const label = repair.description || typeLabel;
   const company = metadata?.company ?? null;
   const tags = metadata?.tags ?? [];
+  const sourceCount = repairSourceCount(repair);
 
   return (
     <tr
@@ -316,6 +319,14 @@ function RepairRowImpl({
             <span className="tabular-nums">
               {formatDate(repair.date, settings.dateFormat, lang)}
             </span>
+            {sourceCount > 1 && (
+              <span className="inline-flex items-center gap-1">
+                <Layers size={12} aria-hidden focusable={false} />
+                {t("properties.repairSourcesCountOther", {
+                  count: sourceCount,
+                })}
+              </span>
+            )}
             {company && (
               <span className="inline-flex items-center gap-1">
                 <Building2 size={12} aria-hidden focusable={false} />

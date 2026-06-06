@@ -205,12 +205,18 @@ const properties = {
   addRepairsOther: "Add {count} records",
   repairHasReceipt: "Has receipt",
 
-  // Single repair editor — add (with a source-transaction picker) and edit
-  // (description + subtype only; the source charge is read-only).
+  // Single repair editor — add (pick one or more source transactions) and
+  // edit (add / remove transactions, description, subtype).
   repairEditorAddTitle: "Add repair",
   repairEditorEditTitle: "Edit repair",
-  repairSourceLabel: "Source transaction",
-  repairSourcePlaceholder: "Pick a transaction…",
+  // The multi-select list of source transactions; a repair can group several
+  // bank charges that paid one invoice, sharing one receipt.
+  repairSourcesLabel: "Transactions",
+  // Count of selected transactions, shown beside the running total.
+  repairSourcesCountOne: "{count} transaction",
+  repairSourcesCountOther: "{count} transactions",
+  // Marks the transaction that holds the shared receipt for the repair.
+  repairPrimary: "Receipt",
   repairSourceEmpty:
     "No unused Repairs or Renovations transactions found. In your budget, tag a charge with the Repairs or Renovations type, then come back.",
   repairDescriptionLabel: "Description",

@@ -117,7 +117,8 @@ src/
 │       ├── PropertyEditorModal.tsx, UpdatePropertyValueModal.tsx
 │       ├── MortgageEditorModal.tsx, MortgageDiscoveryModal.tsx
 │       ├── RepairsModal.tsx           # wrench view — swipeable repair rows
-│       ├── RepairsEditModal.tsx       # single-repair add/edit (description + subtype)
+│       ├── RepairsEditModal.tsx       # single-repair add/edit (multi-select
+│       │                              #   transactions + description + subtype)
 │       ├── RepairEntryActionsMenu.tsx # "…" swipe-strip menu (manage receipt)
 │       └── RepairsAddModal.tsx        # bulk quick-add candidate picker
 ├── data/
@@ -244,9 +245,14 @@ src/
 │   │   └── progress.ts         # mortgagePayoffProgress — share of the original
 │   │                           #   loan amortised away (drives the payoff bar)
 │   ├── property-repairs/   # properties page — repairs / renovations helpers
-│   │   └── candidates.ts       # findRepairCandidates — Repairs / Renovations
-│   │                           #   outflows across all accounts not yet bound to
-│   │                           #   any property's repairs (Add repairs picker)
+│   │   ├── candidates.ts       # findRepairCandidates — Repairs / Renovations
+│   │   │                       #   outflows across all accounts not yet bound to
+│   │   │                       #   any property's repairs (Add repairs picker);
+│   │   │                       #   resolveRepairSourceRows — a repair's own
+│   │   │                       #   sources resolved for the editor's checklist
+│   │   └── sources.ts          # repairSources / repairSourceCount / repairSourceKey
+│   │                           #   — flatten a repair's primary + additionalSources
+│   │                           #   into one uniform transaction list
 │   ├── receipts/           # transaction-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host txn (history entry /
@@ -797,6 +803,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   Each repair later gained an optional user `description` (editable) and a
   `subtypeId` classifying the work under its Repairs / Renovations type —
   both additive optional fields that need no migration (absent ⇒ unset).
+  A repair can now also group several transactions paying one invoice via an
+  optional `additionalSources` (`{ accountId, entryId }[]`); the primary
+  `accountId` / `sourceHistoryId` still hosts the single shared receipt, and
+  `amount` is the sum across every source. Additive optional, no migration
+  (absent / empty ⇒ a single-transaction repair).
 
 ## State management
 

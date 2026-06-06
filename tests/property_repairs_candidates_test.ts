@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { findRepairCandidates } from "../src/data/property-repairs/candidates";
+import {
+  findRepairCandidates,
+  resolveRepairSourceRows,
+} from "../src/data/property-repairs/candidates";
 import { freshUserData } from "../src/storage/local";
 import type { HistoryEntry, UserData } from "../src/data/types";
 
@@ -93,5 +96,78 @@ describe("findRepairCandidates", () => {
     };
     const ids = findRepairCandidates(data).map((c) => c.entryId);
     expect(ids).toEqual(["free"]);
+  });
+
+  it("excludes a charge bound as an additional source of a repair", () => {
+    const base = withHistory([
+      entry({ id: "primary", userTypeId: REPAIRS }),
+      entry({ id: "extra", userTypeId: REPAIRS }),
+      entry({ id: "free", userTypeId: REPAIRS }),
+    ]);
+    const data: UserData = {
+      ...base,
+      properties: [
+        {
+          id: "p1",
+          name: "Cabin",
+          valueHistory: [],
+          mortgages: [],
+          repairs: [
+            {
+              id: "r1",
+              date: "2026-01-20",
+              amount: 2000,
+              description: "Kitchen invoice",
+              typeId: REPAIRS,
+              accountId: "a1",
+              sourceHistoryId: "primary",
+              additionalSources: [{ accountId: "a1", entryId: "extra" }],
+            },
+          ],
+        },
+      ],
+    };
+    const ids = findRepairCandidates(data).map((c) => c.entryId);
+    expect(ids).toEqual(["free"]);
+  });
+});
+
+describe("resolveRepairSourceRows", () => {
+  it("resolves a repair's own sources, primary first, skipping gone entries", () => {
+    const base = withHistory([
+      entry({ id: "primary", userTypeId: REPAIRS, amount: -1500 }),
+      entry({ id: "extra", userTypeId: REPAIRS, amount: -500 }),
+    ]);
+    const data: UserData = {
+      ...base,
+      properties: [
+        {
+          id: "p1",
+          name: "Cabin",
+          valueHistory: [],
+          mortgages: [],
+          repairs: [
+            {
+              id: "r1",
+              date: "2026-01-20",
+              amount: 2000,
+              description: "Kitchen invoice",
+              typeId: REPAIRS,
+              accountId: "a1",
+              sourceHistoryId: "primary",
+              additionalSources: [
+                { accountId: "a1", entryId: "extra" },
+                // A source whose entry is gone (re-import) is omitted.
+                { accountId: "a1", entryId: "vanished" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const rows = resolveRepairSourceRows(data, data.properties[0].repairs[0]);
+    expect(rows.map((r) => r.entryId)).toEqual(["primary", "extra"]);
+    expect(rows[0].amount).toBe(1500);
+    expect(rows[1].amount).toBe(500);
   });
 });

@@ -7,7 +7,10 @@ import {
   resolveEntryLabels,
 } from "../../data/budget/synthesis";
 import { allCategories, allTypes } from "../../data/presets/merge";
-import { findRepairCandidates } from "../../data/property-repairs/candidates";
+import {
+  findRepairCandidates,
+  resolveRepairSourceRows,
+} from "../../data/property-repairs/candidates";
 import type { Action } from "../../data/reducer";
 import type {
   ReceiptNaming,
@@ -239,14 +242,25 @@ export function PropertiesPage({
     return { count: property.repairs.length, missingReceiptCount };
   }
 
-  // Candidate charges for the add flows — computed while either the bulk
-  // picker or the single-add form (add mode) is open.
-  const repairsAddOpen =
-    addingRepairsFor !== null ||
-    (repairEditor !== null && repairEditor.repair === null);
+  // Candidate charges for the add / edit flows — computed while the bulk
+  // picker is open or the single-repair editor is open in either mode (add
+  // builds from candidates; edit extends a repair with more transactions).
+  const repairCandidatesOpen =
+    addingRepairsFor !== null || repairEditor !== null;
   const repairCandidates = useMemo(
-    () => (repairsAddOpen ? findRepairCandidates(data) : []),
-    [repairsAddOpen, data],
+    () => (repairCandidatesOpen ? findRepairCandidates(data) : []),
+    [repairCandidatesOpen, data],
+  );
+
+  // The editing repair's current sources resolved to candidate rows, so the
+  // editor can render them pre-selected (a multi-transaction repair). Empty in
+  // add mode.
+  const editRepairSources = useMemo(
+    () =>
+      repairEditor?.repair
+        ? resolveRepairSourceRows(data, repairEditor.repair)
+        : [],
+    [repairEditor, data],
   );
 
   // The full type / category lists (presets + user) the subtype picker in the
@@ -625,6 +639,7 @@ export function PropertiesPage({
               : null
           }
           candidates={repairCandidates}
+          existingSources={editRepairSources}
           settings={settings}
           subtypes={data.subtypes}
           types={types}
