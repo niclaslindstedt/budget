@@ -63,6 +63,7 @@ export type CategoryIcon =
   | "key"
   | "wrench"
   | "hammer"
+  | "drill"
   | "brush-cleaning"
   | "trash-2"
   | "sprout"
