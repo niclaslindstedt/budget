@@ -210,6 +210,11 @@ const properties = {
   repairDescriptionPlaceholder: "What was done, e.g. Repainted the kitchen",
   repairSubtypeLabel: "Subtype",
   repairSubtypePlaceholder: "Pick a subtype…",
+  repairCompanyLabel: "Company",
+  repairCompanyHint:
+    "Saved on the source transaction, shared with your budget.",
+  repairTagsLabel: "Tags",
+  repairTagsHint: "Tag the transaction to group repairs across properties.",
 
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",

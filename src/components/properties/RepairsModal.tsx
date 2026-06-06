@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import {
+  Building2,
   Drill,
   PaintRoller,
   Plus,
@@ -15,15 +16,17 @@ import type {
   TxnReceiptTarget,
 } from "../../data/receipts/target";
 import type {
+  Company,
   HistoryEntry,
   Property,
   PropertyRepair,
   Settings,
+  Tag,
 } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
-import { formatBalance, formatShortDate } from "../../utils/format";
+import { formatBalance, formatDate } from "../../utils/format";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button } from "../form";
@@ -41,6 +44,14 @@ import { RepairEntryActionsMenu } from "./RepairEntryActionsMenu";
 // footer offers a full single-add form and a bulk quick-add picker, both
 // owned by the page.
 
+// The repair's company / tags, resolved live from the source transaction
+// (override → rule → hint) rather than stored on the repair. Keyed by
+// `${accountId}:${entryId}` in the parent's `repairMetadata` map.
+export type RepairMetadata = {
+  company: Company | null;
+  tags: readonly Tag[];
+};
+
 type Props = {
   open: boolean;
   property: Property | null;
@@ -49,6 +60,10 @@ type Props = {
   // repair reads its current receipt status (attaching one elsewhere clears
   // the "missing" flag here without mutating the repair).
   sourceEntries: ReadonlyMap<string, HistoryEntry>;
+  // The company / tags behind each repair, resolved from its source
+  // transaction and keyed by `${accountId}:${entryId}` — surfaced as
+  // read-only metadata on the row (edited through the repair editor).
+  repairMetadata: ReadonlyMap<string, RepairMetadata>;
   // Whether the active backend can store receipts. When false the manage
   // affordance is hidden, but the "missing receipt" flag still shows — it
   // keeps the tax-deduction urgency visible regardless of backend.
@@ -80,6 +95,7 @@ export function RepairsModal({
   property,
   settings,
   sourceEntries,
+  repairMetadata,
   canManageReceipt,
   onUploadReceipt,
   onDownloadReceipt,
@@ -153,6 +169,7 @@ export function RepairsModal({
                   key={repair.id}
                   repair={repair}
                   settings={settings}
+                  metadata={repairMetadata.get(sourceKey(repair)) ?? null}
                   hasReceipt={receiptPathFor(repair) !== undefined}
                   canManageReceipt={canManageReceipt}
                   onManageReceipt={() => setManagingReceipt(repair)}
@@ -233,6 +250,7 @@ export function RepairsModal({
 type RowProps = {
   repair: PropertyRepair;
   settings: Settings;
+  metadata: RepairMetadata | null;
   hasReceipt: boolean;
   canManageReceipt: boolean;
   onManageReceipt: () => void;
@@ -248,6 +266,7 @@ type RowProps = {
 function RepairRowImpl({
   repair,
   settings,
+  metadata,
   hasReceipt,
   canManageReceipt,
   onManageReceipt,
@@ -269,6 +288,8 @@ function RepairRowImpl({
     ? t("properties.repairTypeRenovations")
     : t("properties.repairTypeRepairs");
   const label = repair.description || typeLabel;
+  const company = metadata?.company ?? null;
+  const tags = metadata?.tags ?? [];
 
   return (
     <tr
@@ -280,21 +301,27 @@ function RepairRowImpl({
       }}
       {...touchHandlers}
     >
-      <td className="px-1 py-2 align-middle">
+      <td className="px-1 py-3 align-top">
         <Glyph
           size={16}
-          className="shrink-0 text-accent"
+          className="mt-0.5 shrink-0 text-accent"
           aria-label={typeLabel}
           focusable={false}
         />
       </td>
-      <td className="min-w-0 px-1.5 py-2 align-middle">
-        <span className="min-w-0">
+      <td className="min-w-0 px-1.5 py-3 align-top">
+        <span className="flex min-w-0 flex-col gap-1">
           <span className="block truncate text-sm text-fg-bright">{label}</span>
-          <span className="flex items-center gap-1.5 text-xs text-muted">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span className="tabular-nums">
-              {formatShortDate(repair.date, settings.shortDateFormat, lang)}
+              {formatDate(repair.date, settings.dateFormat, lang)}
             </span>
+            {company && (
+              <span className="inline-flex items-center gap-1">
+                <Building2 size={12} aria-hidden focusable={false} />
+                <span className="min-w-0 truncate text-fg">{company.name}</span>
+              </span>
+            )}
             {!hasReceipt && (
               <span className="inline-flex items-center gap-1 text-negative">
                 <AlertTriangle size={12} aria-hidden focusable={false} />
@@ -302,9 +329,26 @@ function RepairRowImpl({
               </span>
             )}
           </span>
+          {tags.length > 0 && (
+            <span className="flex flex-wrap items-center gap-1">
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-fg"
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 truncate">{tag.name}</span>
+                </span>
+              ))}
+            </span>
+          )}
         </span>
       </td>
-      <td className="px-1.5 py-2 text-right align-middle text-sm whitespace-nowrap tabular-nums text-fg-bright">
+      <td className="px-1.5 py-3 text-right align-top text-sm whitespace-nowrap tabular-nums text-fg-bright">
         <span className="justify-end">
           {formatBalance(repair.amount, settings, { neverAbbreviate: true })}
         </span>
