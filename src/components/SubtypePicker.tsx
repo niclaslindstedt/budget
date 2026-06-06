@@ -37,6 +37,12 @@ type Props = {
   // spawn a brand-new type / category without leaving the subtype flow.
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  // When set, the parent type is fixed: the creator skips its `TypePicker`
+  // and files a new subtype under this type id. Used by scoped callers (the
+  // repairs editor pins it to Repairs / Renovations) where the parent is
+  // never the user's choice. Callers also pass an already-filtered `subtypes`
+  // list so the dropdown only offers subtypes under the same type.
+  fixedParentTypeId?: string;
   placeholder?: string;
 };
 
@@ -49,6 +55,7 @@ export function SubtypePicker({
   onCreate,
   onCreateType,
   onCreateCategory,
+  fixedParentTypeId,
   placeholder,
 }: Props) {
   const t = useT();
@@ -222,6 +229,7 @@ export function SubtypePicker({
           existing={subtypes}
           types={types}
           categories={categories}
+          fixedParentTypeId={fixedParentTypeId}
           onCreateType={onCreateType}
           onCreateCategory={onCreateCategory}
           onCancel={close}
@@ -242,6 +250,7 @@ function SubtypeCreator({
   existing,
   types,
   categories,
+  fixedParentTypeId,
   onCreateType,
   onCreateCategory,
   onCancel,
@@ -250,6 +259,7 @@ function SubtypeCreator({
   existing: readonly Subtype[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  fixedParentTypeId?: string;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCancel: () => void;
@@ -257,7 +267,11 @@ function SubtypeCreator({
 }) {
   const t = useT();
   const [name, setName] = useState("");
-  const [typeId, setTypeId] = useState<string | null>(null);
+  // With a pinned parent type the picker is skipped and the type is fixed;
+  // otherwise the user chooses it through the `TypePicker` below.
+  const [typeId, setTypeId] = useState<string | null>(
+    fixedParentTypeId ?? null,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(inputRef, true);
   const trimmed = name.trim();
@@ -300,18 +314,22 @@ function SubtypeCreator({
               </span>
             )}
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{t("items.parentType")}</span>
-            <TypePicker
-              types={types}
-              categories={categories}
-              selectedId={typeId}
-              onSelect={setTypeId}
-              onCreate={onCreateType}
-              onCreateCategory={onCreateCategory}
-              placeholder={t("items.parentTypePlaceholder")}
-            />
-          </label>
+          {fixedParentTypeId === undefined && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("items.parentType")}
+              </span>
+              <TypePicker
+                types={types}
+                categories={categories}
+                selectedId={typeId}
+                onSelect={setTypeId}
+                onCreate={onCreateType}
+                onCreateCategory={onCreateCategory}
+                placeholder={t("items.parentTypePlaceholder")}
+              />
+            </label>
+          )}
         </div>
       </Modal.Body>
       <Modal.Footer>

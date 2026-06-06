@@ -856,6 +856,74 @@
       background: var(--danger);
       color: white;
     }
+
+    /* Repairs & renovations view — the per-property list inside
+       `RepairsModal` mirrors the items sheet's three-button swipe strip
+       (edit / delete / more). Desktop keeps the inline icons; mobile
+       converts the table to a block / per-row grid so `position: relative`
+       on `<tr>` establishes the containing block the absolutely-positioned
+       action cell anchors to. */
+    .repairs-table,
+    .repairs-table > tbody {
+      display: block;
+      width: 100%;
+    }
+    .repairs-table > tbody > tr {
+      /* kind glyph · description · amount. The action cell sits outside the
+         grid as an absolute overlay so it reserves no track on mobile. */
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(60px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .repairs-table th,
+    .repairs-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .repairs-table th > *,
+    .repairs-table td > * {
+      width: 100%;
+    }
+    .repairs-table > tbody > tr > td {
+      transition: transform 200ms ease;
+    }
+    .repairs-table > tbody > tr.is-swiped > td:not(.repairs-action-cell) {
+      transform: translateX(-128px);
+    }
+    .repairs-table > tbody > tr > .repairs-action-cell {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      /* 128px fits the three-button (edit / delete / more) strip at a
+         comfortable ~42px tap target each, mirroring the items sheet. */
+      width: 128px;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      background: var(--page-bg);
+      border: 0;
+      z-index: 2;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+    .repairs-table > tbody > tr.is-swiped > .repairs-action-cell {
+      transform: translateX(0);
+    }
+    .repairs-table > tbody > tr > .repairs-action-cell .action-btn-pen {
+      background: var(--meta);
+      color: var(--surface);
+    }
+    .repairs-table > tbody > tr > .repairs-action-cell .action-btn-delete {
+      background: var(--danger);
+      color: white;
+    }
+    .repairs-table > tbody > tr > .repairs-action-cell .action-btn-more {
+      background: var(--surface-2);
+      color: var(--fg-bright);
+    }
   }
 
   /* Month-header rows pin below the sticky app header + column-header

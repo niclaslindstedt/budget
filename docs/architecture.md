@@ -116,7 +116,10 @@ src/
 │       ├── PropertyCard.tsx      # one property (value, mortgages, repairs, actions)
 │       ├── PropertyEditorModal.tsx, UpdatePropertyValueModal.tsx
 │       ├── MortgageEditorModal.tsx, MortgageDiscoveryModal.tsx
-│       └── RepairsModal.tsx, RepairsAddModal.tsx  # wrench view + candidate picker
+│       ├── RepairsModal.tsx           # wrench view — swipeable repair rows
+│       ├── RepairsEditModal.tsx       # single-repair add/edit (description + subtype)
+│       ├── RepairEntryActionsMenu.tsx # "…" swipe-strip menu (manage receipt)
+│       └── RepairsAddModal.tsx        # bulk quick-add candidate picker
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
@@ -778,6 +781,9 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   renovations on each property (each sourced from a bank charge tagged
   Repairs / Renovations, recorded for a future deductible "net value"
   calc). Seeds an empty list on every property; a bare additive bump.
+  Each repair later gained an optional user `description` (editable) and a
+  `subtypeId` classifying the work under its Repairs / Renovations type —
+  both additive optional fields that need no migration (absent ⇒ unset).
 
 ## State management
 

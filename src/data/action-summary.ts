@@ -322,6 +322,7 @@ export function describeActionSubject(
       return name(byId(next.properties, action.propertyId)?.name);
     case "addRepairs":
       return count(action.repairs.length);
+    case "updateRepair":
     case "deleteRepair":
       return name(byId(next.properties, action.propertyId)?.name);
 

@@ -3,8 +3,8 @@ import {
   Drill,
   PaintRoller,
   Plus,
-  ReceiptText,
   AlertTriangle,
+  Pencil,
   Trash2,
   Wrench,
 } from "lucide-react";
@@ -21,20 +21,25 @@ import type {
   Settings,
 } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
+import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button } from "../form";
 import { Modal } from "../Modal";
+import { useClaimActiveRow } from "../useClaimActiveRow";
+import { RepairEntryActionsMenu } from "./RepairEntryActionsMenu";
 
 // Per-property repairs / renovations view, opened by the wrench button on a
 // property card. Lists the property's repairs newest-first — each a bank
-// charge the user tagged Repairs / Renovations and bound here. A repair with
-// no receipt on its source transaction is flagged "missing receipt" (the
-// receipt is what makes the cost tax-deductible), and each row can attach /
-// view / replace / remove that receipt and be deleted. The "Add" button
-// hands back to the page, which opens the candidate picker.
+// charge the user tagged Repairs / Renovations and bound here, with an
+// optional user description + subtype. A repair with no receipt on its
+// source transaction is flagged "missing receipt" (the receipt is what makes
+// the cost tax-deductible). Each row swipes left to reveal edit / delete /
+// receipt actions, mirroring the items and mortgage-payment lists. The
+// footer offers a full single-add form and a bulk quick-add picker, both
+// owned by the page.
 
 type Props = {
   open: boolean;
@@ -44,9 +49,9 @@ type Props = {
   // repair reads its current receipt status (attaching one elsewhere clears
   // the "missing" flag here without mutating the repair).
   sourceEntries: ReadonlyMap<string, HistoryEntry>;
-  // Whether the active backend can store receipts. When false the upload /
-  // manage affordance is hidden, but the "missing receipt" flag still shows
-  // — it keeps the tax-deduction urgency visible regardless of backend.
+  // Whether the active backend can store receipts. When false the manage
+  // affordance is hidden, but the "missing receipt" flag still shows — it
+  // keeps the tax-deduction urgency visible regardless of backend.
   canManageReceipt: boolean;
   onUploadReceipt: (
     target: TxnReceiptTarget,
@@ -55,8 +60,12 @@ type Props = {
   ) => Promise<string>;
   onDownloadReceipt: (path: string) => Promise<Blob>;
   onRemoveReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
+  onEditRepair: (repair: PropertyRepair) => void;
   onDeleteRepair: (repairId: string) => void;
-  onAdd: () => void;
+  // The full single-add form (pick a source charge → description → subtype).
+  onAddSingle: () => void;
+  // The bulk multi-select candidate picker (skips description / subtype).
+  onQuickAdd: () => void;
   onClose: () => void;
 };
 
@@ -75,8 +84,10 @@ export function RepairsModal({
   onUploadReceipt,
   onDownloadReceipt,
   onRemoveReceipt,
+  onEditRepair,
   onDeleteRepair,
-  onAdd,
+  onAddSingle,
+  onQuickAdd,
   onClose,
 }: Props) {
   const t = useT();
@@ -135,26 +146,32 @@ export function RepairsModal({
             {t("properties.repairsEmpty")}
           </p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-            {repairs.map((repair) => (
-              <RepairRow
-                key={repair.id}
-                repair={repair}
-                settings={settings}
-                hasReceipt={receiptPathFor(repair) !== undefined}
-                canManageReceipt={canManageReceipt}
-                onManageReceipt={() => setManagingReceipt(repair)}
-                onDelete={() => setPendingDelete(repair)}
-              />
-            ))}
-          </ul>
+          <table className="repairs-table w-full border-collapse">
+            <tbody>
+              {repairs.map((repair) => (
+                <RepairRow
+                  key={repair.id}
+                  repair={repair}
+                  settings={settings}
+                  hasReceipt={receiptPathFor(repair) !== undefined}
+                  canManageReceipt={canManageReceipt}
+                  onManageReceipt={() => setManagingReceipt(repair)}
+                  onEdit={() => onEditRepair(repair)}
+                  onDelete={() => setPendingDelete(repair)}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </Modal.Body>
 
       <Modal.Footer className="justify-start">
-        <Button variant="primary" withIcon onClick={onAdd}>
+        <Button variant="primary" withIcon onClick={onAddSingle}>
           <Plus size={16} aria-hidden focusable={false} />
           {t("properties.repairsAdd")}
+        </Button>
+        <Button variant="secondary" onClick={onQuickAdd}>
+          {t("properties.repairsQuickAdd")}
         </Button>
       </Modal.Footer>
 
@@ -219,77 +236,119 @@ type RowProps = {
   hasReceipt: boolean;
   canManageReceipt: boolean;
   onManageReceipt: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 };
 
-// One repair row. The receipt / delete controls sit inline in the trailing
-// cell, always visible (no swipe) so the row reads the same on every
-// viewport — a short modal list, not a dense table.
+// One repair row. Desktop keeps the edit / delete / more icons inline in the
+// trailing cell; on mobile the row swipes left to reveal them from behind,
+// mirroring the items / mortgage-payment lists (see the `.repairs-table`
+// rules in styles/components.css). The "missing receipt" flag stays inline so
+// the deductibility cue reads on every viewport.
 function RepairRowImpl({
   repair,
   settings,
   hasReceipt,
   canManageReceipt,
   onManageReceipt,
+  onEdit,
   onDelete,
 }: RowProps) {
   const t = useT();
   const lang = useLang();
+  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
+
+  // A swiped row exposes edit / delete; claim the active-row slot so a tap
+  // elsewhere only retracts the swipe instead of also firing the control
+  // underneath.
+  useClaimActiveRow(repair.id, swiped, () => setSwiped(false));
 
   const isRenovation = repair.typeId === PRESET_TYPE_RENOVATIONS_ID;
   const Glyph = isRenovation ? PaintRoller : Drill;
   const typeLabel = isRenovation
     ? t("properties.repairTypeRenovations")
     : t("properties.repairTypeRepairs");
+  const label = repair.description || typeLabel;
 
   return (
-    <li className="flex items-center gap-2.5 rounded border border-line bg-surface-2 px-3 py-2 text-sm">
-      <Glyph
-        size={16}
-        className="shrink-0 text-accent"
-        aria-label={typeLabel}
-        focusable={false}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-fg-bright">
-          {repair.description || typeLabel}
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-muted">
-          <span className="tabular-nums">
-            {formatShortDate(repair.date, settings.shortDateFormat, lang)}
-          </span>
-          {!hasReceipt && (
-            <span className="inline-flex items-center gap-1 text-negative">
-              <AlertTriangle size={12} aria-hidden focusable={false} />
-              {t("properties.missingReceipt")}
+    <tr
+      className={`border-b border-line last:border-b-0${swiped ? " is-swiped" : ""}`}
+      data-row-id={repair.id}
+      data-swipe-handled
+      onClick={() => {
+        if (swiped) setSwiped(false);
+      }}
+      {...touchHandlers}
+    >
+      <td className="px-1 py-2 align-middle">
+        <Glyph
+          size={16}
+          className="shrink-0 text-accent"
+          aria-label={typeLabel}
+          focusable={false}
+        />
+      </td>
+      <td className="min-w-0 px-1.5 py-2 align-middle">
+        <span className="min-w-0">
+          <span className="block truncate text-sm text-fg-bright">{label}</span>
+          <span className="flex items-center gap-1.5 text-xs text-muted">
+            <span className="tabular-nums">
+              {formatShortDate(repair.date, settings.shortDateFormat, lang)}
             </span>
-          )}
+            {!hasReceipt && (
+              <span className="inline-flex items-center gap-1 text-negative">
+                <AlertTriangle size={12} aria-hidden focusable={false} />
+                {t("properties.missingReceipt")}
+              </span>
+            )}
+          </span>
         </span>
-      </span>
-      <span className="shrink-0 tabular-nums text-fg-bright">
-        {formatBalance(repair.amount, settings, { neverAbbreviate: true })}
-      </span>
-      {canManageReceipt && (
-        <button
-          type="button"
-          onClick={onManageReceipt}
-          aria-label={t("properties.manageReceipt")}
-          className={`shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 hover:text-accent ${
-            hasReceipt ? "text-success" : "text-muted"
-          }`}
-        >
-          <ReceiptText size={16} aria-hidden focusable={false} />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={t("properties.deleteRepair")}
-        className="shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
-      >
-        <Trash2 size={16} aria-hidden focusable={false} />
-      </button>
-    </li>
+      </td>
+      <td className="px-1.5 py-2 text-right align-middle text-sm whitespace-nowrap tabular-nums text-fg-bright">
+        <span className="justify-end">
+          {formatBalance(repair.amount, settings, { neverAbbreviate: true })}
+        </span>
+      </td>
+      <td className="repairs-action-cell w-32 p-0 align-middle">
+        <div className="flex h-full w-full items-stretch justify-end">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSwiped(false);
+              onEdit();
+            }}
+            aria-label={t("properties.editRepairAria", { description: label })}
+            title={t("properties.editRepair")}
+            className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+          >
+            <Pencil size={16} aria-hidden focusable={false} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSwiped(false);
+              onDelete();
+            }}
+            aria-label={t("properties.deleteRepairAria", {
+              description: label,
+            })}
+            title={t("properties.deleteRepair")}
+            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+          <RepairEntryActionsMenu
+            repair={repair}
+            canManageReceipt={canManageReceipt}
+            hasReceipt={hasReceipt}
+            onManageReceipt={onManageReceipt}
+            onAction={() => setSwiped(false)}
+          />
+        </div>
+      </td>
+    </tr>
   );
 }
 

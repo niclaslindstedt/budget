@@ -184,6 +184,14 @@ export function reduceProperties(
       repairs: [...p.repairs, ...action.repairs],
     }));
   }
+  if (action.type === "updateRepair") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: p.repairs.map((r) =>
+        r.id === action.repairId ? applyPatch(r, action.patch) : r,
+      ),
+    }));
+  }
   if (action.type === "deleteRepair") {
     return updatePropertyById(state, action.propertyId, (p) => ({
       ...p,

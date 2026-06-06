@@ -249,6 +249,17 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "count", value: 2 });
     expect(
       describe2(
+        {
+          type: "updateRepair",
+          propertyId: "p1",
+          repairId: "r1",
+          patch: { description: "Plumber — kitchen sink" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
         { type: "deleteRepair", propertyId: "p1", repairId: "r1" },
         prev,
       ),

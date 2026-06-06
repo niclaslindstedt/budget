@@ -64,8 +64,12 @@ function validatePayment(raw: unknown): MortgagePayment | null {
 // set: a repair whose source account was later deleted keeps its snapshot
 // (the receipt simply resolves as missing), mirroring how a
 // `MortgagePayment.sourceHistoryId` is preserved unconditionally. The
-// `amount` is coerced non-negative and `description` defaults to "". A
-// malformed repair is dropped rather than rejecting the whole property.
+// `amount` is coerced non-negative and `description` defaults to "". The
+// optional `subtypeId` is advisory — kept when it's a non-empty string and
+// left unverified against the subtype set (properties are validated before
+// subtypes in the pipeline); a dangling reference renders unclassified, so
+// no harm in preserving it. A malformed repair is dropped rather than
+// rejecting the whole property.
 function validateRepair(raw: unknown): PropertyRepair | null {
   if (!isObject(raw)) return null;
   const { id, date, typeId, accountId, sourceHistoryId } = raw;
@@ -75,7 +79,7 @@ function validateRepair(raw: unknown): PropertyRepair | null {
   if (typeof accountId !== "string" || accountId === "") return null;
   if (typeof sourceHistoryId !== "string" || sourceHistoryId === "")
     return null;
-  return {
+  const repair: PropertyRepair = {
     id,
     date,
     typeId,
@@ -84,6 +88,9 @@ function validateRepair(raw: unknown): PropertyRepair | null {
     amount: nonNegative(raw.amount),
     description: typeof raw.description === "string" ? raw.description : "",
   };
+  if (typeof raw.subtypeId === "string" && raw.subtypeId !== "")
+    repair.subtypeId = raw.subtypeId;
+  return repair;
 }
 
 // Validate one rate change. A blank `date` (the original rate) is kept as
