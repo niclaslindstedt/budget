@@ -1,4 +1,5 @@
-import { Check, Home, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Home, Pencil, Plus, Trash2 } from "lucide-react";
+import { useId, useState } from "react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
@@ -218,6 +219,11 @@ function MortgageRow({
   onDelete: (property: Property, mortgage: Mortgage) => void;
 }) {
   const t = useT();
+  const paidPanelId = useId();
+  // The paid / interest / amortisation breakdown starts collapsed; pressing
+  // the payoff "power bar" toggles it open (only meaningful once there are
+  // recorded payments and the bar itself is shown).
+  const [showPaid, setShowPaid] = useState(false);
   const count = mortgage.payments.length;
   // Sum what's been paid and how it divides between interest and
   // amortisation, so a loan that carries all the principal (or all the
@@ -248,6 +254,10 @@ function MortgageRow({
       : payoffComplete
         ? 100
         : Math.min(99, Math.round(progress * 100));
+  // The payoff bar doubles as the toggle for the paid breakdown, but only
+  // when there's both a bar to press and a breakdown to expose. With no bar
+  // (no loan terms) but recorded payments, the breakdown stays always-on.
+  const canCollapse = progress !== null && count > 0;
   const hasTerms =
     mortgage.loanAmount !== undefined ||
     mortgage.currentBalance !== undefined ||
@@ -362,45 +372,79 @@ function MortgageRow({
         </>
       )}
 
-      {progress !== null && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs text-muted">
-              {t("properties.payoffLabel")}
-            </span>
-            <span
-              className={`flex items-center gap-1 text-xs font-bold tabular-nums ${
-                payoffComplete ? "text-success" : "text-fg-bright"
-              }`}
+      {progress !== null &&
+        (() => {
+          const bar = (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="flex items-center gap-1 text-xs text-muted">
+                  {canCollapse && (
+                    <ChevronRight
+                      size={12}
+                      aria-hidden
+                      focusable={false}
+                      className={`shrink-0 transition-transform ${
+                        showPaid ? "rotate-90" : ""
+                      }`}
+                    />
+                  )}
+                  {t("properties.payoffLabel")}
+                </span>
+                <span
+                  className={`flex items-center gap-1 text-xs font-bold tabular-nums ${
+                    payoffComplete ? "text-success" : "text-fg-bright"
+                  }`}
+                >
+                  {payoffComplete && (
+                    <Check size={12} aria-hidden focusable={false} />
+                  )}
+                  {t("properties.payoffPercent", { percent: payoffPercent })}
+                </span>
+              </div>
+              <div
+                role="progressbar"
+                aria-valuenow={payoffPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={t("properties.payoffBarLabel", {
+                  percent: payoffPercent,
+                })}
+                className="h-2 overflow-clip rounded-full bg-surface-3"
+              >
+                <div
+                  className={`h-full rounded-full transition-[width] ${
+                    payoffComplete ? "bg-success" : "bg-accent"
+                  }`}
+                  style={{ width: `${payoffPercent}%` }}
+                />
+              </div>
+            </>
+          );
+          return canCollapse ? (
+            <button
+              type="button"
+              onClick={() => setShowPaid((open) => !open)}
+              aria-expanded={showPaid}
+              aria-controls={paidPanelId}
+              aria-label={
+                showPaid
+                  ? t("properties.payoffToggleHide")
+                  : t("properties.payoffToggleShow")
+              }
+              className="flex w-full cursor-pointer flex-col gap-1 rounded border-0 bg-transparent p-0 text-left"
             >
-              {payoffComplete && (
-                <Check size={12} aria-hidden focusable={false} />
-              )}
-              {t("properties.payoffPercent", { percent: payoffPercent })}
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={payoffPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("properties.payoffBarLabel", {
-              percent: payoffPercent,
-            })}
-            className="h-2 overflow-clip rounded-full bg-surface-3"
-          >
-            <div
-              className={`h-full rounded-full transition-[width] ${
-                payoffComplete ? "bg-success" : "bg-accent"
-              }`}
-              style={{ width: `${payoffPercent}%` }}
-            />
-          </div>
-        </div>
-      )}
+              {bar}
+            </button>
+          ) : (
+            <div className="flex flex-col gap-1">{bar}</div>
+          );
+        })()}
 
-      {count > 0 && (
-        <dl className="m-0 grid grid-cols-3 gap-x-3 rounded bg-surface-3 px-2.5 py-2">
+      {count > 0 && (progress === null || showPaid) && (
+        <dl
+          id={paidPanelId}
+          className="m-0 grid grid-cols-3 gap-x-3 rounded bg-surface-3 px-2.5 py-2"
+        >
           <MortgageStat label={t("properties.paidTotal")} emphasize>
             {formatBalance(paid, settings, { neverAbbreviate: true })}
           </MortgageStat>
