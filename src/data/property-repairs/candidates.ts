@@ -28,6 +28,12 @@ export type RepairCandidate = {
   description: string; // the entry's effective description (denormalised on add)
   typeId: string; // PRESET_TYPE_REPAIRS_ID | PRESET_TYPE_RENOVATIONS_ID
   hasReceipt: boolean; // whether the source entry already carries a receipt
+  // The charge's effective company / tags (resolved override → rule → hint),
+  // so the repair editor can seed its company + tags pickers without a second
+  // resolution pass. Company / tags are NOT denormalised onto the repair —
+  // they stay on the source transaction; these are seed values for the editor.
+  companyId: string | null;
+  tagIds: string[];
 };
 
 // Every Repairs / Renovations outflow across all accounts that isn't
@@ -76,6 +82,8 @@ export function findRepairCandidates(data: UserData): RepairCandidate[] {
         description: labels.userDescription || entry.description,
         typeId: labels.typeId,
         hasReceipt: Boolean(entry.receiptPath),
+        companyId: labels.companyId,
+        tagIds: labels.tagIds,
       });
     }
   }

@@ -207,6 +207,11 @@ const properties: PropertiesCatalog = {
   repairDescriptionPlaceholder: "Vad gjordes, t.ex. Målade om köket",
   repairSubtypeLabel: "Underkategori",
   repairSubtypePlaceholder: "Välj en underkategori…",
+  repairCompanyLabel: "Företag",
+  repairCompanyHint: "Sparas på källtransaktionen och delas med din budget.",
+  repairTagsLabel: "Taggar",
+  repairTagsHint:
+    "Tagga transaktionen för att gruppera reparationer mellan fastigheter.",
 
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",

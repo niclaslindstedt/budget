@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Home, Pencil, Plus, Search } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
+import {
+  newRuleMatchCache,
+  resolveEntryLabels,
+} from "../../data/budget/synthesis";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { findRepairCandidates } from "../../data/property-repairs/candidates";
 import type { Action } from "../../data/reducer";
@@ -24,6 +28,7 @@ import type {
   Settings,
   Sheet,
   Subtype,
+  Tag,
   UserData,
 } from "../../data/types";
 import { useT } from "../../i18n";
@@ -131,6 +136,12 @@ export function PropertiesPage({
     return m;
   }, [data.companies]);
 
+  const tagsById = useMemo(() => {
+    const m = new Map<string, Tag>();
+    for (const tag of data.tags) m.set(tag.id, tag);
+    return m;
+  }, [data.tags]);
+
   // The full type list (presets + user) the discovery walk resolves
   // history entries against to spot the "Mortgage" tag.
   const types = useMemo(() => allTypes(data), [data]);
@@ -172,6 +183,42 @@ export function PropertiesPage({
     }
     return m;
   }, [data.properties, data.history]);
+
+  // Company + tags behind each repair, resolved live from its source
+  // transaction (override → rule → hint) rather than stored on the repair.
+  // Keyed by `${accountId}:${entryId}` so the repairs view can surface them
+  // as read-only metadata. Company / tags are deliberately not denormalised
+  // onto the repair — editing them patches the source `HistoryEntry`.
+  const repairMetadata = useMemo(() => {
+    const m = new Map<string, { company: Company | null; tags: Tag[] }>();
+    if (repairSourceEntries.size === 0) return m;
+    const ruleCache = newRuleMatchCache();
+    for (const [key, entry] of repairSourceEntries) {
+      const { companyId, tagIds } = resolveEntryLabels(
+        entry,
+        data.merchantHints,
+        data.matchRules,
+        companiesById,
+        types,
+        ruleCache,
+      );
+      const company = companyId ? (companiesById.get(companyId) ?? null) : null;
+      const tags: Tag[] = [];
+      for (const id of tagIds) {
+        const tag = tagsById.get(id);
+        if (tag) tags.push(tag);
+      }
+      m.set(key, { company, tags });
+    }
+    return m;
+  }, [
+    repairSourceEntries,
+    data.merchantHints,
+    data.matchRules,
+    companiesById,
+    tagsById,
+    types,
+  ]);
 
   // Per-property repairs summary for the card — repair count plus how many
   // lack a receipt on their source entry (the deductibility flag).
@@ -311,6 +358,23 @@ export function PropertiesPage({
     const category: Category = { id: newId(), ...draft };
     dispatch({ type: "addCategory", category });
     return category;
+  }
+
+  function handleCreateTag(draft: Omit<Tag, "id">): Tag {
+    const tag: Tag = { id: newId(), ...draft };
+    dispatch({ type: "addTag", tag });
+    return tag;
+  }
+
+  // Persist a company / tags change from the repair editor onto the SOURCE
+  // bank transaction — company and tags live on the transaction, not the
+  // repair, so the same metadata enriches the budget view and search.
+  function handleSetEntryMetadata(
+    accountId: string,
+    entryId: string,
+    patch: { userCompanyId?: string | null; userTagIds?: string[] },
+  ) {
+    dispatch({ type: "updateHistoryEntry", accountId, entryId, patch });
   }
 
   function handleAddPayments(
@@ -494,6 +558,7 @@ export function PropertiesPage({
           property={liveRepairsProperty}
           settings={settings}
           sourceEntries={repairSourceEntries}
+          repairMetadata={repairMetadata}
           canManageReceipt={canManageReceipt}
           onUploadReceipt={onUploadReceipt}
           onDownloadReceipt={onDownloadReceipt}
@@ -517,14 +582,31 @@ export function PropertiesPage({
         <RepairsEditModal
           open={repairEditor !== null}
           repair={repairEditor?.repair ?? null}
+          repairMeta={
+            repairEditor?.repair
+              ? (() => {
+                  const meta = repairMetadata.get(
+                    `${repairEditor.repair.accountId}:${repairEditor.repair.sourceHistoryId}`,
+                  );
+                  return {
+                    companyId: meta?.company?.id ?? null,
+                    tagIds: meta?.tags.map((tag) => tag.id) ?? [],
+                  };
+                })()
+              : null
+          }
           candidates={repairCandidates}
           settings={settings}
           subtypes={data.subtypes}
           types={types}
           categories={categories}
+          companies={data.companies}
+          tags={data.tags}
           onCreateSubtype={handleCreateSubtype}
           onCreateType={handleCreateType}
           onCreateCategory={handleCreateCategory}
+          onCreateCompany={handleCreateCompany}
+          onCreateTag={handleCreateTag}
           onClose={() => setRepairEditor(null)}
           onAdd={(repair) => {
             if (repairEditor)
@@ -534,6 +616,7 @@ export function PropertiesPage({
             if (repairEditor)
               handleUpdateRepair(repairEditor.property.id, repairId, patch);
           }}
+          onSetEntryMetadata={handleSetEntryMetadata}
         />
 
         <RepairsAddModal

@@ -6,18 +6,32 @@ import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
 import { newId } from "../../data/sheet";
 import type {
   Category,
+  Company,
   EntryType,
   PropertyRepair,
   Settings,
   Subtype,
+  Tag,
 } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput, SelectPicker } from "../form";
 import type { SelectOption } from "../form";
 import { Modal } from "../Modal";
 import { SubtypePicker } from "../SubtypePicker";
+import { TagsPicker } from "../TagsPicker";
+
+// Resolved company / tags for the repair being edited (edit mode) — the
+// seed the company + tags pickers open on. Add mode reads the same shape off
+// the selected candidate instead. These are NOT stored on the repair: they
+// live on the source transaction and are written back through
+// `onSetEntryMetadata`.
+export type RepairEntryMeta = {
+  companyId: string | null;
+  tagIds: readonly string[];
+};
 
 // The single-repair editor, shared by the "Add" and "Edit" flows.
 //
@@ -26,32 +40,54 @@ import { SubtypePicker } from "../SubtypePicker";
 //   subtype scoped to the chosen charge's kind. Commits one repair via
 //   `onAdd` — the full flow alongside the bulk multi-select quick add.
 // - **Edit** (`repair` set): the source charge is read-only (it owns the
-//   date / amount / receipt); only the description and subtype are editable,
-//   committed as a patch via `onUpdate`.
+//   date / amount / receipt); the description and subtype are editable on the
+//   repair, while the company and tags are edited on the SOURCE TRANSACTION.
 //
 // The subtype tier is the same `Subtype` used by Items, but pinned to the
 // repair's Repairs / Renovations type: the picker is fed an already-filtered
 // list and a `fixedParentTypeId`, so a new subtype files under the right
 // parent without a type chooser.
+//
+// Company and tags are deliberately NOT stored on the repair — they belong to
+// the underlying bank transaction so the same metadata enriches the budget
+// view, search, and any future per-account roll-up. Editing them here patches
+// the source `HistoryEntry`'s `userCompanyId` / `userTagIds` (via
+// `onSetEntryMetadata`); the repairs view resolves them back live. The pickers
+// seed from the charge's effective (resolved) company / tags, and a write is
+// only dispatched for a field the user actually changed.
 
 type Props = {
   open: boolean;
   // Edit mode when set; add mode otherwise.
   repair: PropertyRepair | null;
+  // The repair's source-transaction company / tags (edit mode). Add mode
+  // seeds from the selected candidate instead, so this is null there.
+  repairMeta: RepairEntryMeta | null;
   // Source candidates for add mode (`findRepairCandidates`). Ignored in edit.
   candidates: RepairCandidate[];
   settings: Settings;
   subtypes: readonly Subtype[];
   types: readonly EntryType[];
   categories: readonly Category[];
+  companies: readonly Company[];
+  tags: readonly Tag[];
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
+  onCreateTag: (draft: Omit<Tag, "id">) => Tag;
   onClose: () => void;
   onAdd: (repair: PropertyRepair) => void;
   onUpdate: (
     repairId: string,
     patch: Partial<Omit<PropertyRepair, "id">>,
+  ) => void;
+  // Persist a company / tags change onto the source bank transaction. Only
+  // the fields the user changed are present in the patch.
+  onSetEntryMetadata: (
+    accountId: string,
+    entryId: string,
+    patch: { userCompanyId?: string | null; userTagIds?: string[] },
   ) => void;
 };
 
@@ -62,17 +98,23 @@ function candidateKey(c: RepairCandidate): string {
 export function RepairsEditModal({
   open,
   repair,
+  repairMeta,
   candidates,
   settings,
   subtypes,
   types,
   categories,
+  companies,
+  tags,
   onCreateSubtype,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
+  onCreateTag,
   onClose,
   onAdd,
   onUpdate,
+  onSetEntryMetadata,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -83,16 +125,34 @@ export function RepairsEditModal({
   const [sourceKey, setSourceKey] = useState("");
   const [description, setDescription] = useState("");
   const [subtypeId, setSubtypeId] = useState<string | null>(null);
+  // Source-transaction company / tags. Seeded from the charge's effective
+  // values; the seed is held alongside so submit only writes a field the
+  // user actually changed (and never pins a rule / hint value as an override
+  // just because the user touched the other field).
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [seedCompanyId, setSeedCompanyId] = useState<string | null>(null);
+  const [seedTagIds, setSeedTagIds] = useState<readonly string[]>([]);
 
   useResetOnOpen(open, repair?.id ?? "add", () => {
     if (repair) {
       setSourceKey(`${repair.accountId}:${repair.sourceHistoryId}`);
       setDescription(repair.description);
       setSubtypeId(repair.subtypeId ?? null);
+      const seedCompany = repairMeta?.companyId ?? null;
+      const seedTags = repairMeta?.tagIds ?? [];
+      setCompanyId(seedCompany);
+      setTagIds([...seedTags]);
+      setSeedCompanyId(seedCompany);
+      setSeedTagIds(seedTags);
     } else {
       setSourceKey("");
       setDescription("");
       setSubtypeId(null);
+      setCompanyId(null);
+      setTagIds([]);
+      setSeedCompanyId(null);
+      setSeedTagIds([]);
     }
   });
 
@@ -123,9 +183,32 @@ export function RepairsEditModal({
     const c = candidates.find((cd) => candidateKey(cd) === key);
     // Prefill the description from the charge and clear the subtype — a
     // different charge may be a different kind, so a stale subtype wouldn't
-    // belong under the new parent type.
+    // belong under the new parent type. Seed the company / tags pickers from
+    // the new charge's effective values too.
     setDescription(c ? c.description : "");
     setSubtypeId(null);
+    const seedCompany = c?.companyId ?? null;
+    const seedTags = c?.tagIds ?? [];
+    setCompanyId(seedCompany);
+    setTagIds([...seedTags]);
+    setSeedCompanyId(seedCompany);
+    setSeedTagIds(seedTags);
+  }
+
+  // Persist the company / tags change onto the source transaction — but only
+  // the fields the user actually changed, so a rule- / hint-derived value
+  // isn't silently pinned as a per-entry override.
+  function persistEntryMetadata(accountId: string, entryId: string) {
+    const patch: { userCompanyId?: string | null; userTagIds?: string[] } = {};
+    if (companyId !== seedCompanyId) patch.userCompanyId = companyId;
+    const seedTagSet = new Set(seedTagIds);
+    const tagsChanged =
+      tagIds.length !== seedTagIds.length ||
+      tagIds.some((id) => !seedTagSet.has(id));
+    if (tagsChanged) patch.userTagIds = tagIds;
+    if (patch.userCompanyId !== undefined || patch.userTagIds !== undefined) {
+      onSetEntryMetadata(accountId, entryId, patch);
+    }
   }
 
   function handleSubmit() {
@@ -135,6 +218,7 @@ export function RepairsEditModal({
         description: desc,
         subtypeId: subtypeId ?? undefined,
       });
+      persistEntryMetadata(repair.accountId, repair.sourceHistoryId);
       onClose();
       return;
     }
@@ -151,6 +235,7 @@ export function RepairsEditModal({
     };
     if (subtypeId) next.subtypeId = subtypeId;
     onAdd(next);
+    persistEntryMetadata(c.accountId, c.entryId);
     onClose();
   }
 
@@ -267,6 +352,37 @@ export function RepairsEditModal({
                     placeholder={t("properties.repairSubtypePlaceholder")}
                   />
                 </label>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("properties.repairCompanyLabel")}
+                  </span>
+                  <CompanyPicker
+                    variant="field"
+                    companies={companies}
+                    selectedId={companyId}
+                    onSelect={setCompanyId}
+                    onCreate={onCreateCompany}
+                  />
+                  <span className="text-xs text-muted">
+                    {t("properties.repairCompanyHint")}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("properties.repairTagsLabel")}
+                  </span>
+                  <TagsPicker
+                    tags={tags}
+                    selectedIds={tagIds}
+                    onChange={setTagIds}
+                    onCreate={onCreateTag}
+                  />
+                  <span className="text-xs text-muted">
+                    {t("properties.repairTagsHint")}
+                  </span>
+                </div>
               </>
             )}
           </div>

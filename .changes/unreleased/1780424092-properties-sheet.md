@@ -46,11 +46,15 @@ settings tab.
 Each property also tracks its **repairs and renovations** — open the
 wrench view on a property to add any bank charge you tagged Repairs or
 Renovations, across all your accounts. Add one at a time with a
-description of the work ("repainted the kitchen") and a subtype that
-classifies it, or quick-add several charges in one go and fill in the
-details later. A repair links back to the transaction it came from, so
+description of the work ("repainted the kitchen"), a subtype that
+classifies it, and the company and tags it was with — or quick-add
+several charges in one go and fill in the details later. Company and
+tags are saved on the underlying transaction, so they also enrich your
+budget, and tagging lets you group repairs together across properties.
+The wrench view lists each repair with its full date, company, and tags.
+A repair links back to the transaction it came from, so
 attaching its receipt keeps the cost ready for a future tax deduction; a
 repair with no receipt is flagged "missing receipt" so the paperwork
 doesn't slip. The same transaction can't be used for two properties.
-Swipe a repair left to edit its description and subtype, manage its
-receipt, or delete it.
+Swipe a repair left to edit its description, subtype, company, and tags,
+manage its receipt, or delete it.
