@@ -198,5 +198,12 @@ export function reduceProperties(
       repairs: p.repairs.filter((r) => r.id !== action.repairId),
     }));
   }
+  if (action.type === "setPropertySaleEstimate") {
+    // `applyPatch` treats `undefined` as "delete the key", so clearing the
+    // estimate leaves the property byte-identical to a reloaded one.
+    return updatePropertyById(state, action.propertyId, (p) =>
+      applyPatch(p, { saleEstimate: action.estimate }),
+    );
+  }
   return null;
 }

@@ -122,6 +122,9 @@ export const DEFAULT_SETTINGS: Settings = {
   // Defaults to the Swedish "kvm"; the Property settings tab lets the
   // user switch to the English "sqm".
   propertySizeUnit: "kvm",
+  // Jurisdiction for tax-rule-driven estimates (property-sale
+  // capital-gains, salary tax-profile default). Sweden out of the box.
+  location: "SE",
 };
 
 // Default values for the device-scoped slice of settings. Today mobile
@@ -182,6 +185,7 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   itemFindTypeIds: DEFAULT_SETTINGS.itemFindTypeIds,
   receiptNamePattern: DEFAULT_SETTINGS.receiptNamePattern,
   propertySizeUnit: DEFAULT_SETTINGS.propertySizeUnit,
+  location: DEFAULT_SETTINGS.location,
   device: {
     mobile: DEFAULT_DEVICE_SETTINGS_MOBILE,
     desktop: DEFAULT_DEVICE_SETTINGS_DESKTOP,

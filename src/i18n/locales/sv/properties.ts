@@ -15,6 +15,7 @@ const properties: PropertiesCatalog = {
   currentValue: "Nuvarande värde",
   noValue: "Inget värde registrerat",
   updateValue: "Uppdatera värde",
+  netSaleProfit: "Nettovinst vid försäljning",
   editProperty: "Redigera fastighet",
   deleteProperty: "Ta bort fastighet",
   mortgages: "Bolån",
@@ -167,6 +168,8 @@ const properties: PropertiesCatalog = {
 
   // Repairs & renovations view.
   viewRepairs: "Visa reparationer och renoveringar",
+  // The repairs menu entry when some repairs lack a receipt.
+  viewRepairsMissing: "Visa reparationer ({count} kvitton saknas)",
   repairsTitle: "Reparationer & renoveringar",
   repairsEmpty: "Inga reparationer eller renoveringar registrerade ännu.",
   repairsAdd: "Lägg till",
@@ -220,6 +223,38 @@ const properties: PropertiesCatalog = {
   deleteMortgageTitle: "Ta bort bolån?",
   deleteMortgageConfirm:
     "{name} och dess betalningar tas bort. Det går inte att ångra.",
+
+  // Net sale profit estimator.
+  netSale: {
+    sliderLabel: "Försäljningspris",
+    purchasePrice: "Inköpspris",
+    repairs: "Reparationer & renoveringar",
+    advertisement: "Annonsering (t.ex. Hemnet)",
+    taxableGain: "Skattepliktig vinst",
+    netProfit: "Nettovinst",
+    netLoss: "Nettoförlust",
+    broker: {
+      label: "Mäklararvode",
+      none: "Ingen mäklare",
+      fixed: "Fast belopp",
+      percent: "Procent av försäljning",
+      tiered: "Bas + procent över en gräns",
+      amount: "Mäklararvode",
+      percentRate: "Procent (%)",
+      base: "Basarvode",
+      threshold: "Gräns",
+      tieredHint:
+        "Basarvodet gäller alltid; procentsatsen gäller bara den del av försäljningspriset som överstiger gränsen.",
+    },
+    line: {
+      sellPrice: "Försäljningspris",
+      broker: "Mäklararvode",
+      advertisement: "Annonsering",
+      repairs: "Reparationer & renoveringar",
+      purchasePrice: "Inköpspris",
+      tax: "Vinstskatt",
+    },
+  },
 
   // Shared verbs.
   save: "Spara",

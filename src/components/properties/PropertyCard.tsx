@@ -1,13 +1,4 @@
-import {
-  Check,
-  Home,
-  Pencil,
-  Plus,
-  ReceiptText,
-  TrendingUp,
-  Trash2,
-  Wrench,
-} from "lucide-react";
+import { Check, Home, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
@@ -22,6 +13,7 @@ import type {
 } from "../../data/types";
 import { useT } from "../../i18n";
 import { formatBalance, formatNumber, formatRate } from "../../utils/format";
+import { PropertyActionsMenu } from "./PropertyActionsMenu";
 
 // One property's block on the Properties page: its name, what it cost,
 // its current value (the latest recorded snapshot), and the mortgages
@@ -44,6 +36,7 @@ type Props = {
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
   onUpdateValue: (property: Property) => void;
+  onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
   onAddMortgage: (property: Property) => void;
@@ -69,6 +62,7 @@ export function PropertyCard({
   onEditProperty,
   onDeleteProperty,
   onUpdateValue,
+  onNetSaleProfit,
   onViewPayments,
   onViewRepairs,
   onAddMortgage,
@@ -97,67 +91,17 @@ export function PropertyCard({
         <span className="flex-1 truncate font-bold text-fg-bright">
           {property.name}
         </span>
-        <button
-          type="button"
-          onClick={() => onUpdateValue(property)}
-          className="inline-flex cursor-pointer items-center gap-1 rounded border border-line bg-surface px-2 py-1 text-xs text-accent hover:bg-surface-2"
-        >
-          <TrendingUp size={14} aria-hidden focusable={false} />
-          <span className="hidden sm:inline">
-            {t("properties.updateValue")}
-          </span>
-        </button>
-        {hasPayments && (
-          <button
-            type="button"
-            onClick={() => onViewPayments(property)}
-            aria-label={t("properties.viewPayments")}
-            className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-          >
-            <ReceiptText size={16} aria-hidden focusable={false} />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onViewRepairs(property)}
-          aria-label={t("properties.viewRepairs")}
-          title={
-            repairSummary.missingReceiptCount > 0
-              ? repairSummary.missingReceiptCount === 1
-                ? t("properties.repairsMissingReceiptsOne", {
-                    count: repairSummary.missingReceiptCount,
-                  })
-                : t("properties.repairsMissingReceiptsOther", {
-                    count: repairSummary.missingReceiptCount,
-                  })
-              : undefined
-          }
-          className="relative cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-        >
-          <Wrench size={16} aria-hidden focusable={false} />
-          {repairSummary.missingReceiptCount > 0 && (
-            <span
-              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger"
-              aria-hidden
-            />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => onEditProperty(property)}
-          aria-label={t("properties.editProperty")}
-          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-        >
-          <Pencil size={16} aria-hidden focusable={false} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDeleteProperty(property)}
-          aria-label={t("properties.deleteProperty")}
-          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
-        >
-          <Trash2 size={16} aria-hidden focusable={false} />
-        </button>
+        <PropertyActionsMenu
+          property={property}
+          hasPayments={hasPayments}
+          missingReceiptCount={repairSummary.missingReceiptCount}
+          onUpdateValue={onUpdateValue}
+          onNetSaleProfit={onNetSaleProfit}
+          onViewPayments={onViewPayments}
+          onViewRepairs={onViewRepairs}
+          onEditProperty={onEditProperty}
+          onDeleteProperty={onDeleteProperty}
+        />
       </header>
 
       <div className="grid grid-cols-2 gap-2 px-3 py-2 text-sm sm:grid-cols-3">

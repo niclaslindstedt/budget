@@ -1,10 +1,12 @@
 import type {
+  BrokerCost,
   Mortgage,
   MortgageAmortization,
   MortgagePayment,
   MortgageRateChange,
   Property,
   PropertyRepair,
+  PropertySaleEstimate,
   PropertyValuePoint,
 } from "../types";
 import { fail, isObject, type Result } from "./helpers";
@@ -91,6 +93,45 @@ function validateRepair(raw: unknown): PropertyRepair | null {
   if (typeof raw.subtypeId === "string" && raw.subtypeId !== "")
     repair.subtypeId = raw.subtypeId;
   return repair;
+}
+
+// Validate a saved broker-cost model. A discriminated object by `mode`;
+// each mode's numeric inputs are coerced non-negative. An unknown /
+// malformed shape drops to "none" so a bad value can't trap the file.
+function validateBrokerCost(raw: unknown): BrokerCost {
+  if (!isObject(raw)) return { mode: "none" };
+  switch (raw.mode) {
+    case "fixed":
+      return { mode: "fixed", amount: nonNegative(raw.amount) };
+    case "percent":
+      return { mode: "percent", percent: nonNegative(raw.percent) };
+    case "tiered":
+      return {
+        mode: "tiered",
+        base: nonNegative(raw.base),
+        threshold: nonNegative(raw.threshold),
+        percent: nonNegative(raw.percent),
+      };
+    case "none":
+    default:
+      return { mode: "none" };
+  }
+}
+
+// Validate a saved "Net sale profit" estimate. Optional on the property;
+// a malformed value drops the whole estimate to undefined rather than
+// rejecting the property. `sellPrice` / `advertisementCost` are kept only
+// when finite (negatives coerced to 0 via `nonNegative`).
+function validateSaleEstimate(raw: unknown): PropertySaleEstimate | undefined {
+  if (!isObject(raw)) return undefined;
+  const estimate: PropertySaleEstimate = {
+    broker: validateBrokerCost(raw.broker),
+  };
+  if (isFiniteNumber(raw.sellPrice))
+    estimate.sellPrice = nonNegative(raw.sellPrice);
+  if (isFiniteNumber(raw.advertisementCost))
+    estimate.advertisementCost = nonNegative(raw.advertisementCost);
+  return estimate;
 }
 
 // Validate one rate change. A blank `date` (the original rate) is kept as
@@ -246,5 +287,7 @@ export function validateProperty(
       property.repairs.push(repair);
     }
   }
+  const saleEstimate = validateSaleEstimate(raw.saleEstimate);
+  if (saleEstimate) property.saleEstimate = saleEstimate;
   return { ok: true, value: property };
 }

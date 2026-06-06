@@ -106,6 +106,7 @@ const actionHistory = {
     addRepairs: "Added repairs",
     updateRepair: "Edited repair",
     deleteRepair: "Deleted repair",
+    setPropertySaleEstimate: "Updated sale estimate",
     createTransfer: "Created transfer",
     updateTransfer: "Edited transfer",
     deleteTransfer: "Deleted transfer",

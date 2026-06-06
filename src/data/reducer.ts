@@ -16,6 +16,7 @@ import type {
   MortgagePayment,
   Property,
   PropertyRepair,
+  PropertySaleEstimate,
   PropertyValuePoint,
   Salary,
   SeriesMatchRule,
@@ -453,6 +454,15 @@ export type Action =
       patch: Partial<Omit<PropertyRepair, "id">>;
     }
   | { type: "deleteRepair"; propertyId: string; repairId: string }
+  | {
+      // Save (or clear) a property's "Net sale profit" estimate — the
+      // broker model, advertising cost, and the experiment slider's last
+      // sale price. Passing `undefined` clears the saved estimate so the
+      // estimator reverts to prefilling from the property's live data.
+      type: "setPropertySaleEstimate";
+      propertyId: string;
+      estimate: PropertySaleEstimate | undefined;
+    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }

@@ -1,9 +1,16 @@
 import { GripVertical } from "lucide-react";
 
 import { unlock } from "../../../data/achievements";
-import type { HeaderAction, Settings, Sheet } from "../../../data/types";
+import { SUPPORTED_LOCATIONS } from "../../../data/tax/engine";
+import type {
+  HeaderAction,
+  Settings,
+  Sheet,
+  TaxLocation,
+} from "../../../data/types";
 import { useDevMode, useDragReorder } from "../../../hooks";
 import { type Lang, useT } from "../../../i18n";
+import { REPO_URL } from "../../../seo/siteConfig";
 import { IS_PREVIEW } from "../../../utils/build-env";
 import { type SelectOption, SelectPicker } from "../../form";
 import { CategoryIconGlyph } from "../../icons";
@@ -53,6 +60,16 @@ export function GeneralTab({
           <p className="text-xs text-muted">
             {t("settings.languageSection.hint")}
           </p>
+        </Field>
+      </Section>
+
+      <Section title={t("settings.location.title")}>
+        <Field label={t("settings.location.label")}>
+          <LocationPicker
+            value={draft.location}
+            onChange={(v) => onUpdate("location", v)}
+          />
+          <p className="text-xs text-muted">{t("settings.location.hint")}</p>
         </Field>
       </Section>
 
@@ -257,6 +274,47 @@ function decodeHeaderAction(key: HeaderActionKey): HeaderAction {
     return { kind: "sheet", sheetId: key.slice("sheet:".length) };
   }
   return { kind: key as BuiltinHeaderActionKind };
+}
+
+// Sentinel for the "Request a new location…" entry — it's a link to the
+// repo's new-issue page, not a selectable value, so the change handler
+// intercepts it instead of writing settings.
+const REQUEST_LOCATION = "__request__";
+
+function LocationPicker({
+  value,
+  onChange,
+}: {
+  value: TaxLocation;
+  onChange: (next: TaxLocation) => void;
+}) {
+  const t = useT();
+  const options: SelectOption<string>[] = [
+    ...SUPPORTED_LOCATIONS.map((loc) => ({
+      value: loc as string,
+      label: t(`settings.location.name.${loc}`),
+    })),
+    {
+      value: REQUEST_LOCATION,
+      label: t("settings.location.request"),
+      hint: t("settings.location.requestHint"),
+    },
+  ];
+  return (
+    <SelectPicker<string>
+      value={value}
+      options={options}
+      onChange={(v) => {
+        if (v === REQUEST_LOCATION) {
+          window.open(`${REPO_URL}/issues/new`, "_blank", "noopener");
+          return;
+        }
+        onChange(v as TaxLocation);
+      }}
+      ariaLabel={t("settings.location.label")}
+      triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+    />
+  );
 }
 
 function HeaderActionPicker({

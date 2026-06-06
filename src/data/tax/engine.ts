@@ -4,8 +4,17 @@
 // net → gross direction the salary page needs without each country
 // hand-rolling an inverse.
 
-import { swedishCalculator } from "./se";
-import type { TaxCalculator, TaxCountry, TaxParams, TaxResult } from "./types";
+import { swedishCalculator, swedishPropertySaleCalculator } from "./se";
+import type {
+  LocationCalculators,
+  PropertySaleInputs,
+  PropertySaleResult,
+  TaxCalculator,
+  TaxCountry,
+  TaxLocation,
+  TaxParams,
+  TaxResult,
+} from "./types";
 
 // The single place that knows every country's calculator. A new
 // country adds one entry here (and its folder under `src/data/tax/`).
@@ -73,4 +82,36 @@ export function grossFromNetMonthly(
     else hi = mid;
   }
   return calc.netFromGrossMonthly(mid, params, year);
+}
+
+// The single place that knows every jurisdiction's calculator bundle.
+// A new country adds one entry here and its folder under
+// `src/data/tax/<cc>/`. Additive to (not a replacement for) the salary
+// `CALCULATORS` map above — salary still routes off `params.country`.
+const LOCATIONS: Record<TaxLocation, LocationCalculators> = {
+  SE: {
+    location: "SE",
+    salary: swedishCalculator,
+    propertySale: swedishPropertySaleCalculator,
+  },
+};
+
+// Ordered list for the Location settings picker (the UI iterates this).
+export const SUPPORTED_LOCATIONS: readonly TaxLocation[] = ["SE"];
+
+// Resolve a location's calculator bundle, degrading to SE for an
+// unknown literal rather than throwing.
+export function getLocationCalculators(
+  location: TaxLocation,
+): LocationCalculators {
+  return LOCATIONS[location] ?? LOCATIONS.SE;
+}
+
+// Property-sale capital-gains forward calc for a location. Thin
+// pass-through so callers import one module.
+export function computePropertySale(
+  location: TaxLocation,
+  inputs: PropertySaleInputs,
+): PropertySaleResult {
+  return getLocationCalculators(location).propertySale.computeSale(inputs);
 }

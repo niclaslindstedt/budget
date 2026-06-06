@@ -20,6 +20,7 @@ import type {
   RadiusPreset,
   ReceiptNamePattern,
   ShortDateFormat,
+  TaxLocation,
   ThemePreset,
   ThousandsSeparator,
 } from "../types";
@@ -43,6 +44,9 @@ export const RECEIPT_NAME_PATTERN_SET: ReadonlySet<ReceiptNamePattern> =
   new Set(RECEIPT_NAME_PATTERNS);
 export const PROPERTY_SIZE_UNIT_SET: ReadonlySet<PropertySizeUnit> =
   new Set<PropertySizeUnit>(["kvm", "sqm"]);
+export const LOCATION_SET: ReadonlySet<TaxLocation> = new Set<TaxLocation>([
+  "SE",
+]);
 export const RADIUS_SET: ReadonlySet<RadiusPreset> = new Set(RADIUS_PRESETS);
 export const DENSITY_SET: ReadonlySet<DensityPreset> = new Set(DENSITY_PRESETS);
 export const BORDER_WIDTH_SET: ReadonlySet<BorderWidthPreset> = new Set(

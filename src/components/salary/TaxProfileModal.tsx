@@ -55,9 +55,14 @@ function seedParams(profile: TaxProfile | null): SwedishTaxParams {
 }
 
 // Create / edit a reusable tax profile. Sweden-only today; the country
-// row is a fixed display until a second `TaxCountry` lands. Contains
-// text inputs (name, birth year) so it renders fullscreen on mobile
-// (no `centered`) to keep the footer above the soft keyboard.
+// row is a fixed display until a second `TaxCountry` lands. When it does,
+// a new profile's default country should be seeded from the global
+// `Settings.location` (the same jurisdiction the property-sale calc
+// reads) rather than hard-coding "SE" in `seedParams` above — the two
+// unions (`TaxLocation` / `TaxCountry`) are identical today, so there's
+// nothing to vary yet. Contains text inputs (name, birth year) so it
+// renders fullscreen on mobile (no `centered`) to keep the footer above
+// the soft keyboard.
 export function TaxProfileModal({
   open,
   profile,

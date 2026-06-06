@@ -24,6 +24,7 @@ import type {
   MortgagePayment,
   Property,
   PropertyRepair,
+  PropertySaleEstimate,
   PropertyValuePoint,
   Settings,
   Sheet,
@@ -44,6 +45,7 @@ import { MortgageDiscoveryModal } from "./MortgageDiscoveryModal";
 import { MortgageEditorModal } from "./MortgageEditorModal";
 import type { ChargeSplitUpdate } from "./MortgagePaymentEditModal";
 import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
+import { NetSaleProfitModal } from "./NetSaleProfitModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
 import { RepairsAddModal } from "./RepairsAddModal";
@@ -93,6 +95,7 @@ export function PropertiesPage({
     null,
   );
   const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
+  const [saleProperty, setSaleProperty] = useState<Property | null>(null);
   // The bulk multi-select quick-add picker.
   const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
     null,
@@ -161,6 +164,9 @@ export function PropertiesPage({
     : null;
   const liveRepairsProperty = repairsProperty
     ? (data.properties.find((p) => p.id === repairsProperty.id) ?? null)
+    : null;
+  const liveSaleProperty = saleProperty
+    ? (data.properties.find((p) => p.id === saleProperty.id) ?? null)
     : null;
 
   // The source bank entries behind every property's repairs, keyed by
@@ -430,6 +436,20 @@ export function PropertiesPage({
     dispatch({ type: "deleteRepair", propertyId, repairId });
   }
 
+  // Open the net-sale-profit estimator, recording the achievement the
+  // first time the user models a sale.
+  function handleNetSaleProfit(property: Property) {
+    setSaleProperty(property);
+    unlock("netSaleProfit");
+  }
+
+  function handleSetSaleEstimate(
+    propertyId: string,
+    estimate: PropertySaleEstimate | undefined,
+  ) {
+    dispatch({ type: "setPropertySaleEstimate", propertyId, estimate });
+  }
+
   const hasProperties = properties.length > 0;
 
   return (
@@ -469,6 +489,7 @@ export function PropertiesPage({
                   onEditProperty={setEditingProperty}
                   onDeleteProperty={setPendingDeleteProperty}
                   onUpdateValue={setValueProperty}
+                  onNetSaleProfit={handleNetSaleProfit}
                   onViewPayments={setPaymentsProperty}
                   onViewRepairs={setRepairsProperty}
                   onAddMortgage={setCreatingMortgageFor}
@@ -514,6 +535,14 @@ export function PropertiesPage({
           onClose={() => setValueProperty(null)}
           onAddValue={handleAddValue}
           onDeleteValue={handleDeleteValue}
+        />
+
+        <NetSaleProfitModal
+          open={liveSaleProperty !== null}
+          property={liveSaleProperty}
+          settings={settings}
+          onClose={() => setSaleProperty(null)}
+          onSaveEstimate={handleSetSaleEstimate}
         />
 
         <MortgageEditorModal

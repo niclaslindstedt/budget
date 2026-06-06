@@ -79,3 +79,82 @@ export interface TaxCalculator {
     year: number,
   ): TaxResult;
 }
+
+// The user-facing jurisdiction selector stored globally
+// (`Settings.location`). Picks which `LocationCalculators` bundle the
+// non-profile tax estimates use — today the property-sale capital-gains
+// calc. Kept distinct from `TaxCountry` (the per-`TaxProfile` salary
+// discriminant) so the two systems can converge later without a
+// breaking rename; the sets are identical today. One literal per
+// supported jurisdiction.
+export type TaxLocation = "SE";
+
+// How a broker (estate agent) is paid on a property sale. Discriminated
+// by `mode`: "none" skips the broker entirely; the others carry the
+// inputs that mode needs. "tiered" is "a static base fee plus `percent`%
+// of the part of the sale price above `threshold`".
+export type BrokerCost =
+  | { mode: "none" }
+  | { mode: "fixed"; amount: number }
+  | { mode: "percent"; percent: number }
+  | { mode: "tiered"; base: number; threshold: number; percent: number };
+
+// Everything a property-sale capital-gains calc reads. Bare numbers in
+// the user's display currency; the calc does no formatting. `repairs` is
+// the summed repairs + renovations spend deductible from the gain.
+export type PropertySaleInputs = {
+  sellPrice: number;
+  purchasePrice: number;
+  repairs: number;
+  advertisementCost: number;
+  broker: BrokerCost;
+};
+
+// The breakdown lines a property-sale calc can emit. Each maps to an
+// i18n label at `properties.netSale.line.<key>`.
+export type PropertySaleLineKey =
+  | "sellPrice"
+  | "broker"
+  | "advertisement"
+  | "repairs"
+  | "purchasePrice"
+  | "tax";
+
+// One line of the breakdown the modal renders, in declaration order.
+// `sign` is +1 for amounts that add to proceeds (the sale price) and -1
+// for the deducted costs and tax, so the UI renders the breakdown by
+// iterating without re-deriving which figures subtract.
+export type PropertySaleLineItem = {
+  key: PropertySaleLineKey;
+  amount: number;
+  sign: 1 | -1;
+};
+
+// The result of a property-sale calc. `taxableGain` is the jurisdiction's
+// taxed gain (clamped at 0 — a loss is not taxed); `netProfit` is the
+// final bottom line and is negative on a loss. `lineItems` is the ordered
+// breakdown the modal renders above the bottom line.
+export type PropertySaleResult = {
+  taxableGain: number;
+  tax: number;
+  netProfit: number;
+  lineItems: PropertySaleLineItem[];
+};
+
+// One jurisdiction's capital-gains-on-property calculation. Pure; no
+// React, no formatting. Mirrors `TaxCalculator`'s "one country, one
+// forward function" shape — the calc owns the cost ordering and the tax
+// rule so the modal stays jurisdiction-agnostic.
+export interface PropertySaleTaxCalculator {
+  computeSale(inputs: PropertySaleInputs): PropertySaleResult;
+}
+
+// Every calculator that varies by jurisdiction, bundled per location.
+// Today: the salary forward calc and the property-sale calc. Adding a
+// country means adding one value here and one registry entry in
+// `engine.ts`.
+export type LocationCalculators = {
+  location: TaxLocation;
+  salary: TaxCalculator;
+  propertySale: PropertySaleTaxCalculator;
+};

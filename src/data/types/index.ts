@@ -30,6 +30,7 @@ export type {
   MortgageRateChange,
   Property,
   PropertyRepair,
+  PropertySaleEstimate,
   PropertyValuePoint,
 } from "./properties";
 
@@ -98,9 +99,17 @@ export type {
 export type { StoredUser, UserData, UsersFile } from "./user-data";
 
 export type {
+  BrokerCost,
+  LocationCalculators,
+  PropertySaleInputs,
+  PropertySaleLineItem,
+  PropertySaleLineKey,
+  PropertySaleResult,
+  PropertySaleTaxCalculator,
   SwedishTaxParams,
   TaxCalculator,
   TaxCountry,
+  TaxLocation,
   TaxParams,
   TaxProfile,
   TaxResult,

@@ -130,7 +130,8 @@ src/
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
-│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
+│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair,
+│   │   │                       #   PropertySaleEstimate (saved net-sale inputs)
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -250,15 +251,21 @@ src/
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host txn (history entry /
 │   │                           #   budget row) so Items + repairs share one flow
-│   ├── tax/                # country-pluggable income-tax engine (estimate gross
-│   │   │                   #   from a net deposit). No SE figure leaks outside se/
+│   ├── tax/                # country-pluggable tax engine — salary income tax
+│   │   │                   #   (estimate gross from a net deposit) AND property-sale
+│   │   │                   #   capital-gains. No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,
-│   │   │                       #   TaxCalculator (country-agnostic)
-│   │   ├── engine.ts           # registry + getTaxCalculator + net→gross bisection
-│   │   │                       #   (grossFromNetMonthly / netFromGrossMonthly)
+│   │   │                       #   TaxCalculator; TaxLocation, BrokerCost,
+│   │   │                       #   PropertySale* + PropertySaleTaxCalculator,
+│   │   │                       #   LocationCalculators (all country-agnostic)
+│   │   ├── engine.ts           # salary registry + net→gross bisection; LOCATIONS
+│   │   │                       #   bundle (salary + property-sale per location) +
+│   │   │                       #   SUPPORTED_LOCATIONS + computePropertySale
 │   │   └── se/                 # ALL Sweden-specific rules live here
 │   │       ├── index.ts        # swedishCalculator — grundavdrag, kommunal/statlig,
 │   │       │                   #   jobbskatteavdrag, pensionsavgift, kyrkoavgift
+│   │       ├── property-sale.ts # swedishPropertySaleCalculator — 22% capital-gains
+│   │       │                    #   on a private residence (net = gain × 0.78)
 │   │       ├── constants.ts    # per-year pbb / ibb / skiktgräns (2022–2026)
 │   │       └── municipalities.ts # ~290 kommuner + combined per-year rates
 │   ├── achievements/      # the gamified "guided tour" system
@@ -612,6 +619,12 @@ type TaxProfile = {
   name: string;
   params: TaxParams; // discriminated by `country` ("SE" today)
 };
+
+// Property-sale capital-gains tax is the other half of the tax engine.
+// The global Settings.location (a TaxLocation, "SE" today) selects a
+// LocationCalculators bundle in src/data/tax/engine.ts; computePropertySale
+// runs the location's calc over { sellPrice, purchasePrice, repairs,
+// advertisementCost, broker }. The saved inputs live on Property.saleEstimate.
 
 type ColumnType =
   | "date"
