@@ -13,6 +13,7 @@ const presetTypes: PresetTypesCatalog = {
   internet: "Internet",
   waste: "Sophämtning",
   maintenance: "Underhåll",
+  repairs: "Reparationer",
   renovations: "Renovering",
   phone: "Mobil",
   groceries: "Matvaror",

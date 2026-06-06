@@ -13,6 +13,7 @@ const presetTypes = {
   internet: "Internet",
   waste: "Garbage",
   maintenance: "Home maintenance",
+  repairs: "Repairs",
   renovations: "Renovations",
   phone: "Phone",
   groceries: "Groceries",
