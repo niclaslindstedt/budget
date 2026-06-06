@@ -51,9 +51,11 @@ function updateMortgageById(
 // the salary and item catalogs this is entirely user-curated — no
 // presets — so there's no preset-immutability guard here.
 //
-// `deleteProperty` is a plain filter today. The deferred Repairs follow-up
-// will add a cascade here (sweeping transaction-linked repairs that point
-// at the property) exactly as `deleteItem` sweeps line-item links.
+// `deleteProperty` is a plain filter: a property's repairs / renovations
+// nest under it (`Property.repairs`), so dropping the property drops them
+// with it — no cross-collection cascade is needed (the receipts those
+// repairs reference still hang off their own bank entries and are managed
+// from the Items / repairs flows independently).
 export function reduceProperties(
   state: UserData,
   action: Action,
@@ -173,6 +175,19 @@ export function reduceProperties(
           return u ? { ...pay, amount: u.amount, date: u.date } : pay;
         }),
       })),
+    }));
+  }
+  if (action.type === "addRepairs") {
+    if (action.repairs.length === 0) return state;
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: [...p.repairs, ...action.repairs],
+    }));
+  }
+  if (action.type === "deleteRepair") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: p.repairs.filter((r) => r.id !== action.repairId),
     }));
   }
   return null;

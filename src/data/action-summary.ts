@@ -320,6 +320,10 @@ export function describeActionSubject(
     case "deleteAllMortgagePayments":
     case "setMortgageChargeSplit":
       return name(byId(next.properties, action.propertyId)?.name);
+    case "addRepairs":
+      return count(action.repairs.length);
+    case "deleteRepair":
+      return name(byId(next.properties, action.propertyId)?.name);
 
     // Transfers.
     case "createTransfer":

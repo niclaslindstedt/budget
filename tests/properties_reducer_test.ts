@@ -17,6 +17,7 @@ const PROPERTY: Property = {
   purchaseAmount: 3_000_000,
   valueHistory: [],
   mortgages: [],
+  repairs: [],
 };
 
 const MORTGAGE: Mortgage = {
@@ -290,5 +291,69 @@ describe("properties reducer — mortgages and payments", () => {
     });
     // No such company exists, so the validator sweeps the reference.
     expect("companyId" in revalidate(data).properties[0]).toBe(false);
+  });
+});
+
+describe("properties reducer — repairs", () => {
+  const REPAIR = {
+    id: "r1",
+    date: "2026-01-20",
+    amount: 6800,
+    description: "Plumber",
+    typeId: "preset-type-repairs",
+    accountId: "a1",
+    sourceHistoryId: "h1",
+  } as const;
+
+  it("adds repairs, then deletes one, surviving a reload", () => {
+    let data = reducer(seeded(), {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [
+        { ...REPAIR },
+        {
+          id: "r2",
+          date: "2026-04-05",
+          amount: 3200,
+          description: "Paint",
+          typeId: "preset-type-renovations",
+          accountId: "a1",
+          sourceHistoryId: "h2",
+        },
+      ],
+    });
+    expect(data.properties[0].repairs).toHaveLength(2);
+    expect(revalidate(data).properties[0].repairs).toEqual(
+      data.properties[0].repairs,
+    );
+
+    data = reducer(data, {
+      type: "deleteRepair",
+      propertyId: "p1",
+      repairId: "r1",
+    });
+    expect(data.properties[0].repairs.map((r) => r.id)).toEqual(["r2"]);
+  });
+
+  it("is a no-op when adding an empty repairs list", () => {
+    const data = seeded();
+    const next = reducer(data, {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [],
+    });
+    expect(next).toBe(data);
+  });
+
+  it("drops a repair with a missing source on load", () => {
+    const data = reducer(seeded(), {
+      type: "addRepairs",
+      propertyId: "p1",
+      // A malformed repair (no sourceHistoryId) is swept by the validator.
+      repairs: [{ ...REPAIR }, { ...REPAIR, id: "r3", sourceHistoryId: "" }],
+    });
+    expect(revalidate(data).properties[0].repairs.map((r) => r.id)).toEqual([
+      "r1",
+    ]);
   });
 });

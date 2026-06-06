@@ -40,6 +40,7 @@ import type {
   MortgagePayment,
   PrimaryIncomeMerchant,
   Property,
+  PropertyRepair,
   RenamePattern,
   Salary,
   SeriesMetadata,
@@ -531,6 +532,30 @@ export function buildSeedUserData(): UserData {
     typeId: "preset-type-furniture",
   });
 
+  // Three charges tagged Repairs / Renovations on the cabin's account. One
+  // (the plumber) is bound to the cabin below as a recorded repair so the
+  // wrench view shows a row with a "missing receipt" flag from first paint;
+  // the other two stay unconsumed so the "Add repairs / renovations" picker
+  // always surfaces candidates without any setup.
+  checkingRaw.push({
+    date: "2026-01-20",
+    description: "Rörmokare Andersson",
+    amount: -6800,
+    typeId: "preset-type-repairs",
+  });
+  checkingRaw.push({
+    date: "2026-03-10",
+    description: "Bauhaus byggvaror",
+    amount: -4500,
+    typeId: "preset-type-repairs",
+  });
+  checkingRaw.push({
+    date: "2026-04-05",
+    description: "Hornbach färg & tapet",
+    amount: -3200,
+    typeId: "preset-type-renovations",
+  });
+
   const history: Record<string, HistoryEntry[]> = {
     [checking.id]: finalizeHistory(checkingRaw, 18500, true),
     [savings.id]: finalizeHistory(savingsRaw, 64000, true),
@@ -677,6 +702,25 @@ export function buildSeedUserData(): UserData {
   // banks.
   const cabinHistory = history[checking.id];
   const recordedMortgageMonths = mortgageRecordedMonths;
+  // The plumber charge tagged Repairs (above), bound to the cabin so the
+  // wrench view opens onto a real repair — its source entry carries no
+  // receipt, so it surfaces the "missing receipt" flag from first paint.
+  const cabinRepairSource = cabinHistory.find(
+    (e) => e.description === "Rörmokare Andersson",
+  );
+  const cabinRepairs: PropertyRepair[] = cabinRepairSource
+    ? [
+        {
+          id: mkId("repair"),
+          date: cabinRepairSource.date,
+          amount: Math.abs(cabinRepairSource.amount),
+          description: cabinRepairSource.description,
+          typeId: "preset-type-repairs",
+          accountId: checking.id,
+          sourceHistoryId: cabinRepairSource.id,
+        },
+      ]
+    : [];
   const cabin: Property = {
     id: mkId("prop"),
     name: "Fritidshuset",
@@ -724,6 +768,7 @@ export function buildSeedUserData(): UserData {
         }),
       },
     ],
+    repairs: cabinRepairs,
   };
 
   // A small overnight flat in the city, kept for weeknights close to
@@ -775,6 +820,7 @@ export function buildSeedUserData(): UserData {
         }),
       },
     ],
+    repairs: [],
   };
 
   // A big house carrying three loans — a first mortgage, a second
@@ -852,6 +898,7 @@ export function buildSeedUserData(): UserData {
         payments: [],
       },
     ],
+    repairs: [],
   };
   const properties: Property[] = [cabin, apartment, villa];
 

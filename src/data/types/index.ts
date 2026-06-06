@@ -29,6 +29,7 @@ export type {
   MortgagePayment,
   MortgageRateChange,
   Property,
+  PropertyRepair,
   PropertyValuePoint,
 } from "./properties";
 

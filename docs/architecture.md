@@ -113,20 +113,21 @@ src/
 │   │   └── ItemRow.tsx           # one item row (swipe edit/delete, note popover)
 │   └── properties/           # properties page — homes/apartments + mortgages
 │       ├── PropertiesPage.tsx    # page root — property cards + add button
-│       ├── PropertyCard.tsx      # one property (value, mortgages, actions)
+│       ├── PropertyCard.tsx      # one property (value, mortgages, repairs, actions)
 │       ├── PropertyEditorModal.tsx, UpdatePropertyValueModal.tsx
-│       └── MortgageEditorModal.tsx, MortgageDiscoveryModal.tsx
+│       ├── MortgageEditorModal.tsx, MortgageDiscoveryModal.tsx
+│       └── RepairsModal.tsx, RepairsAddModal.tsx  # wrench view + candidate picker
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 66, incl. taxProfiles +
+│   │   ├── user-data.ts        # UserData (version 67, incl. taxProfiles +
 │   │   │                       #   properties), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
-│   │   │                       #   Mortgage, MortgagePayment
+│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -238,6 +239,14 @@ src/
 │   │   │                       #   or fixed monthly amortisation → a per-month sum
 │   │   └── progress.ts         # mortgagePayoffProgress — share of the original
 │   │                           #   loan amortised away (drives the payoff bar)
+│   ├── property-repairs/   # properties page — repairs / renovations helpers
+│   │   └── candidates.ts       # findRepairCandidates — Repairs / Renovations
+│   │                           #   outflows across all accounts not yet bound to
+│   │                           #   any property's repairs (Add repairs picker)
+│   ├── receipts/           # transaction-generic receipt addressing
+│   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
+│   │                           #   — address a receipt's host txn (history entry /
+│   │                           #   budget row) so Items + repairs share one flow
 │   ├── tax/                # country-pluggable income-tax engine (estimate gross
 │   │   │                   #   from a net deposit). No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,
@@ -272,7 +281,7 @@ src/
 │   │   │                       #   descriptors can import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
-│   │   │                       #   payments; drops dangling property accountId)
+│   │   │                       #   payments / repairs; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
 │   │   ├── account.ts, history.ts, rules.ts, settings.ts, theme.ts,
 │   │   │   helpers.ts
@@ -765,6 +774,10 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   rendered by the Properties sheet (each with its purchase amount, a
   manually-recorded value history, and the mortgages against it). Seeds
   empty; a bare additive bump.
+- **v66 → v67** — adds `Property.repairs`, the transaction-linked repairs /
+  renovations on each property (each sourced from a bank charge tagged
+  Repairs / Renovations, recorded for a future deductible "net value"
+  calc). Seeds an empty list on every property; a bare additive bump.
 
 ## State management
 

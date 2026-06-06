@@ -172,7 +172,13 @@ describe("deriveUnlocks", () => {
     prev.properties = [];
     const next = withItem([]);
     next.properties = [
-      { id: "p1", name: "Apartment", valueHistory: [], mortgages: [] },
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [],
+        repairs: [],
+      },
     ];
     const fresh = deriveUnlocks(prev, next, {});
     expect(fresh).toContain("homeOwner");
@@ -186,6 +192,7 @@ describe("deriveUnlocks", () => {
         name: "Apartment",
         valueHistory: [],
         mortgages: [{ id: "m1", name: "Loan", payments: [] }],
+        repairs: [],
       },
     ];
     const next = withItem([]);
@@ -201,6 +208,7 @@ describe("deriveUnlocks", () => {
             payments: [{ id: "pay1", date: "2026-01-28", amount: 5500 }],
           },
         ],
+        repairs: [],
       },
     ];
     const fresh = deriveUnlocks(prev, next, {});
@@ -223,6 +231,7 @@ describe("deriveUnlocks", () => {
             payments: [],
           },
         ],
+        repairs: [],
       },
     ];
     const next = withItem([]);
@@ -240,10 +249,46 @@ describe("deriveUnlocks", () => {
             payments: [],
           },
         ],
+        repairs: [],
       },
     ];
     const fresh = deriveUnlocks(prev, next, {});
     expect(fresh).toContain("mortgageFree");
+  });
+
+  it("fires firstRepair when a property records its first repair", () => {
+    const prev = withItem([]);
+    prev.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [],
+        repairs: [],
+      },
+    ];
+    const next = withItem([]);
+    next.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [],
+        repairs: [
+          {
+            id: "r1",
+            date: "2026-01-20",
+            amount: 6800,
+            description: "Plumber",
+            typeId: "preset-type-repairs",
+            accountId: "a1",
+            sourceHistoryId: "h1",
+          },
+        ],
+      },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("firstRepair");
   });
 
   it("fires groundhogDay when a row becomes recurring", () => {

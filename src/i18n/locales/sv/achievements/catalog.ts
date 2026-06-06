@@ -267,6 +267,13 @@ const catalog: AchievementsCatalogEntries = {
     name: "Betalningsbok",
     condition: "Redigera eller ta bort en registrerad bolånebetalning.",
   },
+  firstRepair: {
+    name: "Hemmafixare",
+    condition:
+      "Lägg till din första reparation eller renovering på en fastighet.",
+    learnMore:
+      "Tagga en bankutgift med typen Reparation eller Renovering, öppna sedan en fastighets skiftnyckelvy och lägg till den. Varje post länkas till sin källtransaktion, och att bifoga kvittot håller kostnaden redo för ett framtida skatteavdrag — en post utan kvitto flaggas så att du inte tappar bort underlaget.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

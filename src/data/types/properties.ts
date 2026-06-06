@@ -104,12 +104,45 @@ export type Mortgage = {
   payments: MortgagePayment[];
 };
 
+// One repair or renovation on a property — a single bank charge the user
+// tagged as **Repairs** (`preset-type-repairs`) or **Renovations**
+// (`preset-type-renovations`) and bound to this property. Recorded for a
+// future "net value of a property" calculation (value − loan − deductible
+// repairs / renovations), where a receipt is what makes the cost
+// tax-deductible. The receipt itself is NOT stored here: it physically
+// lives on the source `HistoryEntry.receiptPath`, so attaching one later
+// clears the "missing receipt" flag without mutating the repair. A repair
+// can be sourced from at most one transaction, and a given transaction
+// backs at most one property's repair (enforced by the candidate finder).
+export type PropertyRepair = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd — copied from the source transaction
+  amount: number; // the cost magnitude (>= 0)
+  // The label shown on the repairs list — denormalised from the source
+  // transaction's effective description at link time so the row reads
+  // sensibly even if the source entry is later edited or re-imported.
+  description: string;
+  // Which kind of work this is, for the row glyph / label: the preset type
+  // id the source charge was tagged with — `PRESET_TYPE_REPAIRS_ID` or
+  // `PRESET_TYPE_RENOVATIONS_ID`.
+  typeId: string;
+  // The bank transaction this repair was sourced from. `accountId` locates
+  // it in `UserData.history`; `sourceHistoryId` is its entry id. The pair
+  // resolves the live entry to read receipt status and attach / view a
+  // receipt. Best-effort across re-imports (bank ids aren't stable), and
+  // the account may since have been deleted — the snapshot above survives
+  // either way; only the receipt resolves as missing.
+  accountId: string;
+  sourceHistoryId: string;
+};
+
 // One property the user owns or has bought. `purchaseAmount` is what they
 // paid for it (the cost basis a future capital-gains calc reads);
 // `valueHistory` is the manually-recorded market value over time (current
-// value = latest point); `mortgages` are the loans against it. Every
-// field beyond `id` / `name` is optional or starts empty so a property
-// can be created with just a name and filled in later.
+// value = latest point); `mortgages` are the loans against it; `repairs`
+// are the transaction-linked repairs / renovations on it. Every field
+// beyond `id` / `name` is optional or starts empty so a property can be
+// created with just a name and filled in later.
 export type Property = {
   id: string;
   name: string;
@@ -140,4 +173,5 @@ export type Property = {
   size?: number;
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
+  repairs: PropertyRepair[];
 };

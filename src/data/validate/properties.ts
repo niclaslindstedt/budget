@@ -4,6 +4,7 @@ import type {
   MortgagePayment,
   MortgageRateChange,
   Property,
+  PropertyRepair,
   PropertyValuePoint,
 } from "../types";
 import { fail, isObject, type Result } from "./helpers";
@@ -54,6 +55,35 @@ function validatePayment(raw: unknown): MortgagePayment | null {
   if (typeof raw.sourceHistoryId === "string" && raw.sourceHistoryId !== "")
     payment.sourceHistoryId = raw.sourceHistoryId;
   return payment;
+}
+
+// Validate one repair / renovation. Its identity fields — `id`, `date`,
+// `typeId`, and the `accountId` / `sourceHistoryId` pair locating the
+// source bank charge — are all required (a repair with no source can't
+// resolve its receipt). The `accountId` is NOT gated on the known-account
+// set: a repair whose source account was later deleted keeps its snapshot
+// (the receipt simply resolves as missing), mirroring how a
+// `MortgagePayment.sourceHistoryId` is preserved unconditionally. The
+// `amount` is coerced non-negative and `description` defaults to "". A
+// malformed repair is dropped rather than rejecting the whole property.
+function validateRepair(raw: unknown): PropertyRepair | null {
+  if (!isObject(raw)) return null;
+  const { id, date, typeId, accountId, sourceHistoryId } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (!isIsoDate(date)) return null;
+  if (typeof typeId !== "string" || typeId === "") return null;
+  if (typeof accountId !== "string" || accountId === "") return null;
+  if (typeof sourceHistoryId !== "string" || sourceHistoryId === "")
+    return null;
+  return {
+    id,
+    date,
+    typeId,
+    accountId,
+    sourceHistoryId,
+    amount: nonNegative(raw.amount),
+    description: typeof raw.description === "string" ? raw.description : "",
+  };
 }
 
 // Validate one rate change. A blank `date` (the original rate) is kept as
@@ -149,7 +179,13 @@ export function validateProperty(
     return fail(`${path}.id`, "expected a non-empty string");
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
-  const property: Property = { id, name, valueHistory: [], mortgages: [] };
+  const property: Property = {
+    id,
+    name,
+    valueHistory: [],
+    mortgages: [],
+    repairs: [],
+  };
   // The lender, referencing a known company. A dangling reference (the
   // company was deleted) is dropped — mirrors `Row.companyId`.
   if (
@@ -192,6 +228,15 @@ export function validateProperty(
       if (!mortgage || seen.has(mortgage.id)) continue;
       seen.add(mortgage.id);
       property.mortgages.push(mortgage);
+    }
+  }
+  if (Array.isArray(raw.repairs)) {
+    const seen = new Set<string>();
+    for (const rawRepair of raw.repairs) {
+      const repair = validateRepair(rawRepair);
+      if (!repair || seen.has(repair.id)) continue;
+      seen.add(repair.id);
+      property.repairs.push(repair);
     }
   }
   return { ok: true, value: property };

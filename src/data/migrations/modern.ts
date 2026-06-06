@@ -927,6 +927,23 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // favorited and pinned to the bottom bar). Purely additive — absent ⇒
   // not favorited — so no per-sheet transformation is needed.
   65: (v65) => ({ ...v65, version: 66 }),
+
+  // v66 → v67: introduces `Property.repairs`, the transaction-linked
+  // repairs / renovations on each property (each sourced from a bank charge
+  // the user tagged Repairs / Renovations, recorded for a future deductible
+  // "net value" calc). Seeds an empty list on every property; old exports
+  // simply lack it and the v67 validator fills `repairs: []` regardless, so
+  // this is a bare additive bump that keeps the persisted shape explicit.
+  66: (v66) => {
+    const properties = Array.isArray(v66.properties)
+      ? v66.properties.map((property) =>
+          isObj(property)
+            ? { ...property, repairs: property.repairs ?? [] }
+            : property,
+        )
+      : v66.properties;
+    return { ...v66, version: 67, properties };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

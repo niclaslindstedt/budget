@@ -103,7 +103,13 @@ describe("describeActionSubject", () => {
     const prev: UserData = {
       ...freshUserData(),
       properties: [
-        { id: "p1", name: "Apartment", valueHistory: [], mortgages: [] },
+        {
+          id: "p1",
+          name: "Apartment",
+          valueHistory: [],
+          mortgages: [],
+          repairs: [],
+        },
       ],
     };
     expect(
@@ -126,6 +132,7 @@ describe("describeActionSubject", () => {
           name: "Apartment",
           valueHistory: [],
           mortgages: [{ id: "m1", name: "SBAB loan", payments: [] }],
+          repairs: [],
         },
       ],
     };
@@ -185,6 +192,66 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Apartment" });
     expect(
       describe2({ type: "deleteAllMortgagePayments", propertyId: "p1" }, prev),
+    ).toEqual({ kind: "name", value: "Apartment" });
+  });
+
+  it("counts added repairs and names the property on delete", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      properties: [
+        {
+          id: "p1",
+          name: "Apartment",
+          valueHistory: [],
+          mortgages: [],
+          repairs: [
+            {
+              id: "r1",
+              date: "2026-01-20",
+              amount: 6800,
+              description: "Plumber",
+              typeId: "preset-type-repairs",
+              accountId: "a1",
+              sourceHistoryId: "h1",
+            },
+          ],
+        },
+      ],
+    };
+    expect(
+      describe2(
+        {
+          type: "addRepairs",
+          propertyId: "p1",
+          repairs: [
+            {
+              id: "r2",
+              date: "2026-03-10",
+              amount: 4500,
+              description: "Hardware",
+              typeId: "preset-type-repairs",
+              accountId: "a1",
+              sourceHistoryId: "h2",
+            },
+            {
+              id: "r3",
+              date: "2026-04-05",
+              amount: 3200,
+              description: "Paint",
+              typeId: "preset-type-renovations",
+              accountId: "a1",
+              sourceHistoryId: "h3",
+            },
+          ],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "count", value: 2 });
+    expect(
+      describe2(
+        { type: "deleteRepair", propertyId: "p1", repairId: "r1" },
+        prev,
+      ),
     ).toEqual({ kind: "name", value: "Apartment" });
   });
 

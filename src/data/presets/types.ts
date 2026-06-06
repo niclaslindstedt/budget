@@ -976,6 +976,13 @@ export function isPresetTypeId(id: string): boolean {
 // export so that anchor reads as intent rather than a bare literal.
 export const PRESET_TYPE_MORTGAGE_ID = "preset-type-mortgage";
 
+// The "Repairs" and "Renovations" preset type ids. A property's repairs /
+// renovations are sourced from bank charges the user tagged with one of
+// these two types; the candidate finder anchors on them. Kept as named
+// exports so those anchors read as intent rather than bare literals.
+export const PRESET_TYPE_REPAIRS_ID = "preset-type-repairs";
+export const PRESET_TYPE_RENOVATIONS_ID = "preset-type-renovations";
+
 // Default allow-list for the Items sheet's "Find items" scan — the
 // preset types whose purchases tend to be durable physical things that
 // hold resale value (electronics, furniture, tools, …). Consumables
