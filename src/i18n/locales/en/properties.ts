@@ -172,6 +172,10 @@ const properties = {
   repairsTitle: "Repairs & renovations",
   repairsEmpty: "No repairs or renovations recorded yet.",
   repairsAdd: "Add",
+  repairsQuickAdd: "Quick add",
+  editRepair: "Edit",
+  editRepairAria: "Edit {description}",
+  deleteRepairAria: "Delete {description}",
   repairTypeRepairs: "Repair",
   repairTypeRenovations: "Renovation",
   repairReceipt: "Receipt",
@@ -193,6 +197,19 @@ const properties = {
   addRepairsOne: "Add {count} record",
   addRepairsOther: "Add {count} records",
   repairHasReceipt: "Has receipt",
+
+  // Single repair editor — add (with a source-transaction picker) and edit
+  // (description + subtype only; the source charge is read-only).
+  repairEditorAddTitle: "Add repair",
+  repairEditorEditTitle: "Edit repair",
+  repairSourceLabel: "Source transaction",
+  repairSourcePlaceholder: "Pick a transaction…",
+  repairSourceEmpty:
+    "No unused Repairs or Renovations transactions found. In your budget, tag a charge with the Repairs or Renovations type, then come back.",
+  repairDescriptionLabel: "Description",
+  repairDescriptionPlaceholder: "What was done, e.g. Repainted the kitchen",
+  repairSubtypeLabel: "Subtype",
+  repairSubtypePlaceholder: "Pick a subtype…",
 
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",

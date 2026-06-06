@@ -45,9 +45,12 @@ settings tab.
 
 Each property also tracks its **repairs and renovations** — open the
 wrench view on a property to add any bank charge you tagged Repairs or
-Renovations, across all your accounts. A repair links back to the
-transaction it came from, so attaching its receipt keeps the cost ready
-for a future tax deduction; a repair with no receipt is flagged "missing
-receipt" so the paperwork doesn't slip. The same transaction can't be
-used for two properties, and you can attach, view, replace, or remove a
-receipt straight from the list.
+Renovations, across all your accounts. Add one at a time with a
+description of the work ("repainted the kitchen") and a subtype that
+classifies it, or quick-add several charges in one go and fill in the
+details later. A repair links back to the transaction it came from, so
+attaching its receipt keeps the cost ready for a future tax deduction; a
+repair with no receipt is flagged "missing receipt" so the paperwork
+doesn't slip. The same transaction can't be used for two properties.
+Swipe a repair left to edit its description and subtype, manage its
+receipt, or delete it.

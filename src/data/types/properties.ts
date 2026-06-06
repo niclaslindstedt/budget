@@ -126,6 +126,13 @@ export type PropertyRepair = {
   // id the source charge was tagged with — `PRESET_TYPE_REPAIRS_ID` or
   // `PRESET_TYPE_RENOVATIONS_ID`.
   typeId: string;
+  // The user's classification of this work, one tier below the Repairs /
+  // Renovations type: a `Subtype` id (`UserData.subtypes`) whose parent
+  // `typeId` is this repair's `typeId` (e.g. "Painting" under Renovations).
+  // Picked / edited in the repairs editor; the row resolves it for display
+  // only. Absent ⇒ unclassified. A dangling reference (the subtype was
+  // deleted) simply renders unclassified — the picker resolves it to none.
+  subtypeId?: string;
   // The bank transaction this repair was sourced from. `accountId` locates
   // it in `UserData.history`; `sourceHistoryId` is its entry id. The pair
   // resolves the live entry to read receipt status and attach / view a

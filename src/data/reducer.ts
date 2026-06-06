@@ -442,6 +442,16 @@ export type Action =
       propertyId: string;
       repairs: PropertyRepair[];
     }
+  | {
+      // Edit one repair's user annotation — its free-text description and the
+      // optional Repairs / Renovations subtype. The source charge (date,
+      // amount, account, receipt) is the snapshot's source of truth and is
+      // not patched here.
+      type: "updateRepair";
+      propertyId: string;
+      repairId: string;
+      patch: Partial<Omit<PropertyRepair, "id">>;
+    }
   | { type: "deleteRepair"; propertyId: string; repairId: string }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }

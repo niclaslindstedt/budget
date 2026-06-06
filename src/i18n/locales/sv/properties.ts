@@ -170,6 +170,10 @@ const properties: PropertiesCatalog = {
   repairsTitle: "Reparationer & renoveringar",
   repairsEmpty: "Inga reparationer eller renoveringar registrerade ännu.",
   repairsAdd: "Lägg till",
+  repairsQuickAdd: "Snabblägg till",
+  editRepair: "Redigera",
+  editRepairAria: "Redigera {description}",
+  deleteRepairAria: "Ta bort {description}",
   repairTypeRepairs: "Reparation",
   repairTypeRenovations: "Renovering",
   repairReceipt: "Kvitto",
@@ -190,6 +194,19 @@ const properties: PropertiesCatalog = {
   addRepairsOne: "Lägg till {count} post",
   addRepairsOther: "Lägg till {count} poster",
   repairHasReceipt: "Har kvitto",
+
+  // Single repair editor — add (with a source-transaction picker) and edit
+  // (description + subtype only; the source charge is read-only).
+  repairEditorAddTitle: "Lägg till reparation",
+  repairEditorEditTitle: "Redigera reparation",
+  repairSourceLabel: "Källtransaktion",
+  repairSourcePlaceholder: "Välj en transaktion…",
+  repairSourceEmpty:
+    "Inga oanvända Reparation- eller Renovering-transaktioner hittades. Tagga en utgift med typen Reparation eller Renovering i din budget och kom tillbaka.",
+  repairDescriptionLabel: "Beskrivning",
+  repairDescriptionPlaceholder: "Vad gjordes, t.ex. Målade om köket",
+  repairSubtypeLabel: "Underkategori",
+  repairSubtypePlaceholder: "Välj en underkategori…",
 
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",

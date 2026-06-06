@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Home, Pencil, Plus, Search } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
-import { allTypes } from "../../data/presets/merge";
+import { allCategories, allTypes } from "../../data/presets/merge";
 import { findRepairCandidates } from "../../data/property-repairs/candidates";
 import type { Action } from "../../data/reducer";
 import type {
@@ -12,7 +12,9 @@ import type {
 import { newId } from "../../data/sheet";
 import type {
   Account,
+  Category,
   Company,
+  EntryType,
   HistoryEntry,
   Mortgage,
   MortgagePayment,
@@ -21,6 +23,7 @@ import type {
   PropertyValuePoint,
   Settings,
   Sheet,
+  Subtype,
   UserData,
 } from "../../data/types";
 import { useT } from "../../i18n";
@@ -39,6 +42,7 @@ import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
 import { RepairsAddModal } from "./RepairsAddModal";
+import { RepairsEditModal } from "./RepairsEditModal";
 import { RepairsModal } from "./RepairsModal";
 import { UpdatePropertyValueModal } from "./UpdatePropertyValueModal";
 
@@ -84,9 +88,16 @@ export function PropertiesPage({
     null,
   );
   const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
+  // The bulk multi-select quick-add picker.
   const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
     null,
   );
+  // The single-repair editor — `repair: null` is add mode (with a source
+  // picker), a set repair is edit mode (description + subtype only).
+  const [repairEditor, setRepairEditor] = useState<{
+    property: Property;
+    repair: PropertyRepair | null;
+  } | null>(null);
   const [pendingDeleteProperty, setPendingDeleteProperty] =
     useState<Property | null>(null);
 
@@ -175,11 +186,19 @@ export function PropertiesPage({
     return { count: property.repairs.length, missingReceiptCount };
   }
 
-  // Candidate charges for the add picker — only computed while it's open.
+  // Candidate charges for the add flows — computed while either the bulk
+  // picker or the single-add form (add mode) is open.
+  const repairsAddOpen =
+    addingRepairsFor !== null ||
+    (repairEditor !== null && repairEditor.repair === null);
   const repairCandidates = useMemo(
-    () => (addingRepairsFor ? findRepairCandidates(data) : []),
-    [addingRepairsFor, data],
+    () => (repairsAddOpen ? findRepairCandidates(data) : []),
+    [repairsAddOpen, data],
   );
+
+  // The full type / category lists (presets + user) the subtype picker in the
+  // repairs editor resolves parent-type names and creation against.
+  const categories = useMemo(() => allCategories(data), [data]);
 
   // The account the payments-view property is paid from, plus its bank
   // history keyed by id, so each charge group can resolve the original
@@ -273,6 +292,27 @@ export function PropertiesPage({
     return company;
   }
 
+  // Taxonomy minters for the repairs editor's subtype picker — mirror
+  // `handleCreateCompany` / `useTaxonomyCrud` so the picker can spawn a
+  // subtype (and, in the unscoped case, its parent type / category) inline.
+  function handleCreateSubtype(draft: Omit<Subtype, "id">): Subtype {
+    const subtype: Subtype = { id: newId(), ...draft };
+    dispatch({ type: "addSubtype", subtype });
+    return subtype;
+  }
+
+  function handleCreateType(draft: Omit<EntryType, "id">): EntryType {
+    const entryType: EntryType = { id: newId(), ...draft };
+    dispatch({ type: "addType", entryType });
+    return entryType;
+  }
+
+  function handleCreateCategory(draft: Omit<Category, "id">): Category {
+    const category: Category = { id: newId(), ...draft };
+    dispatch({ type: "addCategory", category });
+    return category;
+  }
+
   function handleAddPayments(
     propertyId: string,
     paymentsByMortgageId: Record<string, MortgagePayment[]>,
@@ -312,6 +352,14 @@ export function PropertiesPage({
 
   function handleAddRepairs(propertyId: string, repairs: PropertyRepair[]) {
     dispatch({ type: "addRepairs", propertyId, repairs });
+  }
+
+  function handleUpdateRepair(
+    propertyId: string,
+    repairId: string,
+    patch: Partial<Omit<PropertyRepair, "id">>,
+  ) {
+    dispatch({ type: "updateRepair", propertyId, repairId, patch });
   }
 
   function handleDeleteRepair(propertyId: string, repairId: string) {
@@ -450,12 +498,42 @@ export function PropertiesPage({
           onUploadReceipt={onUploadReceipt}
           onDownloadReceipt={onDownloadReceipt}
           onRemoveReceipt={onRemoveReceipt}
+          onEditRepair={(repair) => {
+            if (liveRepairsProperty)
+              setRepairEditor({ property: liveRepairsProperty, repair });
+          }}
           onDeleteRepair={(repairId) => {
             if (liveRepairsProperty)
               handleDeleteRepair(liveRepairsProperty.id, repairId);
           }}
-          onAdd={() => setAddingRepairsFor(liveRepairsProperty)}
+          onAddSingle={() => {
+            if (liveRepairsProperty)
+              setRepairEditor({ property: liveRepairsProperty, repair: null });
+          }}
+          onQuickAdd={() => setAddingRepairsFor(liveRepairsProperty)}
           onClose={() => setRepairsProperty(null)}
+        />
+
+        <RepairsEditModal
+          open={repairEditor !== null}
+          repair={repairEditor?.repair ?? null}
+          candidates={repairCandidates}
+          settings={settings}
+          subtypes={data.subtypes}
+          types={types}
+          categories={categories}
+          onCreateSubtype={handleCreateSubtype}
+          onCreateType={handleCreateType}
+          onCreateCategory={handleCreateCategory}
+          onClose={() => setRepairEditor(null)}
+          onAdd={(repair) => {
+            if (repairEditor)
+              handleAddRepairs(repairEditor.property.id, [repair]);
+          }}
+          onUpdate={(repairId, patch) => {
+            if (repairEditor)
+              handleUpdateRepair(repairEditor.property.id, repairId, patch);
+          }}
         />
 
         <RepairsAddModal
