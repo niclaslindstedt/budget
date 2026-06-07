@@ -93,6 +93,9 @@ export function withEncryption(
     receipts: inner.receipts,
     payslips: inner.payslips,
     propertyFiles: inner.propertyFiles,
+    // Saved export archives (property handover ZIPs) pass straight through
+    // unencrypted too — same rationale as receipts above.
+    exports: inner.exports,
 
     // The hook hands us plaintext bytes here; the inner cache (in
     // `withCloudMirror`) expects the same envelope shape the cloud

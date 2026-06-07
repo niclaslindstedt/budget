@@ -64,7 +64,13 @@ export type AdapterCapability =
   // `<name>/files/[<category>/]<file>`. Present on the folder and cloud
   // backends; the browser-localStorage adapter omits it, so the
   // property-attachment UI gates on this tag.
-  | "propertyFiles";
+  | "propertyFiles"
+  // `exports` is implemented — generated archive files (e.g. a property
+  // sale-handover ZIP) can be written, read, and removed in a sibling
+  // `exports/` folder. Flat filenames, no subdirectory. Present on the
+  // folder and cloud backends; the browser-localStorage adapter omits it,
+  // so the "save export to backend" affordance gates on this tag.
+  | "exports";
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
@@ -160,6 +166,17 @@ export type StorageAdapter = {
   // property-attachment UI gates on. Stored as raw image / PDF bytes — the
   // encrypting wrapper passes them through untouched, never encrypted at rest.
   readonly propertyFiles?: ReceiptOps;
+
+  // Optional support for generated archive files, stored in a sibling
+  // `exports/` folder next to the live budget file. Holds the ZIPs the user
+  // chooses to save to their backend rather than download — currently the
+  // property sale-handover archive. Same `ReceiptOps` blob-folder contract as
+  // `receipts` (upload / download / remove a `Blob` at a relative path), but
+  // the path is a flat filename — no subdirectory. Present iff `capabilities`
+  // carries `"exports"`, which the "save export to backend" UI gates on.
+  // Stored as raw ZIP bytes — the encrypting wrapper passes them through
+  // untouched, never encrypted at rest.
+  readonly exports?: ReceiptOps;
 };
 
 // Binary-file operations for item receipts. Mirrors `BackupOps` but

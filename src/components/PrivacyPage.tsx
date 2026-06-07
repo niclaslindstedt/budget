@@ -135,13 +135,18 @@ export function PrivacyPage() {
               by default, plaintext if you opted out of encryption.
             </li>
             <li>
-              <strong className="text-fg-bright">Receipts and payslips.</strong>{" "}
+              <strong className="text-fg-bright">
+                Receipts, payslips, and exports.
+              </strong>{" "}
               If you attach a receipt or payslip image / PDF, it is uploaded to
               a <code className="text-meta">receipts/</code> or{" "}
               <code className="text-meta">payslips/</code> folder as a plain
-              file — these are <em>never</em> encrypted, regardless of your
-              encryption setting. If you would rather not place them in Dropbox,
-              simply don&apos;t attach them.
+              file. If you choose to save a property export to your storage
+              instead of downloading it, the archive lands in an{" "}
+              <code className="text-meta">exports/</code> folder the same way.
+              These are <em>never</em> encrypted, regardless of your encryption
+              setting. If you would rather not place them in Dropbox, simply
+              don&apos;t attach or save them.
             </li>
             <li>
               <strong className="text-fg-bright">Who can see the bytes.</strong>{" "}

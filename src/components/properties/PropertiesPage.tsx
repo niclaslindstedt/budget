@@ -793,6 +793,7 @@ export function PropertiesPage({
           open={liveExportProperty !== null}
           property={liveExportProperty}
           canManage={attachments.canManage}
+          canSaveToBackend={attachments.canExportToBackend}
           onExport={(options) =>
             attachments.exportProperty(
               liveExportProperty!,
@@ -800,6 +801,7 @@ export function PropertiesPage({
               options,
             )
           }
+          onSaveToBackend={attachments.saveExportToBackend}
           onClose={() => setExportingProperty(null)}
         />
 

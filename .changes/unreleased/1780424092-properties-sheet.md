@@ -105,4 +105,6 @@ into their own Properties sheet with **Import property** from the sheet's
 bundle: receipts are included by default, files you marked private are
 left out unless you opt in, and your own financial records — the
 mortgages, their payment history, the purchase price, and value
-estimates — stay out unless you choose to include them.
+estimates — stay out unless you choose to include them. Choose where it
+goes, too: download the file to your device, or — when you've connected a
+folder or cloud storage — save it straight into an exports/ folder there.

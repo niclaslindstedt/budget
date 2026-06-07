@@ -217,15 +217,16 @@ export function withCloudMirror(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     backups: inner.backups,
-    // Receipts, payslips, and property files pass straight through the
-    // mirror — only the live budget bytes are mirrored for offline reads;
-    // these binary files are not. Forwarding all three is mandatory: the
+    // Receipts, payslips, property files, and saved exports pass straight
+    // through the mirror — only the live budget bytes are mirrored for offline
+    // reads; these binary files are not. Forwarding each is mandatory: the
     // mirror copies the inner capability set above, so dropping an ops
     // object here would leave its capability advertised but unusable (the
     // row menus show "View / Remove" but the calls throw).
     receipts: inner.receipts,
     payslips: inner.payslips,
     propertyFiles: inner.propertyFiles,
+    exports: inner.exports,
 
     markSynced(snapshot: Snapshot): void {
       log.info(
