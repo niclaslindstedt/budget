@@ -67,24 +67,25 @@ several charges in one go and fill in the details later. Company and
 tags are saved on the underlying transaction, so they also enrich your
 budget, and tagging lets you group repairs together across properties.
 The wrench view lists each repair with its full date, company, and tags.
-Attach the invoice receipt to the repair and the cost is ready for a
-future tax deduction; a repair with no receipt is flagged "missing
-receipt" so the paperwork doesn't slip. When one invoice was paid across
-several bank charges — a deposit and a balance, staged payments to a
-contractor — tick every transaction in the repair editor to group them
-under a single repair: their amounts add up, and the one receipt you
-attach to the repair covers them all. The same transaction can't back two
-repairs. Older work that predates the bank history you imported needn't be
-left out — choose **Add manually** in the wrench view to record a repair
-with no transaction behind it: enter the type, date, amount, description,
-contractor, and tags directly (stored on the repair itself), and attach the
-receipt just the same. Swipe a repair left to edit its transactions, description,
-subtype, company, and tags, manage its receipt, or delete it. Repair
-receipts are saved into the property's own receipts folder, each named for
-its date, company, and the work done, so the folder reads like a dated
-log of everything done to the home; change a repair's company or
-description, or rename the property, and its receipt file is renamed to
-match.
+Attach the receipts to the repair and the cost is ready for a future tax
+deduction; a repair with no receipt is flagged "missing receipt" so the
+paperwork doesn't slip. A big job is rarely one invoice — a deposit at the
+start, a balance at the end, staged payments over a year — so open **Manage
+receipts** to attach several, each with its own date (it defaults to the
+repair's date). When one invoice was paid across several bank charges, tick
+every transaction in the repair editor to group them under a single repair:
+their amounts add up. The same transaction can't back two repairs. Older
+work that predates the bank history you imported needn't be left out —
+choose **Add manually** in the wrench view to record a repair with no
+transaction behind it: enter the type, date, amount, description,
+contractor, and tags directly (stored on the repair itself), and attach
+receipts just the same. Swipe a repair left to edit its transactions,
+description, subtype, company, and tags, manage its receipts, or delete it.
+Repair receipts are saved into the property's own receipts folder, each
+named for its date, company, and the work done, so the folder reads like a
+dated log of everything done to the home; change a receipt's date, a
+repair's company or description, or rename the property, and the receipt
+files are renamed to match.
 
 Beyond receipts, **upload any file to a property** — choose **Upload
 file** from a property's "…" menu to attach a photo or PDF: before and

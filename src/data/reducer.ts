@@ -20,6 +20,7 @@ import type {
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
+  RepairReceipt,
   Salary,
   SeriesMatchRule,
   Settings,
@@ -448,8 +449,8 @@ export type Action =
   | {
       // Edit one repair's annotation / sources — its free-text description,
       // the optional Repairs / Renovations subtype, the set of additional
-      // transactions, and the recomputed amount. The receipt is managed
-      // through `setRepairReceipt`, not patched here.
+      // transactions, and the recomputed amount. Receipts are managed through
+      // the `*RepairReceipt` actions, not patched here.
       type: "updateRepair";
       propertyId: string;
       repairId: string;
@@ -457,14 +458,31 @@ export type Action =
     }
   | { type: "deleteRepair"; propertyId: string; repairId: string }
   | {
-      // Set (or clear) a repair's own receipt path. The receipt covers the
-      // whole invoice and is owned by the repair, not any source transaction.
-      // A non-empty string sets it; "" clears it (the reducer drops the key
-      // so a cleared repair stays byte-identical to a reloaded one).
-      type: "setRepairReceipt";
+      // Attach a receipt to a repair. The receipt covers part (or all) of the
+      // repair's invoices and is owned by the repair, not any source
+      // transaction — a job can carry several, each with its own date.
+      type: "addRepairReceipt";
       propertyId: string;
       repairId: string;
-      receiptPath: string;
+      receipt: RepairReceipt;
+    }
+  | {
+      // Edit one of a repair's receipts — its stored `path` (after a re-file)
+      // and / or its `date`.
+      type: "updateRepairReceipt";
+      propertyId: string;
+      repairId: string;
+      receiptId: string;
+      patch: Partial<Omit<RepairReceipt, "id">>;
+    }
+  | {
+      // Detach one receipt from a repair. Removing the last one drops the
+      // `receipts` key so the repair stays byte-identical to a reloaded one
+      // (and re-surfaces the missing-receipt flag).
+      type: "removeRepairReceipt";
+      propertyId: string;
+      repairId: string;
+      receiptId: string;
     }
   | {
       // Save (or clear) a property's "Net sale profit" estimate — the

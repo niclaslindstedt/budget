@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import {
   Building2,
   Drill,
+  FileText,
   Layers,
   PaintRoller,
   Plus,
@@ -13,6 +14,10 @@ import {
 
 import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
 import {
+  hasReceipt as repairHasReceipt,
+  repairReceiptCount,
+} from "../../data/property-repairs/receipts";
+import {
   repairMetaKey,
   repairSourceCount,
 } from "../../data/property-repairs/sources";
@@ -20,6 +25,7 @@ import type {
   Company,
   Property,
   PropertyRepair,
+  RepairReceipt,
   Settings,
   Tag,
 } from "../../data/types";
@@ -27,12 +33,12 @@ import { useResetOnOpen } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
-import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button } from "../form";
 import { Modal } from "../Modal";
 import { useClaimActiveRow } from "../useClaimActiveRow";
 import { RepairEntryActionsMenu } from "./RepairEntryActionsMenu";
+import { RepairReceiptsModal } from "./RepairReceiptsModal";
 
 // Per-property repairs / renovations view, opened by the wrench button on a
 // property card. Lists the property's repairs newest-first — each a bank
@@ -64,19 +70,36 @@ type Props = {
   // affordance is hidden, but the "missing receipt" flag still shows — it
   // keeps the tax-deduction urgency visible regardless of backend.
   canManageReceipt: boolean;
-  // Upload a repair receipt into the property's `properties/<name>/receipts/`
-  // folder. `companyName` is the merchant the row resolves (off the source
-  // transaction), used only to name the file.
+  // Attach a receipt into the property's `properties/<name>/receipts/` folder.
+  // `companyName` is the merchant the row resolves (off the source
+  // transaction), used only to name the file; `date` defaults to the repair's
+  // date.
   onUploadReceipt: (
     property: Property,
     repair: PropertyRepair,
     companyName: string,
     file: File,
+    date?: string,
+  ) => Promise<RepairReceipt>;
+  onReplaceReceipt: (
+    property: Property,
+    repair: PropertyRepair,
+    receipt: RepairReceipt,
+    companyName: string,
+    file: File,
   ) => Promise<string>;
+  onSetReceiptDate: (
+    property: Property,
+    repair: PropertyRepair,
+    receipt: RepairReceipt,
+    companyName: string,
+    date: string,
+  ) => Promise<void>;
   onDownloadReceipt: (path: string) => Promise<Blob>;
   onRemoveReceipt: (
     property: Property,
     repair: PropertyRepair,
+    receiptId: string,
     path: string,
   ) => Promise<void>;
   onEditRepair: (repair: PropertyRepair) => void;
@@ -98,6 +121,8 @@ export function RepairsModal({
   repairMetadata,
   canManageReceipt,
   onUploadReceipt,
+  onReplaceReceipt,
+  onSetReceiptDate,
   onDownloadReceipt,
   onRemoveReceipt,
   onEditRepair,
@@ -109,7 +134,9 @@ export function RepairsModal({
 }: Props) {
   const t = useT();
 
-  const [managingReceipt, setManagingReceipt] = useState<PropertyRepair | null>(
+  // Tracked by id so the receipts manager re-resolves against the live repair
+  // after each add / remove / re-file rather than holding a stale snapshot.
+  const [managingReceiptId, setManagingReceiptId] = useState<string | null>(
     null,
   );
   const [pendingDelete, setPendingDelete] = useState<PropertyRepair | null>(
@@ -117,7 +144,7 @@ export function RepairsModal({
   );
 
   useResetOnOpen(open, property?.id, () => {
-    setManagingReceipt(null);
+    setManagingReceiptId(null);
     setPendingDelete(null);
   });
 
@@ -131,8 +158,9 @@ export function RepairsModal({
   // name the receipt file.
   const companyNameFor = (repair: PropertyRepair): string =>
     repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "";
-  const receiptPathFor = (repair: PropertyRepair): string | undefined =>
-    repair.receiptPath;
+  const managingRepair = managingReceiptId
+    ? (repairs.find((r) => r.id === managingReceiptId) ?? null)
+    : null;
 
   return (
     <Modal
@@ -161,9 +189,10 @@ export function RepairsModal({
                   repair={repair}
                   settings={settings}
                   metadata={repairMetadata.get(repairMetaKey(repair)) ?? null}
-                  hasReceipt={receiptPathFor(repair) !== undefined}
+                  hasReceipt={repairHasReceipt(repair)}
+                  receiptCount={repairReceiptCount(repair)}
                   canManageReceipt={canManageReceipt}
-                  onManageReceipt={() => setManagingReceipt(repair)}
+                  onManageReceipt={() => setManagingReceiptId(repair.id)}
                   onEdit={() => onEditRepair(repair)}
                   onDelete={() => setPendingDelete(repair)}
                 />
@@ -187,23 +216,18 @@ export function RepairsModal({
       </Modal.Footer>
 
       {canManageReceipt && (
-        <AttachmentUploadModal
-          open={managingReceipt !== null}
-          onClose={() => setManagingReceipt(null)}
-          title={t("properties.repairReceipt")}
-          currentPath={
-            managingReceipt ? receiptPathFor(managingReceipt) : undefined
-          }
-          onUpload={(file) =>
-            onUploadReceipt(
-              property,
-              managingReceipt!,
-              companyNameFor(managingReceipt!),
-              file,
-            )
-          }
+        <RepairReceiptsModal
+          open={managingRepair !== null}
+          property={property}
+          repair={managingRepair}
+          settings={settings}
+          companyName={managingRepair ? companyNameFor(managingRepair) : ""}
+          onClose={() => setManagingReceiptId(null)}
+          onUpload={onUploadReceipt}
+          onReplace={onReplaceReceipt}
+          onRemove={onRemoveReceipt}
+          onSetDate={onSetReceiptDate}
           onDownload={onDownloadReceipt}
-          onRemove={(path) => onRemoveReceipt(property, managingReceipt!, path)}
         />
       )}
 
@@ -245,6 +269,7 @@ type RowProps = {
   settings: Settings;
   metadata: RepairMetadata | null;
   hasReceipt: boolean;
+  receiptCount: number;
   canManageReceipt: boolean;
   onManageReceipt: () => void;
   onEdit: () => void;
@@ -261,6 +286,7 @@ function RepairRowImpl({
   settings,
   metadata,
   hasReceipt,
+  receiptCount,
   canManageReceipt,
   onManageReceipt,
   onEdit,
@@ -324,7 +350,18 @@ function RepairRowImpl({
                 <span className="min-w-0 truncate text-fg">{company.name}</span>
               </span>
             )}
-            {!hasReceipt && (
+            {hasReceipt ? (
+              <span className="inline-flex items-center gap-1">
+                <FileText size={12} aria-hidden focusable={false} />
+                {receiptCount === 1
+                  ? t("properties.repairReceiptsCountOne", {
+                      count: receiptCount,
+                    })
+                  : t("properties.repairReceiptsCountOther", {
+                      count: receiptCount,
+                    })}
+              </span>
+            ) : (
               <span className="inline-flex items-center gap-1 text-negative">
                 <AlertTriangle size={12} aria-hidden focusable={false} />
                 {t("properties.missingReceipt")}

@@ -22,6 +22,7 @@ import type {
   Property,
   PropertyFile,
   PropertyRepair,
+  RepairReceipt,
   UserData,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
@@ -43,19 +44,20 @@ export type PropertyFileMeta = {
   private?: boolean;
 };
 
-// Inputs for re-filing a repair receipt to its canonical
-// "<property>/receipts/<date> <company> - <description>" path after the
-// repair's naming inputs change (company / description / date) or its property
-// is renamed. `reservedPaths` lets a batch (a property rename touching several
-// repairs) avoid two repairs racing onto the same new name.
-export type RepairReceiptRename = {
+// Inputs for re-filing a repair's receipts to their canonical
+// "<property>/receipts/<date> <company> - <description>" paths after the
+// repair's naming inputs change (company / description) or its property is
+// renamed. Every receipt keeps its OWN date — they're re-filed against the
+// shared company / description / property name but each under its own date.
+// `reservedPaths` lets a batch (a property rename touching several repairs)
+// avoid two receipts racing onto the same new name.
+export type RepairReceiptsRename = {
   propertyId: string;
   repairId: string;
-  currentPath: string;
+  receipts: readonly RepairReceipt[];
   propertyName: string;
   companyName: string;
   description: string;
-  entryDate?: string;
   reservedPaths?: ReadonlySet<string>;
 };
 
@@ -70,28 +72,54 @@ export type PropertyAttachments = {
   // uploaded files live in.
   download: (path: string) => Promise<Blob>;
   // Repair receipts ------------------------------------------------------
-  // Write the picked file to `<property>/receipts/` AND persist its path onto
-  // the repair; resolves the stored path. `companyName` is the merchant the
-  // row resolves (off the source transaction), used only to name the file.
+  // Write the picked file to `<property>/receipts/` AND append a dated receipt
+  // record onto the repair; resolves the stored record. `companyName` is the
+  // merchant the row resolves (off the source transaction), used only to name
+  // the file. `date` is the receipt's own date — defaults to the repair's date
+  // when omitted (the common case, a single same-day invoice).
   uploadRepairReceipt: (
     property: Property,
     repair: PropertyRepair,
     companyName: string,
     file: File,
+    date?: string,
+  ) => Promise<RepairReceipt>;
+  // Replace one receipt's bytes with a freshly-picked file, keeping its date.
+  // Re-derives the path from the receipt's date + the new extension (a
+  // same-format replace overwrites in place; a format change re-files and
+  // drops the old bytes). Updates the receipt's `path` and resolves it.
+  replaceRepairReceipt: (
+    property: Property,
+    repair: PropertyRepair,
+    receipt: RepairReceipt,
+    companyName: string,
+    file: File,
   ) => Promise<string>;
-  // Delete a repair receipt's bytes AND clear the repair's `receiptPath`.
+  // Delete one repair receipt's bytes AND drop its record from the repair.
   removeRepairReceipt: (
     property: Property,
     repair: PropertyRepair,
+    receiptId: string,
     path: string,
   ) => Promise<void>;
-  // Re-file a repair receipt after its naming inputs change. Moves the bytes
-  // (download → upload → remove), updates the repair's `receiptPath`, and
-  // resolves the new path (or undefined when there was nothing to move / the
-  // bytes are gone). A no-op when the path is already canonical.
-  renameRepairReceipt: (
-    args: RepairReceiptRename,
-  ) => Promise<string | undefined>;
+  // Change one receipt's date, re-filing the bytes so the stored path keeps
+  // reflecting the new date. Moves the bytes (download → upload → remove) and
+  // updates the receipt's `path` + `date`. A no-op move when the path is
+  // already canonical (still updates the date). `companyName` names the file.
+  setRepairReceiptDate: (
+    property: Property,
+    repair: PropertyRepair,
+    receipt: RepairReceipt,
+    companyName: string,
+    date: string,
+  ) => Promise<void>;
+  // Re-file every one of a repair's receipts after its shared naming inputs
+  // change (company / description / property rename). Each receipt is moved
+  // under its own date; updates each receipt's `path`. Best-effort per receipt
+  // (a failed file op leaves that receipt at its old path). Resolves the set
+  // of new paths it claimed, so a batch caller can thread them forward as
+  // `reservedPaths` to avoid collisions across repairs.
+  renameRepairReceipts: (args: RepairReceiptsRename) => Promise<Set<string>>;
   // Uploaded files -------------------------------------------------------
   // Write the picked file to `<property>/files/[<category>/]` AND append a
   // `PropertyFile` record carrying its path + metadata; resolves the record.
@@ -208,31 +236,79 @@ export function usePropertyAttachments({
       repair: PropertyRepair,
       companyName: string,
       file: File,
-    ): Promise<string> => {
+      date?: string,
+    ): Promise<RepairReceipt> => {
       if (!store) throw new Error("property files unavailable");
-      // Excluding the repair's own current path reuses its tidy name on
-      // replace, so the new file overwrites it in place — no orphan.
-      const usedPaths = collectReceiptPaths(data, repair.receiptPath);
+      const id = newId();
+      const receiptDate = date ?? repair.date;
+      const usedPaths = collectReceiptPaths(data);
       const path = buildRepairReceiptPath({
         propertyName: property.name,
         fallbackFolder: t("properties.repairsFolderFallback"),
         companyName,
         description: repair.description,
-        entryDate: repair.date,
+        entryDate: receiptDate,
         today: todayIso(),
         extension: extensionOf(file.name),
-        repairId: repair.id,
+        disambiguatorId: id,
         usedPaths,
       });
       await store.upload(path, file);
       unlock("receiptKeeper");
+      // Attaching a second receipt to the same repair is the multi-receipt
+      // milestone (one job, several dated invoices).
+      if ((repair.receipts?.length ?? 0) >= 1) unlock("receiptArchivist");
+      const receipt: RepairReceipt = { id, path, date: receiptDate };
       dispatch({
-        type: "setRepairReceipt",
+        type: "addRepairReceipt",
         propertyId: property.id,
         repairId: repair.id,
-        receiptPath: path,
+        receipt,
       });
-      return path;
+      return receipt;
+    },
+    [store, data, dispatch, t],
+  );
+
+  const replaceRepairReceipt = useCallback(
+    async (
+      property: Property,
+      repair: PropertyRepair,
+      receipt: RepairReceipt,
+      companyName: string,
+      file: File,
+    ): Promise<string> => {
+      if (!store) throw new Error("property files unavailable");
+      // Exclude this receipt's own path so a same-format replace reuses its
+      // tidy name and overwrites in place.
+      const usedPaths = collectReceiptPaths(data, receipt.path);
+      const newPath = buildRepairReceiptPath({
+        propertyName: property.name,
+        fallbackFolder: t("properties.repairsFolderFallback"),
+        companyName,
+        description: repair.description,
+        entryDate: receipt.date,
+        today: todayIso(),
+        extension: extensionOf(file.name),
+        disambiguatorId: receipt.id,
+        usedPaths,
+      });
+      await store.upload(newPath, file);
+      if (newPath !== receipt.path) {
+        try {
+          await store.remove(receipt.path);
+        } catch {
+          // Best-effort cleanup — a failed delete leaves a harmless orphan.
+        }
+        dispatch({
+          type: "updateRepairReceipt",
+          propertyId: property.id,
+          repairId: repair.id,
+          receiptId: receipt.id,
+          patch: { path: newPath },
+        });
+      }
+      return newPath;
     },
     [store, data, dispatch, t],
   );
@@ -241,74 +317,132 @@ export function usePropertyAttachments({
     async (
       property: Property,
       repair: PropertyRepair,
+      receiptId: string,
       path: string,
     ): Promise<void> => {
       if (!store) throw new Error("property files unavailable");
       await store.remove(path);
-      // Empty string clears the receiptPath.
       dispatch({
-        type: "setRepairReceipt",
+        type: "removeRepairReceipt",
         propertyId: property.id,
         repairId: repair.id,
-        receiptPath: "",
+        receiptId,
       });
     },
     [store, dispatch],
   );
 
-  const renameRepairReceipt = useCallback(
-    async (args: RepairReceiptRename): Promise<string | undefined> => {
-      if (!store) return undefined;
-      const {
-        propertyId,
-        repairId,
-        currentPath,
-        propertyName,
-        companyName,
-        description,
-        entryDate,
-        reservedPaths,
-      } = args;
-      if (!currentPath) return undefined;
-
-      const usedPaths = new Set(collectReceiptPaths(data, currentPath));
-      if (reservedPaths) for (const p of reservedPaths) usedPaths.add(p);
+  // Re-file a single receipt's bytes to a freshly-built path (copy-then-delete,
+  // since the backend has no rename). Best-effort: a failed file op (offline,
+  // missing bytes) returns the original path so the receipt keeps working
+  // where it is. Returns the path the bytes now live at.
+  const refileReceipt = useCallback(
+    async (
+      receipt: RepairReceipt,
+      propertyName: string,
+      companyName: string,
+      description: string,
+      usedPaths: ReadonlySet<string>,
+    ): Promise<string> => {
+      if (!store) return receipt.path;
       const newPath = buildRepairReceiptPath({
         propertyName,
         fallbackFolder: t("properties.repairsFolderFallback"),
         companyName,
         description,
-        entryDate,
+        entryDate: receipt.date,
         today: todayIso(),
         // Keep the existing file's extension — only the name / folder change.
-        extension: extensionOfPath(currentPath),
-        repairId,
+        extension: extensionOfPath(receipt.path),
+        disambiguatorId: receipt.id,
         usedPaths,
       });
-      if (newPath === currentPath) return currentPath;
-
-      // Move the bytes by copy-then-delete (the backend has no rename).
-      // Best-effort: the rename is a cosmetic re-file, so a failed file op
-      // (offline, transient) leaves the receipt working at its old path rather
-      // than surfacing an error mid-edit. If the file is already gone, leave
-      // the reference alone rather than pointing it at a path with no bytes.
+      if (newPath === receipt.path) return receipt.path;
       try {
-        const blob = await store.download(currentPath);
-        if (!blob) return undefined;
+        const blob = await store.download(receipt.path);
+        if (!blob) return receipt.path;
         await store.upload(newPath, blob);
-        await store.remove(currentPath);
+        await store.remove(receipt.path);
       } catch {
-        return undefined;
+        return receipt.path;
       }
-      dispatch({
-        type: "setRepairReceipt",
-        propertyId,
-        repairId,
-        receiptPath: newPath,
-      });
       return newPath;
     },
-    [store, data, t, dispatch],
+    [store, t],
+  );
+
+  const setRepairReceiptDate = useCallback(
+    async (
+      property: Property,
+      repair: PropertyRepair,
+      receipt: RepairReceipt,
+      companyName: string,
+      date: string,
+    ): Promise<void> => {
+      if (!store) throw new Error("property files unavailable");
+      // Exclude this receipt's own current path so the rebuild can reuse its
+      // tidy name when only non-date inputs are unchanged.
+      const usedPaths = collectReceiptPaths(data, receipt.path);
+      const moved: RepairReceipt = { ...receipt, date };
+      const path = await refileReceipt(
+        moved,
+        property.name,
+        companyName,
+        repair.description,
+        usedPaths,
+      );
+      dispatch({
+        type: "updateRepairReceipt",
+        propertyId: property.id,
+        repairId: repair.id,
+        receiptId: receipt.id,
+        patch: path === receipt.path ? { date } : { path, date },
+      });
+    },
+    [store, data, dispatch, refileReceipt],
+  );
+
+  const renameRepairReceipts = useCallback(
+    async (args: RepairReceiptsRename): Promise<Set<string>> => {
+      const {
+        propertyId,
+        repairId,
+        receipts,
+        propertyName,
+        companyName,
+        description,
+        reservedPaths,
+      } = args;
+      const claimed = new Set<string>();
+      if (!store || receipts.length === 0) return claimed;
+
+      for (const receipt of receipts) {
+        // Seed the collision set fresh per receipt: every other attachment,
+        // plus the paths already claimed in this batch, minus this receipt's
+        // own current path so an unchanged name reuses itself.
+        const usedPaths = new Set(collectReceiptPaths(data, receipt.path));
+        if (reservedPaths) for (const p of reservedPaths) usedPaths.add(p);
+        for (const p of claimed) usedPaths.add(p);
+        const newPath = await refileReceipt(
+          receipt,
+          propertyName,
+          companyName,
+          description,
+          usedPaths,
+        );
+        claimed.add(newPath);
+        if (newPath === receipt.path) continue;
+        dispatch({
+          type: "updateRepairReceipt",
+          propertyId,
+          repairId,
+          receiptId: receipt.id,
+          patch: { path: newPath },
+        });
+      }
+      return claimed;
+    },
+    [store, data, dispatch, refileReceipt],
   );
 
   const uploadPropertyFile = useCallback(
@@ -419,7 +553,9 @@ export function usePropertyAttachments({
       }
       if (options.includeReceipts) {
         for (const repair of property.repairs) {
-          if (repair.receiptPath) candidatePaths.add(repair.receiptPath);
+          if (!repair.receipts) continue;
+          for (const receipt of repair.receipts)
+            candidatePaths.add(receipt.path);
         }
       }
 
@@ -539,29 +675,32 @@ export function usePropertyAttachments({
         if (pr.subtypeId) repair.subtypeId = pr.subtypeId;
         if (pr.companyId) repair.companyId = pr.companyId;
         if (pr.tagIds) repair.tagIds = pr.tagIds;
-        const bytes = pr.receiptZipPath
-          ? zip.get(pr.receiptZipPath)
-          : undefined;
-        if (pr.receiptZipPath && store && bytes) {
+        const receipts: RepairReceipt[] = [];
+        for (const mr of pr.receipts ?? []) {
+          const bytes = zip.get(mr.zipPath);
+          if (!store || !bytes) {
+            // The receipt couldn't be re-uploaded (no backend / missing bytes);
+            // the repair still imports, just without this receipt.
+            skipped += 1;
+            continue;
+          }
+          const receiptId = newId();
           const path = buildRepairReceiptPath({
             propertyName: plan.propertyName,
             fallbackFolder,
             companyName: "",
             description: pr.description,
-            entryDate: pr.date,
+            entryDate: mr.date,
             today: todayIso(),
-            extension: extensionOfPath(pr.receiptZipPath),
-            repairId: pr.id,
+            extension: extensionOfPath(mr.zipPath),
+            disambiguatorId: receiptId,
             usedPaths,
           });
           usedPaths.add(path);
           await store.upload(path, new Blob([bytes as BlobPart]));
-          repair.receiptPath = path;
-        } else if (pr.receiptZipPath) {
-          // The receipt couldn't be re-uploaded (no backend / missing bytes);
-          // the repair still imports, just without its receipt.
-          skipped += 1;
+          receipts.push({ id: receiptId, path, date: mr.date });
         }
+        if (receipts.length > 0) repair.receipts = receipts;
         repairs.push(repair);
       }
 
@@ -598,8 +737,10 @@ export function usePropertyAttachments({
     canManage,
     download,
     uploadRepairReceipt,
+    replaceRepairReceipt,
     removeRepairReceipt,
-    renameRepairReceipt,
+    setRepairReceiptDate,
+    renameRepairReceipts,
     uploadPropertyFile,
     replacePropertyFile,
     removePropertyFile,

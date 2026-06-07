@@ -495,35 +495,80 @@ describe("properties reducer — repairs", () => {
     );
   });
 
-  it("sets and clears a repair's own receipt, surviving a reload", () => {
+  it("adds, re-dates, and removes a repair's receipts, surviving a reload", () => {
     let data = reducer(seeded(), {
       type: "addRepairs",
       propertyId: "p1",
       repairs: [{ ...REPAIR }],
     });
 
+    // Attach two dated receipts (a deposit + a balance for one job).
     data = reducer(data, {
-      type: "setRepairReceipt",
+      type: "addRepairReceipt",
       propertyId: "p1",
       repairId: "r1",
-      receiptPath: "receipts/kitchen-invoice.pdf",
+      receipt: {
+        id: "rc1",
+        path: "Cabin/receipts/2026-01-20 deposit.pdf",
+        date: "2026-01-20",
+      },
     });
-    expect(data.properties[0].repairs[0].receiptPath).toBe(
-      "receipts/kitchen-invoice.pdf",
-    );
+    data = reducer(data, {
+      type: "addRepairReceipt",
+      propertyId: "p1",
+      repairId: "r1",
+      receipt: {
+        id: "rc2",
+        path: "Cabin/receipts/2026-03-05 balance.pdf",
+        date: "2026-03-05",
+      },
+    });
+    expect(data.properties[0].repairs[0].receipts).toHaveLength(2);
     expect(revalidate(data).properties[0].repairs[0]).toEqual(
       data.properties[0].repairs[0],
     );
 
-    // "" clears the receipt and drops the key, so the repair stays
-    // byte-identical to a reloaded one with no receipt.
+    // Re-date one receipt (re-files in the hook; here just the data move).
     data = reducer(data, {
-      type: "setRepairReceipt",
+      type: "updateRepairReceipt",
       propertyId: "p1",
       repairId: "r1",
-      receiptPath: "",
+      receiptId: "rc1",
+      patch: {
+        path: "Cabin/receipts/2026-02-01 deposit.pdf",
+        date: "2026-02-01",
+      },
     });
-    expect("receiptPath" in data.properties[0].repairs[0]).toBe(false);
+    expect(data.properties[0].repairs[0].receipts?.[0]).toEqual({
+      id: "rc1",
+      path: "Cabin/receipts/2026-02-01 deposit.pdf",
+      date: "2026-02-01",
+    });
+
+    // Remove one — the other survives.
+    data = reducer(data, {
+      type: "removeRepairReceipt",
+      propertyId: "p1",
+      repairId: "r1",
+      receiptId: "rc1",
+    });
+    expect(data.properties[0].repairs[0].receipts).toEqual([
+      {
+        id: "rc2",
+        path: "Cabin/receipts/2026-03-05 balance.pdf",
+        date: "2026-03-05",
+      },
+    ]);
+
+    // Removing the last receipt drops the key entirely, so the repair stays
+    // byte-identical to a reloaded one with no receipt.
+    data = reducer(data, {
+      type: "removeRepairReceipt",
+      propertyId: "p1",
+      repairId: "r1",
+      receiptId: "rc2",
+    });
+    expect("receipts" in data.properties[0].repairs[0]).toBe(false);
     expect(revalidate(data).properties[0].repairs[0]).toEqual(
       data.properties[0].repairs[0],
     );

@@ -187,14 +187,25 @@ const properties: PropertiesCatalog = {
   repairTypeRepairs: "Reparation",
   repairTypeRenovations: "Renovering",
   repairReceipt: "Kvitto",
-  manageReceipt: "Hantera kvitto",
+  manageReceipts: "Hantera kvitton",
   missingReceipt: "Saknar kvitto",
+  repairReceiptsCountOne: "{count} kvitto",
+  repairReceiptsCountOther: "{count} kvitton",
   repairsMissingReceiptsOne: "{count} saknat kvitto",
   repairsMissingReceiptsOther: "{count} saknade kvitton",
   deleteRepair: "Ta bort",
   deleteRepairTitle: "Ta bort post?",
   deleteRepairConfirm:
-    "{description} ({amount}) tas bort från fastigheten. Källtransaktionen och eventuellt kvitto behålls. Det går inte att ångra.",
+    "{description} ({amount}) tas bort från fastigheten. Källtransaktionen och eventuella kvitton behålls. Det går inte att ångra.",
+
+  // Repair receipts manager — en reparation äger en lista daterade kvitton
+  // (ett jobb kan ge flera fakturor över tid).
+  repairReceiptsTitle: "Kvitton",
+  repairReceiptsEmpty: "Inga kvitton tillagda ännu.",
+  repairReceiptAdd: "Lägg till kvitto",
+  repairReceiptDateAria: "Kvittodatum",
+  repairReceiptOpenAria: "Öppna kvitto",
+  repairReceiptRemoveAria: "Ta bort kvitto",
 
   // Add repairs / renovations picker.
   addRepairsTitle: "Lägg till reparationer & renoveringar",

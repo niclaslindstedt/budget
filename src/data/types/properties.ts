@@ -119,6 +119,21 @@ export type RepairSource = {
   entryId: string;
 };
 
+// One receipt document attached to a repair / renovation. A single job often
+// arrives as several invoices over time — a deposit at the start, a balance at
+// the end, staged invoices across a year — each sent on its own date, so a
+// repair owns a *list* of these rather than one document. `path` locates the
+// bytes in the backend's per-property `properties/` store
+// (`<name>/receipts/…`); `date` is the receipt's own date, which drives the
+// dated filename and reads as a log of the work. A new receipt defaults its
+// `date` to the repair's date (the common case) but is freely editable, since
+// invoices for one job don't all share the repair's date.
+export type RepairReceipt = {
+  id: string;
+  path: string;
+  date: string; // ISO yyyy-mm-dd — the receipt's own date
+};
+
 // One repair or renovation on a property — work the user tagged as
 // **Repairs** (`preset-type-repairs`) or **Renovations**
 // (`preset-type-renovations`) and bound to this property. Recorded for a
@@ -143,10 +158,10 @@ export type RepairSource = {
 //   the repair itself — there is no transaction to carry them.
 //
 // `amount` is the sum across every source (transaction-backed) or the entered
-// cost (manual), always >= 0. The single receipt covering the whole invoice
-// is owned by the repair itself (`receiptPath`), decoupled from any one
-// transaction — the invoice is the repair's document. Attaching one clears
-// the "missing receipt" flag.
+// cost (manual), always >= 0. The receipts covering the work are owned by the
+// repair itself (`receipts`), decoupled from any one transaction — the
+// invoices are the repair's documents. Attaching at least one clears the
+// "missing receipt" flag.
 export type PropertyRepair = {
   id: string;
   date: string; // ISO yyyy-mm-dd — primary source's date, or entered (manual)
@@ -192,14 +207,17 @@ export type PropertyRepair = {
   // the only shape older budgets carry — this field is additive). Walk the
   // full set with `repairSources` in `src/data/property-repairs/sources.ts`.
   additionalSources?: RepairSource[];
-  // The receipt covering this repair's whole invoice — a path into the
-  // backend's `receipts/` folder, owned by the repair (not by any source
-  // transaction), so one document covers every charge the repair groups.
-  // Absent ⇒ no receipt yet, which surfaces the "missing receipt" flag (the
-  // receipt is what makes the cost tax-deductible). Managed through the
-  // `{ kind: "repair" }` receipt target; "" never persists — clearing it
-  // drops the key, mirroring an absent optional.
-  receiptPath?: string;
+  // The receipts covering this repair's work — dated invoice documents owned
+  // by the repair (not by any source transaction), filed into the backend's
+  // per-property `properties/<name>/receipts/` store. A job can produce
+  // several over time (deposit + balance, staged invoices), each with its own
+  // date, so this is a list. Absent / empty ⇒ no receipt yet, which surfaces
+  // the "missing receipt" flag (a receipt is what makes the cost
+  // tax-deductible). A new receipt defaults its date to the repair's date but
+  // is editable; changing it re-files the stored document. Removing the last
+  // receipt drops the key, mirroring an absent optional. Walk the list with
+  // `repairReceipts` in `src/data/property-repairs/receipts.ts`.
+  receipts?: RepairReceipt[];
 };
 
 // A user-defined category for a property's uploaded files — "Insurance",
@@ -220,7 +238,8 @@ export type FileCategory = {
 // photo, an inspection report, an insurance document, anything that isn't a
 // repair receipt. The bytes live in the backend's `properties/` store at
 // `<property name>/files/[<category name>/]<file>`; only the relative `path`
-// is stored here (mirroring `PropertyRepair.receiptPath`). `description` is
+// is stored here (mirroring a `PropertyRepair.receipts` entry's `path`).
+// `description` is
 // the user's label shown in the files list; `tagIds` are `UserData.tags`
 // references (a file can carry several); `categoryId` is the optional
 // `FileCategory` the file is filed under (absent ⇒ the `files/` root). A

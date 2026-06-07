@@ -256,6 +256,9 @@ src/
 │   │   │                       #   any property's repairs (Add repairs picker);
 │   │   │                       #   resolveRepairSourceRows — a repair's own
 │   │   │                       #   sources resolved for the editor's checklist
+│   │   ├── receipts.ts         # repairReceipts / repairReceiptCount / hasReceipt
+│   │   │                       #   — normalise a repair's optional dated-receipts
+│   │   │                       #   list (the missing-receipt flag reads hasReceipt)
 │   │   └── sources.ts          # repairSources / repairSourceCount / repairSourceKey
 │   │                           #   — flatten a repair's primary + additionalSources
 │   │                           #   into one uniform transaction list
@@ -822,17 +825,23 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   A repair can now also group several transactions paying one invoice via an
   optional `additionalSources` (`{ accountId, entryId }[]`); the primary
   `accountId` / `sourceHistoryId` resolves the row's company / tags, and
-  `amount` is the sum across every source. The single invoice receipt is owned
-  by the repair (`receiptPath`), decoupled from any transaction and managed
-  through the `{ kind: "repair" }` receipt target / `setRepairReceipt`. Both
-  are additive optional fields needing no migration (absent ⇒ a
-  single-transaction repair with no receipt). The `accountId` /
+  `amount` is the sum across every source. The `accountId` /
   `sourceHistoryId` pair is now itself **optional**: a **manual** repair (work
   older than the imported bank history reaches) has no backing transaction, so
   it omits the pair and instead stores its own `companyId` / `tagIds` on the
   repair (a transaction-backed repair still resolves those live off its
-  source). Loosening a required field and adding two optional ones is
+  source). Loosening a required field and adding optional ones is
   backward-compatible — old budgets read unchanged — so no version bump.
+- **v68 → v69** — a repair's receipts become a **list of dated documents**
+  (`receipts?: RepairReceipt[]`, each `{ id, path, date }`) instead of the
+  single `receiptPath` v68 introduced. A job is often paid across several
+  invoices over time, each on its own date. The migration converts an
+  existing `receiptPath` into a one-element `receipts` list dated with the
+  repair's own date (the only date a v68 budget carries for it); a
+  receiptless repair is untouched. Receipts file into the property's
+  `<name>/receipts/` store named from the **receipt's** date, and are managed
+  through `addRepairReceipt` / `updateRepairReceipt` / `removeRepairReceipt`
+  and the `usePropertyAttachments` callbacks.
 
 ## State management
 

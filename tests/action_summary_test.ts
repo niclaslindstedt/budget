@@ -274,6 +274,44 @@ describe("describeActionSubject", () => {
         prev,
       ),
     ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "addRepairReceipt",
+          propertyId: "p1",
+          repairId: "r1",
+          receipt: {
+            id: "rc1",
+            path: "Apartment/receipts/a.pdf",
+            date: "2026-01-20",
+          },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "updateRepairReceipt",
+          propertyId: "p1",
+          repairId: "r1",
+          receiptId: "rc1",
+          patch: { date: "2026-02-01" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "removeRepairReceipt",
+          propertyId: "p1",
+          repairId: "r1",
+          receiptId: "rc1",
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
   });
 
   it("names the property on file actions and the category on category actions", () => {

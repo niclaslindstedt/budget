@@ -138,8 +138,10 @@ export type BuildRepairReceiptPathOpts = {
   today: string;
   // Lower-case extension without the dot (from `extensionOf`). "" omits it.
   extension: string;
-  // The repair id, used only to disambiguate a name collision.
-  repairId: string;
+  // An id used only to disambiguate a name collision (the receipt's id, so two
+  // receipts on the same repair with the same date / company / description
+  // don't fight over one name).
+  disambiguatorId: string;
   // Receipt paths already used by OTHER hosts, so a duplicate name gets an id
   // suffix rather than overwriting an unrelated file.
   usedPaths: ReadonlySet<string>;
@@ -148,10 +150,11 @@ export type BuildRepairReceiptPathOpts = {
 // Build the relative path (inside the backend's per-property `properties/`
 // store) for a property repair's receipt: `<property>/receipts/<date>
 // <company> - <description>`, so the receipts read like a dated log of the
-// work done on each property. Unlike `buildReceiptPath` this ignores the
+// work done on each property. The `<date>` is the receipt's own date (a job's
+// invoices span different dates). Unlike `buildReceiptPath` this ignores the
 // user's global name pattern — the folder + log shape is the whole point.
-// Every segment is sanitised, and a short repair-id suffix is appended on a
-// name collision.
+// Every segment is sanitised, and a short id suffix is appended on a name
+// collision.
 export function buildRepairReceiptPath(
   opts: BuildRepairReceiptPathOpts,
 ): string {
@@ -163,7 +166,7 @@ export function buildRepairReceiptPath(
     entryDate,
     today,
     extension,
-    repairId,
+    disambiguatorId,
     usedPaths,
   } = opts;
 
@@ -184,7 +187,7 @@ export function buildRepairReceiptPath(
   const prefix = `${dir}/receipts/`;
   const candidate = `${prefix}${stem}${ext}`;
   if (usedPaths.has(candidate)) {
-    return `${prefix}${stem} (${repairId.slice(0, 6)})${ext}`;
+    return `${prefix}${stem} (${disambiguatorId.slice(0, 6)})${ext}`;
   }
   return candidate;
 }

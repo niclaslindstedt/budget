@@ -64,7 +64,7 @@ function sampleProperty(): Property {
         subtypeId: "sub-paint",
         accountId: "a1",
         sourceHistoryId: "h1",
-        receiptPath: RECEIPT_PATH,
+        receipts: [{ id: "rc1", path: RECEIPT_PATH, date: "2026-01-20" }],
       },
     ],
     files: [
@@ -121,7 +121,8 @@ describe("buildPropertyExport", () => {
     // The repair carries its resolved company / subtype / tags + a receipt.
     expect(manifest.repairs[0].companyName).toBe("Snickaren");
     expect(manifest.repairs[0].subtypeName).toBe("Painting");
-    expect(manifest.repairs[0].receiptZipPath).toBeDefined();
+    expect(manifest.repairs[0].receipts).toHaveLength(1);
+    expect(manifest.repairs[0].receipts?.[0].date).toBe("2026-01-20");
     // Financials stay out by default.
     expect(manifest.financials).toBeUndefined();
     // The public file + the receipt are the bundled bytes.
@@ -154,7 +155,7 @@ describe("buildPropertyExport", () => {
       ALL_PATHS,
       "2026-06-07T00:00:00.000Z",
     );
-    expect(manifest.repairs[0].receiptZipPath).toBeUndefined();
+    expect(manifest.repairs[0].receipts).toBeUndefined();
     expect(binaryEntries.some((e) => e.sourcePath === RECEIPT_PATH)).toBe(
       false,
     );

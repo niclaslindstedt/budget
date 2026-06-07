@@ -386,6 +386,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna Prylar på ett köp och bifoga ett foto eller en PDF av kvittot — varje sak köpet betalade för delar det. Det sparas som en fil i en kvittomapp i din lagring, namngett enligt mönstret du väljer under Inställningar → Saker, så att du hittar det senare. Tillgängligt för lokal mapp och molnlagring.",
   },
+  receiptArchivist: {
+    name: "Kvittoarkivarie",
+    condition: "Bifoga två kvitton till en reparation.",
+    learnMore:
+      "Ett stort jobb betalas ofta via flera fakturor — en handpenning i början, en slutbetalning på slutet, delbetalningar över ett år. Öppna Hantera kvitton på en reparation och bifoga varje kvitto med sitt eget datum (det utgår från reparationens datum). De arkiveras som en daterad logg i fastighetens kvittomapp. Tillgängligt för lokal mapp och molnlagring.",
+  },
   payslipKeeper: {
     name: "Lönerapportsamlare",
     condition: "Bifoga en lönerapport till en lön.",

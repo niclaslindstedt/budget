@@ -388,6 +388,12 @@ const catalog = {
     learnMore:
       "Open Line items on a purchase and attach a photo or PDF of the receipt — every item that purchase paid for shares it. It is saved as a file in a receipts folder on your storage, named from the pattern you pick in Settings → Items, so you can find it later. Available on the local-folder and cloud backends.",
   },
+  receiptArchivist: {
+    name: "Receipt Archivist",
+    condition: "Attach two receipts to one repair.",
+    learnMore:
+      "A big job is often paid across several invoices — a deposit at the start, a balance at the end, staged payments over a year. Open Manage receipts on a repair and attach each one, with its own date (it defaults to the repair's date). They're filed as a dated log in the property's receipts folder. Available on the local-folder and cloud backends.",
+  },
   payslipKeeper: {
     name: "Payslip Keeper",
     condition: "Attach a payslip to a salary.",

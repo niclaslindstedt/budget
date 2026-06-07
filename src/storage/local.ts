@@ -1,6 +1,6 @@
 import { DEFAULT_PERSISTED_SETTINGS } from "../data/constants/defaults";
 import { getDefaultItemFindThreshold } from "../data/constants/currency";
-import type { MigrationContext } from "../data/migrations";
+import { LATEST_VERSION, type MigrationContext } from "../data/migrations";
 import { createDefaultSheet } from "../data/sheet";
 import type { UserData } from "../data/types";
 import { detectInitialCurrency, detectInitialLanguage } from "../i18n/locale";
@@ -24,7 +24,7 @@ export function freshUserData(): UserData {
   // 2000-unit floor.
   const currency = detectInitialCurrency();
   return {
-    version: 68,
+    version: LATEST_VERSION,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],
