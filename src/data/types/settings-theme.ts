@@ -24,7 +24,9 @@ export type ShortDateFormat = "DD/MM" | "MM/DD" | "DD.MM" | "MM-DD" | "D MMM";
 // Theme preset. The two original variants — `dark` / `light` — lock
 // to the One Dark / One Light palettes; `dracula`, `githubDark`, and
 // `githubLight` are the popular VS Code themes adapted for the budget
-// slot vocabulary; `system` follows `prefers-color-scheme`; `custom`
+// slot vocabulary; `excel` mirrors Microsoft Excel's light-mode look
+// (white grid, Excel green, Office chart accents) so spreadsheet users
+// feel at home; `system` follows `prefers-color-scheme`; `custom`
 // applies the colour and density overrides held under `customTheme`.
 // The runtime writes the active value to `data-theme` on `<html>`.
 export type ThemePreset =
@@ -36,6 +38,7 @@ export type ThemePreset =
   | "githubLight"
   | "solarizedLight"
   | "quietLight"
+  | "excel"
   | "system"
   | "custom";
 

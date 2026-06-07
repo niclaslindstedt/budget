@@ -127,6 +127,7 @@ const settings: SettingsCatalog = {
     themeGithubLight: "GitHub Light",
     themeSolarizedLight: "Solarized Light",
     themeQuietLight: "Quiet Light",
+    themeExcel: "Excel",
     themeSystem: "System",
     themeCustom: "Anpassat",
     themeSystemHint: "Följ operativsystemets färgschema.",

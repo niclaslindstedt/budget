@@ -3,10 +3,10 @@
 // dragging in the rest of `constants/`. The Appearance settings tab,
 // `useTheme`, and the validator all read from here directly.
 //
-// The eight non-Custom presets (`dark`, `light`, `dracula`, `monokai`,
-// `githubDark`, `githubLight`, `solarizedLight`, `quietLight`) double
-// as seed palettes for the Custom theme: switching from a preset into
-// Custom pre-fills the editor from the preset that was active.
+// The nine non-Custom presets (`dark`, `light`, `dracula`, `monokai`,
+// `githubDark`, `githubLight`, `solarizedLight`, `quietLight`, `excel`)
+// double as seed palettes for the Custom theme: switching from a preset
+// into Custom pre-fills the editor from the preset that was active.
 
 import type {
   BorderWidthPreset,
@@ -34,6 +34,7 @@ export const THEMES = [
   "githubLight",
   "solarizedLight",
   "quietLight",
+  "excel",
   "system",
   "custom",
 ] as const;
@@ -51,12 +52,13 @@ export const DARK_THEMES = [
 ] as const;
 
 // Theme presets in the Light family — One Light first, then the
-// light VS Code variants.
+// light VS Code variants, then the Excel-flavoured light theme.
 export const LIGHT_THEMES = [
   "light",
   "githubLight",
   "solarizedLight",
   "quietLight",
+  "excel",
 ] as const;
 
 // Resolve a preset to its broad family. Dark / Light variants fold
@@ -329,6 +331,35 @@ export const DEFAULT_CUSTOM_THEME_COLORS_QUIET_LIGHT: CustomThemeColors = {
   negative: "#cf6e6a",
 };
 
+// Excel Light palette — Microsoft Excel's light-mode look. Pure-white
+// cell grid on a soft Office-neutral workspace, near-black text, the
+// classic Excel gridline grey, and the Office accent set mapped onto
+// the budget slots: accent/success = Excel green (#217346), link =
+// Excel's hyperlink blue, flag = Office chart orange, meta = Office
+// gold, path = Office teal, pipe = Office purple, danger = Excel's
+// negative-number red. Mirrored into `src/styles.css` under
+// `:root[data-theme="excel"]`.
+export const DEFAULT_CUSTOM_THEME_COLORS_EXCEL: CustomThemeColors = {
+  pageBg: "#e6e6e6",
+  surface: "#ffffff",
+  surface2: "#f3f2f1",
+  surface3: "#e1dfdd",
+  fg: "#252423",
+  fgBright: "#171717",
+  muted: "#605e5c",
+  line: "#d4d4d4",
+  accent: "#217346",
+  meta: "#a6730a",
+  link: "#0563c1",
+  path: "#0e7490",
+  flag: "#c55a11",
+  pipe: "#7030a0",
+  danger: "#c00000",
+  success: "#217346",
+  positive: "#3f7d3a",
+  negative: "#c84031",
+};
+
 // Per-preset palette lookup. The Appearance picker reads this both to
 // draw the variant-row swatches and to pre-fill the Custom-theme
 // editor when the user switches into Custom — the seed comes from
@@ -345,6 +376,7 @@ export const PRESET_PALETTES: Record<
   githubLight: DEFAULT_CUSTOM_THEME_COLORS_GITHUB_LIGHT,
   solarizedLight: DEFAULT_CUSTOM_THEME_COLORS_SOLARIZED_LIGHT,
   quietLight: DEFAULT_CUSTOM_THEME_COLORS_QUIET_LIGHT,
+  excel: DEFAULT_CUSTOM_THEME_COLORS_EXCEL,
 };
 
 export const DEFAULT_CUSTOM_THEME: CustomTheme = {
