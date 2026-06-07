@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Drill, PaintRoller, ReceiptText, Wrench } from "lucide-react";
+import { Drill, PaintRoller, Wrench } from "lucide-react";
 
 import type { RepairCandidate } from "../../data/property-repairs/candidates";
 import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
@@ -104,14 +104,13 @@ function rowKey(c: RepairCandidate): string {
   return `${c.accountId}:${c.entryId}`;
 }
 
-// Pick the primary (receipt / metadata anchor) for a selected set of charges:
-// the first that already carries a receipt — so an existing receipt is kept as
-// the invoice cover — else the most recent by date. Returns null for an empty
+// Pick the primary (the metadata anchor whose company / tags the row shows,
+// and whose date / type the repair tracks) for a selected set of charges: the
+// most recent by date. The receipt is owned by the repair, not a transaction,
+// so there's no receipt-bearing charge to prefer. Returns null for an empty
 // selection.
 function derivePrimary(rows: RepairCandidate[]): RepairCandidate | null {
   if (rows.length === 0) return null;
-  const withReceipt = rows.find((r) => r.hasReceipt);
-  if (withReceipt) return withReceipt;
   return rows.reduce((best, r) => (r.date > best.date ? r : best), rows[0]);
 }
 
@@ -337,7 +336,6 @@ export function RepairsEditModal({
     : isRenovation
       ? PaintRoller
       : Drill;
-  const primaryKey = primary ? rowKey(primary) : null;
 
   return (
     <Modal
@@ -394,7 +392,6 @@ export function RepairsEditModal({
                       lang={lang}
                       checked={selected.has(key)}
                       pinned={key === pinnedPrimaryKey}
-                      isPrimary={key === primaryKey}
                       onToggle={() => toggleSource(key)}
                     />
                   );
@@ -487,7 +484,6 @@ function SourceRow({
   lang,
   checked,
   pinned,
-  isPrimary,
   onToggle,
 }: {
   row: RepairCandidate;
@@ -496,8 +492,6 @@ function SourceRow({
   checked: boolean;
   // The pinned primary (edit mode) can't be unchecked.
   pinned: boolean;
-  // Whether this row is the current receipt / metadata anchor.
-  isPrimary: boolean;
   onToggle: () => void;
 }) {
   const t = useT();
@@ -531,25 +525,10 @@ function SourceRow({
           <span className="block truncate text-fg-bright">
             {row.description || typeLabel}
           </span>
-          <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted tabular-nums">
-            <span>
-              {formatShortDate(row.date, settings.shortDateFormat, lang)}
-            </span>
-            {isPrimary && (
-              <span className="text-accent">
-                {t("properties.repairPrimary")}
-              </span>
-            )}
+          <span className="block truncate text-xs text-muted tabular-nums">
+            {formatShortDate(row.date, settings.shortDateFormat, lang)}
           </span>
         </span>
-        {row.hasReceipt && (
-          <ReceiptText
-            size={14}
-            className="shrink-0 text-success"
-            aria-label={t("properties.repairHasReceipt")}
-            focusable={false}
-          />
-        )}
         <span className="shrink-0 tabular-nums text-fg-bright">
           {formatBalance(row.amount, settings, { neverAbbreviate: true })}
         </span>

@@ -203,7 +203,6 @@ const properties = {
   addRepairsSelect: "Transactions to add",
   addRepairsOne: "Add {count} record",
   addRepairsOther: "Add {count} records",
-  repairHasReceipt: "Has receipt",
 
   // Single repair editor — add (pick one or more source transactions) and
   // edit (add / remove transactions, description, subtype).
@@ -215,8 +214,6 @@ const properties = {
   // Count of selected transactions, shown beside the running total.
   repairSourcesCountOne: "{count} transaction",
   repairSourcesCountOther: "{count} transactions",
-  // Marks the transaction that holds the shared receipt for the repair.
-  repairPrimary: "Receipt",
   repairSourceEmpty:
     "No unused Repairs or Renovations transactions found. In your budget, tag a charge with the Repairs or Renovations type, then come back.",
   repairDescriptionLabel: "Description",

@@ -67,11 +67,11 @@ export function findItemLink(
   return null;
 }
 
-// Every receipt path currently in use across all transactions (user rows
-// + imported history), so a fresh upload that would collide with another
-// transaction's receipt name gets a disambiguating suffix instead of
-// overwriting it. `exclude` (the target transaction's own current path) is
-// dropped so replacing a receipt reuses its tidy name in place.
+// Every receipt path currently in use across all receipt hosts (user rows,
+// imported history, and property repairs), so a fresh upload that would
+// collide with another host's receipt name gets a disambiguating suffix
+// instead of overwriting it. `exclude` (the target host's own current path)
+// is dropped so replacing a receipt reuses its tidy name in place.
 export function collectReceiptPaths(
   data: UserData,
   exclude?: string,
@@ -88,6 +88,13 @@ export function collectReceiptPaths(
   for (const entries of Object.values(data.history)) {
     for (const entry of entries) {
       if (entry.receiptPath) paths.add(entry.receiptPath);
+    }
+  }
+  // Property repairs own their receipt path too — include them so a fresh
+  // upload never collides with a repair's invoice receipt.
+  for (const property of data.properties) {
+    for (const repair of property.repairs) {
+      if (repair.receiptPath) paths.add(repair.receiptPath);
     }
   }
   if (exclude) paths.delete(exclude);

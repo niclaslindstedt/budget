@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Drill, PaintRoller, Plus, ReceiptText, Wrench } from "lucide-react";
+import { Drill, PaintRoller, Plus, Wrench } from "lucide-react";
 
 import type { RepairCandidate } from "../../data/property-repairs/candidates";
 import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
@@ -168,14 +168,6 @@ function RepairCandidateRow({
             {formatShortDate(candidate.date, settings.shortDateFormat, lang)}
           </span>
         </span>
-        {candidate.hasReceipt && (
-          <ReceiptText
-            size={14}
-            className="shrink-0 text-success"
-            aria-label={t("properties.repairHasReceipt")}
-            focusable={false}
-          />
-        )}
         <span className="shrink-0 tabular-nums text-fg-bright">
           {formatBalance(candidate.amount, settings, { neverAbbreviate: true })}
         </span>

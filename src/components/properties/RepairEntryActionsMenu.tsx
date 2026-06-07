@@ -12,11 +12,10 @@ type Props = {
   // backend can't). When false the menu has no entries and renders nothing,
   // so the swipe strip stays at edit + delete.
   canManageReceipt: boolean;
-  // Whether the source charge already carries a receipt — toggles the entry
-  // between "View receipt" and "Upload receipt".
+  // Whether the repair already carries a receipt — toggles the entry between
+  // "View receipt" and "Upload receipt".
   hasReceipt: boolean;
-  // Open the shared attachment modal for this repair's receipt — the receipt
-  // physically lives on the source bank entry.
+  // Open the shared attachment modal for this repair's own receipt.
   onManageReceipt: (repair: PropertyRepair) => void;
   // Fired after picking any menu item so the parent can dismiss its swipe
   // state in the same frame the dropdown closes.
@@ -37,9 +36,9 @@ type MenuItem = {
 };
 
 // The "…" overflow popover in a repair row's swipe strip — the repairs-view
-// analogue of `ItemEntryActionsMenu`. Its single entry manages the receipt
-// of the source charge the repair is bound to. Renders nothing when the
-// backend can't hold receipts, so the strip stays at edit + delete.
+// analogue of `ItemEntryActionsMenu`. Its single entry manages the repair's
+// own receipt. Renders nothing when the backend can't hold receipts, so the
+// strip stays at edit + delete.
 export function RepairEntryActionsMenu({
   repair,
   canManageReceipt,

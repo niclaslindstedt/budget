@@ -44,16 +44,17 @@ type Args = {
   dispatch: (action: Action) => void;
 };
 
-// Transaction-generic receipt handling. A receipt's bytes live in the
-// backend's `receipts/` folder; its reference is stored on the transaction
-// it hangs off — an imported bank entry (`HistoryEntry.receiptPath`) or a
-// user budget row (`Row.receiptPath`). This hook owns both halves (the file
-// write and the data commit) for ANY transaction, so the Items sheet and
-// the Properties repairs view share one implementation instead of each
-// re-deriving the per-page resolution. The commit re-reads the
-// transaction's current line-item links and hands them back unchanged via
-// the existing line-item reducers, so attaching a receipt never disturbs
-// the links.
+// Host-generic receipt handling. A receipt's bytes live in the backend's
+// `receipts/` folder; its reference is stored on the host it hangs off — an
+// imported bank entry (`HistoryEntry.receiptPath`), a user budget row
+// (`Row.receiptPath`), or a property repair (`PropertyRepair.receiptPath`).
+// This hook owns both halves (the file write and the data commit) for ANY
+// host, so the Items sheet and the Properties repairs view share one
+// implementation instead of each re-deriving the per-page resolution. For a
+// transaction host the commit re-reads the current line-item links and hands
+// them back unchanged via the existing line-item reducers, so attaching a
+// receipt never disturbs the links; a repair host has no links and commits
+// through `setRepairReceipt`.
 export function useReceiptManager({
   data,
   adapter,
@@ -64,11 +65,12 @@ export function useReceiptManager({
 
   const canManageReceipt = adapter.capabilities.has("receipts");
 
-  // Persist `receiptPath` onto the target transaction. Resolves the live
-  // line-item links at commit time (a stale target can't clobber freshly-
-  // edited links) and routes through the EXISTING line-item action for the
-  // transaction's kind — no receipt-specific reducer. The `receiptPath`
-  // contract matches those actions: a string sets it, "" clears it.
+  // Persist `receiptPath` onto the target host. For a transaction host it
+  // resolves the live line-item links at commit time (a stale target can't
+  // clobber freshly-edited links) and routes through the EXISTING line-item
+  // action for the host's kind; a repair host routes through
+  // `setRepairReceipt`. The `receiptPath` contract matches those actions: a
+  // string sets it, "" clears it.
   const commitReceipt = useCallback(
     (target: TxnReceiptTarget, receiptPath: string): void => {
       const resolved = resolveTxnReceipt(data, target);
@@ -79,6 +81,16 @@ export function useReceiptManager({
           accountId: target.accountId,
           entryId: target.entryId,
           lineItems: resolved.lineItems,
+          receiptPath,
+        });
+        return;
+      }
+      if (target.kind === "repair") {
+        // A repair owns its receipt directly — no line-item plumbing.
+        dispatch({
+          type: "setRepairReceipt",
+          propertyId: target.propertyId,
+          repairId: target.repairId,
           receiptPath,
         });
         return;

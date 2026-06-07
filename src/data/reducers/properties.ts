@@ -53,9 +53,11 @@ function updateMortgageById(
 //
 // `deleteProperty` is a plain filter: a property's repairs / renovations
 // nest under it (`Property.repairs`), so dropping the property drops them
-// with it — no cross-collection cascade is needed (the receipts those
-// repairs reference still hang off their own bank entries and are managed
-// from the Items / repairs flows independently).
+// with it — no cross-collection cascade is needed. A repair owns its receipt
+// path (`PropertyRepair.receiptPath`); the receipt's bytes in the backend's
+// `receipts/` folder are left orphaned on a delete (the reducer mutates data
+// only — it has no file-system reach), the same way deleting a budget row
+// with a receipt leaves its bytes.
 export function reduceProperties(
   state: UserData,
   action: Action,
@@ -196,6 +198,18 @@ export function reduceProperties(
     return updatePropertyById(state, action.propertyId, (p) => ({
       ...p,
       repairs: p.repairs.filter((r) => r.id !== action.repairId),
+    }));
+  }
+  if (action.type === "setRepairReceipt") {
+    // "" clears the receipt; `applyPatch` treats `undefined` as "delete the
+    // key", so a cleared repair stays byte-identical to a reloaded one.
+    const receiptPath =
+      action.receiptPath === "" ? undefined : action.receiptPath;
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: p.repairs.map((r) =>
+        r.id === action.repairId ? applyPatch(r, { receiptPath }) : r,
+      ),
     }));
   }
   if (action.type === "setPropertySaleEstimate") {

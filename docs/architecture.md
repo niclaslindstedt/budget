@@ -253,10 +253,11 @@ src/
 │   │   └── sources.ts          # repairSources / repairSourceCount / repairSourceKey
 │   │                           #   — flatten a repair's primary + additionalSources
 │   │                           #   into one uniform transaction list
-│   ├── receipts/           # transaction-generic receipt addressing
+│   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
-│   │                           #   — address a receipt's host txn (history entry /
-│   │                           #   budget row) so Items + repairs share one flow
+│   │                           #   — address a receipt's host (history entry /
+│   │                           #   budget row / property repair) so Items +
+│   │                           #   repairs share one flow
 │   ├── tax/                # country-pluggable tax engine — salary income tax
 │   │   │                   #   (estimate gross from a net deposit) AND property-sale
 │   │   │                   #   capital-gains. No SE figure leaks outside se/
@@ -805,9 +806,12 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   both additive optional fields that need no migration (absent ⇒ unset).
   A repair can now also group several transactions paying one invoice via an
   optional `additionalSources` (`{ accountId, entryId }[]`); the primary
-  `accountId` / `sourceHistoryId` still hosts the single shared receipt, and
-  `amount` is the sum across every source. Additive optional, no migration
-  (absent / empty ⇒ a single-transaction repair).
+  `accountId` / `sourceHistoryId` resolves the row's company / tags, and
+  `amount` is the sum across every source. The single invoice receipt is owned
+  by the repair (`receiptPath`), decoupled from any transaction and managed
+  through the `{ kind: "repair" }` receipt target / `setRepairReceipt`. Both
+  are additive optional fields needing no migration (absent ⇒ a
+  single-transaction repair with no receipt).
 
 ## State management
 
