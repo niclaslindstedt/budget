@@ -665,8 +665,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     settings: effectiveSettings,
     dispatch,
   });
-  const { canManageReceipt, uploadReceipt, downloadReceipt, removeReceipt } =
-    receiptManager;
+  const {
+    canManageReceipt,
+    uploadReceipt,
+    downloadReceipt,
+    removeReceipt,
+    renameRepairReceipt,
+  } = receiptManager;
 
   // Item receipt attachment. A receipt hangs off the single transaction an
   // item is linked to (an item can belong to at most one purchase), so
@@ -947,6 +952,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   onUploadReceipt={uploadReceipt}
                   onDownloadReceipt={downloadReceipt}
                   onRemoveReceipt={removeReceipt}
+                  onRenameRepairReceipt={renameRepairReceipt}
                 />
               ) : activeSheet.type === "salary" ? (
                 <SalaryPage

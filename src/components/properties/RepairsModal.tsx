@@ -128,13 +128,14 @@ export function RepairsModal({
     repairId: repair.id,
   });
   const namingFor = (repair: PropertyRepair): ReceiptNaming => ({
-    companyName: repair.description,
+    // Repair receipts file under the property's folder as
+    // "<date> <company> - <description>". The company is the one the row
+    // resolves (off the source transaction); the description is the repair's.
+    subfolder: property.name,
+    companyName: repairMetadata.get(sourceKey(repair))?.company?.name ?? "",
+    description: repair.description,
     entryId: repair.id,
     entryDate: repair.date,
-    typeLabel:
-      repair.typeId === PRESET_TYPE_RENOVATIONS_ID
-        ? t("properties.repairTypeRenovations")
-        : t("properties.repairTypeRepairs"),
   });
   const receiptPathFor = (repair: PropertyRepair): string | undefined =>
     repair.receiptPath;

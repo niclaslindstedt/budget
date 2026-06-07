@@ -98,6 +98,13 @@ type Props = {
     entryId: string,
     patch: { userCompanyId?: string | null; userTagIds?: string[] },
   ) => void;
+  // After an edit, re-file the repair's receipt if its naming inputs changed
+  // (the file name encodes company + description). Edit mode only — a new
+  // repair has no receipt to move yet.
+  onReconcileReceipt: (
+    repairId: string,
+    next: { companyId: string | null; description: string },
+  ) => void;
 };
 
 function rowKey(c: RepairCandidate): string {
@@ -135,12 +142,13 @@ export function RepairsEditModal({
   onAdd,
   onUpdate,
   onSetEntryMetadata,
+  onReconcileReceipt,
 }: Props) {
   const t = useT();
   const lang = useLang();
   const isEdit = repair !== null;
 
-  // The primary is pinned in edit mode (it owns the date / type / receipt and
+  // The primary is pinned in edit mode (it owns the date / type / identity and
   // can't be unchecked); in add mode it's derived from the selection.
   const pinnedPrimaryKey = isEdit
     ? `${repair.accountId}:${repair.sourceHistoryId}`
@@ -306,6 +314,9 @@ export function RepairsEditModal({
       };
       onUpdate(repair.id, patch);
       persistEntryMetadata(repair.accountId, repair.sourceHistoryId);
+      // Re-file the repair's receipt if its company / description changed —
+      // the receipt name encodes both. A no-op when nothing relevant moved.
+      onReconcileReceipt(repair.id, { companyId, description: desc });
       onClose();
       return;
     }

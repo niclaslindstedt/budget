@@ -34,6 +34,12 @@ export type ReceiptNaming = {
   entryId: string;
   entryDate?: string;
   typeLabel?: string;
+  // Repair-target naming. A repair receipt files into a per-property
+  // subfolder (`subfolder`) under a fixed "<date> <company> - <description>"
+  // name, so it ignores the global pattern and `typeLabel`. `subfolder` is
+  // the property name; `description` is the repair's work description.
+  subfolder?: string;
+  description?: string;
 };
 
 // The current `receiptPath` + `lineItems` of the transaction a target

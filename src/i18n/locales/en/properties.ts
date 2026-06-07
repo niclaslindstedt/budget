@@ -177,6 +177,9 @@ const properties = {
   // The repairs menu entry when some repairs lack a receipt.
   viewRepairsMissing: "View repairs ({count} missing receipts)",
   repairsTitle: "Repairs & renovations",
+  // Subfolder a repair receipt files under when its property name is blank /
+  // unusable as a folder name (a filesystem fallback, rarely seen).
+  repairsFolderFallback: "Repairs",
   repairsEmpty: "No repairs or renovations recorded yet.",
   repairsAdd: "Add",
   repairsQuickAdd: "Quick add",

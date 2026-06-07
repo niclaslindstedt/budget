@@ -173,6 +173,9 @@ const properties: PropertiesCatalog = {
   // The repairs menu entry when some repairs lack a receipt.
   viewRepairsMissing: "Visa reparationer ({count} kvitton saknas)",
   repairsTitle: "Reparationer & renoveringar",
+  // Subfolder a repair receipt files under when its property name is blank /
+  // unusable as a folder name (a filesystem fallback, rarely seen).
+  repairsFolderFallback: "Reparationer",
   repairsEmpty: "Inga reparationer eller renoveringar registrerade ännu.",
   repairsAdd: "Lägg till",
   repairsQuickAdd: "Snabblägg till",

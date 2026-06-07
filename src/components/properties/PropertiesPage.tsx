@@ -11,6 +11,7 @@ import {
   findRepairCandidates,
   resolveRepairSourceRows,
 } from "../../data/property-repairs/candidates";
+import type { RepairReceiptRename } from "../AppShell/hooks/useReceiptManager";
 import type { Action } from "../../data/reducer";
 import type {
   ReceiptNaming,
@@ -61,8 +62,8 @@ type Props = {
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
-  // Transaction-generic receipt handling, threaded from AppShell — a
-  // repair's receipt physically lives on its source bank entry.
+  // Host-generic receipt handling, threaded from AppShell — a repair owns its
+  // receipt (`PropertyRepair.receiptPath`).
   canManageReceipt: boolean;
   onUploadReceipt: (
     target: TxnReceiptTarget,
@@ -71,6 +72,12 @@ type Props = {
   ) => Promise<string>;
   onDownloadReceipt: (path: string) => Promise<Blob>;
   onRemoveReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
+  // Re-file a repair's existing receipt to its canonical
+  // "<property>/<date> <company> - <description>" path after its naming
+  // inputs (company / description / date) or its property name change.
+  onRenameRepairReceipt: (
+    args: RepairReceiptRename,
+  ) => Promise<string | undefined>;
 };
 
 // A mortgage paired with the property it belongs to — the unit the
@@ -86,6 +93,7 @@ export function PropertiesPage({
   onUploadReceipt,
   onDownloadReceipt,
   onRemoveReceipt,
+  onRenameRepairReceipt,
 }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
@@ -312,8 +320,48 @@ export function PropertiesPage({
     propertyId: string,
     patch: Partial<Omit<Property, "id">>,
   ) {
+    const before = data.properties.find((p) => p.id === propertyId);
     dispatch({ type: "updateProperty", propertyId, patch });
     setEditingProperty(null);
+    // A renamed property changes the subfolder every repair receipt files
+    // under, so move each one into the new folder.
+    const nextName = patch.name;
+    if (
+      before &&
+      typeof nextName === "string" &&
+      nextName !== before.name &&
+      before.repairs.some((r) => r.receiptPath)
+    ) {
+      void reconcilePropertyReceipts(before, nextName);
+    }
+  }
+
+  // Re-file every repair receipt of a property into a (possibly new) folder,
+  // sequentially so the reserved-paths set keeps two repairs off the same
+  // name. Reads the resolved company off `repairMetadata` (it stays on the
+  // source transaction), the description / date off each repair.
+  async function reconcilePropertyReceipts(
+    property: Property,
+    propertyName: string,
+  ) {
+    const reserved = new Set<string>();
+    for (const repair of property.repairs) {
+      if (!repair.receiptPath) continue;
+      const companyName =
+        repairMetadata.get(`${repair.accountId}:${repair.sourceHistoryId}`)
+          ?.company?.name ?? "";
+      const moved = await onRenameRepairReceipt({
+        propertyId: property.id,
+        repairId: repair.id,
+        currentPath: repair.receiptPath,
+        propertyName,
+        companyName,
+        description: repair.description,
+        entryDate: repair.date,
+        reservedPaths: reserved,
+      });
+      if (moved) reserved.add(moved);
+    }
   }
 
   function handleCreateMortgage(mortgage: Mortgage) {
@@ -658,6 +706,26 @@ export function PropertiesPage({
               handleUpdateRepair(repairEditor.property.id, repairId, patch);
           }}
           onSetEntryMetadata={handleSetEntryMetadata}
+          onReconcileReceipt={(repairId, next) => {
+            if (!repairEditor) return;
+            const property = data.properties.find(
+              (p) => p.id === repairEditor.property.id,
+            );
+            const repair = property?.repairs.find((r) => r.id === repairId);
+            if (!property || !repair?.receiptPath) return;
+            const companyName = next.companyId
+              ? (companiesById.get(next.companyId)?.name ?? "")
+              : "";
+            void onRenameRepairReceipt({
+              propertyId: property.id,
+              repairId,
+              currentPath: repair.receiptPath,
+              propertyName: property.name,
+              companyName,
+              description: next.description,
+              entryDate: repair.date,
+            });
+          }}
         />
 
         <RepairsAddModal

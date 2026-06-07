@@ -4,7 +4,9 @@ import { unlock } from "../../../data/achievements";
 import { collectReceiptPaths } from "../../../data/items/link";
 import {
   buildReceiptPath,
+  buildRepairReceiptPath,
   extensionOf,
+  extensionOfPath,
 } from "../../../data/items/receipt-name";
 import {
   resolveTxnReceipt,
@@ -35,6 +37,32 @@ export type ReceiptManager = {
   downloadReceipt: (path: string) => Promise<Blob>;
   // Delete the file AND clear the path on the addressed transaction.
   removeReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
+  // Re-file a repair's existing receipt to the canonical
+  // "<property>/<date> <company> - <description>" path after the repair's
+  // naming inputs change (company / description / date) or its property is
+  // renamed. Moves the bytes (download → upload → remove), updates the
+  // repair's `receiptPath`, and resolves the new path (or undefined when
+  // there was nothing to move / the bytes are gone). A no-op when the path
+  // is already canonical.
+  renameRepairReceipt: (
+    args: RepairReceiptRename,
+  ) => Promise<string | undefined>;
+};
+
+// Inputs for re-filing a repair receipt: the live `currentPath` plus the new
+// naming values (the caller passes the post-edit values, since the hook's
+// `data` snapshot still holds the pre-edit repair when called synchronously
+// after a dispatch). `reservedPaths` lets a batch (a property rename touching
+// several repairs) avoid two repairs racing onto the same new name.
+export type RepairReceiptRename = {
+  propertyId: string;
+  repairId: string;
+  currentPath: string;
+  propertyName: string;
+  companyName: string;
+  description: string;
+  entryDate?: string;
+  reservedPaths?: ReadonlySet<string>;
 };
 
 type Args = {
@@ -115,19 +143,36 @@ export function useReceiptManager({
     ): Promise<string> => {
       if (!adapter.receipts) throw new Error("receipts unavailable");
       const current = resolveTxnReceipt(data, target);
-      const path = buildReceiptPath({
-        pattern: settings.receiptNamePattern,
-        companyName: naming.companyName,
-        entryId: naming.entryId,
-        entryDate: naming.entryDate,
-        today: todayIso(),
-        extension: extensionOf(file.name),
-        typeLabel: naming.typeLabel,
-        uncategorizedLabel: t("items.receiptUncategorized"),
-        // Excluding the target's own current path reuses its tidy name on
-        // replace, so the new file overwrites it in place — no orphan.
-        usedPaths: collectReceiptPaths(data, current?.receiptPath),
-      });
+      // Excluding the target's own current path reuses its tidy name on
+      // replace, so the new file overwrites it in place — no orphan.
+      const usedPaths = collectReceiptPaths(data, current?.receiptPath);
+      const path =
+        target.kind === "repair"
+          ? buildRepairReceiptPath({
+              // A repair receipt files under its property's folder with a
+              // fixed "<date> <company> - <description>" log name, ignoring
+              // the global pattern.
+              propertyName: naming.subfolder ?? "",
+              fallbackFolder: t("properties.repairsFolderFallback"),
+              companyName: naming.companyName,
+              description: naming.description ?? "",
+              entryDate: naming.entryDate,
+              today: todayIso(),
+              extension: extensionOf(file.name),
+              repairId: naming.entryId,
+              usedPaths,
+            })
+          : buildReceiptPath({
+              pattern: settings.receiptNamePattern,
+              companyName: naming.companyName,
+              entryId: naming.entryId,
+              entryDate: naming.entryDate,
+              today: todayIso(),
+              extension: extensionOf(file.name),
+              typeLabel: naming.typeLabel,
+              uncategorizedLabel: t("items.receiptUncategorized"),
+              usedPaths,
+            });
       await adapter.receipts.upload(path, file);
       unlock("receiptKeeper");
       commitReceipt(target, path);
@@ -156,10 +201,66 @@ export function useReceiptManager({
     [adapter, commitReceipt],
   );
 
+  const renameRepairReceipt = useCallback(
+    async (args: RepairReceiptRename): Promise<string | undefined> => {
+      if (!adapter.receipts) return undefined;
+      const {
+        propertyId,
+        repairId,
+        currentPath,
+        propertyName,
+        companyName,
+        description,
+        entryDate,
+        reservedPaths,
+      } = args;
+      if (!currentPath) return undefined;
+
+      const usedPaths = new Set(collectReceiptPaths(data, currentPath));
+      if (reservedPaths) for (const p of reservedPaths) usedPaths.add(p);
+      const newPath = buildRepairReceiptPath({
+        propertyName,
+        fallbackFolder: t("properties.repairsFolderFallback"),
+        companyName,
+        description,
+        entryDate,
+        today: todayIso(),
+        // Keep the existing file's extension — only the name / folder change.
+        extension: extensionOfPath(currentPath),
+        repairId,
+        usedPaths,
+      });
+      if (newPath === currentPath) return currentPath;
+
+      // Move the bytes by copy-then-delete (the backend has no rename).
+      // Best-effort: the rename is a cosmetic re-file, so a failed file op
+      // (offline, transient) leaves the receipt working at its old path rather
+      // than surfacing an error mid-edit. If the file is already gone, leave
+      // the reference alone rather than pointing it at a path with no bytes.
+      try {
+        const blob = await adapter.receipts.download(currentPath);
+        if (!blob) return undefined;
+        await adapter.receipts.upload(newPath, blob);
+        await adapter.receipts.remove(currentPath);
+      } catch {
+        return undefined;
+      }
+      dispatch({
+        type: "setRepairReceipt",
+        propertyId,
+        repairId,
+        receiptPath: newPath,
+      });
+      return newPath;
+    },
+    [adapter, data, t, dispatch],
+  );
+
   return {
     canManageReceipt,
     uploadReceipt,
     downloadReceipt,
     removeReceipt,
+    renameRepairReceipt,
   };
 }
