@@ -9,6 +9,7 @@ import type {
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
+  RepairReceipt,
   RepairSource,
 } from "../types";
 import { fail, isObject, type Result } from "./helpers";
@@ -129,10 +130,36 @@ function validateRepair(
     }
     if (tagIds.length > 0) repair.tagIds = tagIds;
   }
-  // The repair-owned receipt path. Kept when it's a non-empty string;
-  // absent / "" ⇒ no receipt (surfaces the missing-receipt flag).
-  if (typeof raw.receiptPath === "string" && raw.receiptPath !== "")
-    repair.receiptPath = raw.receiptPath;
+  // The repair-owned receipts — a list of dated invoice documents. Each needs
+  // a non-empty `id` + `path`; the `date` defaults to the repair's date when
+  // missing / malformed (the receipt's own date is best-effort). Malformed
+  // entries are dropped and ids deduped; an empty list is omitted so a
+  // receiptless repair stays byte-identical to a reload (surfacing the
+  // missing-receipt flag). A legacy single `receiptPath` (a hand-edited or
+  // pre-v69 file the migration didn't reach) is absorbed as a one-element list
+  // dated to the repair.
+  const receipts: RepairReceipt[] = [];
+  const seenReceiptIds = new Set<string>();
+  if (Array.isArray(raw.receipts)) {
+    for (const rawReceipt of raw.receipts) {
+      if (!isObject(rawReceipt)) continue;
+      const { id: rid, path: rpath } = rawReceipt;
+      if (typeof rid !== "string" || rid === "" || seenReceiptIds.has(rid))
+        continue;
+      if (typeof rpath !== "string" || rpath === "") continue;
+      const rdate = isIsoDate(rawReceipt.date) ? rawReceipt.date : date;
+      seenReceiptIds.add(rid);
+      receipts.push({ id: rid, path: rpath, date: rdate });
+    }
+  }
+  if (
+    receipts.length === 0 &&
+    typeof raw.receiptPath === "string" &&
+    raw.receiptPath !== ""
+  ) {
+    receipts.push({ id: `${id}-receipt`, path: raw.receiptPath, date });
+  }
+  if (receipts.length > 0) repair.receipts = receipts;
   // Additional source transactions (a multi-transaction repair). Each is the
   // same `{ accountId, entryId }` shape as the primary; a malformed one is
   // dropped rather than failing the repair, mirroring how the primary

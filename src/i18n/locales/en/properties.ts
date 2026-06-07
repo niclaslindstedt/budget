@@ -191,15 +191,30 @@ const properties = {
   repairTypeRepairs: "Repair",
   repairTypeRenovations: "Renovation",
   repairReceipt: "Receipt",
-  manageReceipt: "Manage receipt",
+  manageReceipts: "Manage receipts",
   missingReceipt: "Missing receipt",
+  // The repair row's receipt-count badge (when at least one is attached).
+  repairReceiptsCountOne: "{count} receipt",
+  repairReceiptsCountOther: "{count} receipts",
   // Shown on the card's wrench button when some repairs lack a receipt.
   repairsMissingReceiptsOne: "{count} missing receipt",
   repairsMissingReceiptsOther: "{count} missing receipts",
   deleteRepair: "Delete",
   deleteRepairTitle: "Delete repair?",
   deleteRepairConfirm:
-    "{description} ({amount}) will be removed from this property. The source transaction and any receipt are kept. This cannot be undone.",
+    "{description} ({amount}) will be removed from this property. The source transaction and any receipts are kept. This cannot be undone.",
+
+  // Repair receipts manager — a repair owns a list of dated receipt
+  // documents (a job can produce several invoices over time).
+  repairReceiptsTitle: "Receipts",
+  repairReceiptsEmpty: "No receipts attached yet.",
+  repairReceiptAdd: "Add receipt",
+  // aria-label on each receipt's date input.
+  repairReceiptDateAria: "Receipt date",
+  // aria-label on a receipt row's open / view button.
+  repairReceiptOpenAria: "Open receipt",
+  // aria-label on a receipt row's remove button.
+  repairReceiptRemoveAria: "Remove receipt",
 
   // Add repairs / renovations picker.
   addRepairsTitle: "Add repairs & renovations",

@@ -972,6 +972,39 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v67.properties;
     return { ...v67, version: 68, properties, fileCategories: [] };
   },
+
+  // v68 → v69: a property repair / renovation now owns a **list** of dated
+  // receipts (`receipts`) instead of a single `receiptPath` — a job can arrive
+  // as several invoices over time, each on its own date. Converts any existing
+  // single `receiptPath` into a one-element list, dating that receipt with the
+  // repair's own date (the only date we have for the pre-existing document).
+  // The receipt id is derived from the repair id (one receipt per repair
+  // pre-migration) so the transform stays deterministic. Repairs with no
+  // receipt are untouched — this is otherwise additive.
+  68: (v68) => {
+    const properties = Array.isArray(v68.properties)
+      ? v68.properties.map((property) => {
+          if (!isObj(property) || !Array.isArray(property.repairs))
+            return property;
+          const repairs = property.repairs.map((repair) => {
+            if (!isObj(repair) || !("receiptPath" in repair)) return repair;
+            const { receiptPath, ...rest } = repair;
+            if (typeof receiptPath !== "string" || receiptPath === "")
+              return rest;
+            const date =
+              typeof rest.date === "string" ? rest.date.slice(0, 10) : "";
+            return {
+              ...rest,
+              receipts: [
+                { id: `${String(rest.id)}-receipt`, path: receiptPath, date },
+              ],
+            };
+          });
+          return { ...property, repairs };
+        })
+      : v68.properties;
+    return { ...v68, version: 69, properties };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

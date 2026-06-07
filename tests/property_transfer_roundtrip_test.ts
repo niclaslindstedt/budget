@@ -19,6 +19,7 @@ import type {
   Property,
   PropertyFile,
   PropertyRepair,
+  RepairReceipt,
   UserData,
 } from "../src/data/types";
 import { buildZip, type ZipEntry } from "../src/utils/zip";
@@ -55,7 +56,7 @@ function sellerProperty(): Property {
         typeId: "preset-type-repairs",
         accountId: "a1",
         sourceHistoryId: "h1",
-        receiptPath: SELLER_RECEIPT,
+        receipts: [{ id: "rc1", path: SELLER_RECEIPT, date: "2026-01-20" }],
       },
     ],
     files: [
@@ -95,7 +96,7 @@ function exportToZip(
   }
   if (options.includeReceipts)
     for (const r of property.repairs)
-      if (r.receiptPath) candidates.add(r.receiptPath);
+      for (const rc of r.receipts ?? []) candidates.add(rc.path);
 
   const bytesBySource = new Map<string, Uint8Array>();
   for (const path of candidates) {
@@ -172,23 +173,27 @@ async function importFromZip(
       typeId: pr.typeId,
     };
     if (pr.companyId) repair.companyId = pr.companyId;
-    const bytes = pr.receiptZipPath ? zip.get(pr.receiptZipPath) : undefined;
-    if (pr.receiptZipPath && bytes) {
+    const receipts: RepairReceipt[] = [];
+    for (const mr of pr.receipts ?? []) {
+      const bytes = zip.get(mr.zipPath);
+      if (!bytes) continue;
+      const receiptId = `${pr.id}-${receipts.length}`;
       const path = buildRepairReceiptPath({
         propertyName: plan.propertyName,
         fallbackFolder: "Repairs",
         companyName: "",
         description: pr.description,
-        entryDate: pr.date,
+        entryDate: mr.date,
         today: "2026-06-07",
-        extension: extensionOfPath(pr.receiptZipPath),
-        repairId: pr.id,
+        extension: extensionOfPath(mr.zipPath),
+        disambiguatorId: receiptId,
         usedPaths: used,
       });
       used.add(path);
       targetStore.set(path, bytes);
-      repair.receiptPath = path;
+      receipts.push({ id: receiptId, path, date: mr.date });
     }
+    if (receipts.length > 0) repair.receipts = receipts;
     repairs.push(repair);
   }
 
@@ -237,8 +242,10 @@ describe("property export → import round trip", () => {
 
     // The receipt's bytes survived and the repair re-linked the contractor.
     const importedRepair = property.repairs[0];
-    expect(importedRepair.receiptPath).toBeTruthy();
-    expect(targetStore.get(importedRepair.receiptPath!)).toEqual(RECEIPT_BYTES);
+    expect(importedRepair.receipts).toHaveLength(1);
+    const importedReceipt = importedRepair.receipts![0];
+    expect(importedReceipt.date).toBe("2026-01-20");
+    expect(targetStore.get(importedReceipt.path)).toEqual(RECEIPT_BYTES);
     expect(importedRepair.companyId).toBe("co-x");
     expect(newCompanies).toHaveLength(0);
 

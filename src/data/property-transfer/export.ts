@@ -9,6 +9,7 @@ import {
   PROPERTY_EXPORT_FORMAT,
   PROPERTY_EXPORT_VERSION,
   type ManifestFile,
+  type ManifestReceipt,
   type ManifestRepair,
   type ManifestTag,
   type PropertyExportManifest,
@@ -151,18 +152,19 @@ export function buildPropertyExport(
     }
     if (meta?.companyName) entry.companyName = meta.companyName;
     if (meta && meta.tags.length > 0) entry.tags = meta.tags;
-    if (
-      options.includeReceipts &&
-      repair.receiptPath &&
-      availablePaths.has(repair.receiptPath)
-    ) {
-      const zipPath = reserveZipPath(
-        usedZipPaths,
-        "receipts/",
-        basename(repair.receiptPath),
-      );
-      binaryEntries.push({ sourcePath: repair.receiptPath, zipPath });
-      entry.receiptZipPath = zipPath;
+    if (options.includeReceipts && repair.receipts) {
+      const receipts: ManifestReceipt[] = [];
+      for (const receipt of repair.receipts) {
+        if (!availablePaths.has(receipt.path)) continue;
+        const zipPath = reserveZipPath(
+          usedZipPaths,
+          "receipts/",
+          basename(receipt.path),
+        );
+        binaryEntries.push({ sourcePath: receipt.path, zipPath });
+        receipts.push({ zipPath, date: receipt.date });
+      }
+      if (receipts.length > 0) entry.receipts = receipts;
     }
     return entry;
   });

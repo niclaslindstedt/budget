@@ -90,14 +90,17 @@ export function collectReceiptPaths(
       if (entry.receiptPath) paths.add(entry.receiptPath);
     }
   }
-  // Property repairs own their receipt path too — include them so a fresh
-  // upload never collides with a repair's invoice receipt. Uploaded property
-  // files live in a different physical store (the `properties/` folder, not
-  // `receipts/`), but they share this one collision set so a fresh upload's
-  // name stays unique across every property attachment regardless of store.
+  // Property repairs own their receipt paths too — include every one so a
+  // fresh upload never collides with a repair's invoice receipt. Uploaded
+  // property files live in a different physical store (the `properties/`
+  // folder, not `receipts/`), but they share this one collision set so a fresh
+  // upload's name stays unique across every property attachment regardless of
+  // store.
   for (const property of data.properties) {
     for (const repair of property.repairs) {
-      if (repair.receiptPath) paths.add(repair.receiptPath);
+      if (repair.receipts) {
+        for (const receipt of repair.receipts) paths.add(receipt.path);
+      }
     }
     for (const file of property.files) {
       if (file.path) paths.add(file.path);

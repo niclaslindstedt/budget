@@ -330,6 +330,9 @@ export function describeActionSubject(
     case "addPropertyFile":
     case "updatePropertyFile":
     case "deletePropertyFile":
+    case "addRepairReceipt":
+    case "updateRepairReceipt":
+    case "removeRepairReceipt":
       return name(byId(next.properties, action.propertyId)?.name);
 
     // File categories (property file subfolders).

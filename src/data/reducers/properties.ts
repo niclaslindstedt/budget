@@ -53,8 +53,8 @@ function updateMortgageById(
 //
 // `deleteProperty` is a plain filter: a property's repairs / renovations
 // nest under it (`Property.repairs`), so dropping the property drops them
-// with it — no cross-collection cascade is needed. A repair owns its receipt
-// path (`PropertyRepair.receiptPath`); the receipt's bytes in the backend's
+// with it — no cross-collection cascade is needed. A repair owns its receipts
+// (`PropertyRepair.receipts`); each receipt's bytes in the backend's
 // `receipts/` folder are left orphaned on a delete (the reducer mutates data
 // only — it has no file-system reach), the same way deleting a budget row
 // with a receipt leaves its bytes.
@@ -220,16 +220,47 @@ export function reduceProperties(
       repairs: p.repairs.filter((r) => r.id !== action.repairId),
     }));
   }
-  if (action.type === "setRepairReceipt") {
-    // "" clears the receipt; `applyPatch` treats `undefined` as "delete the
-    // key", so a cleared repair stays byte-identical to a reloaded one.
-    const receiptPath =
-      action.receiptPath === "" ? undefined : action.receiptPath;
+  if (action.type === "addRepairReceipt") {
     return updatePropertyById(state, action.propertyId, (p) => ({
       ...p,
       repairs: p.repairs.map((r) =>
-        r.id === action.repairId ? applyPatch(r, { receiptPath }) : r,
+        r.id === action.repairId
+          ? { ...r, receipts: [...(r.receipts ?? []), action.receipt] }
+          : r,
       ),
+    }));
+  }
+  if (action.type === "updateRepairReceipt") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: p.repairs.map((r) =>
+        r.id === action.repairId
+          ? {
+              ...r,
+              receipts: (r.receipts ?? []).map((rc) =>
+                rc.id === action.receiptId ? { ...rc, ...action.patch } : rc,
+              ),
+            }
+          : r,
+      ),
+    }));
+  }
+  if (action.type === "removeRepairReceipt") {
+    // Drop the matching receipt; when it was the last one, `applyPatch` treats
+    // the resulting `undefined` as "delete the key" so the repair stays
+    // byte-identical to a reloaded one (and re-surfaces the missing-receipt
+    // flag).
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      repairs: p.repairs.map((r) => {
+        if (r.id !== action.repairId) return r;
+        const remaining = (r.receipts ?? []).filter(
+          (rc) => rc.id !== action.receiptId,
+        );
+        return applyPatch(r, {
+          receipts: remaining.length > 0 ? remaining : undefined,
+        });
+      }),
     }));
   }
   if (action.type === "setPropertySaleEstimate") {

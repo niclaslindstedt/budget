@@ -20,6 +20,7 @@ import type {
 import {
   PROPERTY_EXPORT_FORMAT,
   PROPERTY_EXPORT_VERSION,
+  type ManifestReceipt,
   type ManifestTag,
   type PropertyExportManifest,
 } from "./manifest";
@@ -107,11 +108,31 @@ function coerceRepairs(raw: unknown[]): PropertyExportManifest["repairs"] {
     if (typeof r.companyName === "string") entry.companyName = r.companyName;
     const tags = coerceTags(r.tags);
     if (tags) entry.tags = tags;
-    if (typeof r.receiptZipPath === "string")
-      entry.receiptZipPath = r.receiptZipPath;
+    const receipts = coerceReceipts(r, entry.date);
+    if (receipts) entry.receipts = receipts;
     out.push(entry);
   }
   return out;
+}
+
+// Read a repair's bundled receipts. Prefers the v2 `receipts` list (each a
+// `{ zipPath, date }`); falls back to a v1 single `receiptZipPath`, dating that
+// receipt with the repair's own date (the only date a v1 archive carries).
+function coerceReceipts(
+  raw: Record<string, unknown>,
+  repairDate: string,
+): ManifestReceipt[] | undefined {
+  const out: ManifestReceipt[] = [];
+  if (Array.isArray(raw.receipts)) {
+    for (const rc of raw.receipts) {
+      if (!isObject(rc) || typeof rc.zipPath !== "string") continue;
+      const date = typeof rc.date === "string" ? rc.date : repairDate;
+      out.push({ zipPath: rc.zipPath, date });
+    }
+  } else if (typeof raw.receiptZipPath === "string") {
+    out.push({ zipPath: raw.receiptZipPath, date: repairDate });
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 function coerceFiles(raw: unknown[]): PropertyExportManifest["files"] {
@@ -221,8 +242,8 @@ export type PlannedFile = {
 };
 
 // One repair resolved to importer ids. Lands as a manual repair (no source
-// transaction); `receiptZipPath` is consumed by the hook to re-upload the
-// receipt and set the final `receiptPath`.
+// transaction); `receipts` (each a ZIP path + date) is consumed by the hook to
+// re-upload each receipt and build the final `PropertyRepair.receipts` list.
 export type PlannedRepair = {
   id: string;
   date: string;
@@ -232,7 +253,7 @@ export type PlannedRepair = {
   subtypeId?: string;
   companyId?: string;
   tagIds?: string[];
-  receiptZipPath?: string;
+  receipts?: ManifestReceipt[];
 };
 
 export type PropertyImportPlan = {
@@ -358,7 +379,7 @@ export function planPropertyImport(
     if (r.companyName) planned.companyId = resolveCompany(r.companyName);
     const tagIds = resolveTags(r.tags);
     if (tagIds) planned.tagIds = tagIds;
-    if (r.receiptZipPath) planned.receiptZipPath = r.receiptZipPath;
+    if (r.receipts && r.receipts.length > 0) planned.receipts = r.receipts;
     return planned;
   });
 

@@ -11,6 +11,7 @@ import {
   findRepairCandidates,
   resolveRepairSourceRows,
 } from "../../data/property-repairs/candidates";
+import { hasReceipt } from "../../data/property-repairs/receipts";
 import { repairMetaKey } from "../../data/property-repairs/sources";
 import type { PropertyExportLookups } from "../../data/property-transfer/export";
 import type { ManifestTag } from "../../data/property-transfer/manifest";
@@ -280,7 +281,7 @@ export function PropertiesPage({
   function repairSummaryFor(property: Property) {
     let missingReceiptCount = 0;
     for (const repair of property.repairs) {
-      if (!repair.receiptPath) missingReceiptCount++;
+      if (!hasReceipt(repair)) missingReceiptCount++;
     }
     return { count: property.repairs.length, missingReceiptCount };
   }
@@ -381,36 +382,36 @@ export function PropertiesPage({
       before &&
       typeof nextName === "string" &&
       nextName !== before.name &&
-      before.repairs.some((r) => r.receiptPath)
+      before.repairs.some(hasReceipt)
     ) {
       void reconcilePropertyReceipts(before, nextName);
     }
   }
 
   // Re-file every repair receipt of a property into a (possibly new) folder,
-  // sequentially so the reserved-paths set keeps two repairs off the same
+  // sequentially so the reserved-paths set keeps two receipts off the same
   // name. Reads the resolved company off `repairMetadata` (it stays on the
-  // source transaction), the description / date off each repair.
+  // source transaction), the description off each repair; every receipt keeps
+  // its own date.
   async function reconcilePropertyReceipts(
     property: Property,
     propertyName: string,
   ) {
     const reserved = new Set<string>();
     for (const repair of property.repairs) {
-      if (!repair.receiptPath) continue;
+      if (!repair.receipts || repair.receipts.length === 0) continue;
       const companyName =
         repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "";
-      const moved = await attachments.renameRepairReceipt({
+      const claimed = await attachments.renameRepairReceipts({
         propertyId: property.id,
         repairId: repair.id,
-        currentPath: repair.receiptPath,
+        receipts: repair.receipts,
         propertyName,
         companyName,
         description: repair.description,
-        entryDate: repair.date,
         reservedPaths: reserved,
       });
-      if (moved) reserved.add(moved);
+      for (const p of claimed) reserved.add(p);
     }
   }
 
@@ -730,6 +731,8 @@ export function PropertiesPage({
           repairMetadata={repairMetadata}
           canManageReceipt={attachments.canManage}
           onUploadReceipt={attachments.uploadRepairReceipt}
+          onReplaceReceipt={attachments.replaceRepairReceipt}
+          onSetReceiptDate={attachments.setRepairReceiptDate}
           onDownloadReceipt={attachments.download}
           onRemoveReceipt={attachments.removeRepairReceipt}
           onEditRepair={(repair) => {
@@ -857,18 +860,17 @@ export function PropertiesPage({
               (p) => p.id === repairEditor.property.id,
             );
             const repair = property?.repairs.find((r) => r.id === repairId);
-            if (!property || !repair?.receiptPath) return;
+            if (!property || !repair?.receipts?.length) return;
             const companyName = next.companyId
               ? (companiesById.get(next.companyId)?.name ?? "")
               : "";
-            void attachments.renameRepairReceipt({
+            void attachments.renameRepairReceipts({
               propertyId: property.id,
               repairId,
-              currentPath: repair.receiptPath,
+              receipts: repair.receipts,
               propertyName: property.name,
               companyName,
               description: next.description,
-              entryDate: repair.date,
             });
           }}
         />
@@ -917,18 +919,17 @@ export function PropertiesPage({
               (p) => p.id === manualRepairEditor.property.id,
             );
             const repair = property?.repairs.find((r) => r.id === repairId);
-            if (!property || !repair?.receiptPath) return;
+            if (!property || !repair?.receipts?.length) return;
             const companyName = next.companyId
               ? (companiesById.get(next.companyId)?.name ?? "")
               : "";
-            void attachments.renameRepairReceipt({
+            void attachments.renameRepairReceipts({
               propertyId: property.id,
               repairId,
-              currentPath: repair.receiptPath,
+              receipts: repair.receipts,
               propertyName: property.name,
               companyName,
               description: next.description,
-              entryDate: repair.date,
             });
           }}
         />

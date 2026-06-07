@@ -138,7 +138,7 @@ const REPAIR_BASE = {
   entryDate: "2024-01-15",
   today: "2026-06-01",
   extension: "pdf",
-  repairId: "r1a2b3c4d5",
+  disambiguatorId: "r1a2b3c4d5",
   usedPaths: new Set<string>(),
 };
 
@@ -187,7 +187,7 @@ describe("buildRepairReceiptPath", () => {
       }),
     ).toBe("A B Cabin/receipts/2024-01-15 Boss Co - Repainted the kitchen.pdf");
   });
-  it("appends a short repair-id suffix on a name collision", () => {
+  it("appends a short id suffix on a name collision", () => {
     const usedPaths = new Set([
       "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
     ]);

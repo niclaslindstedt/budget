@@ -890,7 +890,7 @@ deduping months already added via the `sourceHistoryId` set.
 ### Property repair
 
 `PropertyRepair` (`{ id, date, amount, description, typeId, subtypeId?,
-accountId, sourceHistoryId, additionalSources?, receiptPath? }`) on
+accountId, sourceHistoryId, additionalSources?, receipts? }`) on
 `Property.repairs` in `src/data/types/properties.ts` — a repair /
 renovation on a property, sourced from one or more bank charges the user
 tagged Repairs (`preset-type-repairs`, drill glyph) or Renovations
@@ -902,23 +902,29 @@ The primary source (`accountId` + `sourceHistoryId`) locates the host
 (`{ accountId, entryId }[]`, optional) are the rest of the transactions
 paying one invoice; `amount` is the sum across every source, and
 `repairSources` / `repairSourceCount` (`src/data/property-repairs/sources.ts`)
-flatten primary + additional into one list. The receipt is owned by the
-repair itself (`receiptPath`, optional) — one invoice document covering
-every charge it groups, decoupled from any transaction (managed through
-the property-attachment hook `usePropertyAttachments` / `setRepairReceipt`).
-Repair receipts file into the property's `<name>/receipts/` subfolder
-inside the backend's per-property `properties/` store (a sibling of the
-`files/` tree uploaded documents land in), each named
-`<date> <company> - <description>` (`buildRepairReceiptPath`
-in `src/data/items/receipt-name.ts`), so the folder reads like a dated
-log; editing a repair's company / description, or renaming the property,
-re-files the receipt to its new canonical path (`renameRepairReceipt`).
-Recorded for a future deductible "net value of a property" calc — a
-repair with no `receiptPath` is flagged "missing receipt". Added with
-one-or-more transactions + description + subtype, or in bulk (one per
-charge) via `addRepairs`, edited (transactions + description + subtype)
-via `updateRepair`, removed via `deleteRepair`; all nest under the
-property, so `deleteProperty` drops them with it (its receipt bytes are
+flatten primary + additional into one list. The receipts are owned by the
+repair itself (`receipts?: RepairReceipt[]`, each `{ id, path, date }`) —
+a job often arrives as several dated invoices (a deposit at the start, a
+balance at the end), so a repair holds a _list_, decoupled from any
+transaction (managed through the property-attachment hook
+`usePropertyAttachments`; `repairReceipts` / `hasReceipt` in
+`src/data/property-repairs/receipts.ts` normalise the optional field).
+Each receipt files into the property's `<name>/receipts/` subfolder inside
+the backend's per-property `properties/` store (a sibling of the `files/`
+tree uploaded documents land in), named `<date> <company> - <description>`
+(`buildRepairReceiptPath` in `src/data/items/receipt-name.ts`) using the
+_receipt's own_ date, so the folder reads like a dated log; a new receipt
+defaults its date to the repair's date but is editable, and changing it
+(or editing the repair's company / description, or renaming the property)
+re-files the bytes to the new canonical path (`setRepairReceiptDate` /
+`renameRepairReceipts`). Recorded for a future deductible "net value of a
+property" calc — a repair with no receipts is flagged "missing receipt".
+Added with one-or-more transactions + description + subtype, or in bulk
+(one per charge) via `addRepairs`, edited (transactions + description +
+subtype) via `updateRepair`, removed via `deleteRepair`; receipts are
+attached / re-dated / detached via `addRepairReceipt` /
+`updateRepairReceipt` / `removeRepairReceipt`; all nest under the
+property, so `deleteProperty` drops them with it (their receipt bytes are
 orphaned, like a deleted row's). Its company and tags are deliberately
 NOT stored here — they live on the primary `HistoryEntry` (`userCompanyId`
 / `userTagIds`) and resolve live, so the same metadata enriches the
@@ -926,6 +932,38 @@ budget view; the repair editor edits them on the transaction. The first
 repair unlocks the `firstRepair` ("Fixer-Upper") achievement; grouping
 more than one transaction under a repair unlocks `groupedRepair`
 ("Itemized").
+
+### Repair receipt
+
+`RepairReceipt` (`{ id, path, date }`) — one dated invoice document on a
+`PropertyRepair.receipts` list (`src/data/types/properties.ts`). A repair
+owns several because a single job is often paid across several invoices
+over time (a deposit, a balance, staged payments), each sent on its own
+date — the repair's own date can't stand in for all of them. `path`
+locates the bytes in the backend's per-property `properties/` store
+(`<name>/receipts/…`); `date` is the receipt's own date and drives the
+dated filename. `repairReceipts` / `repairReceiptCount` / `hasReceipt`
+(`src/data/property-repairs/receipts.ts`) normalise the optional list (a
+repair with zero receipts surfaces the "missing receipt" flag). The
+`*RepairReceipt` reducer actions and the `usePropertyAttachments`
+callbacks (`uploadRepairReceipt` / `replaceRepairReceipt` /
+`setRepairReceiptDate` / `removeRepairReceipt` / `renameRepairReceipts`)
+keep the file write and the data record in lockstep, and attaching a
+second receipt to one repair unlocks the `receiptArchivist` ("Receipt
+Archivist") achievement.
+
+### Repair receipts modal
+
+`RepairReceiptsModal.tsx` (`src/components/properties/`) — the receipts
+manager, opened from a repair row's "Manage receipts" action in the
+wrench view. Lists the repair's receipts (each with an editable native
+date input, defaulting to the repair's date at upload, plus the filename),
+an "Add receipt" picker, and a per-receipt open / replace / download /
+remove flow that reuses the universal `AttachmentUploadModal` scoped to
+that one path. Editing a receipt's date re-files the stored document
+(`setRepairReceiptDate`) so the property's `receipts/` folder stays a
+clean dated log. Centered (its only inputs — date pickers and a file
+picker — don't open the soft keyboard).
 
 ### Repairs and renovations modal
 
@@ -938,11 +976,12 @@ trigger when some repairs lack a receipt). Each row (a swipeable
 lists via `useRowSwipe`) shows the type glyph, the description, the full
 date (`Settings.dateFormat`), a transaction count (a layers glyph + "N
 transactions") when the repair groups more than one source, the resolved
-company name and tags, the amount (the sum across every source), and a
-missing-receipt flag when the repair carries no `receiptPath` of its
-own. Receipt management (`AttachmentUploadModal`) targets the repair via
-`usePropertyAttachments` (the per-property `properties/` store), so the
-uploaded invoice covers the whole repair rather than any single charge. Company / tags for a transaction-backed
+company name and tags, the amount (the sum across every source), and
+either a receipt-count badge (a file glyph + "N receipts") or a
+missing-receipt flag when the repair carries no receipts of its own.
+Receipt management opens the `RepairReceiptsModal` (the receipts manager),
+which targets the repair via `usePropertyAttachments` (the per-property
+`properties/` store). Company / tags for a transaction-backed
 repair are NOT stored on the `PropertyRepair` — they're resolved live
 from the source transaction via `resolveEntryLabels` (the `repairMetadata`
 map `PropertiesPage` builds, keyed by `repairMetaKey`), so the same
@@ -1059,8 +1098,10 @@ arbitrary files the user uploads against it live in the backend's
 `<name>/receipts/<date> <company> - <description>` (repair receipts) and
 `<name>/files/[<category>/]<name>` (uploaded files). The hook owns the
 file write plus the data commit for both: `uploadRepairReceipt` /
-`removeRepairReceipt` / `renameRepairReceipt` (commit through
-`setRepairReceipt`) and `uploadPropertyFile` / `replacePropertyFile` /
+`replaceRepairReceipt` / `removeRepairReceipt` / `setRepairReceiptDate` /
+`renameRepairReceipts` (commit through `addRepairReceipt` /
+`updateRepairReceipt` / `removeRepairReceipt`, since a repair owns a list
+of dated receipts) and `uploadPropertyFile` / `replacePropertyFile` /
 `removePropertyFile` (commit through `addPropertyFile` /
 `updatePropertyFile` / `deletePropertyFile`), plus a shared `download`.
 Path building is `buildRepairReceiptPath` / `buildPropertyFilePath`
@@ -1081,7 +1122,8 @@ inspection report, an insurance document — anything that isn't a repair
 receipt). `private` (a **private file**) holds it out of a property
 export unless the user opts in. The bytes live in the `properties/` store at
 `<name>/files/[<category>/]<name>`; only the relative `path` is stored on
-the record (mirroring `PropertyRepair.receiptPath`). `description` is the
+the record (mirroring a `PropertyRepair.receipts` entry's `path`).
+`description` is the
 user's label, `tagIds` reference `UserData.tags`, `categoryId` references
 a **file category** (absent ⇒ the `files/` root). Managed through the
 **property files modal**; viewable like a receipt via the shared

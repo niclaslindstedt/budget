@@ -34,6 +34,7 @@ export type {
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
+  RepairReceipt,
   RepairSource,
 } from "./properties";
 

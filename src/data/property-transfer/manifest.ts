@@ -4,7 +4,7 @@
 //
 //   manifest.json                         (this shape, serialized)
 //   files/[<category>/]<filename>         (uploaded documents / photos)
-//   receipts/<filename>                   (repair receipts)
+//   receipts/<filename>                   (repair receipts, one or more per repair)
 //
 // Everything the property references by id (the lender / contractor
 // companies, tags, file categories, repair subtypes) is denormalized to
@@ -19,18 +19,27 @@ import type { Mortgage, PropertyValuePoint } from "../types";
 // for the whole-workspace export. Bumped only on a breaking manifest change;
 // `parsePropertyManifest` rejects a newer version it can't read.
 export const PROPERTY_EXPORT_FORMAT = "budget-property-export";
-export const PROPERTY_EXPORT_VERSION = 1;
+// v1 carried a single `receiptZipPath` per repair; v2 carries a `receipts`
+// list (each with its own date), since a repair can group several dated
+// invoices. `parsePropertyManifest` still reads v1 (the single path becomes a
+// one-element list).
+export const PROPERTY_EXPORT_VERSION = 2;
 
 // A tag carried in the manifest — denormalized name + colour so the importer
 // can recreate it faithfully, or match an existing tag by name.
 export type ManifestTag = { name: string; color: string };
+
+// One repair receipt carried in the manifest — the ZIP-relative path of the
+// bundled file plus the receipt's own date, so the importer rebuilds the dated
+// list faithfully.
+export type ManifestReceipt = { zipPath: string; date: string };
 
 // One repair / renovation. `typeId` is a preset id
 // (`preset-type-repairs` / `preset-type-renovations`) which is stable across
 // installs, so it's carried verbatim; everything else id-shaped is a name.
 // On import every repair lands as a "manual" repair (the seller's source
 // bank transactions aren't in the archive), keeping its date / amount /
-// description / type / subtype / company / tags / receipt.
+// description / type / subtype / company / tags / receipts.
 export type ManifestRepair = {
   id: string;
   date: string;
@@ -40,9 +49,10 @@ export type ManifestRepair = {
   subtypeName?: string;
   companyName?: string;
   tags?: ManifestTag[];
-  // ZIP-relative path of the bundled receipt, present only when a receipt
-  // file was included (the "include receipts" toggle, and the bytes existed).
-  receiptZipPath?: string;
+  // The bundled receipts (each a ZIP-relative path + its date), present only
+  // when receipts were included (the "include receipts" toggle, and the bytes
+  // existed). Omitted when the repair has no included receipt.
+  receipts?: ManifestReceipt[];
 };
 
 // One uploaded document / photo.

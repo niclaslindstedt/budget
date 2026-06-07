@@ -27,6 +27,7 @@ import {
   Eye,
   EyeOff,
   FileLock2,
+  Files,
   FileSpreadsheet,
   FileText,
   FileUp,
@@ -1057,6 +1058,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "receiptKeeper",
     tier: "pro",
     glyph: Receipt,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user attached a second receipt to one repair — a job paid across
+    // several dated invoices. A manual unlock fired from the property
+    // attachment hook when a repair reaches two receipts.
+    id: "receiptArchivist",
+    tier: "pro",
+    glyph: Files,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },
