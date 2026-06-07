@@ -324,6 +324,17 @@ const settings: SettingsCatalog = {
     kindAnyTitle: "Visas på både inkomst- och utgiftsrader",
     kindIncomeTitle: "Visas bara på inkomstrader (positivt belopp)",
     kindExpenseTitle: "Visas bara på utgiftsrader (negativt belopp)",
+    subtypesTitle: "Undertyper",
+    subtypesIntro:
+      "Undertyper är den valfria tredje nivån under en typ — etiketten du ger en ägd pryl eller en fastighetsreparation. De skapas från prylsidan och fastighetens reparationsredigerare; byt namn eller ta bort dem här.",
+    subtypesItems: "Prylar",
+    subtypesRepairs: "Reparationer och renoveringar",
+    subtypesEmpty:
+      "Inga undertyper än. Lägg till en när du märker en pryl eller en fastighetsreparation.",
+    editSubtype: "Redigera undertyp",
+    deleteSubtype: "Ta bort undertyp",
+    deleteSubtypeTitle: "Ta bort undertyp",
+    deleteSubtypeHint: "Ta bort ”{name}”? Prylar med den blir oklassificerade.",
   },
   companiesTab: {
     title: "Företag",

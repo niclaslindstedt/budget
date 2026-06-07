@@ -7,6 +7,7 @@ import {
 } from "../../data/items/find";
 import { synthesizeHistoryRow } from "../../data/budget/synthesis";
 import { unlinkedItems } from "../../data/items/link";
+import { itemSubtypes } from "../../data/items/subtypes";
 import { normaliseDescription } from "../../data/description-normaliser";
 import { createDefaultAccountBudget } from "../../data/sheet-types/budget";
 import { allCategories, allTypes } from "../../data/presets/merge";
@@ -393,7 +394,7 @@ export function ItemFinderModal({
         columns={editingColumns}
         settings={settings}
         items={unlinkedItems(data, editingRow?.lineItems)}
-        subtypes={data.subtypes}
+        subtypes={itemSubtypes(data.subtypes)}
         types={allTypes(data)}
         categories={allCategories(data)}
         onClose={() => setEditing(null)}

@@ -16,6 +16,7 @@ import type {
   DecimalSeparator,
   EntryType,
   Settings,
+  Subtype,
   Tag,
   UserData,
 } from "../../data/types";
@@ -171,6 +172,14 @@ type Props = {
     presetId: string,
     kind: "income" | "expense" | "any",
   ) => void;
+  // Subtype admin — the third taxonomy tier. New subtypes are minted from
+  // the item / repairs editors, so the categories tab only renames and
+  // deletes existing ones (no presets, no add affordance).
+  onUpdateSubtype: (
+    subtypeId: string,
+    patch: Partial<Omit<Subtype, "id">>,
+  ) => void;
+  onDeleteSubtype: (subtypeId: string) => void;
   // Company admin — full edit/delete on user-curated entries; no
   // presets ship so there's no hide-toggle.
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -288,6 +297,8 @@ export function SettingsModal({
   onDeleteType,
   onSetPresetTypeHidden,
   onSetPresetTypeKind,
+  onUpdateSubtype,
+  onDeleteSubtype,
   onCreateCompany,
   onUpdateCompany,
   onDeleteCompany,
@@ -533,6 +544,8 @@ export function SettingsModal({
                 onDeleteType={onDeleteType}
                 onSetPresetTypeHidden={onSetPresetTypeHidden}
                 onSetPresetTypeKind={onSetPresetTypeKind}
+                onUpdateSubtype={onUpdateSubtype}
+                onDeleteSubtype={onDeleteSubtype}
               />
             )}
             {activeTab === "companies" && (
