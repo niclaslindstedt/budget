@@ -105,6 +105,11 @@ const settings = {
   },
   appliesToMobile: "Applies to mobile devices",
   appliesToDesktop: "Applies to desktop devices",
+  section: {
+    collapse: "Collapse {title}",
+    expand: "Expand {title}",
+    collapsedHint: "Tap to expand",
+  },
   appearance: {
     themeSection: "Theme",
     modeLabel: "Mode",

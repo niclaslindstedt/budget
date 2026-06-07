@@ -447,6 +447,13 @@ const catalog: AchievementsCatalogEntries = {
     name: "Under huven",
     condition: "Slå på Utvecklarläget.",
   },
+  tidyMind: {
+    name: "Ordning och reda",
+    condition:
+      "Fäll ihop en hög inställningssektion genom att trycka på dess titel.",
+    learnMore:
+      "Varje inställningssektion som är högre än halva skärmen — listan Kategorier och typer är det självklara exemplet — gör sin titel till en ihopfällningsknapp. Tryck på den för att vika undan hela sektionen till en smal rad så att sektionerna nedanför kommer inom räckhåll utan oändligt rullande; tryck igen för att fälla ut den.",
+  },
   itemized: {
     name: "Specificerat",
     condition: "Koppla en del av ett köp till en pryl du äger.",

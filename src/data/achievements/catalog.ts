@@ -17,6 +17,7 @@ import {
   CalendarCog,
   CalendarPlus,
   Check,
+  ChevronsDownUp,
   Cloud,
   Code2,
   Columns3,
@@ -1176,6 +1177,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "underTheHood",
     tier: "expert",
     glyph: Code2,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "tidyMind",
+    tier: "expert",
+    glyph: ChevronsDownUp,
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
   {

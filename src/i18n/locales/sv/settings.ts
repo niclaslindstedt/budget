@@ -106,6 +106,11 @@ const settings: SettingsCatalog = {
   },
   appliesToMobile: "Gäller mobila enheter",
   appliesToDesktop: "Gäller datorenheter",
+  section: {
+    collapse: "Fäll ihop {title}",
+    expand: "Fäll ut {title}",
+    collapsedHint: "Tryck för att fälla ut",
+  },
   appearance: {
     themeSection: "Tema",
     modeLabel: "Läge",
