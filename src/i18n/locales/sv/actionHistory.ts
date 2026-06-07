@@ -82,6 +82,7 @@ const actionHistory: ActionHistoryCatalog = {
     addProperty: "Lade till fastighet",
     updateProperty: "Redigerade fastighet",
     deleteProperty: "Tog bort fastighet",
+    importProperty: "Importerade fastighet",
     addPropertyValue: "Registrerade fastighetsvärde",
     updatePropertyValue: "Redigerade fastighetsvärde",
     deletePropertyValue: "Tog bort fastighetsvärde",

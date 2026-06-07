@@ -5,6 +5,7 @@ import {
   Paperclip,
   Pencil,
   ReceiptText,
+  Share2,
   TrendingUp,
   Trash2,
   Wrench,
@@ -28,6 +29,7 @@ type Props = {
   onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
+  onExportProperty: (property: Property) => void;
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
 };
@@ -60,6 +62,7 @@ export function PropertyActionsMenu({
   onNetSaleProfit,
   onViewPayments,
   onViewRepairs,
+  onExportProperty,
   onEditProperty,
   onDeleteProperty,
 }: Props) {
@@ -114,6 +117,12 @@ export function PropertyActionsMenu({
   });
 
   items.push(
+    {
+      key: "exportProperty",
+      icon: <Share2 size={16} aria-hidden focusable={false} />,
+      label: t("properties.exportProperty"),
+      onClick: () => pick(() => onExportProperty(property)),
+    },
     {
       key: "editProperty",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

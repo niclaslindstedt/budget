@@ -65,6 +65,26 @@ export function reduceProperties(
   if (action.type === "addProperty") {
     return { ...state, properties: [...state.properties, action.property] };
   }
+  if (action.type === "importProperty") {
+    // Append the newly-minted lookups the planner created to re-link the
+    // archive's denormalized names, then the property itself — all in one
+    // pass so the import is a single undo step. Each list is already deduped
+    // against the existing data by the planner; an absent list is empty.
+    return {
+      ...state,
+      companies: action.newCompanies
+        ? [...state.companies, ...action.newCompanies]
+        : state.companies,
+      tags: action.newTags ? [...state.tags, ...action.newTags] : state.tags,
+      fileCategories: action.newFileCategories
+        ? [...state.fileCategories, ...action.newFileCategories]
+        : state.fileCategories,
+      subtypes: action.newSubtypes
+        ? [...state.subtypes, ...action.newSubtypes]
+        : state.subtypes,
+      properties: [...state.properties, action.property],
+    };
+  }
   if (action.type === "updateProperty") {
     return updatePropertyById(state, action.propertyId, (p) =>
       applyPatch(p, action.patch),

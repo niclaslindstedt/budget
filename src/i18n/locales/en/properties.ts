@@ -304,6 +304,54 @@ const properties = {
   fileCategoryName: "Category name",
   fileCategoryNamePlaceholder: "e.g. Insurance",
   fileCategoryDuplicate: "A category with this name already exists.",
+  // Per-file private flag (excluded from a property export by default).
+  filePrivate: "Private",
+  filePrivateHint:
+    "Private files are left out of a property export unless you choose to include them.",
+  filePrivateBadge: "Private",
+
+  // Export / import — the sale-handover archive (a ZIP of the property's
+  // details, repairs, receipts, and files) reachable from the "…" menu.
+  exportProperty: "Export property",
+  importProperty: "Import property",
+  exportTitle: "Export {name}",
+  exportIntro:
+    "Bundle this property into a single file to hand to the new owner — its details, repairs, receipts, and uploaded documents.",
+  exportIncludeReceipts: "Include receipts",
+  exportIncludeReceiptsHint:
+    "Bundle the receipt files attached to repairs and renovations.",
+  exportIncludePrivate: "Include private files",
+  exportIncludePrivateHint:
+    "Files you marked private are left out unless this is on.",
+  exportIncludeFinancials: "Include mortgages & payments",
+  exportIncludeFinancialsHint:
+    "Your loans, their payment history, purchase price, and value estimates — your own financial records, off by default.",
+  exportAction: "Export",
+  exportUnavailable:
+    "Exporting a property's files needs a folder or cloud backend. Connect one in Settings → Storage. Details still export.",
+  exportSkippedOne:
+    "{count} attachment couldn't be included (its file is missing).",
+  exportSkippedOther:
+    "{count} attachments couldn't be included (their files are missing).",
+  importTitle: "Import property",
+  importIntro:
+    "Pick a property export file (a .zip you were given) to add it to your properties as a new property.",
+  importChooseFile: "Choose file",
+  importInvalid: "This file isn't a property export.",
+  importNewerVersion:
+    "This file was made by a newer version of the app. Update, then try again.",
+  importReadError: "Couldn't read this file. It may be corrupt.",
+  importSummaryRepairsOne: "{count} repair",
+  importSummaryRepairsOther: "{count} repairs",
+  importSummaryFilesOne: "{count} file",
+  importSummaryFilesOther: "{count} files",
+  importSummaryFinancials: "Mortgages & financial history",
+  importUnavailableNote:
+    "Files and receipts need a folder or cloud backend to store. Without one, only the property's details import. Connect one in Settings → Storage.",
+  importAction: "Import",
+  importSuccess: "Imported {name}.",
+  importSkippedOne: "{count} attachment wasn't imported.",
+  importSkippedOther: "{count} attachments weren't imported.",
 
   // Shared verbs.
   save: "Save",

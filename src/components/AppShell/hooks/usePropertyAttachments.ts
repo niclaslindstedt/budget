@@ -8,6 +8,14 @@ import {
   extensionOf,
   extensionOfPath,
 } from "../../../data/items/receipt-name";
+import {
+  buildPropertyExport,
+  serializePropertyManifest,
+  type PropertyExportLookups,
+  type PropertyExportOptions,
+} from "../../../data/property-transfer/export";
+import { planPropertyImport } from "../../../data/property-transfer/import";
+import type { PropertyExportManifest } from "../../../data/property-transfer/manifest";
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
 import type {
@@ -18,8 +26,10 @@ import type {
 } from "../../../data/types";
 import { useT } from "../../../i18n";
 import type { StorageAdapter } from "../../../storage/adapter";
+import { APP_VERSION } from "../../../utils/build-env";
 import { todayIso } from "../../../utils/date";
 import { createLogger } from "../../../utils/logger";
+import { buildZip, type ZipEntry } from "../../../utils/zip";
 
 const log = createLogger("property-files");
 
@@ -28,6 +38,9 @@ export type PropertyFileMeta = {
   description?: string;
   tagIds?: string[];
   categoryId?: string;
+  // Whether the file is excluded from a property export by default (see
+  // `PropertyFile.private`). Absent / false ⇒ exported.
+  private?: boolean;
 };
 
 // Inputs for re-filing a repair receipt to its canonical
@@ -102,6 +115,27 @@ export type PropertyAttachments = {
     fileId: string,
     path: string,
   ) => Promise<void>;
+  // Sale handover ---------------------------------------------------------
+  // Build a property-export ZIP archive: the `manifest.json` plus the
+  // bundled file / receipt bytes (downloaded from the backend, filtered by
+  // the export options). `skipped` counts attachments whose bytes couldn't
+  // be fetched (offline / deleted), so the caller can warn. The caller
+  // resolves `lookups` (denormalized company / tag / category / subtype
+  // names) since that resolution lives on the Properties page.
+  exportProperty: (
+    property: Property,
+    lookups: PropertyExportLookups,
+    options: PropertyExportOptions,
+  ) => Promise<{ bytes: Uint8Array; skipped: number }>;
+  // Import a parsed property-export archive as a NEW property: re-upload its
+  // file / receipt bytes to the backend, then dispatch one `importProperty`
+  // action (creating any companies / tags / categories / subtypes needed to
+  // re-link names). `skipped` counts attachments dropped because the backend
+  // can't store them (e.g. localStorage) or their bytes were missing.
+  importProperty: (
+    manifest: PropertyExportManifest,
+    zip: ReadonlyMap<string, Uint8Array>,
+  ) => Promise<{ propertyName: string; skipped: number }>;
 };
 
 type Args = {
@@ -292,6 +326,7 @@ export function usePropertyAttachments({
       // Only keep the category when it still resolves — a stale pick lands the
       // file in the `files/` root rather than a phantom subfolder.
       if (category) record.categoryId = category.id;
+      if (meta.private) record.private = true;
       dispatch({
         type: "addPropertyFile",
         propertyId: property.id,
@@ -354,6 +389,185 @@ export function usePropertyAttachments({
     [store, dispatch],
   );
 
+  const exportProperty = useCallback(
+    async (
+      property: Property,
+      lookups: PropertyExportLookups,
+      options: PropertyExportOptions,
+    ): Promise<{ bytes: Uint8Array; skipped: number }> => {
+      // Gather the attachment paths the options want, then fetch their bytes.
+      // A path whose bytes can't be fetched is counted and dropped — the
+      // builder only references successfully-fetched files.
+      const candidatePaths = new Set<string>();
+      for (const file of property.files) {
+        if (file.private && !options.includePrivate) continue;
+        candidatePaths.add(file.path);
+      }
+      if (options.includeReceipts) {
+        for (const repair of property.repairs) {
+          if (repair.receiptPath) candidatePaths.add(repair.receiptPath);
+        }
+      }
+
+      const bytesBySource = new Map<string, Uint8Array>();
+      let skipped = 0;
+      for (const path of candidatePaths) {
+        if (!store) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          const blob = await store.download(path);
+          if (!blob) {
+            skipped += 1;
+            continue;
+          }
+          bytesBySource.set(path, new Uint8Array(await blob.arrayBuffer()));
+        } catch (err) {
+          log.error(`property export: failed to fetch ${path}`, err);
+          skipped += 1;
+        }
+      }
+
+      const { manifest, binaryEntries } = buildPropertyExport(
+        property,
+        lookups,
+        options,
+        new Set(bytesBySource.keys()),
+        new Date().toISOString(),
+        APP_VERSION,
+      );
+      const entries: ZipEntry[] = [
+        { name: "manifest.json", data: serializePropertyManifest(manifest) },
+        ...binaryEntries.map((e) => ({
+          name: e.zipPath,
+          // Present by construction — the builder only emits entries whose
+          // source bytes are in the available set.
+          data: bytesBySource.get(e.sourcePath) as Uint8Array,
+        })),
+      ];
+      unlock("propertyHandover");
+      return { bytes: buildZip(entries), skipped };
+    },
+    [store],
+  );
+
+  const importProperty = useCallback(
+    async (
+      manifest: PropertyExportManifest,
+      zip: ReadonlyMap<string, Uint8Array>,
+    ): Promise<{ propertyName: string; skipped: number }> => {
+      const plan = planPropertyImport(manifest, data);
+
+      // Resolve category names (existing + newly-planned) for path building.
+      const categoryNameById = new Map<string, string>();
+      for (const c of data.fileCategories) categoryNameById.set(c.id, c.name);
+      for (const c of plan.newFileCategories)
+        categoryNameById.set(c.id, c.name);
+
+      // Seed the collision set with every path already in use so a re-upload
+      // never clobbers an unrelated file.
+      const usedPaths = new Set<string>(collectReceiptPaths(data));
+      const fallbackFolder = t("properties.repairsFolderFallback");
+
+      const files: PropertyFile[] = [];
+      const repairs: PropertyRepair[] = [];
+      let skipped = 0;
+
+      for (const pf of plan.files) {
+        const bytes = zip.get(pf.zipPath);
+        if (!store || !bytes) {
+          skipped += 1;
+          continue;
+        }
+        const categoryName = pf.categoryId
+          ? categoryNameById.get(pf.categoryId)
+          : undefined;
+        const path = buildPropertyFilePath({
+          propertyName: plan.propertyName,
+          fallbackFolder,
+          categoryName,
+          description: pf.description,
+          originalFilename: pf.filename,
+          fileId: pf.id,
+          usedPaths,
+        });
+        usedPaths.add(path);
+        await store.upload(path, new Blob([bytes as BlobPart]));
+        const record: PropertyFile = { id: pf.id, path };
+        if (pf.description) record.description = pf.description;
+        if (pf.categoryId) record.categoryId = pf.categoryId;
+        if (pf.tagIds) record.tagIds = pf.tagIds;
+        if (pf.private) record.private = true;
+        files.push(record);
+      }
+
+      for (const pr of plan.repairs) {
+        const repair: PropertyRepair = {
+          id: pr.id,
+          date: pr.date,
+          amount: pr.amount,
+          description: pr.description,
+          typeId: pr.typeId,
+        };
+        if (pr.subtypeId) repair.subtypeId = pr.subtypeId;
+        if (pr.companyId) repair.companyId = pr.companyId;
+        if (pr.tagIds) repair.tagIds = pr.tagIds;
+        const bytes = pr.receiptZipPath
+          ? zip.get(pr.receiptZipPath)
+          : undefined;
+        if (pr.receiptZipPath && store && bytes) {
+          const path = buildRepairReceiptPath({
+            propertyName: plan.propertyName,
+            fallbackFolder,
+            companyName: "",
+            description: pr.description,
+            entryDate: pr.date,
+            today: todayIso(),
+            extension: extensionOfPath(pr.receiptZipPath),
+            repairId: pr.id,
+            usedPaths,
+          });
+          usedPaths.add(path);
+          await store.upload(path, new Blob([bytes as BlobPart]));
+          repair.receiptPath = path;
+        } else if (pr.receiptZipPath) {
+          // The receipt couldn't be re-uploaded (no backend / missing bytes);
+          // the repair still imports, just without its receipt.
+          skipped += 1;
+        }
+        repairs.push(repair);
+      }
+
+      const property: Property = {
+        id: plan.propertyId,
+        name: plan.propertyName,
+        valueHistory: plan.valueHistory,
+        mortgages: plan.mortgages,
+        repairs,
+        files,
+      };
+      if (plan.size !== undefined) property.size = plan.size;
+      if (plan.purchaseAmount !== undefined)
+        property.purchaseAmount = plan.purchaseAmount;
+      if (plan.purchaseDate !== undefined)
+        property.purchaseDate = plan.purchaseDate;
+      if (plan.lenderCompanyId) property.companyId = plan.lenderCompanyId;
+
+      dispatch({
+        type: "importProperty",
+        property,
+        newCompanies: plan.newCompanies,
+        newTags: plan.newTags,
+        newFileCategories: plan.newFileCategories,
+        newSubtypes: plan.newSubtypes,
+      });
+      unlock("propertyHandover");
+      return { propertyName: plan.propertyName, skipped };
+    },
+    [store, data, dispatch, t],
+  );
+
   return {
     canManage,
     download,
@@ -363,5 +577,7 @@ export function usePropertyAttachments({
     uploadPropertyFile,
     replacePropertyFile,
     removePropertyFile,
+    exportProperty,
+    importProperty,
   };
 }

@@ -41,6 +41,7 @@ type Props = {
   onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
+  onExportProperty: (property: Property) => void;
   onAddMortgage: (property: Property) => void;
   onEditMortgage: (property: Property, mortgage: Mortgage) => void;
   onDeleteMortgage: (property: Property, mortgage: Mortgage) => void;
@@ -68,6 +69,7 @@ export function PropertyCard({
   onNetSaleProfit,
   onViewPayments,
   onViewRepairs,
+  onExportProperty,
   onAddMortgage,
   onEditMortgage,
   onDeleteMortgage,
@@ -103,6 +105,7 @@ export function PropertyCard({
           onNetSaleProfit={onNetSaleProfit}
           onViewPayments={onViewPayments}
           onViewRepairs={onViewRepairs}
+          onExportProperty={onExportProperty}
           onEditProperty={onEditProperty}
           onDeleteProperty={onDeleteProperty}
         />

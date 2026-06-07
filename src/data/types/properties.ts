@@ -242,6 +242,12 @@ export type PropertyFile = {
   // Absent ⇒ the `files/` root. A dangling reference (the category was
   // deleted) renders uncategorised; the stored `path` is not rewritten.
   categoryId?: string;
+  // Whether the file is excluded from a property export (the sale-handover
+  // archive) unless the user explicitly opts into "include private files".
+  // Default (absent) ⇒ included in the export, mirroring how the rest of a
+  // property's documents hand over with it. Additive/optional, so old
+  // budgets simply lack it — no migration needed.
+  private?: boolean;
 };
 
 // One property the user owns or has bought. `purchaseAmount` is what they

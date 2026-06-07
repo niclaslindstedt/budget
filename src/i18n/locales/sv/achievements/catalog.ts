@@ -398,6 +398,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna Ladda upp fil på en fastighet och bifoga ett foto eller en PDF — en före/efter-bild, en besiktningsrapport, ett försäkringsdokument. Ge den en beskrivning, etiketter och en kategori (som blir en undermapp). Filer sparas under en fastighetsmapp i din lagring. Tillgängligt för lokal mapp och molnlagring.",
   },
+  propertyHandover: {
+    name: "Ren överlämning",
+    condition: "Exportera eller importera en fastighet.",
+    learnMore:
+      "Säljer du en bostad? Öppna fastighetens …-meny och välj Exportera för att samla allt om den — uppgifter, reparationer, kvitton och uppladdade dokument — i en enda ZIP-fil att lämna över till den nya ägaren. Markera känsliga filer som privata för att utesluta dem, och välj om kvitton och dina lånedetaljer ska följa med. Den nya ägaren väljer Importera på sin egen Fastigheter-flik för att ta in allt som en ny fastighet.",
+  },
   spellbinder: {
     name: "Trollkarl",
     condition: "Skriv din första beloppsformel.",

@@ -14,6 +14,7 @@ import { createLogger } from "../../utils/logger";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button, ClearableInput } from "../form";
+import { Checkbox } from "../form/Checkbox";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
 import { FileCategoryPicker } from "./FileCategoryPicker";
@@ -180,6 +181,11 @@ export function PropertyFilesModal({
                       <span className="min-w-0 truncate">
                         {filenameOf(file.path)}
                       </span>
+                      {file.private && (
+                        <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-fg">
+                          {t("properties.filePrivateBadge")}
+                        </span>
+                      )}
                     </span>
                     {fileTags.length > 0 && (
                       <span className="flex flex-wrap items-center gap-1">
@@ -264,6 +270,9 @@ export function PropertyFilesModal({
               tagIds:
                 meta.tagIds && meta.tagIds.length > 0 ? meta.tagIds : undefined,
               categoryId: meta.categoryId ?? undefined,
+              // `undefined` clears the key so a non-private file stays
+              // byte-identical to a reloaded one.
+              private: meta.private ? true : undefined,
             });
             setForm(null);
           }}
@@ -343,6 +352,7 @@ function PropertyFileForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     record?.categoryId ?? null,
   );
+  const [isPrivate, setIsPrivate] = useState(record?.private ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -350,6 +360,7 @@ function PropertyFileForm({
     description,
     tagIds,
     categoryId: categoryId ?? undefined,
+    private: isPrivate,
   };
 
   async function handleSubmit() {
@@ -426,6 +437,12 @@ function PropertyFileForm({
               onCreate={onCreateTag}
             />
           </label>
+          <Checkbox
+            checked={isPrivate}
+            onChange={setIsPrivate}
+            label={t("properties.filePrivate")}
+            description={t("properties.filePrivateHint")}
+          />
         </div>
         {error && (
           <p className="mt-3 text-sm text-danger" role="alert">

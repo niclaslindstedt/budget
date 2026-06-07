@@ -259,6 +259,15 @@ src/
 │   │   └── sources.ts          # repairSources / repairSourceCount / repairSourceKey
 │   │                           #   — flatten a repair's primary + additionalSources
 │   │                           #   into one uniform transaction list
+│   ├── property-transfer/  # properties page — sale-handover export / import
+│   │   ├── manifest.ts         # PropertyExportManifest shape + format / version
+│   │   │                       #   constants (the archive's manifest.json)
+│   │   ├── export.ts           # buildPropertyExport — Property + lookups + options
+│   │   │                       #   → manifest + the backend file paths to bundle
+│   │   └── import.ts           # parsePropertyManifest (version-guard) +
+│   │                           #   planPropertyImport — re-link names, mint a fresh
+│   │                           #   Property + the companies / tags / categories /
+│   │                           #   subtypes it needs
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /

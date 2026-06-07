@@ -169,6 +169,9 @@ function validatePropertyFile(raw: unknown): PropertyFile | null {
     file.description = raw.description;
   if (typeof raw.categoryId === "string" && raw.categoryId !== "")
     file.categoryId = raw.categoryId;
+  // Excluded-from-export flag. Kept only when explicitly true; absent / false
+  // ⇒ omitted so a non-private file stays byte-identical to a reloaded one.
+  if (raw.private === true) file.private = true;
   if (Array.isArray(raw.tagIds)) {
     const seen = new Set<string>();
     const tagIds: string[] = [];
