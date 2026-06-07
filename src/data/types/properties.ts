@@ -202,13 +202,56 @@ export type PropertyRepair = {
   receiptPath?: string;
 };
 
+// A user-defined category for a property's uploaded files — "Insurance",
+// "Manuals", "Before & after", … Each category becomes a subfolder under a
+// property's `files/` folder in the backend's `properties/` store; a file
+// with no category lands in the `files/` root. Global (workspace-wide, like
+// `Subtype`) and entirely user-curated — no presets ship — created and
+// renamed from the Properties settings tab. Name-only because there is no
+// cell that needs a colour or glyph for it. Referenced from
+// `PropertyFile.categoryId`; a dangling reference (the category was deleted)
+// renders uncategorised and the file falls back to the `files/` root.
+export type FileCategory = {
+  id: string;
+  name: string;
+};
+
+// One arbitrary file the user uploaded against a property — a before/after
+// photo, an inspection report, an insurance document, anything that isn't a
+// repair receipt. The bytes live in the backend's `properties/` store at
+// `<property name>/files/[<category name>/]<file>`; only the relative `path`
+// is stored here (mirroring `PropertyRepair.receiptPath`). `description` is
+// the user's label shown in the files list; `tagIds` are `UserData.tags`
+// references (a file can carry several); `categoryId` is the optional
+// `FileCategory` the file is filed under (absent ⇒ the `files/` root). A
+// dangling tag / category reference renders nothing / uncategorised.
+export type PropertyFile = {
+  id: string;
+  // Relative path into the backend's `properties/` store, e.g.
+  // "Cabin/files/Insurance/policy-2026.pdf". The single source of truth for
+  // where the bytes live — the category subfolder is baked into the path at
+  // upload time, so renaming a category does not move existing files.
+  path: string;
+  // The user's label for the file, shown in the files list. Absent / "" ⇒
+  // the row falls back to the filename derived from `path`.
+  description?: string;
+  // `UserData.tags` ids. Absent / empty ⇒ untagged; a dangling reference
+  // (the tag was deleted) renders nothing.
+  tagIds?: string[];
+  // The `FileCategory` this file is filed under (`UserData.fileCategories`).
+  // Absent ⇒ the `files/` root. A dangling reference (the category was
+  // deleted) renders uncategorised; the stored `path` is not rewritten.
+  categoryId?: string;
+};
+
 // One property the user owns or has bought. `purchaseAmount` is what they
 // paid for it (the cost basis a future capital-gains calc reads);
 // `valueHistory` is the manually-recorded market value over time (current
 // value = latest point); `mortgages` are the loans against it; `repairs`
-// are the transaction-linked repairs / renovations on it. Every field
-// beyond `id` / `name` is optional or starts empty so a property can be
-// created with just a name and filled in later.
+// are the transaction-linked repairs / renovations on it; `files` are the
+// arbitrary documents / photos uploaded against it. Every field beyond
+// `id` / `name` is optional or starts empty so a property can be created
+// with just a name and filled in later.
 export type Property = {
   id: string;
   name: string;
@@ -240,6 +283,10 @@ export type Property = {
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
   repairs: PropertyRepair[];
+  // Arbitrary files uploaded against the property (photos, documents) — see
+  // `PropertyFile`. Starts empty; additive, so old budgets simply lack it
+  // and the v68 validator fills `files: []` regardless.
+  files: PropertyFile[];
   // The last "Net sale profit" estimate the user configured for this
   // property — the broker model, advertising cost, and the sale price
   // they were experimenting with. Absent until they open the estimator

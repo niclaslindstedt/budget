@@ -18,6 +18,7 @@ const PROPERTY: Property = {
   valueHistory: [],
   mortgages: [],
   repairs: [],
+  files: [],
 };
 
 const MORTGAGE: Mortgage = {

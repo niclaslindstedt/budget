@@ -326,7 +326,18 @@ export function describeActionSubject(
     case "deleteRepair":
       return name(byId(next.properties, action.propertyId)?.name);
     case "setPropertySaleEstimate":
+    case "addPropertyFile":
+    case "updatePropertyFile":
+    case "deletePropertyFile":
       return name(byId(next.properties, action.propertyId)?.name);
+
+    // File categories (property file subfolders).
+    case "addFileCategory":
+      return name(action.category.name);
+    case "updateFileCategory":
+      return name(byId(next.fileCategories, action.categoryId)?.name);
+    case "deleteFileCategory":
+      return name(byId(prev.fileCategories, action.categoryId)?.name);
 
     // Transfers.
     case "createTransfer":

@@ -9,6 +9,7 @@ import type {
   CompanyCategory,
   Employer,
   EntryType,
+  FileCategory,
   HistoryEntry,
   HistoryImport,
   Item,
@@ -33,6 +34,7 @@ import {
   validateCompany,
   validateCompanyCategory,
   validateEntryType,
+  validateFileCategory,
   validateItem,
   validateSubtype,
   validateTag,
@@ -153,6 +155,29 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`properties[${i}].id`, `duplicate id "${r.value.id}"`);
     seenPropertyIds.add(r.value.id);
     properties.push(r.value);
+  }
+
+  // Property-file categories (the subfolders a property's uploaded files are
+  // filed under). Name-only and entirely user-curated — no presets, no
+  // cross-references to verify. Duplicate ids fail the load like the other
+  // top-level arrays. A `PropertyFile.categoryId` that no longer resolves is
+  // left dangling (renders uncategorised), mirroring how a repair's advisory
+  // `subtypeId` is treated.
+  const rawFileCategories = Array.isArray(raw.fileCategories)
+    ? raw.fileCategories
+    : [];
+  const fileCategories: FileCategory[] = [];
+  const seenFileCategoryIds = new Set<string>();
+  for (let i = 0; i < rawFileCategories.length; i++) {
+    const r = validateFileCategory(
+      rawFileCategories[i],
+      `fileCategories[${i}]`,
+    );
+    if (!r.ok) return r;
+    if (seenFileCategoryIds.has(r.value.id))
+      return fail(`fileCategories[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenFileCategoryIds.add(r.value.id);
+    fileCategories.push(r.value);
   }
 
   const rawTags = Array.isArray(raw.tags) ? raw.tags : [];
@@ -556,6 +581,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       salaries,
       employers,
       properties,
+      fileCategories,
       companies,
       tags,
       categories,

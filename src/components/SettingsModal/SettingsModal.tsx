@@ -15,6 +15,7 @@ import type {
   CompanyCategory,
   DecimalSeparator,
   EntryType,
+  FileCategory,
   Settings,
   Subtype,
   Tag,
@@ -173,13 +174,22 @@ type Props = {
     kind: "income" | "expense" | "any",
   ) => void;
   // Subtype admin — the third taxonomy tier. New subtypes are minted from
-  // the item / repairs editors, so the categories tab only renames and
-  // deletes existing ones (no presets, no add affordance).
+  // the item / repairs editors, so settings only renames and deletes existing
+  // ones (no presets, no add affordance). Item subtypes are managed in the
+  // Items tab, repair / renovation subtypes in the Properties tab.
   onUpdateSubtype: (
     subtypeId: string,
     patch: Partial<Omit<Subtype, "id">>,
   ) => void;
   onDeleteSubtype: (subtypeId: string) => void;
+  // File-category admin — the subfolders uploaded property files are filed
+  // under. Managed in the Properties tab (created there or inline at upload).
+  onCreateFileCategory: (name: string) => FileCategory;
+  onUpdateFileCategory: (
+    categoryId: string,
+    patch: Partial<Omit<FileCategory, "id">>,
+  ) => void;
+  onDeleteFileCategory: (categoryId: string) => void;
   // Company admin — full edit/delete on user-curated entries; no
   // presets ship so there's no hide-toggle.
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -299,6 +309,9 @@ export function SettingsModal({
   onSetPresetTypeKind,
   onUpdateSubtype,
   onDeleteSubtype,
+  onCreateFileCategory,
+  onUpdateFileCategory,
+  onDeleteFileCategory,
   onCreateCompany,
   onUpdateCompany,
   onDeleteCompany,
@@ -544,8 +557,6 @@ export function SettingsModal({
                 onDeleteType={onDeleteType}
                 onSetPresetTypeHidden={onSetPresetTypeHidden}
                 onSetPresetTypeKind={onSetPresetTypeKind}
-                onUpdateSubtype={onUpdateSubtype}
-                onDeleteSubtype={onDeleteSubtype}
               />
             )}
             {activeTab === "companies" && (
@@ -590,10 +601,21 @@ export function SettingsModal({
                 onUpdate={update}
                 onClearIgnoredItemEntries={onClearIgnoredItemEntries}
                 onClearItemFindExclusions={onClearItemFindExclusions}
+                onUpdateSubtype={onUpdateSubtype}
+                onDeleteSubtype={onDeleteSubtype}
               />
             )}
             {activeTab === "properties" && (
-              <PropertiesTab draft={draft} onUpdate={update} />
+              <PropertiesTab
+                draft={draft}
+                data={data}
+                onUpdate={update}
+                onUpdateSubtype={onUpdateSubtype}
+                onDeleteSubtype={onDeleteSubtype}
+                onCreateFileCategory={onCreateFileCategory}
+                onUpdateFileCategory={onUpdateFileCategory}
+                onDeleteFileCategory={onDeleteFileCategory}
+              />
             )}
             {activeTab === "memory" && (
               <MemoryTab

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   Calculator,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   ReceiptText,
   TrendingUp,
@@ -23,6 +24,7 @@ type Props = {
   // the trigger and a count suffix on the "View repairs" entry.
   missingReceiptCount: number;
   onUpdateValue: (property: Property) => void;
+  onUploadFile: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
@@ -54,6 +56,7 @@ export function PropertyActionsMenu({
   hasPayments,
   missingReceiptCount,
   onUpdateValue,
+  onUploadFile,
   onNetSaleProfit,
   onViewPayments,
   onViewRepairs,
@@ -76,6 +79,12 @@ export function PropertyActionsMenu({
       icon: <TrendingUp size={16} aria-hidden focusable={false} />,
       label: t("properties.updateValue"),
       onClick: () => pick(() => onUpdateValue(property)),
+    },
+    {
+      key: "uploadFile",
+      icon: <Paperclip size={16} aria-hidden focusable={false} />,
+      label: t("properties.uploadFile"),
+      onClick: () => pick(() => onUploadFile(property)),
     },
     {
       key: "netSaleProfit",

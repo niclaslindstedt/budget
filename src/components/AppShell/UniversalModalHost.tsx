@@ -306,6 +306,9 @@ export function UniversalModalHost(props: Props) {
     onCreateSubtype,
     onUpdateSubtype,
     onDeleteSubtype,
+    onCreateFileCategory,
+    onUpdateFileCategory,
+    onDeleteFileCategory,
     onCreateItem,
   } = taxonomyCrud;
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
@@ -527,6 +530,9 @@ export function UniversalModalHost(props: Props) {
         onSetPresetTypeKind={onSetPresetTypeKind}
         onUpdateSubtype={onUpdateSubtype}
         onDeleteSubtype={onDeleteSubtype}
+        onCreateFileCategory={onCreateFileCategory}
+        onUpdateFileCategory={onUpdateFileCategory}
+        onDeleteFileCategory={onDeleteFileCategory}
         onCreateCompany={onCreateCompany}
         onUpdateCompany={onUpdateCompany}
         onDeleteCompany={onDeleteCompany}

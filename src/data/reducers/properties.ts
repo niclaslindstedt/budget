@@ -219,5 +219,62 @@ export function reduceProperties(
       applyPatch(p, { saleEstimate: action.estimate }),
     );
   }
+  if (action.type === "addPropertyFile") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      files: [...p.files, action.file],
+    }));
+  }
+  if (action.type === "updatePropertyFile") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      files: p.files.map((f) =>
+        f.id === action.fileId ? applyPatch(f, action.patch) : f,
+      ),
+    }));
+  }
+  if (action.type === "deletePropertyFile") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      files: p.files.filter((f) => f.id !== action.fileId),
+    }));
+  }
+  if (action.type === "addFileCategory") {
+    return {
+      ...state,
+      fileCategories: [...state.fileCategories, action.category],
+    };
+  }
+  if (action.type === "updateFileCategory") {
+    return {
+      ...state,
+      fileCategories: state.fileCategories.map((c) =>
+        c.id === action.categoryId ? { ...c, ...action.patch } : c,
+      ),
+    };
+  }
+  if (action.type === "deleteFileCategory") {
+    // Deleting a file category clears `categoryId` on every property file that
+    // referenced it (the file falls back to the `files/` root bucket); no file
+    // is deleted and its stored `path` is left untouched — the bytes stay where
+    // they were uploaded. Mirrors `deleteSubtype` clearing `subtypeId`.
+    const id = action.categoryId;
+    return {
+      ...state,
+      fileCategories: state.fileCategories.filter((c) => c.id !== id),
+      properties: state.properties.map((p) => {
+        if (!p.files.some((f) => f.categoryId === id)) return p;
+        return {
+          ...p,
+          files: p.files.map((f) => {
+            if (f.categoryId !== id) return f;
+            const { categoryId: _drop, ...rest } = f;
+            void _drop;
+            return rest;
+          }),
+        };
+      }),
+    };
+  }
   return null;
 }

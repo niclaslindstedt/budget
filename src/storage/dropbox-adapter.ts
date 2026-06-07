@@ -66,6 +66,7 @@ export const DROPBOX_BACKUPS_FOLDER = nsCloudPath("/backups");
 export const DROPBOX_BACKUPS_INDEX_PATH = `${DROPBOX_BACKUPS_FOLDER}/index.json`;
 export const DROPBOX_RECEIPTS_FOLDER = nsCloudPath("/receipts");
 export const DROPBOX_PAYSLIPS_FOLDER = nsCloudPath("/payslips");
+export const DROPBOX_PROPERTIES_FOLDER = nsCloudPath("/properties");
 
 // Web URL that opens the budget file's parent folder in Dropbox's web
 // UI with the file pre-selected for preview. Used by the cloud-sync
@@ -431,15 +432,23 @@ export function createDropboxAdapter(
 
   const receipts = makeBlobFolderOps(DROPBOX_RECEIPTS_FOLDER, "receipt");
   const payslips = makeBlobFolderOps(DROPBOX_PAYSLIPS_FOLDER, "payslip");
+  // Per-property attachment store — repair receipts and uploaded files,
+  // laid out per-property under nested subfolders. Dropbox auto-creates the
+  // intermediate folders on upload.
+  const propertyFiles = makeBlobFolderOps(
+    DROPBOX_PROPERTIES_FOLDER,
+    "property file",
+  );
 
   return {
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["backups", "receipts", "payslips"]),
+    capabilities: new Set(["backups", "receipts", "payslips", "propertyFiles"]),
     backups,
     receipts,
     payslips,
+    propertyFiles,
 
     load: () => loadFromDropbox(),
 

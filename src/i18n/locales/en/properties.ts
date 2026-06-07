@@ -15,6 +15,7 @@ const properties = {
   currentValue: "Current value",
   noValue: "No value recorded",
   updateValue: "Update value",
+  uploadFile: "Upload file",
   netSaleProfit: "Net sale profit",
   editProperty: "Edit property",
   deleteProperty: "Delete property",
@@ -278,6 +279,31 @@ const properties = {
       tax: "Capital-gains tax",
     },
   },
+
+  // Files manager — arbitrary documents / photos uploaded against a property
+  // (before/after images, inspection reports, non-receipt paperwork).
+  filesTitle: "Files",
+  filesEmpty: "No files uploaded yet.",
+  filesUnavailable:
+    "Uploading files needs a folder or cloud backend. Connect one in Settings → Storage.",
+  uploadFileAction: "Upload",
+  editFile: "Edit",
+  deleteFile: "Delete",
+  deleteFileTitle: "Delete file?",
+  deleteFileConfirm:
+    "{name} will be removed from this property. This cannot be undone.",
+  // Title of the inline file viewer (reuses the receipt viewer).
+  fileAttachment: "File",
+  fileDescription: "Description",
+  fileDescriptionPlaceholder: "What this is, e.g. Kitchen before renovation",
+  fileCategory: "Category",
+  fileTags: "Tags",
+  // File-category picker.
+  fileCategoryNone: "No category",
+  newFileCategory: "New category",
+  fileCategoryName: "Category name",
+  fileCategoryNamePlaceholder: "e.g. Insurance",
+  fileCategoryDuplicate: "A category with this name already exists.",
 
   // Shared verbs.
   save: "Save",

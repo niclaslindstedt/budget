@@ -37,6 +37,7 @@ type Props = {
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
   onUpdateValue: (property: Property) => void;
+  onUploadFile: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
@@ -63,6 +64,7 @@ export function PropertyCard({
   onEditProperty,
   onDeleteProperty,
   onUpdateValue,
+  onUploadFile,
   onNetSaleProfit,
   onViewPayments,
   onViewRepairs,
@@ -97,6 +99,7 @@ export function PropertyCard({
           hasPayments={hasPayments}
           missingReceiptCount={repairSummary.missingReceiptCount}
           onUpdateValue={onUpdateValue}
+          onUploadFile={onUploadFile}
           onNetSaleProfit={onNetSaleProfit}
           onViewPayments={onViewPayments}
           onViewRepairs={onViewRepairs}

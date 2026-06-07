@@ -276,6 +276,71 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Apartment" });
   });
 
+  it("names the property on file actions and the category on category actions", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      properties: [
+        {
+          id: "p1",
+          name: "Apartment",
+          valueHistory: [],
+          mortgages: [],
+          repairs: [],
+          files: [{ id: "f1", path: "Apartment/files/policy.pdf" }],
+        },
+      ],
+      fileCategories: [{ id: "fc1", name: "Insurance" }],
+    };
+    expect(
+      describe2(
+        {
+          type: "addPropertyFile",
+          propertyId: "p1",
+          file: { id: "f2", path: "Apartment/files/deed.pdf" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "updatePropertyFile",
+          propertyId: "p1",
+          fileId: "f1",
+          patch: { description: "Home insurance" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        { type: "deletePropertyFile", propertyId: "p1", fileId: "f1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Apartment" });
+    expect(
+      describe2(
+        {
+          type: "updateFileCategory",
+          categoryId: "fc1",
+          patch: { name: "Policies" },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Policies" });
+    expect(
+      describe2({ type: "deleteFileCategory", categoryId: "fc1" }, prev),
+    ).toEqual({ kind: "name", value: "Insurance" });
+    expect(
+      describeActionSubject(
+        { type: "addFileCategory", category: { id: "fc2", name: "Manuals" } },
+        prev,
+        prev,
+        "en",
+      ),
+    ).toEqual({ kind: "name", value: "Manuals" });
+  });
+
   it("returns undefined for an action with no nameable target", () => {
     const fresh = freshUserData();
     expect(

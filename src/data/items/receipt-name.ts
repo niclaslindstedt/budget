@@ -145,12 +145,13 @@ export type BuildRepairReceiptPathOpts = {
   usedPaths: ReadonlySet<string>;
 };
 
-// Build the relative receipt path for a property repair: a per-property
-// subfolder holding files named "<date> <company> - <description>", so the
-// receipts read like a dated log of the work done on each property. Unlike
-// `buildReceiptPath` this ignores the user's global name pattern — the
-// folder + log shape is the whole point. Every segment is sanitised, and a
-// short repair-id suffix is appended on a name collision.
+// Build the relative path (inside the backend's per-property `properties/`
+// store) for a property repair's receipt: `<property>/receipts/<date>
+// <company> - <description>`, so the receipts read like a dated log of the
+// work done on each property. Unlike `buildReceiptPath` this ignores the
+// user's global name pattern — the folder + log shape is the whole point.
+// Every segment is sanitised, and a short repair-id suffix is appended on a
+// name collision.
 export function buildRepairReceiptPath(
   opts: BuildRepairReceiptPathOpts,
 ): string {
@@ -178,10 +179,75 @@ export function buildRepairReceiptPath(
   const lead = [date, company].filter(Boolean).join(" ");
   const stem = desc ? `${lead} - ${desc}` : lead;
 
-  const prefix = `${dir}/`;
+  // The receipts live in the property's own `receipts/` subfolder so they sit
+  // alongside the `files/` tree the uploaded documents land in.
+  const prefix = `${dir}/receipts/`;
   const candidate = `${prefix}${stem}${ext}`;
   if (usedPaths.has(candidate)) {
     return `${prefix}${stem} (${repairId.slice(0, 6)})${ext}`;
+  }
+  return candidate;
+}
+
+export type BuildPropertyFilePathOpts = {
+  // The owning property's name — the top folder its files file under inside
+  // the backend's `properties/` store. Sanitised; falls back to
+  // `fallbackFolder` when it sanitises to empty.
+  propertyName: string;
+  fallbackFolder: string;
+  // The file category's name — a subfolder under the property's `files/`
+  // folder. Absent / "" ⇒ the file lands in the `files/` root.
+  categoryName?: string;
+  // The user's description (the preferred base name). Falls back to the
+  // uploaded file's own stem, then the literal "file".
+  description?: string;
+  // The uploaded file's original name (e.g. "Scan 1.PDF"), used for the
+  // extension and as the base name when there is no description.
+  originalFilename: string;
+  // The file's id, used only to disambiguate a name collision.
+  fileId: string;
+  // Receipt / file paths already used elsewhere, so a duplicate name gets an
+  // id suffix rather than overwriting an unrelated file.
+  usedPaths: ReadonlySet<string>;
+};
+
+// Build the relative path for an uploaded property file:
+// `<property>/files/[<category>/]<name>.<ext>`. The base name is the user's
+// description when given, else the uploaded file's own stem; the extension is
+// preserved from the original filename. Every segment is sanitised, and a
+// short file-id suffix is appended on a name collision so two uploads never
+// fight over one path.
+export function buildPropertyFilePath(opts: BuildPropertyFilePathOpts): string {
+  const {
+    propertyName,
+    fallbackFolder,
+    categoryName,
+    description,
+    originalFilename,
+    fileId,
+    usedPaths,
+  } = opts;
+
+  const propertyDir = sanitizeSegment(propertyName) || fallbackFolder;
+  const extension = extensionOf(originalFilename);
+  const ext = extension ? `.${extension}` : "";
+  // Strip the extension off the original filename to get its stem, so the
+  // description / stem fallback never doubles the extension.
+  const originalStem = extension
+    ? originalFilename.slice(0, originalFilename.length - extension.length - 1)
+    : originalFilename;
+  const stem =
+    sanitizeSegment(description ?? "") ||
+    sanitizeSegment(originalStem) ||
+    "file";
+
+  const categorySeg = categoryName ? sanitizeSegment(categoryName) : "";
+  const prefix = categorySeg
+    ? `${propertyDir}/files/${categorySeg}/`
+    : `${propertyDir}/files/`;
+  const candidate = `${prefix}${stem}${ext}`;
+  if (usedPaths.has(candidate)) {
+    return `${prefix}${stem} (${fileId.slice(0, 6)})${ext}`;
   }
   return candidate;
 }

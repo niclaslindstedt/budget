@@ -15,6 +15,7 @@ const properties: PropertiesCatalog = {
   currentValue: "Nuvarande värde",
   noValue: "Inget värde registrerat",
   updateValue: "Uppdatera värde",
+  uploadFile: "Ladda upp fil",
   netSaleProfit: "Nettovinst vid försäljning",
   editProperty: "Redigera fastighet",
   deleteProperty: "Ta bort fastighet",
@@ -273,6 +274,28 @@ const properties: PropertiesCatalog = {
       tax: "Vinstskatt",
     },
   },
+
+  // Files manager — uppladdade dokument / foton kopplade till en fastighet.
+  filesTitle: "Filer",
+  filesEmpty: "Inga filer uppladdade ännu.",
+  filesUnavailable:
+    "Att ladda upp filer kräver en mapp eller molntjänst. Anslut en under Inställningar → Lagring.",
+  uploadFileAction: "Ladda upp",
+  editFile: "Redigera",
+  deleteFile: "Ta bort",
+  deleteFileTitle: "Ta bort fil?",
+  deleteFileConfirm:
+    "{name} tas bort från den här fastigheten. Detta går inte att ångra.",
+  fileAttachment: "Fil",
+  fileDescription: "Beskrivning",
+  fileDescriptionPlaceholder: "Vad det är, t.ex. Köket före renovering",
+  fileCategory: "Kategori",
+  fileTags: "Etiketter",
+  fileCategoryNone: "Ingen kategori",
+  newFileCategory: "Ny kategori",
+  fileCategoryName: "Kategorinamn",
+  fileCategoryNamePlaceholder: "t.ex. Försäkring",
+  fileCategoryDuplicate: "En kategori med det här namnet finns redan.",
 
   // Shared verbs.
   save: "Spara",

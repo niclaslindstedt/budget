@@ -394,6 +394,12 @@ const catalog = {
     learnMore:
       "Open a salary on the Salary sheet and attach a photo or PDF of the payslip (lönerapport). It is saved as a file in a payslips folder on your storage, named after the employer and pay month, so you can find it later. Available on the local-folder and cloud backends.",
   },
+  propertyFiler: {
+    name: "Property Filer",
+    condition: "Upload a file to a property.",
+    learnMore:
+      "Open Upload file on a property and attach a photo or PDF — a before/after picture, an inspection report, an insurance document. Give it a description, tags, and a category (which becomes a subfolder). Files are saved under a per-property properties folder on your storage. Available on the local-folder and cloud backends.",
+  },
   spellbinder: {
     name: "Spellbinder",
     condition: "Write your first amount formula.",

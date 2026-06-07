@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPropertyFilePath,
   buildReceiptPath,
   buildRepairReceiptPath,
   extensionOf,
@@ -144,17 +145,17 @@ const REPAIR_BASE = {
 describe("buildRepairReceiptPath", () => {
   it("files under the property folder as <date> <company> - <description>", () => {
     expect(buildRepairReceiptPath(REPAIR_BASE)).toBe(
-      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
+      "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
     );
   });
   it("drops the description segment when there is none", () => {
     expect(buildRepairReceiptPath({ ...REPAIR_BASE, description: "" })).toBe(
-      "Holiday Cabin/2024-01-15 Rörmokare Andersson.pdf",
+      "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson.pdf",
     );
   });
   it("uses date - description when the company is unresolved", () => {
     expect(buildRepairReceiptPath({ ...REPAIR_BASE, companyName: "" })).toBe(
-      "Holiday Cabin/2024-01-15 - Repainted the kitchen.pdf",
+      "Holiday Cabin/receipts/2024-01-15 - Repainted the kitchen.pdf",
     );
   });
   it("falls back to just the date with neither company nor description", () => {
@@ -164,7 +165,7 @@ describe("buildRepairReceiptPath", () => {
         companyName: "",
         description: "",
       }),
-    ).toBe("Holiday Cabin/2024-01-15.pdf");
+    ).toBe("Holiday Cabin/receipts/2024-01-15.pdf");
   });
   it("falls back to today and the fallback folder when both are blank", () => {
     expect(
@@ -174,7 +175,7 @@ describe("buildRepairReceiptPath", () => {
         entryDate: undefined,
       }),
     ).toBe(
-      "Repairs/2026-06-01 Rörmokare Andersson - Repainted the kitchen.pdf",
+      "Repairs/receipts/2026-06-01 Rörmokare Andersson - Repainted the kitchen.pdf",
     );
   });
   it("sanitizes the property folder and the name segments", () => {
@@ -184,19 +185,69 @@ describe("buildRepairReceiptPath", () => {
         propertyName: "A/B: Cabin",
         companyName: "Boss*Co?",
       }),
-    ).toBe("A B Cabin/2024-01-15 Boss Co - Repainted the kitchen.pdf");
+    ).toBe("A B Cabin/receipts/2024-01-15 Boss Co - Repainted the kitchen.pdf");
   });
   it("appends a short repair-id suffix on a name collision", () => {
     const usedPaths = new Set([
-      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
+      "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
     ]);
     expect(buildRepairReceiptPath({ ...REPAIR_BASE, usedPaths })).toBe(
-      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen (r1a2b3).pdf",
+      "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson - Repainted the kitchen (r1a2b3).pdf",
     );
   });
   it("omits the extension when none is given", () => {
     expect(buildRepairReceiptPath({ ...REPAIR_BASE, extension: "" })).toBe(
-      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen",
+      "Holiday Cabin/receipts/2024-01-15 Rörmokare Andersson - Repainted the kitchen",
+    );
+  });
+});
+
+const FILE_BASE = {
+  propertyName: "Holiday Cabin",
+  fallbackFolder: "Repairs",
+  description: "Kitchen before renovation",
+  originalFilename: "Scan 1.JPG",
+  fileId: "f1a2b3c4d5",
+  usedPaths: new Set<string>(),
+};
+
+describe("buildPropertyFilePath", () => {
+  it("files under <property>/files with the description as the name", () => {
+    expect(buildPropertyFilePath(FILE_BASE)).toBe(
+      "Holiday Cabin/files/Kitchen before renovation.jpg",
+    );
+  });
+  it("nests under a category subfolder when given", () => {
+    expect(
+      buildPropertyFilePath({ ...FILE_BASE, categoryName: "Insurance" }),
+    ).toBe("Holiday Cabin/files/Insurance/Kitchen before renovation.jpg");
+  });
+  it("falls back to the uploaded filename stem with no description", () => {
+    expect(buildPropertyFilePath({ ...FILE_BASE, description: "" })).toBe(
+      "Holiday Cabin/files/Scan 1.jpg",
+    );
+  });
+  it("sanitizes the property, category, and name segments", () => {
+    expect(
+      buildPropertyFilePath({
+        ...FILE_BASE,
+        propertyName: "A/B: Cabin",
+        categoryName: "Tax: 2026",
+        description: "Roof*report?",
+      }),
+    ).toBe("A B Cabin/files/Tax 2026/Roof report.jpg");
+  });
+  it("falls back to the fallback folder when the property name is blank", () => {
+    expect(buildPropertyFilePath({ ...FILE_BASE, propertyName: "  " })).toBe(
+      "Repairs/files/Kitchen before renovation.jpg",
+    );
+  });
+  it("appends a short file-id suffix on a name collision", () => {
+    const usedPaths = new Set([
+      "Holiday Cabin/files/Kitchen before renovation.jpg",
+    ]);
+    expect(buildPropertyFilePath({ ...FILE_BASE, usedPaths })).toBe(
+      "Holiday Cabin/files/Kitchen before renovation (f1a2b3).jpg",
     );
   });
 });

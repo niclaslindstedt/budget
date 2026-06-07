@@ -85,13 +85,14 @@ export function withEncryption(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     backups: wrappedBackups,
-    // Receipts and payslips are never encrypted — they pass straight
-    // through to the inner adapter as raw image / PDF bytes. The user
-    // who doesn't trust the cloud backend with their receipts simply
-    // doesn't upload them; there's no envelope to toggle, so flipping
+    // Receipts, payslips, and property files are never encrypted — they
+    // pass straight through to the inner adapter as raw image / PDF bytes.
+    // The user who doesn't trust the cloud backend with their receipts
+    // simply doesn't upload them; there's no envelope to toggle, so flipping
     // encryption never has to re-wrap these files.
     receipts: inner.receipts,
     payslips: inner.payslips,
+    propertyFiles: inner.propertyFiles,
 
     // The hook hands us plaintext bytes here; the inner cache (in
     // `withCloudMirror`) expects the same envelope shape the cloud
