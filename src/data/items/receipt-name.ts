@@ -121,3 +121,75 @@ export function buildReceiptPath(opts: BuildReceiptPathOpts): string {
   }
   return candidate;
 }
+
+export type BuildRepairReceiptPathOpts = {
+  // The owning property's name — the subfolder every one of its repair
+  // receipts files under, so the backend's `receipts/` folder reads like a
+  // per-property log. Sanitised; falls back to `fallbackFolder` when it
+  // sanitises to empty.
+  propertyName: string;
+  fallbackFolder: string;
+  // The repair's resolved company (merchant) name. "" omits the company token.
+  companyName: string;
+  // The repair's user description of the work. "" omits the description token.
+  description: string;
+  // ISO repair date ("YYYY-MM-DD…"); falls back to `today` when absent.
+  entryDate?: string;
+  today: string;
+  // Lower-case extension without the dot (from `extensionOf`). "" omits it.
+  extension: string;
+  // The repair id, used only to disambiguate a name collision.
+  repairId: string;
+  // Receipt paths already used by OTHER hosts, so a duplicate name gets an id
+  // suffix rather than overwriting an unrelated file.
+  usedPaths: ReadonlySet<string>;
+};
+
+// Build the relative receipt path for a property repair: a per-property
+// subfolder holding files named "<date> <company> - <description>", so the
+// receipts read like a dated log of the work done on each property. Unlike
+// `buildReceiptPath` this ignores the user's global name pattern — the
+// folder + log shape is the whole point. Every segment is sanitised, and a
+// short repair-id suffix is appended on a name collision.
+export function buildRepairReceiptPath(
+  opts: BuildRepairReceiptPathOpts,
+): string {
+  const {
+    propertyName,
+    fallbackFolder,
+    companyName,
+    description,
+    entryDate,
+    today,
+    extension,
+    repairId,
+    usedPaths,
+  } = opts;
+
+  const dir = sanitizeSegment(propertyName) || fallbackFolder;
+  const date = (entryDate && entryDate.slice(0, 10)) || today.slice(0, 10);
+  const company = sanitizeSegment(companyName);
+  const desc = sanitizeSegment(description);
+  const ext = extension ? `.${extension}` : "";
+
+  // "<date> <company>" (each present part joined by a space), then
+  // " - <description>" when there's a description. Falls back to just the
+  // date so a charge with neither company nor description still files cleanly.
+  const lead = [date, company].filter(Boolean).join(" ");
+  const stem = desc ? `${lead} - ${desc}` : lead;
+
+  const prefix = `${dir}/`;
+  const candidate = `${prefix}${stem}${ext}`;
+  if (usedPaths.has(candidate)) {
+    return `${prefix}${stem} (${repairId.slice(0, 6)})${ext}`;
+  }
+  return candidate;
+}
+
+// The basename's lower-case extension (no dot) — extension lookup scoped to
+// the final path segment so a dot in a subfolder name (a property "Apt 2.0")
+// can't be mistaken for the file's extension.
+export function extensionOfPath(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return extensionOf(slash >= 0 ? path.slice(slash + 1) : path);
+}

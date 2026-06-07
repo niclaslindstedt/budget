@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildReceiptPath, extensionOf } from "../src/data/items/receipt-name";
+import {
+  buildReceiptPath,
+  buildRepairReceiptPath,
+  extensionOf,
+  extensionOfPath,
+} from "../src/data/items/receipt-name";
 
 const BASE = {
   companyName: "Apple Store",
@@ -112,5 +117,86 @@ describe("buildReceiptPath — collision", () => {
     expect(
       buildReceiptPath({ ...BASE, pattern: "type-name-date", usedPaths }),
     ).toBe("Electronics/Apple Store - 2024-01-15 (a1b2c3).jpg");
+  });
+});
+
+describe("extensionOfPath", () => {
+  it("reads the extension off the final segment only", () => {
+    expect(extensionOfPath("Apt 2.0/2024-01-15 X - Y.pdf")).toBe("pdf");
+    // A dot in the folder must not be mistaken for the file's extension.
+    expect(extensionOfPath("Apt 2.0/2024-01-15 X - Y")).toBe("");
+    expect(extensionOfPath("no-folder.JPG")).toBe("jpg");
+  });
+});
+
+const REPAIR_BASE = {
+  propertyName: "Holiday Cabin",
+  fallbackFolder: "Repairs",
+  companyName: "Rörmokare Andersson",
+  description: "Repainted the kitchen",
+  entryDate: "2024-01-15",
+  today: "2026-06-01",
+  extension: "pdf",
+  repairId: "r1a2b3c4d5",
+  usedPaths: new Set<string>(),
+};
+
+describe("buildRepairReceiptPath", () => {
+  it("files under the property folder as <date> <company> - <description>", () => {
+    expect(buildRepairReceiptPath(REPAIR_BASE)).toBe(
+      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
+    );
+  });
+  it("drops the description segment when there is none", () => {
+    expect(buildRepairReceiptPath({ ...REPAIR_BASE, description: "" })).toBe(
+      "Holiday Cabin/2024-01-15 Rörmokare Andersson.pdf",
+    );
+  });
+  it("uses date - description when the company is unresolved", () => {
+    expect(buildRepairReceiptPath({ ...REPAIR_BASE, companyName: "" })).toBe(
+      "Holiday Cabin/2024-01-15 - Repainted the kitchen.pdf",
+    );
+  });
+  it("falls back to just the date with neither company nor description", () => {
+    expect(
+      buildRepairReceiptPath({
+        ...REPAIR_BASE,
+        companyName: "",
+        description: "",
+      }),
+    ).toBe("Holiday Cabin/2024-01-15.pdf");
+  });
+  it("falls back to today and the fallback folder when both are blank", () => {
+    expect(
+      buildRepairReceiptPath({
+        ...REPAIR_BASE,
+        propertyName: "  ",
+        entryDate: undefined,
+      }),
+    ).toBe(
+      "Repairs/2026-06-01 Rörmokare Andersson - Repainted the kitchen.pdf",
+    );
+  });
+  it("sanitizes the property folder and the name segments", () => {
+    expect(
+      buildRepairReceiptPath({
+        ...REPAIR_BASE,
+        propertyName: "A/B: Cabin",
+        companyName: "Boss*Co?",
+      }),
+    ).toBe("A B Cabin/2024-01-15 Boss Co - Repainted the kitchen.pdf");
+  });
+  it("appends a short repair-id suffix on a name collision", () => {
+    const usedPaths = new Set([
+      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen.pdf",
+    ]);
+    expect(buildRepairReceiptPath({ ...REPAIR_BASE, usedPaths })).toBe(
+      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen (r1a2b3).pdf",
+    );
+  });
+  it("omits the extension when none is given", () => {
+    expect(buildRepairReceiptPath({ ...REPAIR_BASE, extension: "" })).toBe(
+      "Holiday Cabin/2024-01-15 Rörmokare Andersson - Repainted the kitchen",
+    );
   });
 });

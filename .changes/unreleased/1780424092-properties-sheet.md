@@ -75,4 +75,9 @@ contractor — tick every transaction in the repair editor to group them
 under a single repair: their amounts add up, and the one receipt you
 attach to the repair covers them all. The same transaction can't back two
 repairs. Swipe a repair left to edit its transactions, description,
-subtype, company, and tags, manage its receipt, or delete it.
+subtype, company, and tags, manage its receipt, or delete it. Repair
+receipts are saved into a folder named after the property, each named for
+its date, company, and the work done, so the folder reads like a dated
+log of everything done to the home; change a repair's company or
+description, or rename the property, and its receipt file is renamed to
+match.
