@@ -1,0 +1,1676 @@
+# Overview
+
+How the app's subsystems and features actually behave — the "how it
+works" companion to `docs/dictionary.md`.
+
+The dictionary answers _"the user said X — which file is that?"_: it
+maps every term to the most specific file and the symbols to grep for,
+and stops there. **This file answers the next question** — _"I've
+found the file, so how does this subsystem work, and what else does it
+touch?"_ Every term in the dictionary has a matching entry here, under
+the same section headings, so the two read as a pair: look the word up
+in the dictionary to find the code, read the same word here to
+understand it.
+
+It is **not** a way to find code (the dictionary does that) and it is
+**not** the module / persisted-shape inventory (`docs/architecture.md`
+does that — which file owns which helper, the `UserData` shape, the
+migration runner). Read this to grasp a feature's behaviour and its
+cross-module reach before working a request, especially to discover the
+surfaces a change touches beyond the one file the request names.
+
+**Maintain it in lockstep with the code, in the same PR.** When a
+feature's behaviour changes, update its entry here — and the dictionary
+row too if the file or symbols moved (usually only the overview needs
+touching, since the dictionary row is just a pointer). Keep
+descriptions to current behaviour and invariants, not changelog
+narration ("used to…", "previously…"). Keep the inline `file.ts` /
+`symbol` references so the prose stays navigable. The headings here
+mirror the dictionary's sections one-to-one; add a new heading
+whenever you add a dictionary row.
+
+## Top-level UI
+
+### App shell
+
+`src/components/AppShell.tsx` — the top-level orchestrator. Owns the
+reducer, the storage harness, and the page-routing switch that picks
+which page renders for the active sheet's `type`.
+
+### Action history
+
+`ActionHistoryModal.tsx` — the timeline modal listing every undoable
+action newest-first ("action summary" is the same thing). Each entry's
+label is a verb+object string (the `actionHistory.action.<type>` i18n
+key) plus the subject it acted on, composed by `formatActionLabel` in
+`src/components/action-history-label.ts`. The subject (the named
+object, or a count) is resolved at dispatch time by
+`describeActionSubject` in `src/data/action-summary.ts` and carried on
+`ActionHistoryEntry`. The same label feeds the undo / redo toasts.
+
+### Workspace
+
+The whole `UserData` graph for one user — every sheet, account,
+transfer, history entry, setting, achievement.
+
+### Sheet
+
+The universal top-level container. Persisted on `UserData.sheets[]`.
+Each sheet has a `type` that selects which page renders.
+
+### Active sheet
+
+The sheet currently visible (`UserData.activeSheetId`). Switched via
+the header Sheet switcher dropdown or the swipe gesture.
+
+### Sheet type
+
+The `"budget" | "accounts" | "items" | "salary" | "properties"`
+literal on `Sheet.type`. The registry of known types lives in
+`src/data/sheet-types/` (`SHEET_TYPE_REGISTRY`). Adding a type means a
+new file there plus an arm in `AppShell.tsx`'s page-routing switch.
+
+### Page
+
+A flavour of sheet content. Today: the budget page, the accounts page,
+the items page, the salary page, and the properties page. Future:
+savings, loans, utility pages.
+
+### Bottom bar
+
+`src/components/BottomBar.tsx` — the action bar pinned to the bottom of
+the viewport. Search / undo / redo / action-history / select-mode on
+the right; the `BulkActionBar` on the left while in select mode; the
+favorites strip (up to 3 favorited-sheet glyph icons) on the left in
+normal mode. Full sheet switching lives in the header Sheet switcher.
+
+### Favorite sheet
+
+A sheet marked as a favorite (`Sheet.favorite`, capped at 3 via
+`MAX_FAVORITE_SHEETS` in `src/data/sheet.ts`) shows as a quick-switch
+glyph icon in the Bottom bar (`FavoriteSheetButton`). Toggled from the
+sheet title menu's "Favorite / Unfavorite sheet" item
+(`favoriteMenuItem` in `SheetTitleMenu.tsx`), which fires the
+`toggle-sheet-favorite` command; the central AppShell handler enforces
+the cap and toasts when it's reached.
+
+### Sheet switcher
+
+`src/components/SheetSwitcher.tsx` — the header button (showing the
+active sheet's glyph + name) that opens a `FloatingPanel` dropdown
+listing every sheet, with the active one checked and a "New sheet"
+footer. It is the sole in-chrome way to switch sheets (besides the
+swipe gesture); it replaced the BottomBar tab strip, which couldn't
+scroll without breaking iOS composited scrolling.
+
+### Sheet title
+
+`src/components/SheetTitleMenu.tsx` — the sheet's name shown above the
+page; the whole title (name + "…" glyph) is one trigger that opens the
+actions dropdown.
+
+### Sheet modal
+
+`src/components/SheetModal.tsx` — the universal modal that creates or
+edits sheet metadata (name, type, glyph, colour, description, optional
+account binding). Opened from the title "…" menu or the BottomBar "+".
+
+### Header menu
+
+`src/components/HeaderMenu.tsx` — the top-right burger menu (settings,
+privacy, changelog, achievements, sign-out, …).
+
+### Header star
+
+`src/components/HeaderStar.tsx` — the achievements star next to the
+header menu. Outline when there are no unread unlocks.
+
+## Budget page
+
+The per-account ledger. Sheet type `"budget"`. Files live in
+`src/components/budget/`.
+
+### Budget page
+
+`BudgetPage.tsx` — the page root. Renders months + columns + rows +
+balances.
+
+### Budget viewer modal
+
+`BudgetViewerModal.tsx` — opens from the eye affordance. Same rows, no
+editing ("view-mode" / "read-only budget"). A row with no user-authored
+description falls back to a line-item pill or company pill in the
+description column, mirroring the editable table's `DescriptionCell`
+resolve order (line items win, then company). Its in-modal search bar
+(the shared `ModalSearchBar`, `actions` slot) carries viewer-scoped
+sort + filter controls via the universal `ModalSearchControls`: a
+newest/oldest sort toggle and a popover to hide transfers / uncompleted
+rows, all local to the open viewer.
+
+### Month table
+
+`BudgetMonthTable.tsx` — one month's table inside the budget page.
+Header row + body rows + footer add-row.
+
+### Budget row
+
+`BudgetRow.tsx` — one row inside a month table. Swipe-to-act, inline
+cells, action menu. The code type is `Row` in `src/data/types.ts`.
+
+### Budget cell
+
+`BudgetCell.tsx` — one cell. Renders the editor or a readonly chip
+depending on column type and synthesized state.
+
+### Column header
+
+`BudgetColumnHeader.tsx` — the draggable header for a budget column.
+
+### Add-entry button
+
+`BudgetAddEntryButton.tsx` — the inline "+" at the bottom of each
+month. Long-press opens the recurring / categorised picker.
+
+### Covered-month footer
+
+`OrphanIndicator.tsx` — the month-table footer for a month fully
+covered by bank history (the "orange triage CTA" / "entries to move or
+delete"). Green when reconciled; an orange button when manual rows
+remain, which opens the Reconciliation modal scoped to that month
+(`AppShell`'s `manualTriage` state).
+
+### Entry actions menu
+
+`BudgetEntryActionsMenu.tsx` — the kebab popover with edit / delete /
+copy / split actions for one row ("row actions menu").
+
+### Salary entry actions menu
+
+`SalaryEntryActionsMenu.tsx` — the "…" overflow popover in a salary
+row's swipe strip. Renders a single payslip entry whenever the backend
+can hold payslips (the `payslips` capability), toggling between "Upload
+payslip" (no file yet) and "View payslip" (file present); picking it
+opens the shared attachment modal (`AttachmentUploadModal`) to upload /
+view / replace / remove the file. Mirrors `BudgetEntryActionsMenu` /
+`ItemEntryActionsMenu`.
+
+### Item entry actions menu
+
+`src/components/items/ItemEntryActionsMenu.tsx` — the "…" overflow
+popover in an item row's swipe strip (the items-sheet analogue of
+`SalaryEntryActionsMenu`). Renders a single receipt entry only when the
+item is linked to a purchase AND the backend can hold receipts,
+toggling between "Upload receipt" / "View receipt"; picking it opens
+the shared attachment modal (`AttachmentUploadModal`) bound to the
+linked transaction's `receiptPath`. Hidden for unlinked items (no
+transaction to attach a receipt to).
+
+### Attachment modal
+
+`AttachmentUploadModal` in `src/components/AttachmentUploadModal.tsx` —
+the universal "manage a single file attachment" modal, shared by
+payslips (salary row "…" menu) and receipts (item row "…" menu). With
+no file it shows a drag-and-drop / click-to-browse upload zone; with
+one it renders the file inline (`<img>` for images, `<iframe>` for
+PDFs) plus Replace / Remove / Download. Every mutation commits
+immediately through host callbacks (`onUpload` / `onDownload` /
+`onRemove`) — the file write and the data reference move together — so
+it opens straight from a row menu, not from a parent form's Save.
+Rendering the blob inline (not a new-tab `blob:` URL) is what makes the
+preview work on iOS in-app browsers and standalone PWAs. Replaced the
+old read-only `AttachmentViewerModal`.
+
+### Edit-entry modal
+
+`BudgetEditEntryModal.tsx` — a tri-mode dispatcher across
+`BudgetEditSeriesForm.tsx` (existing series),
+`BudgetPromoteHistoryForm.tsx` (synthesized history row), and
+`BudgetPromoteToSeriesForm.tsx` (regular row). Description + type only;
+full-row edit is the next entry.
+
+### Edit-entry full modal
+
+`BudgetEditEntryFullModal.tsx` — the generic full-row edit form (every
+field at once), the "edit-row modal". Opened by long-press.
+
+### Split entry modal
+
+`BudgetSplitEntryModal.tsx` — splits a bank-history row into multiple
+categorised parts.
+
+### Complex entry modal
+
+`BudgetComplexEntryModal.tsx` — the recurring + categorised entry
+creator. Supports `amountFormula`.
+
+### Amount span
+
+`BudgetAmountSpanFields.tsx` — the exact-vs-estimate amount control
+shared by the add / edit modals ("estimate range" / "min/estimate/max").
+Estimate mode stores a signed `amountMin` / `amountMax` band on the
+`Row` (sign math in `budget-amount-span.ts`; reconciliation tolerance
+via `amountWithinSpan` in `src/data/reconciliation.ts`).
+
+### Bulk edit modal
+
+`BudgetBulkEditModal.tsx`, `BudgetMoveCopyModal.tsx`,
+`BudgetApplySeriesDialog.tsx` — the toolbars / dialogs that fire on
+selected rows (bulk edit, move-copy, apply-series).
+
+### Bulk action bar
+
+`src/components/BulkActionBar.tsx` — the count + Edit / Move / Copy /
+Delete / Cancel toolbar shown in select mode ("select-many toolbar").
+Presentational; used by the `BottomBar` and the search modal's footer.
+Move / Copy are optional (omitted on the salary sheet, whose rows are
+pinned to their pay month) so only Edit + Delete render there.
+
+### Match rule modal
+
+`BudgetMatchRuleModal.tsx` — creates a wildcard rule that auto-labels
+matching history entries ("pattern modal" / "label similar" / "label by
+pattern"). Opened via "label similar", it prefills the pattern + labels
+from the source row (`resolveEntryLabels`; seed shape in
+`budget-match-rule-modal-reducer.ts`). The "Save pattern" checkbox
+(default on) controls whether the rule persists.
+
+### Find conflicts modal
+
+`BudgetFindConflictsModal.tsx` — opened from the title "…" menu
+("duplicate finder" / "duplicates modal"). Folds same-day,
+same-category, near-equal pairs into one row. Detector:
+`src/data/budget/conflicts.ts`.
+
+### Metadata mode
+
+`BudgetMetadataModal.tsx` — opened from the title "…" menu. Walks
+bank-history entries still needing a type / description, one at a time,
+saving via `updateHistoryEntry`. Back and Forward buttons (left of
+Skip) revisit entries already skipped or saved this session via a
+`trail` of handled ids + a `reviewIndex` cursor; Forward returns toward
+the live front without saving or skipping. The "Also apply to N
+similar" checkbox fans labels out via `applyMetadataToMatchingHistory`
+(`src/data/budget/pattern-apply.ts`). The "Split into parts…" button
+enters the inline split builder (`budget-metadata-split-reducer.ts`):
+fill an amount + type / company / tags / description per part, press
+Split again to commit it and start the next on the remaining sum, or
+Next to let the final part absorb the remainder. Saves via
+`splitHistoryEntry` (writes the entry's `splits` array, same as the
+scissors-button modal).
+
+### Recurring candidates panel
+
+`BudgetRecurringCandidatesPanel.tsx` — the floating suggestions panel:
+"this looks like a recurring expense, want to promote it?"
+
+### Recurrence form
+
+`BudgetRecurrenceForm.tsx` — the mode-tab / preview UI shared by the
+recurring modals.
+
+### Entry search modal
+
+`BudgetTransferSearchModal.tsx` — searches every entry across all
+sheets; clicking a result jumps to the row (the visible label is
+"Search"; the file name predates the rename, hence "transfer search
+modal"). The filter popover lives in `BudgetTransferSearchFilterMenu.tsx`;
+the filter / search / ranking primitives (`SearchFilter`, `runSearch`,
+`searchBounds`, `matchingEntries`) live in `src/data/search.ts`.
+Supports filter-only browsing, select-many → `BulkActionBar`, and a
+result cap tuned in Settings → Search.
+
+### Search settings
+
+`src/components/SettingsModal/tabs/search.tsx` (`SearchTab`) — edits
+`Settings.searchRanking` (`SearchRankingSettings` in
+`src/data/types/settings.ts`): match-quality vs field-order priority,
+recency mode, per-field weights, amount tolerance, result cap ("search
+ranking" / "relevance settings"). Defaults: `DEFAULT_SEARCH_RANKING`
+(`src/data/constants/defaults.ts`). Consumed by `scoreEntry` /
+`runSearch` in `src/data/search.ts`.
+
+### Formula
+
+`BudgetFormulaInput.tsx` — a typed `=`-prefixed expression in an amount
+cell, resolved at render. Helpers: `BudgetFormulaHelpButton.tsx`,
+`BudgetFormulaVariableHelper.tsx`; the engine lives under
+`src/data/budget/formula*.ts`.
+
+## Accounts page
+
+The workspace dashboard. Sheet type `"accounts"`. Files live in
+`src/components/accounts/`.
+
+### Accounts page
+
+`AccountsPage.tsx` — the page root ("accounts sheet" / "accounts
+overview" / "dashboard"). Renders the accounts table; the cross-account
+transfer log opens in a modal from the title menu.
+
+### Account
+
+One named bank / cash account. `Account` in `src/data/types.ts`. Has
+name, glyph, colour, bank / IBAN, opening balance.
+
+### Account modal
+
+`AccountModal.tsx` — create / edit an account.
+
+### Account actions menu
+
+`AccountActionsMenu.tsx` — the overflow dropdown on an account row
+(import history, cut history, update balance). Edit / delete live in the
+swipe strip; clicking the row body views history.
+
+### Update balance modal
+
+`UpdateBalanceModal.tsx` — the user asserts the current balance; it
+appends a correction row to the first AccountBudget tracking the account
+("balance correction").
+
+### Transfer
+
+A cross-account money movement. `Transfer` in `src/data/types.ts`
+(`UserData.transfers`). Distinct from a row's "is-transfer" flag, which
+doesn't mint a Transfer.
+
+### Transfer modal
+
+`AccountTransferModal.tsx` — create / edit a Transfer.
+
+### Transfers modal
+
+`AccountTransfersModal.tsx` — lists every Transfer in date order
+(month-grouped, swipe-to-edit, "New transfer" footer), the "transfer
+log". Opened from the accounts title menu ("…"), mirroring the budget
+page's "Viewing mode" modal. Carries the same in-modal search bar as
+the budget viewer (shared `ModalSearchBar` + universal
+`ModalSearchControls`): free-text search across description / accounts /
+type / amount / date, a newest/oldest sort toggle, and a "hide
+uncompleted" filter (the one filter that makes sense when every row is
+already a transfer).
+
+### History
+
+Bank-statement entries imported from CSV / XLSX ("bank history" /
+"imported entries"). Lives on `UserData.history[accountId]`. Read-only
+— `HistoryEntry` in `src/data/types.ts`.
+
+### History modal
+
+`HistoryModal.tsx` — the read-only viewer of one account's imported
+history. Raw bank fields only (date, bank description, amount,
+balance); user-curated metadata belongs to the budget view. Its search
+bar carries a viewer-scoped newest/oldest sort toggle plus a filter
+popover (time range, amount band, date band) via the universal
+`ModalSearchControls`, all local to the open viewer (the sort seeds
+from `transactionSortOrder`; the filter bands reset on close). No
+transfer / completed / type filters — history rows carry only raw bank
+fields.
+
+### Import history modal
+
+`ImportHistoryModal.tsx` — the file picker + bank-parser selector.
+
+### History entry edit modal
+
+`EditHistoryEntryModal.tsx` — a per-entry override of description and
+type.
+
+### Cut history modal
+
+`AccountCutHistoryModal.tsx` — drops imported entries and cross-account
+transfers dated before a cutoff.
+
+### Reconciliation modal
+
+`AccountReconciliationModal.tsx` — the post-import flow that pairs new
+history entries with existing budget rows.
+
+### Transfer collapse modal
+
+`AccountTransferCollapseModal.tsx` — folds a detected pair of mirrored
+bank entries (one outgoing, one incoming on the other account) into one
+Transfer.
+
+### Rename predictor
+
+`AccountRenamePredictorModal.tsx` — the last step of every import that
+has learned renames; each row carries an accept toggle + editable text,
+with Cancel / Skip / Apply renames in the footer.
+
+## Items page
+
+The owned-items catalog. Sheet type `"items"`. Files live in
+`src/components/items/`.
+
+### Items page
+
+`ItemsPage.tsx` — the page root ("items catalog"). Renders a table of
+every currently-owned `Item` (disposed items are hidden) with name,
+purchased date, purchase value, and current (resale) value, plus a
+footer totals row and a "+ add item" button. Modelled on the accounts
+page. The seed `SheetItem` is `ItemsView` (a data-light marker; the
+catalog lives in `UserData.items`).
+
+### Item row
+
+`ItemRow.tsx` — one item line. Left-swipe reveals edit (opens the Edit
+item modal) and delete (confirm → `deleteItem`); pressing the name
+opens a description popover when the item has a note. The current value
+comes from `computeItemCurrentValue` in `src/data/items/value.ts`.
+
+### Current value (item)
+
+`computeItemCurrentValue` (`src/data/items/value.ts`), also called
+"resale value": a manual `resaleValue` wins, else declining-balance
+depreciation from `acquiredAt`, else the purchase price; a disposed
+item is worth its `soldFor`. `isItemOwned` is the predicate the Items
+table filters on.
+
+### Find items modal
+
+`ItemFinderModal.tsx` (hosted by `UniversalModalHost`, opened via the
+`open-find-items` modal command from the Items sheet title "…" menu).
+Scans imported bank history for likely item purchases
+(`findItemPurchaseCandidates` in `src/data/items/find.ts`: outflows
+only — `amount < 0` and `|amount| >= Settings.itemFindThreshold` —
+restricted to `Settings.itemFindTypeIds` (seeded to a durable-goods
+allow-list, `DEFAULT_ITEM_FIND_TYPE_IDS`; empty means scan every type),
+dropping the hard `NEVER_ITEM_TYPE_IDS` denylist (rent, utilities,
+subscriptions, … — never resaleable goods) regardless of the allow-
+list, and skipping hidden / transfer / collapsed / ignored / excluded
+entries). Per candidate: add line items (opens the embedded
+`BudgetLineItemsModal` → `linkLineItemsToHistoryEntry`), skip
+(session-local), ignore one entry (`ignoreItemEntry` →
+`UserData.ignoredItemEntryIds`), or exclude similar
+(`excludeSimilarItemEntries` → `UserData.itemFindExclusionPatterns`, a
+normalised-description key that drops every matching charge, past +
+future).
+
+### Exclude similar
+
+The `CopyX` button on a Find-items candidate. Persists
+`normaliseDescription(label)` to `UserData.itemFindExclusionPatterns`
+via the `excludeSimilarItemEntries` reducer; the scanner then drops
+every entry whose resolved description collapses to that key. Distinct
+from ignore (a single `HistoryEntry.id`). Cleared via the Items
+settings tab.
+
+### Items settings tab
+
+`src/components/SettingsModal/tabs/items.tsx` (`ItemsTab`) — edits the
+"Find items" scan: `Settings.itemFindThreshold` (amount floor, seeded
+per-currency by `getDefaultItemFindThreshold`), the
+`Settings.itemFindTypeIds` allow-list, a "Clear ignored purchases"
+button (`clearIgnoredItemEntries`), and a "Clear excluded patterns"
+button (`clearItemFindExclusions` → `UserData.itemFindExclusionPatterns`).
+Also hosts the Receipt name pattern picker (`Settings.receiptNamePattern`).
+
+## Salary page
+
+Salary over time. Sheet type `"salary"`. Files live in
+`src/components/salary/`; data helpers in `src/data/salary/`.
+
+### Salary page
+
+`SalaryPage.tsx` — the page root ("salary sheet"). Renders
+`UserData.salaries` as one `SalaryYearTable` per year (gross + net
+totals). Select-many runs through the universal `BottomBar` select
+toggle (state lifted into AppShell's `useSalaryBulkSelection`, not an
+in-page button) and a salary-adjusted `BulkActionBar` (Edit employer /
+tax + Delete, no Move / Copy); each year table gets a "select all in
+year" header checkbox mirroring the budget month table. The seed
+`SheetItem` is `SalaryView`, which carries `accountId` — the salary
+account the sheet is bound to. Title menu: Add payslip (`SalaryAddModal`)
+
+- Find salaries + Employers.
+
+### Salary row
+
+`SalaryRow.tsx` — one month's paycheck inside a `SalaryYearTable`.
+Left-swipe (mobile) reveals edit / delete from behind the row, plus a
+"…" overflow menu (`SalaryEntryActionsMenu.tsx`) whenever the backend
+can hold payslips — its payslip entry ("Upload payslip" / "View
+payslip") opens the shared attachment modal to upload / view / replace
+/ remove the file. On desktop those icons sit inline. When a payslip is
+attached (and the backend can read it), a small `FileText` icon also
+sits beside the gross figure in the row — tapping it opens the same
+attachment modal. Same `useRowSwipe` + `useClaimActiveRow` +
+`.salary-table` overlay pattern as the budget / accounts / items rows.
+Swipe is suppressed in bulk-select mode.
+
+### Salary account
+
+The bank account a salary sheet is bound to (`SalaryView.accountId`),
+edited from the sheet's Edit sheet modal (`SheetModal.tsx`) exactly like
+the budget sheet's account picker. It is where that person's pay lands;
+Find salaries scans this account's history directly instead of asking
+which account to scan each time, so one salary sheet per person each
+points at their own pay account. Set via the universal `setItemAccount`
+action (now covers `accountBudget` and `salaryView`). Nullable until
+picked — the discovery walk's intro step then steers the user to Edit
+sheet.
+
+### Salary (object)
+
+`Salary` in `src/data/types/salary.ts` (a "paycheck"). `net` = the bank
+deposit (netto); `gross` = the entered brutto; tax = gross − net
+(`salaryTax` / `salaryGross` in `src/data/salary/salary.ts`). Absence-
+day counts (VAB / parental / vacation / sick) explain an off-average
+month. Added from scratch — no backing bank transaction, for paychecks
+older than the imported history reaches — via `SalaryAddModal.tsx` (the
+Add payslip title-menu / empty-state action), which leaves
+`sourceHistoryId` / `sourceRowId` absent. Edited via `SalaryEditModal.tsx`,
+which can also attach a payslip (`Salary.payslipPath`).
+
+### Find salaries
+
+`SalaryDiscoveryModal.tsx` — a guided, year-by-year walk driven by
+`discoverSalaries` (`src/data/salary/discovery.ts`). It scans the
+sheet's bound salary account (`SalaryView.accountId`) — no in-walk
+account picker; the intro step just confirms the bound account and
+previews its clusters, or steers the user to Edit sheet when none is
+bound — reading that account's full bank history
+(`data.history[accountId]`) via `detectRecurringCandidates` from the
+earliest deposit forward (no date floor, no future projection). The
+account step then lists the pay periods (clusters) instead of a single
+average — each stretch between raises / title changes / employer
+changes, with its month range, tenure length, and typical net
+(`summariseSalaryClusters`); a step up is a "Raise", a permanent drop
+is "Likely new employer" (an employer can't permanently cut pay). A
+per-year step then lists every detected paycheck (amount + month,
+unusual ones tagged) so the user sees exactly what "Accept all" adds.
+The per-segment baseline stays internal — it is the cluster's median
+net and only flags off months (a paycheck more than
+`SAME_SALARY_TOLERANCE`, 10 %, from its own segment's median is tagged
+"Unusual" — a likely vacation / sick / bonus month), it is never an
+editable field and is never written onto a salary. From there the walk
+can step month-by-month to accept / edit / skip. Job-change / raise
+segmentation is shared with `detectSalaries` via `assignEmployerGroups`,
+which also reports `raises` — boundaries whose new level is a sustained
+increase, labelled "Raise" in the walk instead of "Likely new
+employer". A salary-typed transaction only boosts confidence — the
+trigger for the walk is the absence of top-level `Salary` objects, not
+of tagged rows. Added salaries link back via `Salary.sourceHistoryId`
+for dedupe.
+
+### Employer
+
+`Employer` (`UserData.employers`) referenced by `Salary.employerId`;
+managed in `EmployerManageModal.tsx`. A `Role` = `{ id, title }` (no
+dates, the "job title"); a salary points at the role it was paid under
+via `Salary.roleId`, and the title shown for a salary is that role's
+(`roleForSalary`). A role's effective span is derived from the min/max
+payment date of the salaries referencing it (`roleDateRange`), shown
+read-only in `EmployerManageModal`. Assign a title to many paychecks at
+once with Set job title in the salary mass edit (`SalaryBulkEditModal`),
+which find-or-creates a role on each selected salary's employer
+(`bulkSetSalaryRole`, `findRoleByTitle`); a blank title clears it.
+Changing a salary's employer drops its now-orphaned `roleId`. Picked
+with `EmployerPicker.tsx`, whose dropdown has an inline "New employer"
+footer (name + colour + an industry glyph from `EMPLOYER_GLYPH_NAMES`,
+defaulting to a briefcase) so a workplace can be added without leaving
+the salary flow; roles are filled in later from `EmployerManageModal`.
+
+### Bulk tax rate
+
+`SalaryBulkEditModal.tsx` — sets an employer or a tax percent on many
+salaries at once ("skattejämkning"). The percent derives each salary's
+gross from its own net (`grossFromNetAndRate`, dispatched as
+`bulkSetSalaryTaxRate`).
+
+### Tax profile
+
+A reusable, named bundle of tax inputs (`TaxProfile` on
+`UserData.taxProfiles`): country, municipality, church membership,
+birth year, income type. Created / edited in `TaxProfileModal.tsx`,
+picked for a salary sheet with `TaxProfilePicker.tsx` inside
+`SheetModal`. Referenced from `SalaryView.taxProfileId` so several
+salary sheets can share one. Drives the estimated gross on the Salary
+page.
+
+### Estimated gross
+
+When a salary has no entered gross and the sheet has a tax profile
+bound, the Salary page back-calculates the gross (and tax) from the net
+deposit using `resolveSalary` / `resolveSalaryGross`
+(`src/data/salary/salary.ts`), which inverts the country tax engine
+(`grossFromNetMonthly` in `src/data/tax/engine.ts`). The estimate uses
+the paycheck's own tax year. Rendered muted + italic with a "≈" prefix;
+an entered gross always overrides it. Country rules live under
+`src/data/tax/<cc>/` (Sweden: `src/data/tax/se/`).
+
+### Municipality picker
+
+`MunicipalityPicker.tsx` — a searchable button + listbox over Sweden's
+~290 kommuner (`MUNICIPALITIES` in `src/data/tax/se/municipalities.ts`),
+shown in `TaxProfileModal`. Each option shows the kommun's combined
+(municipal + regional) rate.
+
+## Properties page
+
+Owned homes, their mortgages, and their repairs. Sheet type
+`"properties"`. Files live in `src/components/properties/`; data helpers
+in `src/data/property-mortgage/` and `src/data/property-repairs/`.
+
+### Properties page
+
+`src/components/properties/PropertiesPage.tsx` — the page root
+("Properties sheet"). Renders `UserData.properties` as one
+`PropertyCard` per property, plus an "Add property" button. The seed
+`SheetItem` is `PropertiesView` (a data-light marker; the catalog lives
+in `UserData.properties`). Title menu: Edit sheet. Owns all the property
+/ mortgage modals locally and dispatches the property actions directly.
+
+### Property
+
+`Property` in `src/data/types/properties.ts` — one home / apartment the
+user owns: `name`, optional `companyId` (the lender, referencing
+`UserData.companies` — one bank per property, the strong signal Find
+mortgage payments uses; swept on the `deleteCompany` cascade / on load
+like `Row.companyId`), optional bound `accountId` (the bank account
+whose history Find mortgage payments scans — one account per property,
+shared across all its mortgages because a property is paid to the bank
+as a single charge covering every loan; a dangling reference is dropped
+to `null` on load), optional `purchaseAmount` (what it was bought for) +
+`purchaseDate`, optional `size` (living area in square metres), a
+`valueHistory` of value points, `mortgages`, `repairs`, and an optional
+`saleEstimate` (the saved Net sale profit inputs). Created / edited via
+`PropertyEditorModal.tsx` (`addProperty` / `updateProperty`; the
+editor's lender is a `CompanyPicker`, its account a bespoke account
+picker); deleted via a confirm (`deleteProperty`). Rendered by
+`PropertyCard.tsx`, which shows the lender and the bound account as
+stats and a "… actions menu" (`PropertyActionsMenu`) in its header.
+
+### Property size
+
+`Property.size` is the living area as a bare square-metre number. The
+unit it renders with is a global display preference,
+`Settings.propertySizeUnit` (`"kvm"` | `"sqm"`, default `"kvm"`; both
+mean square metres), edited in the Property settings tab. The card and
+editor append the chosen label next to the number.
+
+### Property settings tab
+
+`src/components/SettingsModal/tabs/properties.tsx` (`PropertiesTab`) —
+Properties-page preferences. Today it hosts the size unit picker
+(`Settings.propertySizeUnit`). Registered in `TAB_REGISTRY` with the
+`Home` icon.
+
+### Current value (property)
+
+`PropertyValuePoint` (`{ id, date, value }`) on `Property.valueHistory`.
+A property's current value is the latest point by date. "Update value"
+(`UpdatePropertyValueModal.tsx`) appends one point (`addPropertyValue`);
+the modal also lists and deletes past points (`deletePropertyValue` /
+`updatePropertyValue`). Manually entered — there is no automatic
+valuation.
+
+### Mortgage
+
+`Mortgage` in `src/data/types/properties.ts` — a loan against a
+property: `name`, optional loan terms (`loanAmount` — the sum borrowed,
+`currentBalance` — outstanding now, `interestRate` — the current annual
+%, `rateHistory` — effective-dated past rate changes, `rateChangeMonths`
+/ `nextRateChangeDate`, `amortization` — monthly amortisation as either
+an annual percent of the initial loan or a fixed sum per month, resolved
+by `resolveMonthlyAmortization` in
+`src/data/property-mortgage/amortization.ts`), and `payments`. The
+lender and the bound account both live on the parent Property, not here
+(one bank / one account per home — every loan against it is paid to the
+same account as a single charge). A property can carry several. Created
+/ edited via `MortgageEditorModal.tsx` (`addMortgage` / `updateMortgage`,
+both carrying the parent `propertyId`; the interest field is a
+rate-history editor); deleted via a confirm (`deleteMortgage`). Surfaced
+on the `MortgageRow` in `PropertyCard` with its current rate and payment
+count; the property's bound account is what Find mortgage payments scans.
+
+### Mortgage payoff bar
+
+The slim progress bar on each `MortgageRow` in `PropertyCard` labelled
+"Paid off" (the "power bar"). Shows the share of the original loan
+amortised away — `mortgagePayoffProgress(mortgage)` in
+`src/data/property-mortgage/progress.ts` = `(loanAmount − currentBalance)
+/ loanAmount`, clamped to [0, 1]. 0 % when the balance still equals the
+loan, 100 % (full green bar + a check, `--success`) when the balance
+reaches zero. Hidden when either `loanAmount` or `currentBalance` is
+unset. Interest paid is deliberately excluded — only amortising the
+principal pays the loan _off_. Reaching 100 % unlocks the `mortgageFree`
+achievement. When the mortgage has recorded payments, the bar doubles as
+a collapse toggle (a chevron on the "Paid off" label): the Paid /
+Interest / Amortisation breakdown card below it starts hidden and is
+revealed by pressing the bar. With recorded payments but no loan terms
+(so no bar to press) the breakdown stays always-on.
+
+### Mortgage rate change
+
+`MortgageRateChange` (`{ id, date, rate }`) on `Mortgage.rateHistory` —
+an effective-dated annual interest rate. The rate became `rate`% on
+`date` (blank `date` = the original rate, effective from the start) and
+holds until the next change; the latest by date is the current rate
+(mirrored onto `Mortgage.interestRate`). `resolveRateAt(mortgage, date)`
+in `src/data/property-mortgage/interest.ts` walks it to the rate in
+effect on any date, so a historical payment's interest is computed at
+the rate that actually applied that month. Absent ⇒ `interestRate` is
+used for every date.
+
+### Mortgage payment
+
+`MortgagePayment` (`{ id, date, amount, sourceHistoryId? }`) on
+`Mortgage.payments`. One mortgage's share of a monthly charge. A
+property is paid to the bank as a single transaction covering every loan
+against it, so Find mortgage payments splits each found transaction
+across the property's mortgages (`splitPaymentAcrossMortgages` in
+`src/data/property-mortgage/payment.ts` — each loan's amortisation is
+settled in full first, then the leftover interest is shared by interest
+weight, so an amortising loan stays pinned to its amortisation and the
+interest-bearing loans absorb the variance) and records one payment per
+mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
+
+- the re-scan dedupe key). `PropertyCard` sums a mortgage's payments as
+  its Paid total, broken down beneath into the cumulative interest and
+  amortisation (`splitRecordedPayment` in
+  `src/data/property-mortgage/payment.ts` inverts the amortisation-first
+  split: amortisation = the mortgage's monthly amortisation capped at the
+  recorded amount, interest = the rest). Added in bulk via
+  `addMortgagePaymentsForProperty` (one undo entry for the whole
+  property), re-balanced within a charge via `setMortgageChargeSplit`, or
+  deleted individually (`deleteMortgagePayment`) — all surfaced in the
+  Mortgage payments view.
+
+### Mortgage payments view
+
+`MortgagePaymentsModal.tsx` — a per-property list of all recorded
+mortgage payments, opened from the property card's "… actions menu" (the
+View payments entry, shown only when the property has ≥ 1 payment). Rows
+are grouped by the monthly charge they came from (`groupPaymentsByCharge`
+in `src/data/property-mortgage/payment.ts` — keyed by `sourceHistoryId`,
+falling back to date) with a per-charge total, one row per mortgage's
+share rendered as a glyph-headed table with a leading Loan (`Landmark`,
+label on desktop / glyph only on mobile) column plus Amortisation (↘) /
+Interest (%) / Amount columns (`splitRecordedPayment` derives the
+per-row split) — all headers left-aligned with accent glyphs, matching
+the items / salary tables (the mobile `.mortgage-payments-table` grid
+uses fixed money-column tracks so the per-row grids line up). The
+per-charge header bar (date + total) becomes a button when the charge
+carries a `sourceHistoryId`: pressing it opens a popover (the shared
+`FloatingPanel`) showing the original bank transaction it was split from
+— description, date, amount, balance, account — resolved live from the
+account's history (`MortgageChargeGroup.sourceHistoryId` →
+`UserData.history[accountId]`, threaded in by `PropertiesPage` as the
+`sourceTransactions` map); hand-entered charges (no `sourceHistoryId`)
+keep a plain, non-interactive bar. Each row carries edit + trash in a
+trailing actions column — inline on desktop, hidden behind a left-swipe
+on mobile via the shared `useRowSwipe` / `useClaimActiveRow` pattern
+(the `.mortgage-payments-table` rules in `src/styles/components.css`
+mirror the items / salary two-button strip). Edit
+(`MortgagePaymentEditModal.tsx`) changes one mortgage's share: the
+charge total is fixed, so pinning the edited amount re-splits the
+remainder across the charge's other mortgages
+(`splitPaymentAcrossMortgages` — amortisation first, then interest),
+previews the re-balance, and writes the whole charge atomically via
+`setMortgageChargeSplit` (one undo entry); the date applies to the whole
+charge. Trash removes that single record (`deleteMortgagePayment`). Both
+unlock the `paymentLedger` achievement. A footer "Delete all" button
+(shown only when ≥ 1 payment exists) clears every recorded payment
+across the property's mortgages in one undo entry
+(`deleteAllMortgagePayments`), behind a confirm — the escape hatch when
+the recorded payments are wrong and the user wants to re-run Find
+mortgage payments from scratch. A footer "Unaccounted for" summary
+(`reconcileMortgageAmortization` in
+`src/data/property-mortgage/payment.ts`) lists any mortgage whose
+recorded amortisation doesn't reconcile with `loanAmount −
+currentBalance` — a positive gap means a payment is missing, a negative
+one means the balance / loan figure is off; only shown for loans with
+both figures and a ≥ 1 difference.
+
+### Find mortgage payments
+
+`MortgageDiscoveryModal.tsx` — a per-property walk opened from the
+Properties sheet's "…" title menu (`SheetTitleMenu`), driven by
+`discoverMortgagePayments` (`src/data/property-mortgage/discovery.ts`).
+The user picks a property (when more than one); the walk scans the
+property's bound account (`Property.accountId`) history, resolving each
+entry's effective company / type via `resolveEntryLabels` and anchoring
+on the charges tagged with the property's lender (`Property.companyId`)
+and/or the `preset-type-mortgage` type, on the descriptions of payments
+already recorded, AND — whenever the loan terms resolve an expected
+figure — on the maths, all at once: every recurring outflow whose
+typical charge lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` (±20 %)
+of an expected figure (combined or per-loan) is also offered as a
+candidate. All three strictness levels are surfaced at once and ranked
+by strictness (`anchorRank`: tagged → payment-seeded → amount-only),
+then by closeness within a level — rather than a winner-takes-all
+cascade, so a single unrelated charge to the lender bank (a card fee
+billed by the same bank) can't be the only tagged anchor that shadows
+the mortgage: the fee is dropped as implausible and the maths-found
+charge still appears below any genuine tags. The reported `seed`
+reflects the leading surfaced series (`"tags"` / `"payments"` /
+`"amount"`); only with no tag, no payment, and no loan terms is there
+nothing to go on (`seed: "none"` → a nudge to tag a month). Charges are
+grouped by a finder-local `financeGroupKey` — `normaliseDescription`
+with every standalone digit run stripped — so an auto-giro line whose
+reference number differs every month coalesces into one recurring series
+instead of fragmenting one-per-month; a charge that is nothing but a
+reference number normalises to empty and is instead salvaged into the
+nearest expected-figure amount group. The whole funnel (entries dropped
+as inflows / collapsed transfers / meaningless descriptions, every
+grouped candidate with its amount, `targetDelta`, and keep/drop reason)
+is returned as `result.diagnostics` and logged to the in-app Logs tab
+under the `mortgage-finder` scope so a "no matches" report can be
+diagnosed. From each anchored charge it learns the bank description and
+sweeps the history for matching months, dropping any month before the
+property's `purchaseDate` outright (a payment can't predate ownership)
+and centring the amount band on the surviving on/after-purchase months.
+Series rank a highly probable charge first (`highlyProbable`) — one that
+recurs on a clean once-a-month cadence with no gaps (`monthlyCadence`:
+months.length === span, over ≥ `MORTGAGE_RECURRENCE_MIN_MONTHS` months)
+under one stable description (not amount-salvaged) whose typical amount
+lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure —
+so monthly recurrence + matching amount + stable text trumps the tag /
+company anchor and leads even over a tagged charge (marked "Highly
+probable" in the modal, standout `--success` styling). Below that they
+rank by strictness (tagged / payment-seeded above amount-only), then by
+closeness to the expected combined figure (Σ `resolveMonthlyPaymentAt`
+across the mortgages — `targetDelta`); any whose typical charge is more
+than `MORTGAGE_PLAUSIBILITY_FACTOR`× off every expected figure is
+dropped as too far from the maths to be the payment (only when the loan
+terms resolve a figure). The user ticks charge groups; each month within
+the ± band (a `Slider`, default ±10 %, `DEFAULT_MORTGAGE_TOLERANCE`,
+`monthsWithinBand`) is split across the mortgages by their amortisation +
+dated interest and recorded via `addMortgagePaymentsForProperty`,
+deduping months already added via the `sourceHistoryId` set.
+
+### Property repair
+
+`PropertyRepair` (`{ id, date, amount, description, typeId, subtypeId?,
+accountId, sourceHistoryId, additionalSources?, receiptPath? }`) on
+`Property.repairs` in `src/data/types/properties.ts` — a repair /
+renovation on a property, sourced from one or more bank charges the user
+tagged Repairs (`preset-type-repairs`, drill glyph) or Renovations
+(`preset-type-renovations`, paint-roller glyph). `typeId` picks the
+glyph / label; `description` is the user's editable label for the work;
+the optional `subtypeId` classifies it as a `Subtype` under that type.
+The primary source (`accountId` + `sourceHistoryId`) locates the host
+`HistoryEntry` that resolves the row's company / tags; `additionalSources`
+(`{ accountId, entryId }[]`, optional) are the rest of the transactions
+paying one invoice; `amount` is the sum across every source, and
+`repairSources` / `repairSourceCount` (`src/data/property-repairs/sources.ts`)
+flatten primary + additional into one list. The receipt is owned by the
+repair itself (`receiptPath`, optional) — one invoice document covering
+every charge it groups, decoupled from any transaction (managed through
+the `{ kind: "repair" }` receipt target / `setRepairReceipt`). Repair
+receipts file into a per-property subfolder named after the property,
+each named `<date> <company> - <description>` (`buildRepairReceiptPath`
+in `src/data/items/receipt-name.ts`), so the folder reads like a dated
+log; editing a repair's company / description, or renaming the property,
+re-files the receipt to its new canonical path (`renameRepairReceipt`).
+Recorded for a future deductible "net value of a property" calc — a
+repair with no `receiptPath` is flagged "missing receipt". Added with
+one-or-more transactions + description + subtype, or in bulk (one per
+charge) via `addRepairs`, edited (transactions + description + subtype)
+via `updateRepair`, removed via `deleteRepair`; all nest under the
+property, so `deleteProperty` drops them with it (its receipt bytes are
+orphaned, like a deleted row's). Its company and tags are deliberately
+NOT stored here — they live on the primary `HistoryEntry` (`userCompanyId`
+/ `userTagIds`) and resolve live, so the same metadata enriches the
+budget view; the repair editor edits them on the transaction. The first
+repair unlocks the `firstRepair` ("Fixer-Upper") achievement; grouping
+more than one transaction under a repair unlocks `groupedRepair`
+("Itemized").
+
+### Repairs and renovations modal
+
+`RepairsModal.tsx` (`src/components/properties/`) — a per-property list
+of the property's repairs / renovations (the "wrench view"), opened from
+the property card's "… actions menu" (the View repairs entry; the entry
+shows a missing-receipt count and a small `--danger` dot marks the menu
+trigger when some repairs lack a receipt). Each row (a swipeable
+`.repairs-table` `<tr>`, same pattern as the items / mortgage-payment
+lists via `useRowSwipe`) shows the type glyph, the description, the full
+date (`Settings.dateFormat`), a transaction count (a layers glyph + "N
+transactions") when the repair groups more than one source, the resolved
+company name and tags, the amount (the sum across every source), and a
+missing-receipt flag when the repair carries no `receiptPath` of its
+own. Receipt management (`AttachmentUploadModal`) targets the repair
+(`{ kind: "repair" }`), so the uploaded invoice covers the whole repair
+rather than any single charge. Company / tags for a transaction-backed
+repair are NOT stored on the `PropertyRepair` — they're resolved live
+from the source transaction via `resolveEntryLabels` (the `repairMetadata`
+map `PropertiesPage` builds, keyed by `repairMetaKey`), so the same
+metadata enriches the budget view and search. A manual repair (no
+transaction) instead stores its own `companyId` / `tagIds` on the
+repair, resolved into the same map under a `manual:<id>` key. Swipe left
+(or the trailing column on desktop) reveals edit (`RepairsEditModal`
+edit mode), delete (confirm), and a "…" menu (`RepairEntryActionsMenu`)
+holding Manage receipt (the shared `AttachmentUploadModal` to view /
+upload / replace / remove — gated on `canManageReceipt`; the flag still
+shows on a receipt-incapable backend). The footer's Add button opens the
+single-add form (`RepairsEditModal` add mode), Quick add opens the bulk
+candidate picker (`RepairsAddModal`), and Add manually opens
+`ManualRepairModal` to record a repair with no backing bank transaction
+(work older than the imported history reaches). Editing a manual repair
+routes back to `ManualRepairModal`; editing a transaction-backed one to
+`RepairsEditModal`. Receipt status is read live from a
+`${accountId}:${sourceHistoryId}` → `HistoryEntry` map `PropertiesPage`
+builds.
+
+### Add repairs picker
+
+`RepairsAddModal.tsx` (`src/components/properties/`) — the candidate
+multi-select behind the repairs modal's Quick add button (bulk path;
+skips description / subtype, denormalising the charge's label). Each tick
+becomes its own single-transaction repair — grouping several charges
+into one repair is the full Repair editor's job, not quick add's. Lists
+`findRepairCandidates(data)` (`src/data/property-repairs/candidates.ts`):
+every Repairs / Renovations outflow across all accounts (resolved via
+`resolveEntryLabels`, skipping hidden / collapsed / inflow entries) that
+isn't already bound to any property's repairs as a primary or additional
+source — so the same transaction can't back two repairs. Checkboxes with
+amount + date + type glyph + a receipt hint; "Add N" mints a
+`PropertyRepair` per selection (`addRepairs`).
+
+### Repair editor
+
+`RepairsEditModal.tsx` (`src/components/properties/`) — the single-repair
+form shared by the repairs modal's Add (add mode) and a row's swipe edit
+(edit mode). The source picker is a multi-select checklist of
+transactions (each a checkbox + glyph + date + amount + receipt hint,
+with a running "N transactions · total" header) so one repair can group
+several charges paying one invoice. Add mode: ticks over
+`findRepairCandidates`; the primary transaction (the company / tags
+metadata anchor whose `date` / `typeId` the repair tracks) is derived
+from the selection by `derivePrimary` — the most recent ticked charge —
+the rest becoming `additionalSources`; a `description` input and a
+`SubtypePicker` scoped to the primary's Repairs / Renovations type (fed a
+filtered list + `fixedParentTypeId`); commits via `addRepairs` with one
+repair. Edit mode: the primary transaction is pinned (a disabled,
+always-checked row — it owns the date / type / identity); the checklist
+(the repair's own sources via `resolveRepairSourceRows` merged with the
+unused candidates) lets the user add / remove additional transactions,
+and `description` / `subtypeId` / `amount` / `additionalSources` commit
+to the repair via `updateRepair`. The receipt is owned by the repair
+(not a transaction), so the editor has no receipt anchor — receipts are
+attached separately from the wrench view's per-row receipt action. Both
+modes also expose a `CompanyPicker` and `TagsPicker` that edit the
+PRIMARY transaction's `userCompanyId` / `userTagIds` (dispatched as
+`updateHistoryEntry` via `onSetEntryMetadata`, only for a field the user
+changed) — company / tags belong to the transaction, not the repair, so
+the same metadata flows to the budget. The pickers seed from the anchor
+charge's effective company / tags (resolved override → rule → hint),
+re-seeding when a selection change moves the derived primary (add mode).
+Fullscreen (it has a text input).
+
+### Manual repair editor
+
+`ManualRepairModal.tsx` (`src/components/properties/`) — the editor for
+a manual repair / renovation: one with no backing bank transaction, for
+work older than the imported bank history reaches (or paid in a way the
+ledger never saw). Reached from the wrench view footer's Add manually
+button (create mode) and from editing an existing manual repair (the
+row's swipe edit routes manual repairs here, transaction-backed ones to
+the Repair editor). Every field is entered directly and stored on the
+`PropertyRepair` itself: a two-button type toggle (Repairs /
+Renovations), a date, an amount, a description, a `SubtypePicker` scoped
+to the chosen type (`fixedParentTypeId`), a `CompanyPicker` (the
+contractor → `PropertyRepair.companyId`), and a `TagsPicker` (→
+`PropertyRepair.tagIds`). Commits via `addRepairs` (one repair) /
+`updateRepair`; on edit it reconciles the repair's receipt name (via
+`onRenameRepairReceipt`) like the Repair editor. Distinct from the
+Repair editor, which sources a repair from one or more charges and keeps
+company / tags on the transaction. Fullscreen (it has text inputs).
+
+### Receipt target
+
+`TxnReceiptTarget` + `resolveTxnReceipt` (`src/data/receipts/target.ts`)
+and `useReceiptManager` (`src/components/AppShell/hooks/`) — the
+host-generic receipt layer (the "receipt manager"). A receipt's bytes
+live in the backend's `receipts/` folder; its path is stored on the host
+it hangs off — a `HistoryEntry`, a budget `Row`, or a property repair
+(`PropertyRepair.receiptPath`). The target is a discriminated union by
+`kind`: `history` / `row` (transaction hosts, with line-item links to
+preserve) and `repair` (a repair that owns its receipt outright, no line
+items). `useReceiptManager` (called in `AppShell`) owns both the file
+write and the data commit — through `linkLineItemsToHistoryEntry` /
+`setRowLineItems` for transaction hosts (re-reading the live line-item
+links so a receipt change never disturbs them), or `setRepairReceipt`
+for a repair — for any target, and threads `uploadReceipt` /
+`downloadReceipt` / `removeReceipt` to both the Items sheet and the
+Properties repairs view. Transaction-host receipts follow the user's
+global `receiptNamePattern` (`buildReceiptPath`); repair receipts ignore
+it and file into a per-property subfolder under a fixed `<date> <company>
+
+- <description>` name (`buildRepairReceiptPath`, naming carried on
+`ReceiptNaming.subfolder`/`description`). `renameRepairReceipt`re-files a repair's existing receipt (download → upload → remove,
+best-effort) when its company / description / date or its property name
+changes, keeping the on-disk log in sync. The Items`on\*ItemReceipt`callbacks are thin wrappers that resolve`item → findItemLink →
+  TxnReceiptTarget` and supply item-based naming.
+
+### Property actions menu
+
+`PropertyActionsMenu.tsx` (`src/components/properties/`) — the "…"
+overflow menu in a `PropertyCard` header, collapsing the per-property
+actions into one trigger (modelled on `RepairEntryActionsMenu` /
+`SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, Net sale
+profit, View payments (only when the property has a recorded payment),
+View repairs (with a missing-receipt count suffix), Edit property,
+Delete property. A small `--danger` dot marks the trigger when any
+repair lacks a receipt.
+
+### Net sale profit
+
+`NetSaleProfitModal.tsx` (`src/components/properties/`) — a per-property
+estimator opened from the "… actions menu" (the "sale estimator").
+Sweeps a sale-price `Slider` and shows a live breakdown — sale price
+less broker fee, advertising (e.g. Hemnet), repairs / renovations
+(prefilled from `Property.repairs`), the purchase price (prefilled from
+`Property.purchaseAmount`), and the location's capital-gains tax —
+ending in a stand-out net profit / loss (`--success` / `--danger`). The
+math is `computePropertySale(settings.location, inputs)`
+(`src/data/tax/engine.ts`); for Sweden a private-residence gain keeps
+78 % (22 % tax, `src/data/tax/se/property-sale.ts`). The broker model,
+advertising cost, and last slider price persist on
+`Property.saleEstimate` via `setPropertySaleEstimate` — only when the
+user edits something. Opening it unlocks the `netSaleProfit` ("For
+Sale") achievement.
+
+### Broker cost
+
+`BrokerCost` in `src/data/tax/types.ts` — how the estate agent is paid
+in the Net sale profit estimator. A discriminated union by `mode`:
+`none` (skip the broker), `fixed` (a flat amount), `percent` (a % of the
+sale price), or `tiered` (a base fee plus a % of the part of the sale
+price above a threshold). Edited via a `SelectPicker` mode dropdown with
+that mode's inputs; resolved to a fee by `brokerFee` in
+`src/data/tax/se/property-sale.ts`.
+
+### Location
+
+`Settings.location` (a `TaxLocation`, `"SE"` today) — the global
+jurisdiction whose tax rules apply to estimates not bound to a per-sheet
+tax profile (the property-sale capital-gains calc; the default country
+for new salary tax profiles). Edited in the Location section of the
+General settings tab (`tabs/general.tsx`, a `SelectPicker` listing every
+`SUPPORTED_LOCATIONS` entry plus a "Request a new location…" link to the
+repo's new-issue page). Drives the calculator bundle in `LOCATIONS`
+(`src/data/tax/engine.ts`); `computePropertySale(location, …)` reads it.
+
+## Data and storage
+
+### User data
+
+`UserData` in `src/data/types.ts` (also "state" / "the budget"). The
+top-level persisted shape. Bumps `version` on schema changes.
+
+### Sheet item
+
+A discriminated-union member inside `Sheet.items`. Today: `AccountBudget`
+(budget page), `AccountsView` (accounts page marker), `ItemsView` (items
+page marker), `SalaryView` (salary page marker), or `PropertiesView`
+(properties page marker).
+
+### Account budget
+
+`AccountBudget` — the budget-page data: `accountId`, `columns`, `rows`.
+One per budget sheet.
+
+### Row
+
+`Row` in `src/data/types.ts`. A budget row with `id`, `cells`, optional
+`seriesId`, `recurrence`, `transferId`, `historyEntryId`,
+`amountFormula`, `amountMin` / `amountMax`, etc.
+
+### Column
+
+`Column` in `src/data/types.ts`. Defines a column's `id`, `type`
+(date / text / amount / balance / completed / type / category), `label`,
+`width`.
+
+### Coverage
+
+A fiscal month that imported bank history brackets ("covered month") —
+the statement is authoritative, so manual rows there are contradicted.
+Helpers in `src/data/coverage.ts` (`coveredMonths`, `isMonthCovered`,
+`coverageDelta`).
+
+### Cell value
+
+`CellValue` in `src/data/types.ts`. The persisted value of one row ×
+column pair.
+
+### Synthesized row
+
+A read-only row rendered into the budget table but not stored as a
+`Row`. Built by `synthesizeTransferRow` / `synthesizeHistoryRow` in
+`src/data/budget/synthesis.ts`.
+
+### Series
+
+A set of rows linked by `seriesId`, created when a row gets a
+`recurrence` rule and `expandRecurrence` fans it out. Editing asks "just
+this row or future?". An imported bank entry reconciled to a series row
+keeps the link via `HistoryEntry.userSeriesId` (the matched row is
+deleted as redundant), so the synthesized historic row stays a series
+member and the recurring entry can be tracked across all its past
+occurrences.
+
+### Recurrence rule
+
+`RecurrenceRule` in `src/data/recurrence.ts`. `monthly` / `weekly` /
+`custom-dates`. Drives series generation.
+
+### Entry type
+
+`EntryType` in `src/data/types.ts` (a "type"). A labelled tag for a row
+(Salary, Rent, …). Carries a colour, glyph, and category.
+
+### Category
+
+`Category` in `src/data/types.ts`. The top-level grouping of types
+(Food, Transport, …). User-added + presets.
+
+### Subtype
+
+`Subtype` in `src/data/types/categories.ts` (`UserData.subtypes`). The
+third taxonomy tier below category → type ("Consumption" →
+"Electronics" → "Laptop"). Name + parent `typeId` only; 100 %
+user-defined, no presets, never shown on the sheet. Assigned to an
+`Item` in the item creator via `SubtypePicker`, or to a property repair
+via the repairs editor (parented to the Repairs / Renovations types).
+Subtypes parented to Repairs / Renovations are filtered out of the Items
+sheet's pickers by `itemSubtypes` (`src/data/items/subtypes.ts`).
+Managed (renamed / deleted, grouped under their parent type and split
+into Items vs Repairs / Renovations) in the Subtypes section of the
+Categories settings tab (`SubtypesAdmin`,
+`src/components/SettingsModal/SubtypesAdmin.tsx`); new subtypes are still
+only minted from the item / repairs editors, so the admin has no add
+affordance.
+
+### Item
+
+`Item` in `src/data/types/items.ts` (`UserData.items`). A physical thing
+the user owns; two physical units = two `Item`s. Optional `subtypeId`
+gives its taxonomy. Created after the fact via `ItemPicker` (in the
+line-items modal), not during entry add / edit, and edited via the Edit
+item modal. Beyond name / subtype it carries the inputs the Items sheet
+needs: `purchasePrice` ("bought for" — set either in the Edit item modal
+or from the amount typed when a line item links a transaction to it),
+`acquiredAt` ("bought at"), a `depreciation` rule (`ItemDepreciation`,
+percent-per-year today), a `resaleValue` override, and disposal
+(`disposedAt` / `soldFor`). The Items sheet renders the catalog and
+rolls up tied-up capital and current (resale) value. An item is linked
+to at most one transaction (the picker hides already-linked items); its
+receipt is NOT held on the item but on that linked purchase, surfaced
+through the item row "…" menu.
+
+### Edit item modal
+
+`ItemEditorModal` in `src/components/ItemEditorModal.tsx`, hosted by
+`UniversalModalHost`. A root-level (universal catalog) editor mirroring
+`CompanyEditorModal`, reached via the `open-edit-item` modal command
+from the line-item pill / popover. Sets every `Item` field — name,
+subtype, purchase price, acquired date, depreciation, resale value,
+disposal, note — and can delete the item (cascading link removal via the
+`deleteItem` reducer). Distinct from `BudgetLineItemsModal`, which edits
+the links between an entry and items (and the entry's receipt), not THE
+item.
+
+### Receipt
+
+A photo or PDF the user attaches to a transaction (proof of the
+purchase). Since an item is linked to at most one transaction, the
+receipt is surfaced and managed per-item: the item row "…" menu
+(`ItemEntryActionsMenu`) opens the shared attachment modal
+(`AttachmentUploadModal`) bound to the linked transaction's
+`receiptPath`, to upload / view / replace / remove it. AppShell resolves
+which transaction via `findItemLink` (`src/data/items/link.ts`) and
+names the file off the item (its name + acquired date) through
+`buildReceiptPath`. The file is written to a `receipts/` subfolder of
+the active storage backend via the adapter's `ReceiptOps`
+(`src/storage/adapter.ts`) — implemented on the folder / Dropbox /
+Google Drive adapters, absent on `browser`-localStorage, so the menu
+entry only appears when `adapter.capabilities.has("receipts")`. Stored
+as raw image / PDF bytes and never encrypted — the `withEncryption`
+wrapper passes receipts through untouched, so toggling encryption never
+re-wraps them. The stored path is held in `Row.receiptPath` (user rows)
+/ `HistoryEntry.receiptPath` (imported transactions); the file itself
+does not travel through JSON export / import. (The line-items modal no
+longer edits the receipt — it only links items.)
+
+### Receipt name pattern
+
+`Settings.receiptNamePattern` — one of four presets (`name`,
+`name-date`, `date-name`, `type-name-date`) the user picks in the Items
+settings tab that decides how a receipt file is named. The primary token
+is the transaction's company (falling back to its description). The pure
+builder is `buildReceiptPath` in `src/data/items/receipt-name.ts`; the
+`type-name-date` preset files the receipt under a per-type subdirectory
+inside `receipts/`. A name collision with another transaction's receipt
+appends a short id suffix.
+
+### Payslip
+
+A photo or PDF the user attaches to a salary (proof of the paycheck,
+"lönerapport"), the salary-sheet analogue of a receipt. Uploaded /
+viewed / replaced / removed via the salary row "…" menu
+(`SalaryEntryActionsMenu`), which opens the shared attachment modal
+(`AttachmentUploadModal`); it renders the blob inline rather than
+opening a `blob:` URL in a new tab — the latter hangs on iOS in-app
+browsers and standalone PWAs. The file is written to a dedicated
+`payslips/` folder of the active storage backend via the adapter's
+`payslips` ops (a second `ReceiptOps`-shaped object in
+`src/storage/adapter.ts`) — present on the folder / Dropbox / Google
+Drive adapters, absent on `browser`-localStorage, so the control only
+appears when `adapter.capabilities.has("payslips")`. Stored as raw image
+/ PDF bytes and never encrypted. The filename is the flat `Employer -
+YYYY-MM.<ext>` (employer name falling back to a "Payslip" label, pay
+month from `Salary.date`, short id suffix on collision) built by
+`buildPayslipPath` in `src/data/salary/payslip-name.ts`. The stored path
+is held in `Salary.payslipPath`; the file itself does not travel through
+JSON export / import.
+
+### Line item
+
+`LineItemLink` in `src/data/types/items.ts`. Connects a row /
+`HistoryEntry` to an `Item` it bought. It carries no price of its own —
+the amount the user types when adding the line item is written onto the
+linked `Item` as its `purchasePrice`, and the pill / popover / allocation
+"remainder" read the price back off the item (signed by the
+transaction's direction); the unallocated balance is an implicit,
+unstored remainder. Stored inline on `Row.lineItems` /
+`HistoryEntry.lineItems`, edited via `BudgetLineItemsModal` from the
+entry "…" menu (which dispatches `updateItem` to set each item's price
+alongside `setRowLineItems` / `linkLineItemsToHistoryEntry`). An item
+may be linked to at most one transaction: `unlinkedItems`
+(`src/data/items/link.ts`) filters the modal's `ItemPicker` to items not
+already linked elsewhere. Parallel to split but distinct — a split
+re-slices the entry into rows, line items annotate it. A row with line
+items renders a line-item pill in its description cell.
+
+### Line-item pill
+
+The description-cell rendering for a row that has line items
+(`LineItemPill` in `src/components/budget/cells/DescriptionCell.tsx`). On
+a row with no user-authored description it shows an outlined pill —
+`Package` glyph for one line item, `Boxes` glyph for many — captioned
+with the first added line item's name. With a description present it
+instead prefixes the text with the same small glyph. The description
+popover lists every line item (name + amount) at the bottom. Item names
+resolve through `BudgetContext.itemsById`. A tap opens the description
+popover; on a single-item row a long-press / right-click opens the Edit
+item modal (`open-edit-item`) for that item, while on a multi-item row
+it falls through to the popover where each listed line item is a button
+opening the Edit item modal for its own item. The `BudgetLineItemsModal`
+(re-allocating amounts) stays reachable from the row "…" actions menu
+(`open-line-items`).
+
+### Company
+
+`Company` in `src/data/types.ts` (`UserData.companies`), a "merchant".
+The merchant a row's money flows to. Single per row via `Row.companyId`.
+Picked with `CompanyPicker`; administered in Settings → Companies
+(`CompaniesAdmin`), where the user can also pin drag-ordered
+`Company.typeIds` (see company type hint) and assign a company category.
+
+### Company category
+
+`CompanyCategory` in `src/data/types.ts` (`UserData.companyCategories` +
+built-in `PRESET_COMPANY_CATEGORIES` in
+`src/data/presets/company-categories.ts`), a "merchant kind". A
+classification for merchants (Grocery stores, Pharmacies, Fuel …) used
+to analyse where the household shops. Single per company via
+`Company.companyCategoryId`. Picked with `CompanyCategoryPicker`;
+managed in Settings → Companies (`CompanyCategoriesAdmin`), where presets
+are hide-only and user entries get full edit / delete. Distinct from
+category (which groups rows through their type, not merchants).
+
+### Company pill
+
+The outlined Building2 + name chip a budget row's `DescriptionCell`
+renders when the row has a `companyId`, no user-authored description,
+and no line items (the line-item pill wins that slot — `CompanyPill` in
+`src/components/budget/cells/DescriptionCell.tsx`). A tap opens the
+description popover; a long-press / right-click opens the
+`CompanyEditorModal` for that merchant via the `open-edit-company` modal
+command (owned by `UniversalModalHost`). The read-only
+`BudgetViewerModal` reuses the exported `CompanyPill` for the same
+fallback, without the interactive affordances.
+
+### Tag
+
+`Tag` in `src/data/types.ts` (`UserData.tags`). A colour-coded label
+cutting across categories / types; a row carries several via
+`Row.tagIds`. Assigned through `TagsPicker`; administered in Settings →
+Tags (`TagsAdmin`). Distinct from entry type (a single bucket).
+
+### Preset
+
+A built-in immutable category or entry type. `PRESET_CATEGORIES`
+(`src/data/presets/categories.ts`) / `PRESET_ENTRY_TYPES`
+(`src/data/presets/types.ts`). Hide-only, never edited.
+
+### Match rule
+
+`MatchRule` in `src/data/types.ts` (a "pattern rule"). A wildcard match
+on raw bank description (+ optional amount filter) that stamps type /
+company / description / tags onto matching entries and rows. Evaluated
+in `data.matchRules` array order; reordered in Settings → Patterns.
+
+### Merchant hint
+
+`MerchantHint` in `src/data/types.ts`. A learned association from a
+normalised bank-description key to a description + typeId. Applied during
+`synthesizeHistoryRow`.
+
+### Company type hint
+
+A company's associated types ("suggested type"), ranked manual
+`Company.typeIds` first then learned-by-usage, computed by
+`computeCompanyTypeHints` (`src/data/budget/company-type-hints.ts`). A
+company resolving to one type instant-fills it on pick; several render
+as the "Suggested" band atop `TypePicker`.
+
+### Drag-to-reorder
+
+A reusable HTML5 drag primitive (`useDragReorder`,
+`src/hooks/useDragReorder.ts`) + id-based array helpers `reorderById` /
+`arrayMove` (`src/utils/reorder.ts`). Used by the company type-priority
+list and the sheet-reorder list in Settings → General (drives the
+bottom-bar tab order via the `reorderSheets` action); `moveColumn`
+delegates to it.
+
+### Series match rule
+
+`SeriesMatchRule` — an auto-reconciliation rule learned from "Apply to
+whole series" in the reconciliation modal.
+
+### Rename pattern
+
+`RenamePattern` in `src/data/types.ts`. A per-account memory of "the
+bank wrote X, the user calls it Y", keyed by the normalised bank
+description. Recorded by the `updateHistoryEntry` reducer; surfaced by
+the Rename predictor.
+
+### Promote
+
+A verb: take a one-off history entry and "promote" it into a budget row
+with a recurrence rule.
+
+### Reconciliation
+
+Pairing newly-imported history entries with existing budget rows so the
+running balance stays anchored. See `src/data/reconciliation.ts`.
+
+### Transaction
+
+User-vocabulary term for any +/- post on an account — the code type is
+`HistoryEntry` in `src/data/types.ts`. A cross-account movement is a
+Transfer, not a transaction. Settings like `transactionSortOrder` use
+this sense.
+
+### Opening balance
+
+An account's starting balance (`Account.openingBalance`), or a budget
+sheet's anchor for the running balance.
+
+### Orphan
+
+A manual budget row sitting inside a covered fiscal month — the bank
+statement contradicts it ("orphan row" / "prediction that didn't post").
+Detected by `findOrphans` in `src/data/reconciliation.ts`. Resolved
+(keep / delete / move) via the reconciliation modal or the orange
+covered-month footer.
+
+### Running balance
+
+The per-row balance ("balance column") derived by `computeBalances` in
+`src/data/sheet.ts`. Not stored — recomputed on render.
+
+### Balance correction
+
+A row that brings the running balance to a user-asserted value. Created
+via `correctAccountBalance` from the UpdateBalanceModal.
+
+### Fiscal month
+
+The month-grouping logic. May shift forward / back based on the user's
+payday (`detectPaydayDayOfMonth`). See `src/data/fiscal-month.ts`.
+
+### Payday
+
+The user's chosen day-of-month. Aligns fiscal months and is a "move
+orphans here" target in reconciliation.
+
+### Primary income
+
+A recurring series flagged as the user's main payday ("great income of
+the month", `UserData.seriesMetadata[seriesId].isPrimaryIncome`). An
+occurrence landing before the configured `anchorDayOfMonth` gets
+`fiscalMonthShift = 1`. See `computePrimaryIncomeShift` in
+`src/data/sheet.ts`; edited from the Edit-row modal.
+
+### Fiscal month shift
+
+The optional `Row.fiscalMonthShift` (`-1` / `+1`) forcing a row into a
+different fiscal month than its date implies ("month override"). Set by
+the primary-income detector or manually via the Row actions menu.
+Cascades to same-day rows; cued by a ↗ / ↙ glyph by the date cell.
+
+### Gross and net
+
+Gross / net salary (also "brutto" / "netto"). The bank deposit is the
+net; the user enters the gross and the absolute tax is the difference.
+Per-year salary tables total both. Helpers in
+`src/data/salary/salary.ts`.
+
+### Backend
+
+A storage backend. `browser` (localStorage), `folder` (File System
+Access), `dropbox`, `gdrive`. See `src/storage/`.
+
+### Cloud backup
+
+A timestamped JSON snapshot in cloud storage. Listed and restored via
+`src/components/CloudBackupModal.tsx`.
+
+### Encryption
+
+A per-user choice (`none` or `password`). Wraps every cloud write in an
+AES-GCM envelope via `src/storage/encrypting-adapter.ts`.
+
+### Achievement
+
+A tier-based feature trophy. The catalogue is in
+`src/data/achievements/catalog.ts`. Unlock fires via the bus.
+
+## Cross-cutting UI primitives
+
+### Modal
+
+An overlay with a backdrop that blocks the background.
+`src/components/Modal.tsx` is the shared shell. Fullscreen on mobile by
+default (iOS soft-keyboard math); pass `centered` for input-free modals.
+
+### Dialog
+
+A lighter modal-like confirm / choose UI. Examples: `ConfirmDialog.tsx`,
+`BudgetApplySeriesDialog.tsx`, `CloudLinkDialog.tsx`.
+
+### Panel
+
+A non-blocking overlay (no backdrop, doesn't steal focus).
+`FloatingPanel.tsx` is the portalled dropdown shell.
+
+### Picker
+
+A custom dropdown for choosing one of many. Never use a native
+`<select>`. Examples: `CategoryPicker.tsx`, `TypePicker.tsx`,
+`LanguagePicker.tsx`, `BackendPicker.tsx`, `GlyphPicker.tsx`.
+
+### Modal search bar
+
+`src/components/ModalSearchBar.tsx` — the search-field shell rendered at
+the top of a modal body (search icon + `ClearableInput` + optional
+`actions` slot), the "in-modal search". `src/components/ModalSearchControls.tsx`
+is the universal sort-toggle + filter-popover cluster dropped into that
+`actions` slot (a `sort` toggle, a generic `filters` checkbox array,
+plus optional `timeRange` quick-pick / `amount` / `dates` range-slider
+sections, with shared chrome strings in the `search.*` i18n namespace).
+The month-number slider math the `dates` section needs lives in
+`src/utils/date.ts` (`isoToMonthNum` / `monthNumToKey` /
+`monthNumToIsoStart` / `monthNumToIsoEnd`); the time-range option list
+(`MAX_AGE_OPTIONS`) and `ageFloorIso` live in `src/data/search.ts`.
+Restyling either propagates to every search modal at once. Used by
+`BudgetViewerModal`, `AccountTransfersModal`, `HistoryModal`.
+
+### Toast
+
+An ephemeral status message at the bottom. `src/components/Toast.tsx` +
+`useToast()`.
+
+### Update toast
+
+`src/components/UpdateToast.tsx` — the "new build, click to reload" PWA
+prompt.
+
+### Active row
+
+The "this row has an open editor / popover / swipe" registration ("row
+claim" / "row coordinator"). Provider: `ActiveRowProvider.tsx`; claim
+from a child via `useClaimActiveRow.ts`. Every in-row interactive
+element MUST claim.
+
+### Sheet swipe
+
+The left / right gesture to switch between sheets.
+`src/hooks/useSheetSwipe.ts`. An edge band is reserved so row swipes
+don't collide.
+
+### Glyph
+
+A lucide-react icon, addressed by name. See the `CategoryIcon` union in
+`src/data/types.ts` and the `CategoryIconGlyph` registry in
+`src/components/icons.tsx`.
+
+### Settings section
+
+The labelled `<fieldset>` group every Settings tab is built from
+("collapsible section") — `Section` in
+`src/components/SettingsModal/tabs/shared.tsx`. Auto-detects when its
+rendered content is taller than half the viewport
+(`COLLAPSE_VIEWPORT_RATIO`, measured live via `ResizeObserver`) and
+turns the title into a fold toggle: collapsed it shrinks to a slim
+dashed bar with a "Tap to expand" hint. Children stay mounted while
+folded. Folding one fires the `tidyMind` achievement. Short sections
+render as a plain fieldset, unchanged.
+
+### Clear button
+
+The inline X that drops an input's value in one tap (the "(x) button in
+input"). `ClearableInput` / `ClearableTextarea` in
+`src/components/form/`. Cramped in-table `BudgetCell` editors use
+`useSelectAllOnFocus` instead.
+
+## i18n
+
+### Catalog
+
+The English catalogue (composed from per-namespace files under
+`src/i18n/locales/en/`) widened into a `Catalog` type that enforces
+every other language's coverage at compile time.
+
+### Lang
+
+The `Lang` union in `src/i18n/locale.ts`. Currently `"en" | "sv"`.
+
+### t()
+
+The lookup function from `useT()`. Autocompletes against the `Catalog`
+type.
+
+### Plural helper
+
+`plural()` in `src/i18n/index.ts`. Switches between `...One` / `...Other`
+keys based on count.
+
+## Workflows / verbs the user might say
+
+### Add a sheet
+
+"New sheet" in the header Sheet switcher dropdown opens `SheetModal`
+with no sheet preselected.
+
+### Edit a sheet
+
+Title "…" menu → `SheetModal` with the active sheet's metadata.
+
+### Add a row
+
+Tap `BudgetAddEntryButton` in any month of the budget page. Long-press
+opens the recurring / categorised picker.
+
+### Promote a history entry
+
+From the budget page's history row, open `BudgetEditEntryModal` → "Make
+recurring". Mints a series and records a merchant hint.
+
+### Split an entry
+
+`BudgetSplitEntryModal` — break one bank entry into multiple categorised
+rows.
+
+### Collapse a transfer
+
+Detected automatically; the user accepts via
+`AccountTransferCollapseModal`.
+
+### Import history
+
+`AccountActionsMenu` → "Import" → `ImportHistoryModal` → bank parser →
+`AccountReconciliationModal`.
+
+### Cut history
+
+`AccountActionsMenu` → "Cut history" → `AccountCutHistoryModal`. Drops
+old entries + transfers.
+
+### Update balance
+
+`AccountsPage` row → "…" overflow menu → Update balance →
+`UpdateBalanceModal`. Disabled when no AccountBudget points at the
+account.
+
+### Mark as transfer
+
+A per-row eye toggle. Sets `Row.isTransfer = true` so the `hideTransfers`
+setting can suppress it. Does NOT mint a Transfer.
+
+### Triage orphans
+
+Tap the orange "{N} entries to move or delete" button on a covered
+month's footer (or finish a bank-history import). Opens
+`AccountReconciliationModal` scoped to that month; keep / delete / move
+each row.
+
+### Sign out
+
+Header burger menu ("switch user"). Triggers `AppShell`'s sign-out /
+switch-user handlers.
+
+## Conventions for editing this file
+
+- One H3 per dictionary term, under the H2 that mirrors the dictionary
+  section. The heading is the primary term (slash-aliases go in the
+  prose); qualify a name that collides with another section's term
+  (e.g. `Current value (item)` vs `Current value (property)`).
+- Explain current behaviour and invariants — control flow, the data it
+  reads / writes, the surfaces it touches. Not changelog narration
+  ("used to…", "previously…", PR numbers).
+- Keep the inline `file.ts` / `symbol` references so the prose stays
+  navigable; the dictionary row carries the same path as the lookup
+  key.
+- Every term added here gets a matching `dictionary.md` row (and vice
+  versa) **in the same PR** as the code change. The two move together.
+- Deep module / persisted-shape mechanics that aren't about a single
+  user-facing concept belong in `docs/architecture.md`, not here.

@@ -280,23 +280,33 @@ The user (and team) refer to parts of the app in plain English —
 entry". These words rarely match filenames one-to-one. Before
 searching for code, **look the term up in `docs/dictionary.md`** —
 it maps every term the codebase has accreted to the concrete
-component, type, file, or workflow it points at.
+component, type, or file it points at. The dictionary is the
+**index**: a term resolves to the most specific file and the
+symbols to grep for, and stops there. Once you have the file,
+**`docs/overview.md` is where to read how that subsystem behaves and
+what else it touches** — it carries a full description for every
+dictionary term, under the same headings, one-to-one. Look the word
+up in the dictionary to find the code; read the same word in the
+overview to understand it.
 
-**Maintain the dictionary in lockstep with the code.** When you:
+**Maintain both in lockstep with the code.** When you:
 
 - ship a new feature that introduces a user-facing concept,
 - rename a file or symbol the dictionary mentions,
+- change how a feature behaves,
 - hear the user use a word the dictionary doesn't already cover,
 
 add or update the entry **in the same pull request as the code
-change**. The dictionary is the index that lets the next agent
-resolve "the thing the user just said" without a fresh round of
-exploration; letting it rot defeats the purpose. The file's own
+change** — the `overview.md` description (the bulk of the work, since
+that's where the explanation lives) and the matching `dictionary.md`
+row (often unchanged, since it's just a pointer to the file). The two
+move together; every dictionary term has an overview entry and vice
+versa. Letting either rot defeats the purpose. Each file's own
 "Conventions for editing" section spells out the format.
 
 If the user uses a term you can't find in `docs/dictionary.md` and
 you can't infer it from filenames, ask before guessing. Once you
-have the answer, add the row.
+have the answer, add the row (and its overview entry).
 
 ## Understanding the user's query
 
@@ -310,9 +320,11 @@ The workflow:
 
 1. **Check `docs/dictionary.md` first.** Look up every domain noun in
    the request (the section above is the canonical guidance — read
-   it). The dictionary resolves user vocabulary to concrete files,
-   types, and workflows in one hop. If every term in the request
-   resolves cleanly, you can skip step 2.
+   it). The dictionary resolves user vocabulary to concrete files and
+   types in one hop; `docs/overview.md` (same headings, one-to-one)
+   then explains how the resolved subsystem behaves and what it
+   touches. If every term in the request resolves cleanly, you can
+   skip step 2.
 2. **Map terms to candidate code.** For anything the dictionary
    doesn't cover, build a short list of candidate files from the
    architecture summary above ("Architecture summary", "Where new
@@ -366,8 +378,9 @@ The loop:
    look every domain noun in the request up in
    `docs/dictionary.md`. The dictionary resolves "transfer log",
    "viewer modal", "promote a history entry" to concrete files in
-   one hop, and skipping it is how agents end up grepping for
-   "transfer" across the whole tree and editing the wrong module.
+   one hop (and `docs/overview.md` explains each), and skipping it
+   is how agents end up grepping for "transfer" across the whole
+   tree and editing the wrong module.
    The "Resolving user vocabulary" and "Understanding the user's
    query" sections above are the canonical guidance — this is the
    reminder, not the spec. Add or update the matching dictionary
@@ -699,7 +712,8 @@ that aren't in the template comments:
 | `package.json` scripts                                                                     | `Makefile`, `README.md` Usage section                                                                                                                                                                                                                                                                                                                                      |
 | `Makefile` targets                                                                         | `README.md` Usage section, `ci.yml`                                                                                                                                                                                                                                                                                                                                        |
 | `src/` top-level layout                                                                    | `README.md`, this file                                                                                                                                                                                                                                                                                                                                                     |
-| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` — update the row in the same PR. See "Resolving user vocabulary" above.                                                                                                                                                                                                                                                                               |
+| Renaming or removing a user-visible concept (component, modal, workflow, page, term)       | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — update both in the same PR. See "Resolving user vocabulary" above.                                                                                                                                                                                                        |
+| Shipping or changing a user-facing feature's behaviour (how a subsystem works)             | `docs/overview.md` — the matching section, same PR. Every dictionary term has a one-to-one overview entry; a new term needs both a dictionary row and an overview entry.                                                                                                                                                                                                   |
 | Shipping a new user-facing feature / workflow / page                                       | **Always add a matching achievement** in the same PR — a catalog entry in `src/data/achievements/catalog.ts` (with its unlock trigger) plus English **and** Swedish copy under `src/i18n/locales/{en,sv}/achievements/catalog.ts`. Every feature is also an unlockable trophy. Use the `update-achievements-page` skill to pick the tier, phrase it, and wire the trigger. |
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                                                                                                                                                                                                                                                                         |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                                                                                                                                                                     |
