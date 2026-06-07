@@ -19,7 +19,6 @@ import type {
 } from "../../data/receipts/target";
 import type {
   Company,
-  HistoryEntry,
   Property,
   PropertyRepair,
   Settings,
@@ -39,9 +38,9 @@ import { RepairEntryActionsMenu } from "./RepairEntryActionsMenu";
 // Per-property repairs / renovations view, opened by the wrench button on a
 // property card. Lists the property's repairs newest-first — each a bank
 // charge the user tagged Repairs / Renovations and bound here, with an
-// optional user description + subtype. A repair with no receipt on its
-// source transaction is flagged "missing receipt" (the receipt is what makes
-// the cost tax-deductible). Each row swipes left to reveal edit / delete /
+// optional user description + subtype. A repair with no receipt of its own
+// is flagged "missing receipt" (the receipt is what makes the cost
+// tax-deductible). Each row swipes left to reveal edit / delete /
 // receipt actions, mirroring the items and mortgage-payment lists. The
 // footer offers a full single-add form and a bulk quick-add picker, both
 // owned by the page.
@@ -58,10 +57,6 @@ type Props = {
   open: boolean;
   property: Property | null;
   settings: Settings;
-  // Live source bank entries keyed by `${accountId}:${entryId}`, so each
-  // repair reads its current receipt status (attaching one elsewhere clears
-  // the "missing" flag here without mutating the repair).
-  sourceEntries: ReadonlyMap<string, HistoryEntry>;
   // The company / tags behind each repair, resolved from its source
   // transaction and keyed by `${accountId}:${entryId}` — surfaced as
   // read-only metadata on the row (edited through the repair editor).
@@ -86,8 +81,8 @@ type Props = {
   onClose: () => void;
 };
 
-// The receipt path on a repair's source entry, or undefined when the entry
-// is gone (a re-import) or carries no receipt.
+// The `${accountId}:${entryId}` key of a repair's primary source, under which
+// its resolved company / tags live in the `repairMetadata` map.
 function sourceKey(repair: PropertyRepair): string {
   return `${repair.accountId}:${repair.sourceHistoryId}`;
 }
@@ -96,7 +91,6 @@ export function RepairsModal({
   open,
   property,
   settings,
-  sourceEntries,
   repairMetadata,
   canManageReceipt,
   onUploadReceipt,
@@ -129,13 +123,13 @@ export function RepairsModal({
   );
 
   const receiptTargetFor = (repair: PropertyRepair): TxnReceiptTarget => ({
-    kind: "history",
-    accountId: repair.accountId,
-    entryId: repair.sourceHistoryId,
+    kind: "repair",
+    propertyId: property.id,
+    repairId: repair.id,
   });
   const namingFor = (repair: PropertyRepair): ReceiptNaming => ({
     companyName: repair.description,
-    entryId: repair.sourceHistoryId,
+    entryId: repair.id,
     entryDate: repair.date,
     typeLabel:
       repair.typeId === PRESET_TYPE_RENOVATIONS_ID
@@ -143,7 +137,7 @@ export function RepairsModal({
         : t("properties.repairTypeRepairs"),
   });
   const receiptPathFor = (repair: PropertyRepair): string | undefined =>
-    sourceEntries.get(sourceKey(repair))?.receiptPath;
+    repair.receiptPath;
 
   return (
     <Modal

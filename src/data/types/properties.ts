@@ -130,11 +130,13 @@ export type RepairSource = {
 // `sourceHistoryId` below) plus any number of **additional** sources
 // (`additionalSources`) — the bank charges that together paid one invoice.
 // `amount` is the sum across every source; `date` / `typeId` track the
-// primary. The single receipt covering the whole invoice is NOT stored
-// here: it physically lives on the primary `HistoryEntry.receiptPath`, so
-// attaching one later clears the "missing receipt" flag without mutating the
-// repair. A given transaction backs at most one property's repair across all
-// its sources (enforced by the candidate finder).
+// primary. The single receipt covering the whole invoice is owned by the
+// repair itself (`receiptPath`), decoupled from any one transaction — the
+// invoice is the repair's document, not a property of an arbitrary "primary"
+// charge. Attaching one clears the "missing receipt" flag; the primary
+// transaction still resolves the row's company / tags. A given transaction
+// backs at most one property's repair across all its sources (enforced by
+// the candidate finder).
 export type PropertyRepair = {
   id: string;
   date: string; // ISO yyyy-mm-dd — copied from the primary source transaction
@@ -156,11 +158,10 @@ export type PropertyRepair = {
   subtypeId?: string;
   // The **primary** bank transaction this repair was sourced from.
   // `accountId` locates it in `UserData.history`; `sourceHistoryId` is its
-  // entry id. The pair resolves the live entry to read receipt status, attach
-  // / view the receipt that covers the whole repair, and resolve the row's
-  // company / tags. Best-effort across re-imports (bank ids aren't stable),
-  // and the account may since have been deleted — the snapshot above survives
-  // either way; only the receipt resolves as missing.
+  // entry id. The pair resolves the live entry to read the row's company /
+  // tags (which stay on the transaction, shared with the budget). Best-effort
+  // across re-imports (bank ids aren't stable), and the account may since have
+  // been deleted — the snapshot above survives either way.
   accountId: string;
   sourceHistoryId: string;
   // Any further transactions paying the same invoice, beyond the primary
@@ -168,6 +169,14 @@ export type PropertyRepair = {
   // the only shape older budgets carry — this field is additive). Walk the
   // full set with `repairSources` in `src/data/property-repairs/sources.ts`.
   additionalSources?: RepairSource[];
+  // The receipt covering this repair's whole invoice — a path into the
+  // backend's `receipts/` folder, owned by the repair (not by any source
+  // transaction), so one document covers every charge the repair groups.
+  // Absent ⇒ no receipt yet, which surfaces the "missing receipt" flag (the
+  // receipt is what makes the cost tax-deductible). Managed through the
+  // `{ kind: "repair" }` receipt target; "" never persists — clearing it
+  // drops the key, mirroring an absent optional.
+  receiptPath?: string;
 };
 
 // One property the user owns or has bought. `purchaseAmount` is what they

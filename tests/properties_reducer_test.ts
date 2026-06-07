@@ -411,4 +411,38 @@ describe("properties reducer — repairs", () => {
       [{ accountId: "a1", entryId: "h2" }],
     );
   });
+
+  it("sets and clears a repair's own receipt, surviving a reload", () => {
+    let data = reducer(seeded(), {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [{ ...REPAIR }],
+    });
+
+    data = reducer(data, {
+      type: "setRepairReceipt",
+      propertyId: "p1",
+      repairId: "r1",
+      receiptPath: "receipts/kitchen-invoice.pdf",
+    });
+    expect(data.properties[0].repairs[0].receiptPath).toBe(
+      "receipts/kitchen-invoice.pdf",
+    );
+    expect(revalidate(data).properties[0].repairs[0]).toEqual(
+      data.properties[0].repairs[0],
+    );
+
+    // "" clears the receipt and drops the key, so the repair stays
+    // byte-identical to a reloaded one with no receipt.
+    data = reducer(data, {
+      type: "setRepairReceipt",
+      propertyId: "p1",
+      repairId: "r1",
+      receiptPath: "",
+    });
+    expect("receiptPath" in data.properties[0].repairs[0]).toBe(false);
+    expect(revalidate(data).properties[0].repairs[0]).toEqual(
+      data.properties[0].repairs[0],
+    );
+  });
 });

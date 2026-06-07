@@ -94,6 +94,10 @@ function validateRepair(raw: unknown): PropertyRepair | null {
   };
   if (typeof raw.subtypeId === "string" && raw.subtypeId !== "")
     repair.subtypeId = raw.subtypeId;
+  // The repair-owned receipt path. Kept when it's a non-empty string;
+  // absent / "" ⇒ no receipt (surfaces the missing-receipt flag).
+  if (typeof raw.receiptPath === "string" && raw.receiptPath !== "")
+    repair.receiptPath = raw.receiptPath;
   // Additional source transactions (a multi-transaction repair). Each is the
   // same `{ accountId, entryId }` shape as the primary; a malformed one is
   // dropped rather than failing the repair, mirroring how the primary

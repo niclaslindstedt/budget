@@ -172,9 +172,10 @@ export function PropertiesPage({
     ? (data.properties.find((p) => p.id === saleProperty.id) ?? null)
     : null;
 
-  // The source bank entries behind every property's repairs, keyed by
-  // `${accountId}:${entryId}`, so each repair reads its live receipt status.
-  // Scoped to the referenced ids (not all of history) to keep the scan small.
+  // The primary source bank entries behind every property's repairs, keyed by
+  // `${accountId}:${entryId}`, so each repair resolves its company / tags
+  // (which stay on the transaction). Scoped to the referenced ids (not all of
+  // history) to keep the scan small.
   const repairSourceEntries = useMemo(() => {
     const referenced = new Set<string>();
     for (const property of data.properties) {
@@ -230,14 +231,11 @@ export function PropertiesPage({
   ]);
 
   // Per-property repairs summary for the card — repair count plus how many
-  // lack a receipt on their source entry (the deductibility flag).
+  // lack a receipt of their own (the deductibility flag).
   function repairSummaryFor(property: Property) {
     let missingReceiptCount = 0;
     for (const repair of property.repairs) {
-      const entry = repairSourceEntries.get(
-        `${repair.accountId}:${repair.sourceHistoryId}`,
-      );
-      if (!entry?.receiptPath) missingReceiptCount++;
+      if (!repair.receiptPath) missingReceiptCount++;
     }
     return { count: property.repairs.length, missingReceiptCount };
   }
@@ -600,7 +598,6 @@ export function PropertiesPage({
           open={liveRepairsProperty !== null}
           property={liveRepairsProperty}
           settings={settings}
-          sourceEntries={repairSourceEntries}
           repairMetadata={repairMetadata}
           canManageReceipt={canManageReceipt}
           onUploadReceipt={onUploadReceipt}

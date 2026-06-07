@@ -444,16 +444,26 @@ export type Action =
       repairs: PropertyRepair[];
     }
   | {
-      // Edit one repair's user annotation — its free-text description and the
-      // optional Repairs / Renovations subtype. The source charge (date,
-      // amount, account, receipt) is the snapshot's source of truth and is
-      // not patched here.
+      // Edit one repair's annotation / sources — its free-text description,
+      // the optional Repairs / Renovations subtype, the set of additional
+      // transactions, and the recomputed amount. The receipt is managed
+      // through `setRepairReceipt`, not patched here.
       type: "updateRepair";
       propertyId: string;
       repairId: string;
       patch: Partial<Omit<PropertyRepair, "id">>;
     }
   | { type: "deleteRepair"; propertyId: string; repairId: string }
+  | {
+      // Set (or clear) a repair's own receipt path. The receipt covers the
+      // whole invoice and is owned by the repair, not any source transaction.
+      // A non-empty string sets it; "" clears it (the reducer drops the key
+      // so a cleared repair stays byte-identical to a reloaded one).
+      type: "setRepairReceipt";
+      propertyId: string;
+      repairId: string;
+      receiptPath: string;
+    }
   | {
       // Save (or clear) a property's "Net sale profit" estimate — the
       // broker model, advertising cost, and the experiment slider's last

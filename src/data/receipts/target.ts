@@ -1,21 +1,26 @@
 import type { LineItemLink, UserData } from "../types";
 
-// Where a receipt physically hangs: a single transaction — an imported
-// bank-history entry, or a user-authored budget row. A receipt's bytes
-// live in the backend's `receipts/` folder; the reference (`receiptPath`)
-// is stored on that transaction, alongside its line-item links. This
-// target is the page-agnostic address of that transaction, so the receipt
-// flow (upload / view / remove) can serve the Items sheet, the Properties
-// repairs view, and any future receipt host with one set of handlers.
+// Where a receipt hangs: usually a single transaction — an imported
+// bank-history entry, or a user-authored budget row — but a property repair
+// owns its receipt directly. A receipt's bytes live in the backend's
+// `receipts/` folder; the reference (`receiptPath`) is stored on that host.
+// This target is the page-agnostic address of the host, so the receipt flow
+// (upload / view / remove) can serve the Items sheet, the Properties repairs
+// view, and any future receipt host with one set of handlers.
 //
 // `history` mirrors the ids `linkLineItemsToHistoryEntry` expects; `row`
 // mirrors the ids `setRowLineItems` expects (note `sheetItemId` is the
 // `AccountBudget` SheetItem id the action calls `itemId`, NOT an owned-item
 // id). Shared with `ItemTxnLink` in `src/data/items/link.ts`, which carries
-// the same ids plus the item-specific resolution.
+// the same ids plus the item-specific resolution. `repair` is the odd one
+// out: a property repair owns its receipt (`PropertyRepair.receiptPath`)
+// rather than borrowing a transaction's, so it has no line items to preserve
+// — the receipt is the repair's own invoice, decoupled from the charges it
+// groups, committed through `setRepairReceipt`.
 export type TxnReceiptTarget =
   | { kind: "history"; accountId: string; entryId: string }
-  | { kind: "row"; sheetId: string; sheetItemId: string; rowId: string };
+  | { kind: "row"; sheetId: string; sheetItemId: string; rowId: string }
+  | { kind: "repair"; propertyId: string; repairId: string };
 
 // Naming inputs for a receipt file — everything the filename builder needs
 // that the generic target can't supply. The host knows the merchant name,
@@ -23,7 +28,7 @@ export type TxnReceiptTarget =
 // ONLY to disambiguate a name collision with another transaction's receipt
 // (the builder appends a short suffix), so a host may pass any stable id: the
 // Items flow passes the item id to keep filenames byte-identical to before,
-// the repairs flow passes the source bank entry id.
+// the repairs flow passes the repair id.
 export type ReceiptNaming = {
   companyName: string;
   entryId: string;
@@ -48,6 +53,13 @@ export function resolveTxnReceipt(
     const entry = entries?.find((e) => e.id === target.entryId);
     if (!entry) return null;
     return { receiptPath: entry.receiptPath, lineItems: entry.lineItems ?? [] };
+  }
+  if (target.kind === "repair") {
+    const property = data.properties.find((p) => p.id === target.propertyId);
+    const repair = property?.repairs.find((r) => r.id === target.repairId);
+    if (!repair) return null;
+    // A repair owns its receipt outright — no line-item links to carry back.
+    return { receiptPath: repair.receiptPath, lineItems: [] };
   }
   const sheet = data.sheets.find((s) => s.id === target.sheetId);
   if (!sheet) return null;
