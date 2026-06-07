@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Home, Pencil, Plus, Search } from "lucide-react";
+import { FileDown, Home, Pencil, Plus, Search } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
 import {
@@ -12,6 +12,8 @@ import {
   resolveRepairSourceRows,
 } from "../../data/property-repairs/candidates";
 import { repairMetaKey } from "../../data/property-repairs/sources";
+import type { PropertyExportLookups } from "../../data/property-transfer/export";
+import type { ManifestTag } from "../../data/property-transfer/manifest";
 import type { PropertyAttachments } from "../AppShell/hooks/usePropertyAttachments";
 import type { Action } from "../../data/reducer";
 import { newId } from "../../data/sheet";
@@ -50,7 +52,9 @@ import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { NetSaleProfitModal } from "./NetSaleProfitModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
+import { PropertyExportModal } from "./PropertyExportModal";
 import { PropertyFilesModal } from "./PropertyFilesModal";
+import { PropertyImportModal } from "./PropertyImportModal";
 import { ManualRepairModal } from "./ManualRepairModal";
 import { RepairsAddModal } from "./RepairsAddModal";
 import { RepairsEditModal } from "./RepairsEditModal";
@@ -91,6 +95,10 @@ export function PropertiesPage({
   const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
   const [filesProperty, setFilesProperty] = useState<Property | null>(null);
   const [saleProperty, setSaleProperty] = useState<Property | null>(null);
+  const [exportingProperty, setExportingProperty] = useState<Property | null>(
+    null,
+  );
+  const [importOpen, setImportOpen] = useState(false);
   // The bulk multi-select quick-add picker.
   const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
     null,
@@ -149,6 +157,18 @@ export function PropertiesPage({
     return m;
   }, [data.tags]);
 
+  const categoriesById = useMemo(() => {
+    const m = new Map<string, FileCategory>();
+    for (const c of data.fileCategories) m.set(c.id, c);
+    return m;
+  }, [data.fileCategories]);
+
+  const subtypesById = useMemo(() => {
+    const m = new Map<string, Subtype>();
+    for (const s of data.subtypes) m.set(s.id, s);
+    return m;
+  }, [data.subtypes]);
+
   // The full type list (presets + user) the discovery walk resolves
   // history entries against to spot the "Mortgage" tag.
   const types = useMemo(() => allTypes(data), [data]);
@@ -174,6 +194,9 @@ export function PropertiesPage({
     : null;
   const liveSaleProperty = saleProperty
     ? (data.properties.find((p) => p.id === saleProperty.id) ?? null)
+    : null;
+  const liveExportProperty = exportingProperty
+    ? (data.properties.find((p) => p.id === exportingProperty.id) ?? null)
     : null;
 
   // The primary source bank entries behind every property's repairs, keyed by
@@ -316,6 +339,12 @@ export function PropertiesPage({
           },
         ]
       : []),
+    {
+      key: "import",
+      icon: <FileDown size={16} aria-hidden focusable={false} />,
+      label: t("properties.importProperty"),
+      onClick: () => setImportOpen(true),
+    },
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
@@ -531,6 +560,35 @@ export function PropertiesPage({
     dispatch({ type: "setPropertySaleEstimate", propertyId, estimate });
   }
 
+  // Denormalize the id references a property's export needs into names: the
+  // lender, plus each repair's resolved company / tags (transaction-backed
+  // repairs read these off their source transaction via `repairMetadata`;
+  // manual repairs carry their own, also folded into `repairMetadata`).
+  function buildExportLookups(property: Property): PropertyExportLookups {
+    const lenderName = property.companyId
+      ? companiesById.get(property.companyId)?.name
+      : undefined;
+    const repairMeta = new Map<
+      string,
+      { companyName?: string; tags: ManifestTag[] }
+    >();
+    for (const repair of property.repairs) {
+      const key =
+        repair.accountId && repair.sourceHistoryId
+          ? `${repair.accountId}:${repair.sourceHistoryId}`
+          : repairMetaKey(repair);
+      const meta = repairMetadata.get(key);
+      repairMeta.set(repair.id, {
+        companyName: meta?.company?.name,
+        tags: (meta?.tags ?? []).map((tag) => ({
+          name: tag.name,
+          color: tag.color,
+        })),
+      });
+    }
+    return { lenderName, repairMeta, categoriesById, tagsById, subtypesById };
+  }
+
   const hasProperties = properties.length > 0;
 
   return (
@@ -574,6 +632,7 @@ export function PropertiesPage({
                   onNetSaleProfit={handleNetSaleProfit}
                   onViewPayments={setPaymentsProperty}
                   onViewRepairs={setRepairsProperty}
+                  onExportProperty={setExportingProperty}
                   onAddMortgage={setCreatingMortgageFor}
                   onEditMortgage={(property, mortgage) =>
                     setEditingMortgage({ property, mortgage })
@@ -728,6 +787,27 @@ export function PropertiesPage({
           onCreateFileCategory={handleCreateFileCategory}
           onCreateTag={handleCreateTag}
           onClose={() => setFilesProperty(null)}
+        />
+
+        <PropertyExportModal
+          open={liveExportProperty !== null}
+          property={liveExportProperty}
+          canManage={attachments.canManage}
+          onExport={(options) =>
+            attachments.exportProperty(
+              liveExportProperty!,
+              buildExportLookups(liveExportProperty!),
+              options,
+            )
+          }
+          onClose={() => setExportingProperty(null)}
+        />
+
+        <PropertyImportModal
+          open={importOpen}
+          canManage={attachments.canManage}
+          onImport={attachments.importProperty}
+          onClose={() => setImportOpen(false)}
         />
 
         <RepairsEditModal

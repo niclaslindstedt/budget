@@ -1074,6 +1074,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },
+  {
+    // The user exported a property to a sale-handover archive (or imported
+    // one). A manual unlock — the export / import flow runs in the
+    // attachment hook, not as a derived state slice.
+    id: "propertyHandover",
+    tier: "pro",
+    glyph: Share2,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
 
   // ────────────────────────────────────────────────────────────
   // Expert — "Bend the app to my exact situation."

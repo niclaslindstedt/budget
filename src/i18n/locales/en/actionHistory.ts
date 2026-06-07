@@ -91,6 +91,7 @@ const actionHistory = {
     addProperty: "Added property",
     updateProperty: "Edited property",
     deleteProperty: "Deleted property",
+    importProperty: "Imported property",
     addPropertyValue: "Recorded property value",
     updatePropertyValue: "Edited property value",
     deletePropertyValue: "Deleted property value",

@@ -92,6 +92,17 @@ after pictures, an inspection report, an insurance document, anything
 that isn't a receipt. Give each file a description and tags, and sort it
 into a **category** you name (insurance, manuals, …) that becomes its own
 subfolder. Files open in the same viewer as receipts, and you can edit
-their details, replace, or delete them. Manage your file categories in
-the Property settings tab. Each property keeps its receipts and files
-together under a per-property folder on your storage.
+their details, replace, or delete them. Mark a file **private** to keep
+it out of an export. Manage your file categories in the Property settings
+tab. Each property keeps its receipts and files together under a
+per-property folder on your storage.
+
+Selling a home? **Export a property** from its "…" menu to bundle
+everything about it — its details, repairs, receipts, and uploaded
+documents — into a single file to hand to the new owner, who brings it
+into their own Properties sheet with **Import property** from the sheet's
+"…" menu (it lands as a brand-new property). Choose what goes in the
+bundle: receipts are included by default, files you marked private are
+left out unless you opt in, and your own financial records — the
+mortgages, their payment history, the purchase price, and value
+estimates — stay out unless you choose to include them.

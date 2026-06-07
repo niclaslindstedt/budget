@@ -511,6 +511,22 @@ export type Action =
       type: "deleteFileCategory";
       categoryId: string;
     }
+  | {
+      // Import a property from a sale-handover archive as a NEW property. The
+      // archive denormalizes its id references to names, so the import may
+      // need to create companies / tags / file categories / repair subtypes
+      // to re-link them — those are appended alongside the property in one
+      // atomic action (a single undo step). The property's file / receipt
+      // bytes are re-uploaded to the backend by the attachment hook before
+      // this commits the references. New entities are deduped by the planner;
+      // a missing list is treated as empty.
+      type: "importProperty";
+      property: Property;
+      newCompanies?: Company[];
+      newTags?: Tag[];
+      newFileCategories?: FileCategory[];
+      newSubtypes?: Subtype[];
+    }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }
   | { type: "deleteSheet"; sheetId: string }

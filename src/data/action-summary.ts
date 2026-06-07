@@ -290,6 +290,7 @@ export function describeActionSubject(
     // points read off `next` (the property still exists); deletes read the
     // parent off `next` too unless the named entity itself is gone.
     case "addProperty":
+    case "importProperty":
       return name(action.property.name);
     case "updateProperty":
     case "addPropertyValue":

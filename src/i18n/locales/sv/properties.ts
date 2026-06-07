@@ -296,6 +296,51 @@ const properties: PropertiesCatalog = {
   fileCategoryName: "Kategorinamn",
   fileCategoryNamePlaceholder: "t.ex. Försäkring",
   fileCategoryDuplicate: "En kategori med det här namnet finns redan.",
+  filePrivate: "Privat",
+  filePrivateHint:
+    "Privata filer utesluts från en fastighetsexport om du inte väljer att ta med dem.",
+  filePrivateBadge: "Privat",
+
+  // Export / import — överlämningsarkivet (en ZIP med fastighetens uppgifter,
+  // reparationer, kvitton och filer) nås från "…"-menyn.
+  exportProperty: "Exportera fastighet",
+  importProperty: "Importera fastighet",
+  exportTitle: "Exportera {name}",
+  exportIntro:
+    "Samla den här fastigheten i en enda fil att lämna över till den nya ägaren — uppgifter, reparationer, kvitton och uppladdade dokument.",
+  exportIncludeReceipts: "Ta med kvitton",
+  exportIncludeReceiptsHint:
+    "Ta med kvittofilerna som är kopplade till reparationer och renoveringar.",
+  exportIncludePrivate: "Ta med privata filer",
+  exportIncludePrivateHint:
+    "Filer du markerat som privata utelämnas om inte detta är på.",
+  exportIncludeFinancials: "Ta med lån och betalningar",
+  exportIncludeFinancialsHint:
+    "Dina lån, deras betalningshistorik, inköpspris och värdeuppskattningar — dina egna ekonomiska uppgifter, av som standard.",
+  exportAction: "Exportera",
+  exportUnavailable:
+    "Att exportera en fastighets filer kräver en mapp- eller molnlagring. Anslut en i Inställningar → Lagring. Uppgifter exporteras ändå.",
+  exportSkippedOne: "{count} bilaga kunde inte tas med (filen saknas).",
+  exportSkippedOther: "{count} bilagor kunde inte tas med (filerna saknas).",
+  importTitle: "Importera fastighet",
+  importIntro:
+    "Välj en fastighetsexportfil (en .zip du fått) för att lägga till den bland dina fastigheter som en ny fastighet.",
+  importChooseFile: "Välj fil",
+  importInvalid: "Den här filen är inte en fastighetsexport.",
+  importNewerVersion:
+    "Den här filen skapades av en nyare version av appen. Uppdatera och försök igen.",
+  importReadError: "Kunde inte läsa filen. Den kan vara skadad.",
+  importSummaryRepairsOne: "{count} reparation",
+  importSummaryRepairsOther: "{count} reparationer",
+  importSummaryFilesOne: "{count} fil",
+  importSummaryFilesOther: "{count} filer",
+  importSummaryFinancials: "Lån och ekonomisk historik",
+  importUnavailableNote:
+    "Filer och kvitton behöver en mapp- eller molnlagring för att sparas. Utan en importeras bara fastighetens uppgifter. Anslut en i Inställningar → Lagring.",
+  importAction: "Importera",
+  importSuccess: "Importerade {name}.",
+  importSkippedOne: "{count} bilaga importerades inte.",
+  importSkippedOther: "{count} bilagor importerades inte.",
 
   // Shared verbs.
   save: "Spara",

@@ -400,6 +400,12 @@ const catalog = {
     learnMore:
       "Open Upload file on a property and attach a photo or PDF — a before/after picture, an inspection report, an insurance document. Give it a description, tags, and a category (which becomes a subfolder). Files are saved under a per-property properties folder on your storage. Available on the local-folder and cloud backends.",
   },
+  propertyHandover: {
+    name: "Clean Handover",
+    condition: "Export or import a property.",
+    learnMore:
+      "Selling a home? Open a property's … menu and choose Export to bundle everything about it — details, repairs, receipts, and uploaded documents — into a single ZIP you can hand to the new owner. Mark sensitive files private to keep them out, and toggle whether receipts and your mortgage details come along. The new owner opens Import on their own Properties sheet to bring it all in as a fresh property.",
+  },
   spellbinder: {
     name: "Spellbinder",
     condition: "Write your first amount formula.",

@@ -1074,11 +1074,12 @@ file unlocks the `propertyFiler` ("Property Filer") achievement.
 
 ### Property file
 
-`PropertyFile` (`{ id, path, description?, tagIds?, categoryId? }`) on
-`Property.files` in `src/data/types/properties.ts` — an arbitrary
+`PropertyFile` (`{ id, path, description?, tagIds?, categoryId?, private? }`)
+on `Property.files` in `src/data/types/properties.ts` — an arbitrary
 document / photo uploaded against a property (a before/after image, an
 inspection report, an insurance document — anything that isn't a repair
-receipt). The bytes live in the `properties/` store at
+receipt). `private` (a **private file**) holds it out of a property
+export unless the user opts in. The bytes live in the `properties/` store at
 `<name>/files/[<category>/]<name>`; only the relative `path` is stored on
 the record (mirroring `PropertyRepair.receiptPath`). `description` is the
 user's label, `tagIds` reference `UserData.tags`, `categoryId` references
@@ -1132,8 +1133,53 @@ actions into one trigger (modelled on `RepairEntryActionsMenu` /
 `SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, **Upload
 file** (opens the **property files modal**), Net sale profit, View
 payments (only when the property has a recorded payment), View repairs
-(with a missing-receipt count suffix), Edit property, Delete property. A
-small `--danger` dot marks the trigger when any repair lacks a receipt.
+(with a missing-receipt count suffix), **Export property** (opens the
+**property export modal**), Edit property, Delete property. A small
+`--danger` dot marks the trigger when any repair lacks a receipt.
+
+### Property export / import
+
+The sale-handover flow: bundle everything the app knows about a property
+into a single ZIP a seller hands the new owner, and re-import it into
+another workspace. The archive is `manifest.json` (shape +
+`PROPERTY_EXPORT_VERSION` in `src/data/property-transfer/manifest.ts`)
+plus the real files under `files/[<category>/]` and `receipts/`.
+Everything the property references by id (lender / contractor companies,
+tags, file categories, repair subtypes) is denormalized to **names** so
+the importer can re-link them in its own workspace; the seller's bank
+bindings (`Property.accountId`, payment `sourceHistoryId`) are dropped.
+
+**Export** is reached from a property card's "… actions menu" →
+`PropertyExportModal.tsx`. Three toggles gate the contents: include
+receipts (default on), include private files (default off), and include
+mortgages & payments (default off — the seller's own loans, payment
+history, purchase price, and value estimates). The pure builder is
+`buildPropertyExport` (`src/data/property-transfer/export.ts`); the
+attachment hook's `exportProperty` downloads the chosen file / receipt
+bytes from the backend, zips them with `buildZip`, and triggers the
+download. Files whose bytes can't be fetched are skipped and counted.
+
+**Import** is reached from the Properties sheet's title "…" menu →
+`PropertyImportModal.tsx`, which reads the ZIP (`src/utils/unzip.ts`),
+parses + version-guards the manifest (`parsePropertyManifest`), and
+previews it. On confirm, `planPropertyImport`
+(`src/data/property-transfer/import.ts`) resolves each denormalized name
+against the importer's existing companies / tags / file categories /
+subtypes (case-insensitive, minting any that are missing) and builds a
+fresh `Property` (new ids throughout; repairs land as **manual** repairs
+since the source transactions aren't in the archive). The hook's
+`importProperty` re-uploads the bytes to the backend, then dispatches one
+atomic `importProperty` action that appends the new lookups and the
+property together. On a file-incapable backend (localStorage) the
+details still import; the attachments are skipped.
+
+### Private file
+
+`PropertyFile.private` — a per-file flag, toggled in the **property files
+modal**'s metadata form, that holds a file out of a **property export**
+unless the user turns on "include private files". Default (absent) ⇒
+exported with the rest of the handover. Additive optional boolean — no
+migration; the validator preserves it only when explicitly `true`.
 
 ### Net sale profit
 
