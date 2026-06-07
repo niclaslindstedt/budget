@@ -448,6 +448,12 @@ const catalog = {
     name: "Under the Hood",
     condition: "Turn on Developer mode.",
   },
+  tidyMind: {
+    name: "Tidy Mind",
+    condition: "Collapse a tall settings section by tapping its title.",
+    learnMore:
+      "Any settings section taller than half the screen — the Categories and types list is the obvious one — turns its title into a fold toggle. Tap it to tuck the whole section away into a slim bar so the sections below come into reach without endless scrolling; tap again to unfold it.",
+  },
   itemized: {
     name: "Itemized",
     condition: "Tie part of a purchase to an item you own.",
