@@ -7,6 +7,7 @@ import type {
   Company,
   CompanyCategory,
   EntryType,
+  FileCategory,
   Item,
   Subtype,
   Tag,
@@ -56,6 +57,12 @@ type Result = {
     patch: Partial<Omit<Subtype, "id">>,
   ) => void;
   onDeleteSubtype: (subtypeId: string) => void;
+  onCreateFileCategory: (name: string) => FileCategory;
+  onUpdateFileCategory: (
+    categoryId: string,
+    patch: Partial<Omit<FileCategory, "id">>,
+  ) => void;
+  onDeleteFileCategory: (categoryId: string) => void;
   onCreateItem: (draft: Omit<Item, "id">) => Item;
 };
 
@@ -187,6 +194,24 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     (subtypeId: string) => dispatch({ type: "deleteSubtype", subtypeId }),
     [dispatch],
   );
+  const onCreateFileCategory = useCallback(
+    (name: string): FileCategory => {
+      const category: FileCategory = { id: newId(), name };
+      dispatch({ type: "addFileCategory", category });
+      return category;
+    },
+    [dispatch],
+  );
+  const onUpdateFileCategory = useCallback(
+    (categoryId: string, patch: Partial<Omit<FileCategory, "id">>) =>
+      dispatch({ type: "updateFileCategory", categoryId, patch }),
+    [dispatch],
+  );
+  const onDeleteFileCategory = useCallback(
+    (categoryId: string) =>
+      dispatch({ type: "deleteFileCategory", categoryId }),
+    [dispatch],
+  );
   const onCreateItem = useCallback(
     (draft: Omit<Item, "id">): Item => {
       const item: Item = { id: newId(), ...draft };
@@ -219,6 +244,9 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     onCreateSubtype,
     onUpdateSubtype,
     onDeleteSubtype,
+    onCreateFileCategory,
+    onUpdateFileCategory,
+    onDeleteFileCategory,
     onCreateItem,
   };
 }

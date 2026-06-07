@@ -22,7 +22,7 @@ import type {
   SeriesMatchRule,
   SeriesMetadata,
 } from "./rules";
-import type { Property } from "./properties";
+import type { FileCategory, Property } from "./properties";
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
@@ -35,7 +35,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 67;
+  version: 68;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -61,6 +61,12 @@ export type UserData = {
   // with their monthly payments. Entirely user-curated — no presets
   // ship. Empty on a fresh budget.
   properties: Property[];
+  // User-defined categories for property file uploads (see `FileCategory`).
+  // Each becomes a subfolder under a property's `files/` folder; a file with
+  // no category lands in the `files/` root. Referenced from
+  // `PropertyFile.categoryId`. No presets ship — created and renamed from the
+  // Properties settings tab. Empty on a fresh budget.
+  fileCategories: FileCategory[];
   // User-added tags (cross-cutting labels). Referenced from
   // `Row.tagIds` — a row can carry several. No presets ship; tags are
   // entirely user-curated through the inline create row on the

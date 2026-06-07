@@ -16,6 +16,7 @@ import { useSearchModal } from "./hooks/useSearchModal";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useReceiptManager } from "./hooks/useReceiptManager";
+import { usePropertyAttachments } from "./hooks/usePropertyAttachments";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
@@ -665,13 +666,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     settings: effectiveSettings,
     dispatch,
   });
-  const {
-    canManageReceipt,
-    uploadReceipt,
-    downloadReceipt,
-    removeReceipt,
-    renameRepairReceipt,
-  } = receiptManager;
+  const { canManageReceipt, uploadReceipt, downloadReceipt, removeReceipt } =
+    receiptManager;
+
+  // Property-attachment handling — repair receipts and uploaded files, both
+  // living in the per-property `properties/` store. Owns the file write plus
+  // the data commit for each, threaded to the Properties page.
+  const propertyAttachments = usePropertyAttachments({
+    data,
+    adapter,
+    dispatch,
+  });
 
   // Item receipt attachment. A receipt hangs off the single transaction an
   // item is linked to (an item can belong to at most one purchase), so
@@ -948,11 +953,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   data={data}
                   settings={effectiveSettings}
                   dispatch={dispatch}
-                  canManageReceipt={canManageReceipt}
-                  onUploadReceipt={uploadReceipt}
-                  onDownloadReceipt={downloadReceipt}
-                  onRemoveReceipt={removeReceipt}
-                  onRenameRepairReceipt={renameRepairReceipt}
+                  attachments={propertyAttachments}
                 />
               ) : activeSheet.type === "salary" ? (
                 <SalaryPage

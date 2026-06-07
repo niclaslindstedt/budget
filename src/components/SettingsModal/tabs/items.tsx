@@ -9,11 +9,13 @@ import { allTypes } from "../../../data/presets/merge";
 import type {
   ReceiptNamePattern,
   Settings,
+  Subtype,
   UserData,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
 import { withCurrency } from "../../../utils/format";
 import { SelectPicker } from "../../form";
+import { SubtypesAdmin } from "../SubtypesAdmin";
 import { TypeChip } from "../../TypePicker";
 import { Field, Preview, Section, type Update } from "./shared";
 
@@ -37,6 +39,8 @@ export function ItemsTab({
   onUpdate,
   onClearIgnoredItemEntries,
   onClearItemFindExclusions,
+  onUpdateSubtype,
+  onDeleteSubtype,
 }: {
   draft: Settings;
   // Whole workspace — the optional scan allow-list lists preset +
@@ -47,6 +51,13 @@ export function ItemsTab({
   onUpdate: Update;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
+  // Item subtype admin — the third taxonomy tier, minted from the items sheet
+  // and the item editor. This tab renames / deletes the existing ones.
+  onUpdateSubtype: (
+    subtypeId: string,
+    patch: Partial<Omit<Subtype, "id">>,
+  ) => void;
+  onDeleteSubtype: (subtypeId: string) => void;
 }) {
   const t = useT();
   const types = useMemo(() => allTypes(data), [data]);
@@ -204,6 +215,16 @@ export function ItemsTab({
             ? t("settings.items.excludedNone")
             : t("settings.items.excludedHint", { n: itemFindExclusionCount })}
         </p>
+      </Section>
+
+      <Section title={t("settings.items.subtypesTitle")}>
+        <SubtypesAdmin
+          bucket="items"
+          subtypes={data.subtypes}
+          types={types}
+          onUpdateSubtype={onUpdateSubtype}
+          onDeleteSubtype={onDeleteSubtype}
+        />
       </Section>
     </>
   );

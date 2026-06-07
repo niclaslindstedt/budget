@@ -675,8 +675,9 @@ shared across all its mortgages because a property is paid to the bank
 as a single charge covering every loan; a dangling reference is dropped
 to `null` on load), optional `purchaseAmount` (what it was bought for) +
 `purchaseDate`, optional `size` (living area in square metres), a
-`valueHistory` of value points, `mortgages`, `repairs`, and an optional
-`saleEstimate` (the saved Net sale profit inputs). Created / edited via
+`valueHistory` of value points, `mortgages`, `repairs`, `files` (uploaded
+documents / photos — see Property file), and an optional `saleEstimate`
+(the saved Net sale profit inputs). Created / edited via
 `PropertyEditorModal.tsx` (`addProperty` / `updateProperty`; the
 editor's lender is a `CompanyPicker`, its account a bespoke account
 picker); deleted via a confirm (`deleteProperty`). Rendered by
@@ -694,8 +695,12 @@ editor append the chosen label next to the number.
 ### Property settings tab
 
 `src/components/SettingsModal/tabs/properties.tsx` (`PropertiesTab`) —
-Properties-page preferences. Today it hosts the size unit picker
-(`Settings.propertySizeUnit`). Registered in `TAB_REGISTRY` with the
+Properties-page preferences. Hosts the size unit picker
+(`Settings.propertySizeUnit`), the **Repairs / Renovations subtypes**
+admin (`SubtypesAdmin` with `bucket="repairs"` — rename / delete; new
+subtypes are minted from the repairs editor), and the **file categories**
+admin (`FileCategoriesAdmin` — create / rename / delete the subfolders
+property files are filed under). Registered in `TAB_REGISTRY` with the
 `Home` icon.
 
 ### Current value (property)
@@ -900,9 +905,11 @@ paying one invoice; `amount` is the sum across every source, and
 flatten primary + additional into one list. The receipt is owned by the
 repair itself (`receiptPath`, optional) — one invoice document covering
 every charge it groups, decoupled from any transaction (managed through
-the `{ kind: "repair" }` receipt target / `setRepairReceipt`). Repair
-receipts file into a per-property subfolder named after the property,
-each named `<date> <company> - <description>` (`buildRepairReceiptPath`
+the property-attachment hook `usePropertyAttachments` / `setRepairReceipt`).
+Repair receipts file into the property's `<name>/receipts/` subfolder
+inside the backend's per-property `properties/` store (a sibling of the
+`files/` tree uploaded documents land in), each named
+`<date> <company> - <description>` (`buildRepairReceiptPath`
 in `src/data/items/receipt-name.ts`), so the folder reads like a dated
 log; editing a repair's company / description, or renaming the property,
 re-files the receipt to its new canonical path (`renameRepairReceipt`).
@@ -933,9 +940,9 @@ date (`Settings.dateFormat`), a transaction count (a layers glyph + "N
 transactions") when the repair groups more than one source, the resolved
 company name and tags, the amount (the sum across every source), and a
 missing-receipt flag when the repair carries no `receiptPath` of its
-own. Receipt management (`AttachmentUploadModal`) targets the repair
-(`{ kind: "repair" }`), so the uploaded invoice covers the whole repair
-rather than any single charge. Company / tags for a transaction-backed
+own. Receipt management (`AttachmentUploadModal`) targets the repair via
+`usePropertyAttachments` (the per-property `properties/` store), so the
+uploaded invoice covers the whole repair rather than any single charge. Company / tags for a transaction-backed
 repair are NOT stored on the `PropertyRepair` — they're resolved live
 from the source transaction via `resolveEntryLabels` (the `repairMetadata`
 map `PropertiesPage` builds, keyed by `repairMetaKey`), so the same
@@ -1027,36 +1034,106 @@ company / tags on the transaction. Fullscreen (it has text inputs).
 and `useReceiptManager` (`src/components/AppShell/hooks/`) — the
 host-generic receipt layer (the "receipt manager"). A receipt's bytes
 live in the backend's `receipts/` folder; its path is stored on the host
-it hangs off — a `HistoryEntry`, a budget `Row`, or a property repair
-(`PropertyRepair.receiptPath`). The target is a discriminated union by
-`kind`: `history` / `row` (transaction hosts, with line-item links to
-preserve) and `repair` (a repair that owns its receipt outright, no line
-items). `useReceiptManager` (called in `AppShell`) owns both the file
-write and the data commit — through `linkLineItemsToHistoryEntry` /
-`setRowLineItems` for transaction hosts (re-reading the live line-item
-links so a receipt change never disturbs them), or `setRepairReceipt`
-for a repair — for any target, and threads `uploadReceipt` /
-`downloadReceipt` / `removeReceipt` to both the Items sheet and the
-Properties repairs view. Transaction-host receipts follow the user's
-global `receiptNamePattern` (`buildReceiptPath`); repair receipts ignore
-it and file into a per-property subfolder under a fixed `<date> <company>
+it hangs off — a `HistoryEntry` or a budget `Row`. The target is a
+discriminated union by `kind`: `history` / `row` (transaction hosts,
+with line-item links to preserve). Property attachments — repair receipts
+and uploaded files — are NOT a transaction host: they live in the
+separate per-property `properties/` store and are handled by
+`usePropertyAttachments` (see Property attachments), not this layer.
+`useReceiptManager` (called in `AppShell`) owns both the file write and
+the data commit — through `linkLineItemsToHistoryEntry` /
+`setRowLineItems` (re-reading the live line-item links so a receipt
+change never disturbs them) — and threads `uploadReceipt` /
+`downloadReceipt` / `removeReceipt` to the Items sheet. Receipts follow
+the user's global `receiptNamePattern` (`buildReceiptPath`). The Items
+`on*ItemReceipt` callbacks are thin wrappers that resolve
+`item → findItemLink → TxnReceiptTarget` and supply item-based naming.
 
-- <description>` name (`buildRepairReceiptPath`, naming carried on
-`ReceiptNaming.subfolder`/`description`). `renameRepairReceipt`re-files a repair's existing receipt (download → upload → remove,
-best-effort) when its company / description / date or its property name
-changes, keeping the on-disk log in sync. The Items`on\*ItemReceipt`callbacks are thin wrappers that resolve`item → findItemLink →
-  TxnReceiptTarget` and supply item-based naming.
+### Property attachments
+
+`usePropertyAttachments` (`src/components/AppShell/hooks/`) — the
+per-property file layer. Both a property's repair receipts and the
+arbitrary files the user uploads against it live in the backend's
+`properties/` store (a sibling of `receipts/` / `payslips/`, gated on the
+`propertyFiles` adapter capability), laid out per-property as
+`<name>/receipts/<date> <company> - <description>` (repair receipts) and
+`<name>/files/[<category>/]<name>` (uploaded files). The hook owns the
+file write plus the data commit for both: `uploadRepairReceipt` /
+`removeRepairReceipt` / `renameRepairReceipt` (commit through
+`setRepairReceipt`) and `uploadPropertyFile` / `replacePropertyFile` /
+`removePropertyFile` (commit through `addPropertyFile` /
+`updatePropertyFile` / `deletePropertyFile`), plus a shared `download`.
+Path building is `buildRepairReceiptPath` / `buildPropertyFilePath`
+(`src/data/items/receipt-name.ts`); `collectReceiptPaths`
+(`src/data/items/link.ts`) includes every property file path so a fresh
+upload's name stays unique. Instantiated in `AppShell` and threaded to
+`PropertiesPage` as the `attachments` prop. Repair receipts used to ride
+the transaction-generic `useReceiptManager`; they moved here when the
+store split out from the flat `receipts/` folder. Uploading a property
+file unlocks the `propertyFiler` ("Property Filer") achievement.
+
+### Property file
+
+`PropertyFile` (`{ id, path, description?, tagIds?, categoryId? }`) on
+`Property.files` in `src/data/types/properties.ts` — an arbitrary
+document / photo uploaded against a property (a before/after image, an
+inspection report, an insurance document — anything that isn't a repair
+receipt). The bytes live in the `properties/` store at
+`<name>/files/[<category>/]<name>`; only the relative `path` is stored on
+the record (mirroring `PropertyRepair.receiptPath`). `description` is the
+user's label, `tagIds` reference `UserData.tags`, `categoryId` references
+a **file category** (absent ⇒ the `files/` root). Managed through the
+**property files modal**; viewable like a receipt via the shared
+`AttachmentUploadModal`.
+
+### File category
+
+`FileCategory` (`{ id, name }`) in `src/data/types/properties.ts`
+(`UserData.fileCategories`) — a user-defined category that becomes a
+subfolder under a property's `files/` folder. Global / workspace-wide and
+name-only (like `Subtype` minus its parent type); no presets. Referenced
+from `PropertyFile.categoryId`; a dangling reference (the category was
+deleted) renders uncategorised and the file falls back to the `files/`
+root. Created inline while uploading (the **file category picker**'s "New
+category") or in the **Properties settings tab** via `FileCategoriesAdmin`
+(`src/components/SettingsModal/`); CRUD through `addFileCategory` /
+`updateFileCategory` / `deleteFileCategory` (the delete cascades, clearing
+`categoryId` on every file that referenced it — the stored `path` is left
+untouched).
+
+### Property files modal
+
+`PropertyFilesModal.tsx` (`src/components/properties/`) — the per-property
+files manager, opened by the **Upload file** entry on the property card's
+"… actions menu" (directly below Update value). Lists the property's
+uploaded files (each with its description, tags, and category) — a file
+opens in the shared `AttachmentUploadModal` (view / replace / download /
+remove), its metadata is editable, and it can be deleted. The footer's
+**Upload** button picks a file then opens a metadata form (description,
+`TagsPicker`, **file category picker**) and commits via
+`uploadPropertyFile`. Gated on the backend's `propertyFiles` capability;
+on a file-incapable backend (plain localStorage) the upload affordance is
+hidden.
+
+### File category picker
+
+`FileCategoryPicker.tsx` (`src/components/properties/`) — a custom
+single-select dropdown (button + listbox, never a native `<select>`) for
+choosing a `FileCategory` on the upload / edit form, modelled on
+`SubtypePicker` minus the parent-type scaffolding. Carries a "No category"
+option (the `files/` root) and a "New category" footer that opens a
+focused name creator (`onCreateFileCategory`).
 
 ### Property actions menu
 
 `PropertyActionsMenu.tsx` (`src/components/properties/`) — the "…"
 overflow menu in a `PropertyCard` header, collapsing the per-property
 actions into one trigger (modelled on `RepairEntryActionsMenu` /
-`SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, Net sale
-profit, View payments (only when the property has a recorded payment),
-View repairs (with a missing-receipt count suffix), Edit property,
-Delete property. A small `--danger` dot marks the trigger when any
-repair lacks a receipt.
+`SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, **Upload
+file** (opens the **property files modal**), Net sale profit, View
+payments (only when the property has a recorded payment), View repairs
+(with a missing-receipt count suffix), Edit property, Delete property. A
+small `--danger` dot marks the trigger when any repair lacks a receipt.
 
 ### Net sale profit
 
@@ -1180,12 +1257,13 @@ user-defined, no presets, never shown on the sheet. Assigned to an
 via the repairs editor (parented to the Repairs / Renovations types).
 Subtypes parented to Repairs / Renovations are filtered out of the Items
 sheet's pickers by `itemSubtypes` (`src/data/items/subtypes.ts`).
-Managed (renamed / deleted, grouped under their parent type and split
-into Items vs Repairs / Renovations) in the Subtypes section of the
-Categories settings tab (`SubtypesAdmin`,
-`src/components/SettingsModal/SubtypesAdmin.tsx`); new subtypes are still
-only minted from the item / repairs editors, so the admin has no add
-affordance.
+Managed (renamed / deleted, grouped under their parent type) by
+`SubtypesAdmin` (`src/components/SettingsModal/SubtypesAdmin.tsx`,
+bucketed via its `bucket` prop) in two settings tabs: item subtypes in
+the **Items** tab, Repairs / Renovations subtypes in the **Properties**
+tab (they used to share a section on the Categories tab). New subtypes
+are still only minted from the item / repairs editors, so the admin has
+no add affordance.
 
 ### Item
 

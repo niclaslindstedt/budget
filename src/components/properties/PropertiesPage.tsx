@@ -12,18 +12,15 @@ import {
   resolveRepairSourceRows,
 } from "../../data/property-repairs/candidates";
 import { repairMetaKey } from "../../data/property-repairs/sources";
-import type { RepairReceiptRename } from "../AppShell/hooks/useReceiptManager";
+import type { PropertyAttachments } from "../AppShell/hooks/usePropertyAttachments";
 import type { Action } from "../../data/reducer";
-import type {
-  ReceiptNaming,
-  TxnReceiptTarget,
-} from "../../data/receipts/target";
 import { newId } from "../../data/sheet";
 import type {
   Account,
   Category,
   Company,
   EntryType,
+  FileCategory,
   HistoryEntry,
   Mortgage,
   MortgagePayment,
@@ -53,6 +50,7 @@ import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { NetSaleProfitModal } from "./NetSaleProfitModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
+import { PropertyFilesModal } from "./PropertyFilesModal";
 import { ManualRepairModal } from "./ManualRepairModal";
 import { RepairsAddModal } from "./RepairsAddModal";
 import { RepairsEditModal } from "./RepairsEditModal";
@@ -64,22 +62,9 @@ type Props = {
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
-  // Host-generic receipt handling, threaded from AppShell — a repair owns its
-  // receipt (`PropertyRepair.receiptPath`).
-  canManageReceipt: boolean;
-  onUploadReceipt: (
-    target: TxnReceiptTarget,
-    file: File,
-    naming: ReceiptNaming,
-  ) => Promise<string>;
-  onDownloadReceipt: (path: string) => Promise<Blob>;
-  onRemoveReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
-  // Re-file a repair's existing receipt to its canonical
-  // "<property>/<date> <company> - <description>" path after its naming
-  // inputs (company / description / date) or its property name change.
-  onRenameRepairReceipt: (
-    args: RepairReceiptRename,
-  ) => Promise<string | undefined>;
+  // Property-attachment handling, threaded from AppShell — repair receipts and
+  // uploaded files, both living in the per-property `properties/` store.
+  attachments: PropertyAttachments;
 };
 
 // A mortgage paired with the property it belongs to — the unit the
@@ -91,11 +76,7 @@ export function PropertiesPage({
   data,
   settings,
   dispatch,
-  canManageReceipt,
-  onUploadReceipt,
-  onDownloadReceipt,
-  onRemoveReceipt,
-  onRenameRepairReceipt,
+  attachments,
 }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
@@ -108,6 +89,7 @@ export function PropertiesPage({
     null,
   );
   const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
+  const [filesProperty, setFilesProperty] = useState<Property | null>(null);
   const [saleProperty, setSaleProperty] = useState<Property | null>(null);
   // The bulk multi-select quick-add picker.
   const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
@@ -186,6 +168,9 @@ export function PropertiesPage({
     : null;
   const liveRepairsProperty = repairsProperty
     ? (data.properties.find((p) => p.id === repairsProperty.id) ?? null)
+    : null;
+  const liveFilesProperty = filesProperty
+    ? (data.properties.find((p) => p.id === filesProperty.id) ?? null)
     : null;
   const liveSaleProperty = saleProperty
     ? (data.properties.find((p) => p.id === saleProperty.id) ?? null)
@@ -345,6 +330,14 @@ export function PropertiesPage({
     setCreatingProperty(false);
   }
 
+  // Mint a new file category from the inline "create" affordance on the file
+  // upload form's category picker, returning it so the picker can select it.
+  function handleCreateFileCategory(name: string): FileCategory {
+    const category: FileCategory = { id: newId(), name };
+    dispatch({ type: "addFileCategory", category });
+    return category;
+  }
+
   function handleEditProperty(
     propertyId: string,
     patch: Partial<Omit<Property, "id">>,
@@ -378,7 +371,7 @@ export function PropertiesPage({
       if (!repair.receiptPath) continue;
       const companyName =
         repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "";
-      const moved = await onRenameRepairReceipt({
+      const moved = await attachments.renameRepairReceipt({
         propertyId: property.id,
         repairId: repair.id,
         currentPath: repair.receiptPath,
@@ -577,6 +570,7 @@ export function PropertiesPage({
                   onEditProperty={setEditingProperty}
                   onDeleteProperty={setPendingDeleteProperty}
                   onUpdateValue={setValueProperty}
+                  onUploadFile={setFilesProperty}
                   onNetSaleProfit={handleNetSaleProfit}
                   onViewPayments={setPaymentsProperty}
                   onViewRepairs={setRepairsProperty}
@@ -675,10 +669,10 @@ export function PropertiesPage({
           property={liveRepairsProperty}
           settings={settings}
           repairMetadata={repairMetadata}
-          canManageReceipt={canManageReceipt}
-          onUploadReceipt={onUploadReceipt}
-          onDownloadReceipt={onDownloadReceipt}
-          onRemoveReceipt={onRemoveReceipt}
+          canManageReceipt={attachments.canManage}
+          onUploadReceipt={attachments.uploadRepairReceipt}
+          onDownloadReceipt={attachments.download}
+          onRemoveReceipt={attachments.removeRepairReceipt}
           onEditRepair={(repair) => {
             if (!liveRepairsProperty) return;
             // A manual repair (no backing transaction) edits its own fields;
@@ -705,6 +699,35 @@ export function PropertiesPage({
               });
           }}
           onClose={() => setRepairsProperty(null)}
+        />
+
+        <PropertyFilesModal
+          open={liveFilesProperty !== null}
+          property={liveFilesProperty}
+          fileCategories={data.fileCategories}
+          tags={data.tags}
+          canManage={attachments.canManage}
+          onUploadFile={(file, meta) =>
+            attachments.uploadPropertyFile(liveFilesProperty!, file, meta)
+          }
+          onReplaceFile={(record, file) =>
+            attachments.replacePropertyFile(liveFilesProperty!, record, file)
+          }
+          onDownloadFile={attachments.download}
+          onRemoveFile={(fileId, path) =>
+            attachments.removePropertyFile(liveFilesProperty!.id, fileId, path)
+          }
+          onUpdateFileMeta={(fileId, patch) =>
+            dispatch({
+              type: "updatePropertyFile",
+              propertyId: liveFilesProperty!.id,
+              fileId,
+              patch,
+            })
+          }
+          onCreateFileCategory={handleCreateFileCategory}
+          onCreateTag={handleCreateTag}
+          onClose={() => setFilesProperty(null)}
         />
 
         <RepairsEditModal
@@ -756,7 +779,7 @@ export function PropertiesPage({
             const companyName = next.companyId
               ? (companiesById.get(next.companyId)?.name ?? "")
               : "";
-            void onRenameRepairReceipt({
+            void attachments.renameRepairReceipt({
               propertyId: property.id,
               repairId,
               currentPath: repair.receiptPath,
@@ -816,7 +839,7 @@ export function PropertiesPage({
             const companyName = next.companyId
               ? (companiesById.get(next.companyId)?.name ?? "")
               : "";
-            void onRenameRepairReceipt({
+            void attachments.renameRepairReceipt({
               propertyId: property.id,
               repairId,
               currentPath: repair.receiptPath,

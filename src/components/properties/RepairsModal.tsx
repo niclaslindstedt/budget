@@ -17,10 +17,6 @@ import {
   repairSourceCount,
 } from "../../data/property-repairs/sources";
 import type {
-  ReceiptNaming,
-  TxnReceiptTarget,
-} from "../../data/receipts/target";
-import type {
   Company,
   Property,
   PropertyRepair,
@@ -68,13 +64,21 @@ type Props = {
   // affordance is hidden, but the "missing receipt" flag still shows — it
   // keeps the tax-deduction urgency visible regardless of backend.
   canManageReceipt: boolean;
+  // Upload a repair receipt into the property's `properties/<name>/receipts/`
+  // folder. `companyName` is the merchant the row resolves (off the source
+  // transaction), used only to name the file.
   onUploadReceipt: (
-    target: TxnReceiptTarget,
+    property: Property,
+    repair: PropertyRepair,
+    companyName: string,
     file: File,
-    naming: ReceiptNaming,
   ) => Promise<string>;
   onDownloadReceipt: (path: string) => Promise<Blob>;
-  onRemoveReceipt: (target: TxnReceiptTarget, path: string) => Promise<void>;
+  onRemoveReceipt: (
+    property: Property,
+    repair: PropertyRepair,
+    path: string,
+  ) => Promise<void>;
   onEditRepair: (repair: PropertyRepair) => void;
   onDeleteRepair: (repairId: string) => void;
   // The full single-add form (pick a source charge → description → subtype).
@@ -123,21 +127,10 @@ export function RepairsModal({
     a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
   );
 
-  const receiptTargetFor = (repair: PropertyRepair): TxnReceiptTarget => ({
-    kind: "repair",
-    propertyId: property.id,
-    repairId: repair.id,
-  });
-  const namingFor = (repair: PropertyRepair): ReceiptNaming => ({
-    // Repair receipts file under the property's folder as
-    // "<date> <company> - <description>". The company is the one the row
-    // resolves (off the source transaction); the description is the repair's.
-    subfolder: property.name,
-    companyName: repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "",
-    description: repair.description,
-    entryId: repair.id,
-    entryDate: repair.date,
-  });
+  // The merchant the row resolves (off the source transaction), used only to
+  // name the receipt file.
+  const companyNameFor = (repair: PropertyRepair): string =>
+    repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "";
   const receiptPathFor = (repair: PropertyRepair): string | undefined =>
     repair.receiptPath;
 
@@ -203,15 +196,14 @@ export function RepairsModal({
           }
           onUpload={(file) =>
             onUploadReceipt(
-              receiptTargetFor(managingReceipt!),
+              property,
+              managingReceipt!,
+              companyNameFor(managingReceipt!),
               file,
-              namingFor(managingReceipt!),
             )
           }
           onDownload={onDownloadReceipt}
-          onRemove={(path) =>
-            onRemoveReceipt(receiptTargetFor(managingReceipt!), path)
-          }
+          onRemove={(path) => onRemoveReceipt(property, managingReceipt!, path)}
         />
       )}
 

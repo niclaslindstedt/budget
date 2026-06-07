@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { collectReceiptPaths } from "../src/data/items/link";
-import { resolveTxnReceipt } from "../src/data/receipts/target";
 import { freshUserData } from "../src/storage/local";
 import type { Property, UserData } from "../src/data/types";
 
 // A property carrying one repair that owns a receipt path. Repairs own their
-// receipt directly (decoupled from the source transactions), so the receipt
-// resolves off the repair, not any bank entry.
+// receipt directly (decoupled from the source transactions); the bytes live in
+// the per-property `properties/` store.
 function withRepairReceipt(receiptPath?: string): UserData {
   const property: Property = {
     id: "p1",
@@ -26,61 +25,42 @@ function withRepairReceipt(receiptPath?: string): UserData {
         ...(receiptPath ? { receiptPath } : {}),
       },
     ],
+    files: [],
   };
   return { ...freshUserData(), properties: [property] };
 }
 
-describe("resolveTxnReceipt — repair target", () => {
-  it("resolves a repair's own receipt with no line items", () => {
-    const data = withRepairReceipt("receipts/kitchen.pdf");
-    expect(
-      resolveTxnReceipt(data, {
-        kind: "repair",
-        propertyId: "p1",
-        repairId: "r1",
-      }),
-    ).toEqual({ receiptPath: "receipts/kitchen.pdf", lineItems: [] });
-  });
+// A property carrying one uploaded file with a stored path.
+function withPropertyFile(path: string): UserData {
+  const property: Property = {
+    id: "p1",
+    name: "Cabin",
+    valueHistory: [],
+    mortgages: [],
+    repairs: [],
+    files: [{ id: "f1", path }],
+  };
+  return { ...freshUserData(), properties: [property] };
+}
 
-  it("returns undefined receiptPath for a repair with no receipt yet", () => {
-    const data = withRepairReceipt();
-    expect(
-      resolveTxnReceipt(data, {
-        kind: "repair",
-        propertyId: "p1",
-        repairId: "r1",
-      }),
-    ).toEqual({ receiptPath: undefined, lineItems: [] });
-  });
-
-  it("returns null for a stale repair / property id", () => {
-    const data = withRepairReceipt("receipts/kitchen.pdf");
-    expect(
-      resolveTxnReceipt(data, {
-        kind: "repair",
-        propertyId: "p1",
-        repairId: "gone",
-      }),
-    ).toBeNull();
-    expect(
-      resolveTxnReceipt(data, {
-        kind: "repair",
-        propertyId: "gone",
-        repairId: "r1",
-      }),
-    ).toBeNull();
-  });
-});
-
-describe("collectReceiptPaths — includes repair receipts", () => {
+describe("collectReceiptPaths — includes property attachments", () => {
   it("counts a repair's receipt so a fresh upload can't collide", () => {
-    const data = withRepairReceipt("receipts/kitchen.pdf");
-    expect(collectReceiptPaths(data).has("receipts/kitchen.pdf")).toBe(true);
+    const data = withRepairReceipt("Cabin/receipts/kitchen.pdf");
+    expect(collectReceiptPaths(data).has("Cabin/receipts/kitchen.pdf")).toBe(
+      true,
+    );
     // `exclude` drops the host's own path so a replace reuses its name.
     expect(
-      collectReceiptPaths(data, "receipts/kitchen.pdf").has(
-        "receipts/kitchen.pdf",
+      collectReceiptPaths(data, "Cabin/receipts/kitchen.pdf").has(
+        "Cabin/receipts/kitchen.pdf",
       ),
     ).toBe(false);
+  });
+
+  it("counts an uploaded property file's path", () => {
+    const data = withPropertyFile("Cabin/files/Insurance/policy.pdf");
+    expect(
+      collectReceiptPaths(data).has("Cabin/files/Insurance/policy.pdf"),
+    ).toBe(true);
   });
 });

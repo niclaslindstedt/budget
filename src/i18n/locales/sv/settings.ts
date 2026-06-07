@@ -474,6 +474,10 @@ const settings: SettingsCatalog = {
     excludedHint:
       "{n} uteslutna. Rensa listan för att skanna matchande transaktioner igen.",
     clearExcluded: "Rensa lista",
+    subtypesTitle: "Undertyper",
+    subtypesIntro:
+      "Undertyper är den valfria etiketten under en typ — vilken sorts sak en ägd pryl är. De skapas från prylbladet; byt namn eller ta bort dem här.",
+    subtypesEmpty: "Inga undertyper än. Lägg till en när du taggar en pryl.",
   },
   properties: {
     sizeTitle: "Storlek",
@@ -483,6 +487,24 @@ const settings: SettingsCatalog = {
     unitKvm: "kvm (kvadratmeter)",
     unitSqm: "sqm (square metres)",
     sizeExample: "75 {unit}",
+    subtypesTitle: "Undertyper för reparationer och renoveringar",
+    subtypesIntro:
+      "Undertyper är den valfria etiketten under typerna Reparationer och Renoveringar — vilken sorts arbete en reparation är. De skapas från reparationseditorn; byt namn eller ta bort dem här.",
+    subtypesEmpty:
+      "Inga undertyper än. Lägg till en när du klassificerar en reparation.",
+    fileCategoriesTitle: "Filkategorier",
+    fileCategoriesIntro:
+      "Kategorier grupperar filerna du laddar upp till en fastighet i undermappar. Lägg till dem här, eller skapa en direkt när du laddar upp en fil.",
+    fileCategoriesEmpty: "Inga filkategorier än.",
+    addFileCategory: "Lägg till kategori",
+    fileCategoryNameLabel: "Namn",
+    fileCategoryNamePlaceholder: "t.ex. Försäkring",
+    editFileCategory: "Redigera kategori",
+    deleteFileCategory: "Ta bort kategori",
+    deleteFileCategoryTitle: "Ta bort kategori?",
+    deleteFileCategoryHint:
+      "Ta bort ”{name}”? Filer som ligger under den blir okategoriserade; själva filerna behålls.",
+    fileCategoryDuplicate: "En kategori med det här namnet finns redan.",
   },
   developer: {
     section: "Utvecklare",

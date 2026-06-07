@@ -8,6 +8,7 @@ import type {
   Employer,
   EntryType,
   EntryTypeKind,
+  FileCategory,
   HistoryEntrySplit,
   Item,
   LineItemLink,
@@ -15,6 +16,7 @@ import type {
   Mortgage,
   MortgagePayment,
   Property,
+  PropertyFile,
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
@@ -472,6 +474,42 @@ export type Action =
       type: "setPropertySaleEstimate";
       propertyId: string;
       estimate: PropertySaleEstimate | undefined;
+    }
+  | {
+      // Record an uploaded file on a property — appends one `PropertyFile`
+      // (its path in the backend's `properties/` store plus the metadata the
+      // user entered). The bytes are written to the backend separately by the
+      // attachment hook before this commits the reference.
+      type: "addPropertyFile";
+      propertyId: string;
+      file: PropertyFile;
+    }
+  | {
+      // Edit one property file's metadata by id — its description, tags, and
+      // category. Each field in `patch` is optional; an explicit `undefined`
+      // deletes the key (clears an optional field). The stored `path` is not
+      // patched here (changing the category does not move existing bytes).
+      type: "updatePropertyFile";
+      propertyId: string;
+      fileId: string;
+      patch: Partial<Omit<PropertyFile, "id">>;
+    }
+  | { type: "deletePropertyFile"; propertyId: string; fileId: string }
+  | { type: "addFileCategory"; category: FileCategory }
+  | {
+      // Edit a file category by id. Patch shape mirrors the Subtype / Tag
+      // actions; `name` is the only editable field.
+      type: "updateFileCategory";
+      categoryId: string;
+      patch: Partial<Omit<FileCategory, "id">>;
+    }
+  | {
+      // Delete a file category. Clears `categoryId` on every property file
+      // that referenced it (the file falls back to the `files/` root bucket);
+      // no file is deleted and its stored `path` is left untouched — existing
+      // bytes stay where they were uploaded. Mirrors `deleteSubtype`.
+      type: "deleteFileCategory";
+      categoryId: string;
     }
   | { type: "addSheet"; sheet: Sheet }
   | { type: "updateSheetMeta"; sheetId: string; meta: SheetDraft }

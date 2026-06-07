@@ -5,6 +5,7 @@ import type {
   MortgagePayment,
   MortgageRateChange,
   Property,
+  PropertyFile,
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,
@@ -151,6 +152,37 @@ function validateRepair(
   return repair;
 }
 
+// Validate one uploaded property file. The `id` + `path` are required (they
+// locate the bytes in the backend's `properties/` store); a malformed file is
+// dropped rather than rejecting the property. `description` defaults to absent
+// when blank. `categoryId` and `tagIds` are advisory and left unverified
+// against the file-category / tag sets (properties are validated before
+// those in the pipeline, mirroring how a repair's `subtypeId` / `tagIds` are
+// kept) — a dangling reference renders uncategorised / nothing.
+function validatePropertyFile(raw: unknown): PropertyFile | null {
+  if (!isObject(raw)) return null;
+  const { id, path } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof path !== "string" || path === "") return null;
+  const file: PropertyFile = { id, path };
+  if (typeof raw.description === "string" && raw.description !== "")
+    file.description = raw.description;
+  if (typeof raw.categoryId === "string" && raw.categoryId !== "")
+    file.categoryId = raw.categoryId;
+  if (Array.isArray(raw.tagIds)) {
+    const seen = new Set<string>();
+    const tagIds: string[] = [];
+    for (const tagId of raw.tagIds) {
+      if (typeof tagId !== "string" || tagId === "" || seen.has(tagId))
+        continue;
+      seen.add(tagId);
+      tagIds.push(tagId);
+    }
+    if (tagIds.length > 0) file.tagIds = tagIds;
+  }
+  return file;
+}
+
 // Validate a saved broker-cost model. A discriminated object by `mode`;
 // each mode's numeric inputs are coerced non-negative. An unknown /
 // malformed shape drops to "none" so a bad value can't trap the file.
@@ -289,6 +321,7 @@ export function validateProperty(
     valueHistory: [],
     mortgages: [],
     repairs: [],
+    files: [],
   };
   // The lender, referencing a known company. A dangling reference (the
   // company was deleted) is dropped — mirrors `Row.companyId`.
@@ -341,6 +374,15 @@ export function validateProperty(
       if (!repair || seen.has(repair.id)) continue;
       seen.add(repair.id);
       property.repairs.push(repair);
+    }
+  }
+  if (Array.isArray(raw.files)) {
+    const seen = new Set<string>();
+    for (const rawFile of raw.files) {
+      const file = validatePropertyFile(rawFile);
+      if (!file || seen.has(file.id)) continue;
+      seen.add(file.id);
+      property.files.push(file);
     }
   }
   const saleEstimate = validateSaleEstimate(raw.saleEstimate);

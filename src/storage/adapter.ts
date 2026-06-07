@@ -56,7 +56,15 @@ export type AdapterCapability =
   // `payslips/` folder. Mirrors `receipts` on every file-capable
   // backend; the browser-localStorage adapter omits it, so the
   // salary-payslip-upload UI gates on this tag.
-  | "payslips";
+  | "payslips"
+  // `propertyFiles` is implemented — binary files attached to a property
+  // (repair receipts AND arbitrary uploaded documents / photos) can be
+  // uploaded, downloaded, and removed in a sibling `properties/` folder,
+  // laid out per-property as `<name>/receipts/<file>` and
+  // `<name>/files/[<category>/]<file>`. Present on the folder and cloud
+  // backends; the browser-localStorage adapter omits it, so the
+  // property-attachment UI gates on this tag.
+  | "propertyFiles";
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens,
@@ -141,6 +149,17 @@ export type StorageAdapter = {
   // bytes — the encrypting wrapper passes them through untouched, so
   // they are never encrypted at rest regardless of the budget's mode.
   readonly payslips?: ReceiptOps;
+
+  // Optional support for binary files attached to a property, stored in a
+  // sibling `properties/` folder next to the live budget file. Holds BOTH a
+  // property's repair receipts (`<name>/receipts/<file>`) and the arbitrary
+  // documents / photos the user uploads (`<name>/files/[<category>/]<file>`).
+  // Same `ReceiptOps` blob-folder contract as `receipts` (upload / download /
+  // remove a `Blob` at a relative path that may contain several subdirectory
+  // segments). Present iff `capabilities` carries `"propertyFiles"`, which the
+  // property-attachment UI gates on. Stored as raw image / PDF bytes — the
+  // encrypting wrapper passes them through untouched, never encrypted at rest.
+  readonly propertyFiles?: ReceiptOps;
 };
 
 // Binary-file operations for item receipts. Mirrors `BackupOps` but

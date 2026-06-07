@@ -43,6 +43,7 @@ function sampleData(): UserData {
     salaries: [],
     employers: [],
     properties: [],
+    fileCategories: [],
     companies: [],
     tags: [],
     categories: [{ id: "cat-1", name: "Rent", color: "#e06c75", icon: "home" }],
@@ -130,6 +131,7 @@ describe("serializeUserData", () => {
       salaries: b.salaries,
       employers: b.employers,
       properties: b.properties,
+      fileCategories: b.fileCategories,
       companies: b.companies,
       tags: b.tags,
       categories: b.categories,
@@ -167,13 +169,14 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 33)).toEqual([
+    expect(topKeys.slice(0, 34)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "companies",
       "companyCategories",
       "employers",
+      "fileCategories",
       "hiddenPresetCategoryIds",
       "hiddenPresetCompanyCategoryIds",
       "hiddenPresetTypeIds",

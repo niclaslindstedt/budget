@@ -22,6 +22,7 @@ const DEFAULT_FILE_NAME = "budget.json";
 export const FOLDER_BACKUPS_DIR_NAME = "backups";
 export const FOLDER_RECEIPTS_DIR_NAME = "receipts";
 export const FOLDER_PAYSLIPS_DIR_NAME = "payslips";
+export const FOLDER_PROPERTIES_DIR_NAME = "properties";
 
 // Chrome reports filesystem errors as `DOMException` with these
 // names. We treat `NotAllowedError` (revoked by browser policy) and
@@ -141,11 +142,14 @@ export function createFolderAdapter(
     log,
   });
 
-  // Walk a `/`-separated receipt path to its parent directory handle,
-  // creating each segment when `create` is set, and return the parent
-  // handle plus the leaf filename. The receipts root is the first
-  // segment, then at most one type-subdirectory, then the file.
-  async function resolveReceiptParent(
+  // Walk a `/`-separated path under `rootDirName` to its parent directory
+  // handle, creating each segment when `create` is set, and return the
+  // parent handle plus the leaf filename. Used for both the `receipts/`
+  // store (root, then at most one type-subdirectory, then the file) and the
+  // deeper per-property `properties/` store
+  // (`<name>/files/<category>/<file>`); the segment walk handles either depth.
+  async function resolveNestedParent(
+    rootDirName: string,
     path: string,
     create: boolean,
   ): Promise<{ dir: FileSystemDirectoryHandle; name: string } | null> {
@@ -154,9 +158,7 @@ export function createFolderAdapter(
     const name = segments.pop() as string;
     let dir: FileSystemDirectoryHandle;
     try {
-      dir = await directoryHandle.getDirectoryHandle(FOLDER_RECEIPTS_DIR_NAME, {
-        create,
-      });
+      dir = await directoryHandle.getDirectoryHandle(rootDirName, { create });
       for (const segment of segments) {
         dir = await dir.getDirectoryHandle(segment, { create });
       }
@@ -168,52 +170,63 @@ export function createFolderAdapter(
     return { dir, name };
   }
 
-  const receipts = {
-    async upload(path: string, blob: Blob): Promise<void> {
-      const parent = await resolveReceiptParent(path, true);
-      if (!parent) throw new Error("receipts folder unavailable");
-      try {
-        const handle = await parent.dir.getFileHandle(parent.name, {
-          create: true,
-        });
-        const writable = await handle.createWritable({
-          keepExistingData: false,
-        });
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (isPermissionError(err)) onPermissionLost?.();
-        throw err;
-      }
-    },
+  // A blob store rooted at `rootDirName`, with the same upload / download /
+  // remove contract `ReceiptOps` defines. The `receipts/` and `properties/`
+  // sibling folders share this — both are unencrypted nested blob stores
+  // that only differ in their root directory and path depth.
+  function makeNestedBlobOps(rootDirName: string) {
+    return {
+      async upload(path: string, blob: Blob): Promise<void> {
+        const parent = await resolveNestedParent(rootDirName, path, true);
+        if (!parent) throw new Error(`${rootDirName} folder unavailable`);
+        try {
+          const handle = await parent.dir.getFileHandle(parent.name, {
+            create: true,
+          });
+          const writable = await handle.createWritable({
+            keepExistingData: false,
+          });
+          await writable.write(blob);
+          await writable.close();
+        } catch (err) {
+          if (isPermissionError(err)) onPermissionLost?.();
+          throw err;
+        }
+      },
 
-    async download(path: string): Promise<Blob | null> {
-      const parent = await resolveReceiptParent(path, false);
-      if (!parent) return null;
-      try {
-        const handle = await parent.dir.getFileHandle(parent.name, {
-          create: false,
-        });
-        return await handle.getFile();
-      } catch (err) {
-        if (isNotFoundError(err)) return null;
-        if (isPermissionError(err)) onPermissionLost?.();
-        throw err;
-      }
-    },
+      async download(path: string): Promise<Blob | null> {
+        const parent = await resolveNestedParent(rootDirName, path, false);
+        if (!parent) return null;
+        try {
+          const handle = await parent.dir.getFileHandle(parent.name, {
+            create: false,
+          });
+          return await handle.getFile();
+        } catch (err) {
+          if (isNotFoundError(err)) return null;
+          if (isPermissionError(err)) onPermissionLost?.();
+          throw err;
+        }
+      },
 
-    async remove(path: string): Promise<void> {
-      const parent = await resolveReceiptParent(path, false);
-      if (!parent) return;
-      try {
-        await parent.dir.removeEntry(parent.name);
-      } catch (err) {
-        if (isNotFoundError(err)) return;
-        if (isPermissionError(err)) onPermissionLost?.();
-        throw err;
-      }
-    },
-  };
+      async remove(path: string): Promise<void> {
+        const parent = await resolveNestedParent(rootDirName, path, false);
+        if (!parent) return;
+        try {
+          await parent.dir.removeEntry(parent.name);
+        } catch (err) {
+          if (isNotFoundError(err)) return;
+          if (isPermissionError(err)) onPermissionLost?.();
+          throw err;
+        }
+      },
+    };
+  }
+
+  const receipts = makeNestedBlobOps(FOLDER_RECEIPTS_DIR_NAME);
+  // Per-property attachment store: repair receipts at `<name>/receipts/<file>`
+  // and uploaded files at `<name>/files/[<category>/]<file>`.
+  const propertyFiles = makeNestedBlobOps(FOLDER_PROPERTIES_DIR_NAME);
 
   // Resolve the `payslips/` folder handle, creating it on upload. Payslip
   // paths are flat filenames (no type subdirectory), so there's no
@@ -280,10 +293,11 @@ export function createFolderAdapter(
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
-    capabilities: new Set(["backups", "receipts", "payslips"]),
+    capabilities: new Set(["backups", "receipts", "payslips", "propertyFiles"]),
     backups,
     receipts,
     payslips,
+    propertyFiles,
 
     async load(): Promise<Snapshot | null> {
       log.info("load: start");

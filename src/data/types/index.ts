@@ -24,11 +24,13 @@ export type {
 export type { Item, ItemDepreciation, LineItemLink } from "./items";
 
 export type {
+  FileCategory,
   Mortgage,
   MortgageAmortization,
   MortgagePayment,
   MortgageRateChange,
   Property,
+  PropertyFile,
   PropertyRepair,
   PropertySaleEstimate,
   PropertyValuePoint,

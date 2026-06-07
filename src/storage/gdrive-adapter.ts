@@ -98,6 +98,13 @@ const GDRIVE_RECEIPTS_FOLDER_NAME = "receipts";
 // the parent already is.
 const GDRIVE_PAYSLIPS_FOLDER_NAME = "payslips";
 
+// Name of the folder property files live inside, nested under the app
+// folder (so the layout is `My Drive/<app>/properties/`). Property paths
+// nest several levels beneath it (`<name>/files/<category>/<file>`); the
+// segment walk in `resolvePropertyFilesParent` mints each. Not namespaced —
+// the parent already is.
+const GDRIVE_PROPERTIES_FOLDER_NAME = "properties";
+
 // Names the adapter looked for before the subfolder layout landed:
 // `budget.json` (or `budget-preview.json`) and `budget-backups` (or
 // `budget-backups-preview`) at the My Drive root. Used by the one-
@@ -581,6 +588,8 @@ export function createGdriveAdapter(
   let cachedReceiptsFolderId: string | null = null;
   const cachedReceiptSubfolderIds = new Map<string, string>();
   let cachedPayslipsFolderId: string | null = null;
+  let cachedPropertiesFolderId: string | null = null;
+  const cachedPropertySubfolderIds = new Map<string, string>();
 
   async function ensureSubfolder(
     parentId: string,
@@ -649,6 +658,55 @@ export function createGdriveAdapter(
     );
     if (!folderId) return null;
     cachedPayslipsFolderId = folderId;
+    return { folderId, name };
+  }
+
+  async function ensurePropertiesFolder(): Promise<string> {
+    if (cachedPropertiesFolderId) return cachedPropertiesFolderId;
+    const appFolderId = await ensureAppFolder();
+    const id = await ensureSubfolder(
+      appFolderId,
+      GDRIVE_PROPERTIES_FOLDER_NAME,
+    );
+    cachedPropertiesFolderId = id;
+    return id;
+  }
+
+  // Resolve a property-file path to its parent folder id and leaf filename,
+  // walking and (when `create` is set) minting each nested subfolder
+  // (`<name>/files/<category>/`). Mirrors `resolveReceiptParent` but rooted
+  // at the `properties/` folder and unbounded in depth. Returns null when a
+  // read-side lookup hits a missing subfolder.
+  async function resolvePropertyFilesParent(
+    path: string,
+    create: boolean,
+  ): Promise<{ folderId: string; name: string } | null> {
+    const segments = path.split("/").filter((s) => s.length > 0);
+    if (segments.length === 0) return null;
+    const name = segments.pop() as string;
+    let folderId = await ensurePropertiesFolder();
+    for (const segment of segments) {
+      const cacheKey = `${folderId}/${segment}`;
+      const cached = cachedPropertySubfolderIds.get(cacheKey);
+      if (cached) {
+        folderId = cached;
+        continue;
+      }
+      if (create) {
+        const sub = await ensureSubfolder(folderId, segment);
+        cachedPropertySubfolderIds.set(cacheKey, sub);
+        folderId = sub;
+      } else {
+        const existing = await searchOne(
+          `name='${escapeDriveQuery(segment)}'` +
+            ` and mimeType='${FOLDER_MIME_TYPE}'` +
+            ` and '${folderId}' in parents and trashed=false`,
+        );
+        if (!existing) return null;
+        cachedPropertySubfolderIds.set(cacheKey, existing);
+        folderId = existing;
+      }
+    }
     return { folderId, name };
   }
 
@@ -799,15 +857,20 @@ export function createGdriveAdapter(
 
   const receipts = makeBlobFolderOps(resolveReceiptParent, "receipt");
   const payslips = makeBlobFolderOps(resolvePayslipParent, "payslip");
+  const propertyFiles = makeBlobFolderOps(
+    resolvePropertyFilesParent,
+    "property file",
+  );
 
   return {
     id: "gdrive",
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["backups", "receipts", "payslips"]),
+    capabilities: new Set(["backups", "receipts", "payslips", "propertyFiles"]),
     backups,
     receipts,
     payslips,
+    propertyFiles,
     load,
     save,
   };

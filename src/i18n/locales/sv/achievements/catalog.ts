@@ -392,6 +392,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna en lön på Lön-bladet och bifoga ett foto eller en PDF av lönerapporten. Den sparas som en fil i en lönerapportmapp i din lagring, namngiven efter arbetsgivaren och lönemånaden, så att du hittar den senare. Tillgängligt för lokal mapp och molnlagring.",
   },
+  propertyFiler: {
+    name: "Fastighetsarkivarie",
+    condition: "Ladda upp en fil till en fastighet.",
+    learnMore:
+      "Öppna Ladda upp fil på en fastighet och bifoga ett foto eller en PDF — en före/efter-bild, en besiktningsrapport, ett försäkringsdokument. Ge den en beskrivning, etiketter och en kategori (som blir en undermapp). Filer sparas under en fastighetsmapp i din lagring. Tillgängligt för lokal mapp och molnlagring.",
+  },
   spellbinder: {
     name: "Trollkarl",
     condition: "Skriv din första beloppsformel.",

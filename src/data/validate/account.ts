@@ -6,6 +6,7 @@ import type {
   Company,
   CompanyCategory,
   EntryType,
+  FileCategory,
   Item,
   ItemDepreciation,
   LineItemLink,
@@ -201,6 +202,22 @@ export function validateSubtype(
   if (!knownTypeIds.has(typeId))
     return fail(`${path}.typeId`, `references unknown type "${typeId}"`);
   return { ok: true, value: { id, name, typeId } };
+}
+
+// A property-file category — name-only (mirrors `Subtype` minus its parent
+// `typeId`). No presets ship and there's no reference to verify, so this is a
+// flat id + name check like `validateTag` minus the colour.
+export function validateFileCategory(
+  raw: unknown,
+  path: string,
+): Result<FileCategory> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  return { ok: true, value: { id, name } };
 }
 
 // An owned item. `subtypeId` is advisory — a deleted subtype shouldn't trap

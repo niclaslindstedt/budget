@@ -944,6 +944,34 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v66.properties;
     return { ...v66, version: 67, properties };
   },
+
+  // v67 → v68: introduces property file uploads. Seeds `files: []` on every
+  // property and `fileCategories: []` on the workspace (both additive, filled
+  // by the v68 validator regardless). It also **clears any existing
+  // `PropertyRepair.receiptPath`**: repair receipts move from the sibling
+  // `receipts/` folder into the new per-property `properties/` store
+  // (`<name>/receipts/`), so the old paths no longer resolve. Dropping the
+  // stale reference (rather than leaving it dangling) makes those repairs read
+  // as "missing receipt" so the user can re-upload, instead of a viewer that
+  // 404s. The orphaned old bytes are left in `receipts/` — few users have any,
+  // and the reducer has no file-system reach to move them.
+  67: (v67) => {
+    const properties = Array.isArray(v67.properties)
+      ? v67.properties.map((property) => {
+          if (!isObj(property)) return property;
+          const repairs = Array.isArray(property.repairs)
+            ? property.repairs.map((repair) => {
+                if (!isObj(repair) || !("receiptPath" in repair)) return repair;
+                const { receiptPath: _drop, ...rest } = repair;
+                void _drop;
+                return rest;
+              })
+            : property.repairs;
+          return { ...property, repairs, files: property.files ?? [] };
+        })
+      : v67.properties;
+    return { ...v67, version: 68, properties, fileCategories: [] };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

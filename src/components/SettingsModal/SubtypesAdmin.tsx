@@ -10,15 +10,18 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { Button, ClearableInput } from "../form";
 import { TypeChip } from "../TypePicker";
 
-// Read-only-by-creation list of every `Subtype`, grouped under its parent
-// type and split into two buckets: item subtypes (the Items sheet) and the
-// Repairs / Renovations subtypes (a property's repairs). New subtypes are
-// minted from the item editor / repairs editor, so this section only edits
-// (rename) and deletes — there is no add affordance. Only types that
-// actually own a subtype appear, so the section stays empty until the user
-// has created some.
+// Read-only-by-creation list of `Subtype`s for one bucket — either the item
+// subtypes (the Items sheet, shown in the Items settings tab) or the Repairs /
+// Renovations subtypes (a property's repairs, shown in the Properties tab).
+// New subtypes are minted from the item editor / repairs editor, so this
+// section only edits (rename) and deletes — there is no add affordance. Only
+// types that actually own a subtype appear, so the section stays empty until
+// the user has created some.
 
 type Props = {
+  // Which bucket to show: item subtypes or property repair / renovation
+  // subtypes. The two are split across the Items and Properties settings tabs.
+  bucket: "items" | "repairs";
   subtypes: readonly Subtype[];
   // Every type, preset + user, so a subtype's parent resolves to a chip.
   types: readonly EntryType[];
@@ -35,6 +38,7 @@ type TypeGroup = {
 };
 
 export function SubtypesAdmin({
+  bucket,
   subtypes,
   types,
   onUpdateSubtype,
@@ -49,35 +53,33 @@ export function SubtypesAdmin({
   }, [types]);
 
   // Group subtypes under their parent type, dropping any orphan whose type
-  // has gone missing, then split into item vs repairs/renovations buckets.
-  // Each bucket is sorted by the (localised) type name, and the subtypes
-  // within a group by their own name.
-  const { itemGroups, repairGroups } = useMemo(() => {
+  // has gone missing, keeping only the groups that belong to this bucket
+  // (repairs/renovations vs everything else). Sorted by the (localised) type
+  // name, and the subtypes within a group by their own name.
+  const groups = useMemo(() => {
     const byType = new Map<string, Subtype[]>();
     for (const s of subtypes) {
       if (!typesById.has(s.typeId)) continue;
+      const isRepair = PROPERTY_REPAIR_TYPE_IDS.has(s.typeId);
+      if ((bucket === "repairs") !== isRepair) continue;
       const list = byType.get(s.typeId) ?? [];
       list.push(s);
       byType.set(s.typeId, list);
     }
-    const item: TypeGroup[] = [];
-    const repair: TypeGroup[] = [];
+    const out: TypeGroup[] = [];
     for (const [typeId, list] of byType) {
       const type = typesById.get(typeId);
       if (!type) continue;
-      const group: TypeGroup = {
+      out.push({
         type,
         subtypes: [...list].sort((a, b) => a.name.localeCompare(b.name)),
-      };
-      if (PROPERTY_REPAIR_TYPE_IDS.has(typeId)) repair.push(group);
-      else item.push(group);
+      });
     }
-    const byTypeName = (a: TypeGroup, b: TypeGroup) =>
-      displayTypeName(a.type, t).localeCompare(displayTypeName(b.type, t));
-    item.sort(byTypeName);
-    repair.sort(byTypeName);
-    return { itemGroups: item, repairGroups: repair };
-  }, [subtypes, typesById, t]);
+    out.sort((a, b) =>
+      displayTypeName(a.type, t).localeCompare(displayTypeName(b.type, t)),
+    );
+    return out;
+  }, [bucket, subtypes, typesById, t]);
 
   const { editingId, setEditingId, pendingDeleteId, setPendingDeleteId } =
     useCrudAdminState(subtypes);
@@ -86,7 +88,15 @@ export function SubtypesAdmin({
       ? (subtypes.find((s) => s.id === pendingDeleteId) ?? null)
       : null;
 
-  const isEmpty = itemGroups.length === 0 && repairGroups.length === 0;
+  const isEmpty = groups.length === 0;
+  const introKey =
+    bucket === "repairs"
+      ? "settings.properties.subtypesIntro"
+      : "settings.items.subtypesIntro";
+  const emptyKey =
+    bucket === "repairs"
+      ? "settings.properties.subtypesEmpty"
+      : "settings.items.subtypesEmpty";
 
   function renderGroup(group: TypeGroup) {
     return (
@@ -156,36 +166,13 @@ export function SubtypesAdmin({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted">
-        {t("settings.categoriesTab.subtypesIntro")}
-      </p>
+      <p className="text-xs text-muted">{t(introKey)}</p>
       {isEmpty ? (
         <p className="rounded border border-line bg-surface-2 px-3 py-3 text-center text-xs text-muted">
-          {t("settings.categoriesTab.subtypesEmpty")}
+          {t(emptyKey)}
         </p>
       ) : (
-        <>
-          {itemGroups.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h4 className="text-xs font-bold tracking-wide text-muted uppercase">
-                {t("settings.categoriesTab.subtypesItems")}
-              </h4>
-              <ul className="flex flex-col gap-2">
-                {itemGroups.map(renderGroup)}
-              </ul>
-            </div>
-          )}
-          {repairGroups.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h4 className="text-xs font-bold tracking-wide text-muted uppercase">
-                {t("settings.categoriesTab.subtypesRepairs")}
-              </h4>
-              <ul className="flex flex-col gap-2">
-                {repairGroups.map(renderGroup)}
-              </ul>
-            </div>
-          )}
-        </>
+        <ul className="flex flex-col gap-2">{groups.map(renderGroup)}</ul>
       )}
       <ConfirmDialog
         open={pendingDelete !== null}

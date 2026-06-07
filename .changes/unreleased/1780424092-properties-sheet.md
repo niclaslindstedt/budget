@@ -80,8 +80,18 @@ with no transaction behind it: enter the type, date, amount, description,
 contractor, and tags directly (stored on the repair itself), and attach the
 receipt just the same. Swipe a repair left to edit its transactions, description,
 subtype, company, and tags, manage its receipt, or delete it. Repair
-receipts are saved into a folder named after the property, each named for
+receipts are saved into the property's own receipts folder, each named for
 its date, company, and the work done, so the folder reads like a dated
 log of everything done to the home; change a repair's company or
 description, or rename the property, and its receipt file is renamed to
 match.
+
+Beyond receipts, **upload any file to a property** — choose **Upload
+file** from a property's "…" menu to attach a photo or PDF: before and
+after pictures, an inspection report, an insurance document, anything
+that isn't a receipt. Give each file a description and tags, and sort it
+into a **category** you name (insurance, manuals, …) that becomes its own
+subfolder. Files open in the same viewer as receipts, and you can edit
+their details, replace, or delete them. Manage your file categories in
+the Property settings tab. Each property keeps its receipts and files
+together under a per-property folder on your storage.

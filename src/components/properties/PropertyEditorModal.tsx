@@ -108,6 +108,7 @@ export function PropertyEditorModal({
       valueHistory: [],
       mortgages: [],
       repairs: [],
+      files: [],
     };
     if (companyId) fresh.companyId = companyId;
     if (accountId) fresh.accountId = accountId;

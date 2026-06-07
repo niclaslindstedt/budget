@@ -33,6 +33,7 @@ import type {
   Company,
   Employer,
   EntryType,
+  FileCategory,
   HistoryEntry,
   Item,
   MatchRule,
@@ -40,6 +41,7 @@ import type {
   MortgagePayment,
   PrimaryIncomeMerchant,
   Property,
+  PropertyFile,
   PropertyRepair,
   RenamePattern,
   Salary,
@@ -257,6 +259,23 @@ export function buildSeedUserData(): UserData {
   const categories: Category[] = [vacationCategory];
   const types: EntryType[] = [boatFuelType];
   const subtypes: Subtype[] = [laptopSubtype];
+
+  // ---- Property file categories ------------------------------------
+  // Two categories so the Properties settings tab and the file-upload
+  // picker both show populated options, and the cabin's sample files
+  // (below) land in a subfolder and in the `files/` root respectively.
+  const insuranceFileCategory: FileCategory = {
+    id: mkId("fcat"),
+    name: "Försäkring",
+  };
+  const manualsFileCategory: FileCategory = {
+    id: mkId("fcat"),
+    name: "Manualer",
+  };
+  const fileCategories: FileCategory[] = [
+    insuranceFileCategory,
+    manualsFileCategory,
+  ];
 
   // ---- Bank history (per account) ----------------------------------
   // Each builder pushes unsorted entries; `finalizeHistory` sorts by
@@ -721,6 +740,25 @@ export function buildSeedUserData(): UserData {
         },
       ]
     : [];
+  // Two uploaded files on the cabin so the Files manager opens onto real
+  // rows — one filed under the "Försäkring" category (a subfolder) carrying
+  // a tag, one in the `files/` root with no category. The bytes don't exist
+  // in the in-memory dev backend, so opening one shows a load error; the rows,
+  // metadata, and the category subfolder layout are what the seed surfaces.
+  const cabinFiles: PropertyFile[] = [
+    {
+      id: mkId("pfile"),
+      path: "Fritidshuset/files/Försäkring/hemförsäkring-2026.pdf",
+      description: "Hemförsäkring 2026",
+      categoryId: insuranceFileCategory.id,
+      tagIds: [tagReimbursable.id],
+    },
+    {
+      id: mkId("pfile"),
+      path: "Fritidshuset/files/altan-före.jpg",
+      description: "Altanen före renovering",
+    },
+  ];
   const cabin: Property = {
     id: mkId("prop"),
     name: "Fritidshuset",
@@ -769,6 +807,7 @@ export function buildSeedUserData(): UserData {
       },
     ],
     repairs: cabinRepairs,
+    files: cabinFiles,
   };
 
   // A small overnight flat in the city, kept for weeknights close to
@@ -821,6 +860,7 @@ export function buildSeedUserData(): UserData {
       },
     ],
     repairs: [],
+    files: [],
   };
 
   // A big house carrying three loans — a first mortgage, a second
@@ -899,6 +939,7 @@ export function buildSeedUserData(): UserData {
       },
     ],
     repairs: [],
+    files: [],
   };
   const properties: Property[] = [cabin, apartment, villa];
 
@@ -1091,6 +1132,7 @@ export function buildSeedUserData(): UserData {
     salaries,
     employers,
     properties,
+    fileCategories,
     companies,
     tags,
     categories,

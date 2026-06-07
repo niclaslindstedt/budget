@@ -474,6 +474,10 @@ const settings = {
     excludedHint:
       "{n} excluded. Clear the list to scan matching transactions again.",
     clearExcluded: "Clear list",
+    subtypesTitle: "Subtypes",
+    subtypesIntro:
+      "Subtypes are the optional label below a type — the kind of thing an owned item is. They are created from the items sheet; rename or remove them here.",
+    subtypesEmpty: "No subtypes yet. Add one when tagging an item.",
   },
   properties: {
     sizeTitle: "Size",
@@ -483,6 +487,24 @@ const settings = {
     unitKvm: "kvm (kvadratmeter)",
     unitSqm: "sqm (square metres)",
     sizeExample: "75 {unit}",
+    subtypesTitle: "Repair & renovation subtypes",
+    subtypesIntro:
+      "Subtypes are the optional label below the Repairs and Renovations types — the kind of work a repair is. They are created from the property repairs editor; rename or remove them here.",
+    subtypesEmpty:
+      "No subtypes yet. Add one when classifying a property repair.",
+    fileCategoriesTitle: "File categories",
+    fileCategoriesIntro:
+      "Categories group the files you upload to a property into subfolders. Add them here, or create one on the fly while uploading a file.",
+    fileCategoriesEmpty: "No file categories yet.",
+    addFileCategory: "Add category",
+    fileCategoryNameLabel: "Name",
+    fileCategoryNamePlaceholder: "e.g. Insurance",
+    editFileCategory: "Edit category",
+    deleteFileCategory: "Delete category",
+    deleteFileCategoryTitle: "Delete category?",
+    deleteFileCategoryHint:
+      'Remove "{name}"? Files filed under it become uncategorised; the files themselves are kept.',
+    fileCategoryDuplicate: "A category with this name already exists.",
   },
   developer: {
     section: "Developer",
