@@ -9,8 +9,11 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_SETTINGS } from "../src/data/constants/defaults";
 import {
+  customThemeSeed,
   DEFAULT_CUSTOM_THEME,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
+  DEFAULT_CUSTOM_THEME_COLORS_LIGHT,
+  PRESET_PALETTES,
 } from "../src/data/themes";
 import {
   LATEST_VERSION,
@@ -167,5 +170,35 @@ describe("validateSettings — customTheme soft fallbacks", () => {
     expect(result.value.settings.customTheme.colors.accent).toBe("#ff0099");
     expect(result.value.settings.customTheme.radius).toBe("lg");
     expect(result.value.settings.customTheme.reduceMotion).toBe(true);
+  });
+});
+
+describe("customThemeSeed — snapshot the active theme into Custom", () => {
+  it("seeds colours from the active preset palette", () => {
+    const seed = customThemeSeed("dracula", false);
+    expect(seed.colors).toEqual(PRESET_PALETTES.dracula);
+  });
+
+  it("resolves system to the OS scheme", () => {
+    expect(customThemeSeed("system", true).colors).toEqual(
+      DEFAULT_CUSTOM_THEME_COLORS_LIGHT,
+    );
+    expect(customThemeSeed("system", false).colors).toEqual(
+      DEFAULT_CUSTOM_THEME_COLORS_DARK,
+    );
+  });
+
+  it("falls back to the Dark palette for the custom input", () => {
+    expect(customThemeSeed("custom", true).colors).toEqual(
+      DEFAULT_CUSTOM_THEME_COLORS_DARK,
+    );
+  });
+
+  it("seeds the shape controls from the baseline every preset renders at", () => {
+    const seed = customThemeSeed("excel", true);
+    expect(seed.radius).toBe(DEFAULT_CUSTOM_THEME.radius);
+    expect(seed.density).toBe(DEFAULT_CUSTOM_THEME.density);
+    expect(seed.borderWidth).toBe(DEFAULT_CUSTOM_THEME.borderWidth);
+    expect(seed.reduceMotion).toBe(DEFAULT_CUSTOM_THEME.reduceMotion);
   });
 });

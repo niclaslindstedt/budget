@@ -387,6 +387,37 @@ export const DEFAULT_CUSTOM_THEME: CustomTheme = {
   reduceMotion: false,
 };
 
+// Snapshot of the theme currently on screen, used to seed the Custom
+// theme controls when the user switches into Custom so the editor opens
+// as a copy of the current look and the first edit is a tweak. Colours
+// come from the active preset; `system` resolves via the caller-supplied
+// `prefersLight` (read from `prefers-color-scheme`) so the snapshot
+// matches what the OS is actually rendering. Every non-custom preset
+// paints at the baseline shape, so radius / density / border-width /
+// reduce-motion seed from the canonical defaults to match. `custom` is
+// not a meaningful input — you never switch into Custom from Custom — so
+// it falls back to the Dark palette.
+export function customThemeSeed(
+  theme: ThemePreset,
+  prefersLight: boolean,
+): CustomTheme {
+  const colors =
+    theme === "system"
+      ? prefersLight
+        ? DEFAULT_CUSTOM_THEME_COLORS_LIGHT
+        : DEFAULT_CUSTOM_THEME_COLORS_DARK
+      : theme === "custom"
+        ? DEFAULT_CUSTOM_THEME_COLORS_DARK
+        : PRESET_PALETTES[theme];
+  return {
+    colors,
+    radius: DEFAULT_CUSTOM_THEME.radius,
+    density: DEFAULT_CUSTOM_THEME.density,
+    borderWidth: DEFAULT_CUSTOM_THEME.borderWidth,
+    reduceMotion: DEFAULT_CUSTOM_THEME.reduceMotion,
+  };
+}
+
 // Ordered list of colour keys. The validator iterates this to walk
 // every slot; the picker UI uses it via `COLOR_GROUPS` below for
 // display order inside each group.

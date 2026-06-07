@@ -2,7 +2,7 @@ import { FONT_SCALE_PRESETS } from "../../../data/constants/format";
 import {
   BORDER_WIDTH_PRESETS,
   COLOR_GROUPS,
-  COLOR_KEYS,
+  customThemeSeed,
   DARK_THEMES,
   DEFAULT_CUSTOM_THEME_COLORS_DARK,
   DENSITY_PRESETS,
@@ -46,23 +46,21 @@ export function AppearanceTab({
   const isCustom = draft.theme === "custom";
 
   function handleThemeChange(next: ThemePreset) {
-    if (next === "custom") {
-      // First switch into Custom: pre-fill the colours from whichever
-      // preset is currently effective so the first edit feels like a
-      // tweak. Only fires when the colours are still pristine (match
-      // one of the bundled preset palettes exactly) so repeated flips
-      // don't trample user tweaks.
-      const cur = draft.customTheme.colors;
-      const isPristine = Object.values(PRESET_PALETTES).some((palette) =>
-        COLOR_KEYS.every((k) => cur[k] === palette[k]),
-      );
-      if (isPristine) {
-        const source =
-          draft.theme !== "custom" && draft.theme !== "system"
-            ? PRESET_PALETTES[draft.theme]
-            : DEFAULT_CUSTOM_THEME_COLORS_DARK;
-        onUpdate("customTheme", { ...draft.customTheme, colors: source });
-      }
+    if (next === "custom" && draft.theme !== "custom") {
+      // Snapshot the theme that's currently on screen into the Custom
+      // controls so the editor opens as a copy of what the user is
+      // looking at and the first edit is a tweak, not a reset. Colours
+      // come from the active preset (System resolves to the OS scheme);
+      // every non-custom preset renders at the baseline shape, so radius
+      // / density / border-width / reduce-motion seed from the canonical
+      // defaults to match. This overwrites any earlier Custom tweaks —
+      // entering Custom always tracks the current look rather than
+      // resurrecting a stale palette.
+      const prefersLight =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-color-scheme: light)").matches;
+      onUpdate("customTheme", customThemeSeed(draft.theme, prefersLight));
     }
     onUpdate("theme", next);
   }
