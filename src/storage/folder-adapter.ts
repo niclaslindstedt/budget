@@ -23,6 +23,7 @@ export const FOLDER_BACKUPS_DIR_NAME = "backups";
 export const FOLDER_RECEIPTS_DIR_NAME = "receipts";
 export const FOLDER_PAYSLIPS_DIR_NAME = "payslips";
 export const FOLDER_PROPERTIES_DIR_NAME = "properties";
+export const FOLDER_EXPORTS_DIR_NAME = "exports";
 
 // Chrome reports filesystem errors as `DOMException` with these
 // names. We treat `NotAllowedError` (revoked by browser policy) and
@@ -227,6 +228,9 @@ export function createFolderAdapter(
   // Per-property attachment store: repair receipts at `<name>/receipts/<file>`
   // and uploaded files at `<name>/files/[<category>/]<file>`.
   const propertyFiles = makeNestedBlobOps(FOLDER_PROPERTIES_DIR_NAME);
+  // Generated archives the user saves to the backend (property handover ZIPs).
+  // Flat filenames, so the same nested-blob ops handle it at depth one.
+  const exportsOps = makeNestedBlobOps(FOLDER_EXPORTS_DIR_NAME);
 
   // Resolve the `payslips/` folder handle, creating it on upload. Payslip
   // paths are flat filenames (no type subdirectory), so there's no
@@ -293,11 +297,18 @@ export function createFolderAdapter(
     id: "folder",
     label: "Local folder",
     saveDebounceMs: 500,
-    capabilities: new Set(["backups", "receipts", "payslips", "propertyFiles"]),
+    capabilities: new Set([
+      "backups",
+      "receipts",
+      "payslips",
+      "propertyFiles",
+      "exports",
+    ]),
     backups,
     receipts,
     payslips,
     propertyFiles,
+    exports: exportsOps,
 
     async load(): Promise<Snapshot | null> {
       log.info("load: start");

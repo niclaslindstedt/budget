@@ -127,6 +127,17 @@ export type PropertyAttachments = {
     lookups: PropertyExportLookups,
     options: PropertyExportOptions,
   ) => Promise<{ bytes: Uint8Array; skipped: number }>;
+  // Whether the active backend can store generated export archives in its
+  // sibling `exports/` folder. The export modal gates the "save to backend"
+  // destination on this — when false, the only destination is a direct
+  // download. Tracks the `exports` capability, which the folder / cloud
+  // backends advertise and plain localStorage does not.
+  canExportToBackend: boolean;
+  // Write a generated export archive to the backend's `exports/` folder under
+  // `filename` (a flat name, no path). Resolves once the bytes are persisted.
+  // Throws when the active backend has no `exports` store (the caller gates on
+  // `canExportToBackend` before offering the destination).
+  saveExportToBackend: (filename: string, bytes: Uint8Array) => Promise<void>;
   // Import a parsed property-export archive as a NEW property: re-upload its
   // file / receipt bytes to the backend, then dispatch one `importProperty`
   // action (creating any companies / tags / categories / subtypes needed to
@@ -162,6 +173,9 @@ export function usePropertyAttachments({
 
   const store = adapter.propertyFiles;
   const canManage = adapter.capabilities.has("propertyFiles");
+
+  const exportsStore = adapter.exports;
+  const canExportToBackend = adapter.capabilities.has("exports");
 
   // The UI gates the upload / manage affordance on `canManage` (the
   // capability), so if the capability is advertised but the ops object is
@@ -452,6 +466,18 @@ export function usePropertyAttachments({
     [store],
   );
 
+  const saveExportToBackend = useCallback(
+    async (filename: string, bytes: Uint8Array): Promise<void> => {
+      if (!exportsStore) throw new Error("exports unavailable");
+      await exportsStore.upload(
+        filename,
+        new Blob([bytes as BlobPart], { type: "application/zip" }),
+      );
+      unlock("propertyHandover");
+    },
+    [exportsStore],
+  );
+
   const importProperty = useCallback(
     async (
       manifest: PropertyExportManifest,
@@ -578,6 +604,8 @@ export function usePropertyAttachments({
     replacePropertyFile,
     removePropertyFile,
     exportProperty,
+    canExportToBackend,
+    saveExportToBackend,
     importProperty,
   };
 }

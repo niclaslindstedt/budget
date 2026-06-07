@@ -1156,8 +1156,19 @@ mortgages & payments (default off — the seller's own loans, payment
 history, purchase price, and value estimates). The pure builder is
 `buildPropertyExport` (`src/data/property-transfer/export.ts`); the
 attachment hook's `exportProperty` downloads the chosen file / receipt
-bytes from the backend, zips them with `buildZip`, and triggers the
-download. Files whose bytes can't be fetched are skipped and counted.
+bytes from the backend and zips them with `buildZip`. Files whose bytes
+can't be fetched are skipped and counted.
+
+The built archive has two destinations, chosen in the modal: **download
+file** (the default — `triggerDownload`) or **save to exports folder**.
+The second is gated on the `exports` adapter capability — the folder and
+cloud backends advertise it (plain localStorage doesn't), so the chooser
+only appears when the backend can store the archive. Picking it routes
+the bytes through the hook's `saveExportToBackend`, which writes the ZIP
+to the backend's sibling `exports/` folder (flat filename, never
+encrypted — same passthrough as receipts) via the `StorageAdapter.exports`
+`ReceiptOps` store. The modal keeps open with a success note rather than
+auto-closing, since there's no browser download to signal the save.
 
 **Import** is reached from the Properties sheet's title "…" menu →
 `PropertyImportModal.tsx`, which reads the ZIP (`src/utils/unzip.ts`),

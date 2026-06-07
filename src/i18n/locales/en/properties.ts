@@ -326,7 +326,15 @@ const properties = {
   exportIncludeFinancials: "Include mortgages & payments",
   exportIncludeFinancialsHint:
     "Your loans, their payment history, purchase price, and value estimates — your own financial records, off by default.",
+  exportDestinationLabel: "Where to save",
+  exportDestinationDownload: "Download file",
+  exportDestinationDownloadHint: "Save the archive to this device's downloads.",
+  exportDestinationBackend: "Save to exports folder",
+  exportDestinationBackendHint:
+    "Store it in an exports/ folder on your connected storage.",
+  exportSaved: "Saved to the exports/ folder on your storage.",
   exportAction: "Export",
+  exportActionSave: "Save",
   exportUnavailable:
     "Exporting a property's files needs a folder or cloud backend. Connect one in Settings → Storage. Details still export.",
   exportSkippedOne:

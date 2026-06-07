@@ -105,6 +105,12 @@ const GDRIVE_PAYSLIPS_FOLDER_NAME = "payslips";
 // the parent already is.
 const GDRIVE_PROPERTIES_FOLDER_NAME = "properties";
 
+// Name of the folder generated archives live inside, nested under the app
+// folder (so the layout is `My Drive/<app>/exports/`). Export filenames are
+// flat (no subfolder), so it mirrors the payslips resolver. Not namespaced —
+// the parent already is.
+const GDRIVE_EXPORTS_FOLDER_NAME = "exports";
+
 // Names the adapter looked for before the subfolder layout landed:
 // `budget.json` (or `budget-preview.json`) and `budget-backups` (or
 // `budget-backups-preview`) at the My Drive root. Used by the one-
@@ -590,6 +596,7 @@ export function createGdriveAdapter(
   let cachedPayslipsFolderId: string | null = null;
   let cachedPropertiesFolderId: string | null = null;
   const cachedPropertySubfolderIds = new Map<string, string>();
+  let cachedExportsFolderId: string | null = null;
 
   async function ensureSubfolder(
     parentId: string,
@@ -633,6 +640,14 @@ export function createGdriveAdapter(
     return id;
   }
 
+  async function ensureExportsFolder(): Promise<string> {
+    if (cachedExportsFolderId) return cachedExportsFolderId;
+    const appFolderId = await ensureAppFolder();
+    const id = await ensureSubfolder(appFolderId, GDRIVE_EXPORTS_FOLDER_NAME);
+    cachedExportsFolderId = id;
+    return id;
+  }
+
   // Resolve a payslip path to its parent folder id and leaf filename.
   // Payslip paths are flat (no type subfolder), so the parent is always
   // the `payslips/` folder. On the read side (`create` false) a missing
@@ -658,6 +673,32 @@ export function createGdriveAdapter(
     );
     if (!folderId) return null;
     cachedPayslipsFolderId = folderId;
+    return { folderId, name };
+  }
+
+  // Resolve an export path to its parent folder id and leaf filename. Export
+  // filenames are flat (no subfolder), so the parent is always the `exports/`
+  // folder. Mirrors `resolvePayslipParent`; a read-side lookup of a never-
+  // written export short-circuits to null instead of minting an empty folder.
+  async function resolveExportsParent(
+    path: string,
+    create: boolean,
+  ): Promise<{ folderId: string; name: string } | null> {
+    const name = path
+      .split("/")
+      .filter((s) => s.length > 0)
+      .pop();
+    if (!name) return null;
+    if (create) return { folderId: await ensureExportsFolder(), name };
+    if (cachedExportsFolderId) return { folderId: cachedExportsFolderId, name };
+    const appFolderId = await ensureAppFolder();
+    const folderId = await searchOne(
+      `name='${escapeDriveQuery(GDRIVE_EXPORTS_FOLDER_NAME)}'` +
+        ` and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and '${appFolderId}' in parents and trashed=false`,
+    );
+    if (!folderId) return null;
+    cachedExportsFolderId = folderId;
     return { folderId, name };
   }
 
@@ -861,16 +902,24 @@ export function createGdriveAdapter(
     resolvePropertyFilesParent,
     "property file",
   );
+  const exportsOps = makeBlobFolderOps(resolveExportsParent, "export");
 
   return {
     id: "gdrive",
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["backups", "receipts", "payslips", "propertyFiles"]),
+    capabilities: new Set([
+      "backups",
+      "receipts",
+      "payslips",
+      "propertyFiles",
+      "exports",
+    ]),
     backups,
     receipts,
     payslips,
     propertyFiles,
+    exports: exportsOps,
     load,
     save,
   };

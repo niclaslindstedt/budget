@@ -317,7 +317,16 @@ const properties: PropertiesCatalog = {
   exportIncludeFinancials: "Ta med lån och betalningar",
   exportIncludeFinancialsHint:
     "Dina lån, deras betalningshistorik, inköpspris och värdeuppskattningar — dina egna ekonomiska uppgifter, av som standard.",
+  exportDestinationLabel: "Var ska den sparas",
+  exportDestinationDownload: "Ladda ner fil",
+  exportDestinationDownloadHint:
+    "Spara arkivet bland den här enhetens nedladdningar.",
+  exportDestinationBackend: "Spara i exports-mappen",
+  exportDestinationBackendHint:
+    "Lagra det i en exports/-mapp på din anslutna lagring.",
+  exportSaved: "Sparat i exports/-mappen på din lagring.",
   exportAction: "Exportera",
+  exportActionSave: "Spara",
   exportUnavailable:
     "Att exportera en fastighets filer kräver en mapp- eller molnlagring. Anslut en i Inställningar → Lagring. Uppgifter exporteras ändå.",
   exportSkippedOne: "{count} bilaga kunde inte tas med (filen saknas).",
