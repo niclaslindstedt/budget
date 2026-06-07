@@ -10,12 +10,15 @@ import type {
 } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
+import { createLogger } from "../../utils/logger";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
 import { FileCategoryPicker } from "./FileCategoryPicker";
+
+const log = createLogger("property-files");
 
 // Per-property files manager, opened by "Upload file" on a property card.
 // Lists the arbitrary documents / photos uploaded against the property — each
@@ -341,6 +344,7 @@ function PropertyFileForm({
     record?.categoryId ?? null,
   );
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const meta: PropertyFileMeta = {
     description,
@@ -352,8 +356,16 @@ function PropertyFileForm({
     if (busy) return;
     if (isUpload) {
       setBusy(true);
+      setError(null);
       try {
         await onUpload(mode.file, meta);
+      } catch (err) {
+        // Surface the failure instead of leaving the form sitting open with
+        // no feedback — the upload commits the bytes + the record together,
+        // so a thrown error means nothing was saved. Log the cause so it
+        // reaches the in-app Logs tab.
+        log.error(`property file upload failed name=${mode.file.name}`, err);
+        setError(t("attachment.uploadError"));
       } finally {
         setBusy(false);
       }
@@ -415,6 +427,11 @@ function PropertyFileForm({
             />
           </label>
         </div>
+        {error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onCancel} disabled={busy}>

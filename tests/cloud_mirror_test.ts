@@ -76,25 +76,34 @@ describe("withCloudMirror", () => {
     expect(mirror?.localRevision).toBe(0);
   });
 
-  it("forwards receipt and payslip ops alongside their capabilities", async () => {
+  it("forwards receipt, payslip, and property-file ops alongside their capabilities", async () => {
     // The wrapper copies the inner capability set, so it must also
-    // forward the matching ops objects — otherwise the salary / item row
-    // menus advertise "View / Remove" (capability present) but the calls
-    // throw because `adapter.payslips` / `adapter.receipts` is undefined.
+    // forward the matching ops objects — otherwise the salary / item /
+    // property row menus advertise "View / Remove" (capability present)
+    // but the calls throw because `adapter.payslips` / `adapter.receipts`
+    // / `adapter.propertyFiles` is undefined.
     const { storage } = memoryStorage();
     const receipts = { upload: async () => {}, download: async () => null };
     const payslips = { upload: async () => {}, download: async () => null };
+    const propertyFiles = {
+      upload: async () => {},
+      download: async () => null,
+    };
     const inner = makeInner({
-      capabilities: new Set(["receipts", "payslips"]),
+      capabilities: new Set(["receipts", "payslips", "propertyFiles"]),
       receipts: receipts as unknown as StorageAdapter["receipts"],
       payslips: payslips as unknown as StorageAdapter["payslips"],
+      propertyFiles:
+        propertyFiles as unknown as StorageAdapter["propertyFiles"],
     });
     const adapter = withCloudMirror(inner, { storage });
 
     expect(adapter.capabilities.has("receipts")).toBe(true);
     expect(adapter.capabilities.has("payslips")).toBe(true);
+    expect(adapter.capabilities.has("propertyFiles")).toBe(true);
     expect(adapter.receipts).toBe(receipts);
     expect(adapter.payslips).toBe(payslips);
+    expect(adapter.propertyFiles).toBe(propertyFiles);
   });
 
   it("serves the mirror as `offline: true` when load throws a network error", async () => {
