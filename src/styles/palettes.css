@@ -334,6 +334,49 @@
   --month-12: #8a4575;
 }
 
+/* Excel Light — Microsoft Excel's light-mode look so spreadsheet users
+   feel at home. Pure-white cell grid on a soft Office-neutral grey
+   workspace, the classic Excel gridline grey for `--line`, near-black
+   Office text, and the Office accent set mapped onto the budget slots:
+   accent=Excel green, meta=Office gold, link=Excel hyperlink blue,
+   path=Office teal, flag=Office chart orange, pipe=Office purple,
+   danger=Excel negative-number red. */
+:root[data-theme="excel"] {
+  --page-bg: #e6e6e6;
+  --surface: #ffffff;
+  --surface-2: #f3f2f1;
+  --surface-3: #e1dfdd;
+  --fg: #252423;
+  --fg-bright: #171717;
+  --muted: #605e5c;
+  --accent: #217346;
+  --meta: #a6730a;
+  --link: #0563c1;
+  --path: #0e7490;
+  --flag: #c55a11;
+  --pipe: #7030a0;
+  --danger: #c00000;
+  --success: #217346;
+  --positive: #3f7d3a;
+  --negative: #c84031;
+  --line: #d4d4d4;
+  /* Excel month wheel — Office chart hues deepened to read against the
+     bright white grid, in the same cool→warm→cool seasonal order as the
+     One Light wheel. */
+  --month-1: #2e75b6;
+  --month-2: #5b5ea6;
+  --month-3: #2e8b57;
+  --month-4: #548235;
+  --month-5: #c0504d;
+  --month-6: #bf8f00;
+  --month-7: #c55a11;
+  --month-8: #a6601c;
+  --month-9: #9c4a1e;
+  --month-10: #a23b20;
+  --month-11: #7e5a8a;
+  --month-12: #8a4570;
+}
+
 /* System theme — follow the OS colour-scheme. Dark is the default
    (set in the unscoped `:root` above); only the light branch needs
    an explicit rule. */

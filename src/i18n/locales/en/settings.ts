@@ -126,6 +126,7 @@ const settings = {
     themeGithubLight: "GitHub Light",
     themeSolarizedLight: "Solarized Light",
     themeQuietLight: "Quiet Light",
+    themeExcel: "Excel",
     themeSystem: "System",
     themeCustom: "Custom",
     themeSystemHint: "Follow the operating-system colour scheme.",
