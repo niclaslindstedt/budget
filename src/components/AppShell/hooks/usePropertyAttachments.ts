@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import { unlock } from "../../../data/achievements";
 import { collectReceiptPaths } from "../../../data/items/link";
@@ -19,6 +19,9 @@ import type {
 import { useT } from "../../../i18n";
 import type { StorageAdapter } from "../../../storage/adapter";
 import { todayIso } from "../../../utils/date";
+import { createLogger } from "../../../utils/logger";
+
+const log = createLogger("property-files");
 
 // Metadata the user enters when uploading (or editing) a property file.
 export type PropertyFileMeta = {
@@ -125,6 +128,21 @@ export function usePropertyAttachments({
 
   const store = adapter.propertyFiles;
   const canManage = adapter.capabilities.has("propertyFiles");
+
+  // The UI gates the upload / manage affordance on `canManage` (the
+  // capability), so if the capability is advertised but the ops object is
+  // missing, every operation throws "property files unavailable" and the user
+  // sees a generic failure with no clue why. That only happens when an adapter
+  // wrapper copies the capability set but forgets to forward the ops object —
+  // log it loudly (once per adapter) so the next such regression is caught
+  // from the Logs tab rather than a screenshot.
+  useEffect(() => {
+    if (canManage && !store) {
+      log.error(
+        `adapter "${adapter.id}" advertises the propertyFiles capability but has no propertyFiles ops — uploads will fail`,
+      );
+    }
+  }, [canManage, store, adapter.id]);
 
   const download = useCallback(
     async (path: string): Promise<Blob> => {

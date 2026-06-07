@@ -21,9 +21,16 @@ import {
 } from "lucide-react";
 
 import { useT } from "../i18n";
+import { createLogger } from "../utils/logger";
 import { effectiveMimeType } from "../utils/mime";
 import { Modal } from "./Modal";
 import { PdfZoomView } from "./PdfZoomView";
+
+// Attachment failures are otherwise invisible — the modal shows a generic
+// "could not save" message but the real cause (a missing backend ops object,
+// a cloud HTTP error, an offline write) never reached the in-app Logs tab.
+// Logging the caught error here captures it for diagnosis.
+const log = createLogger("attachment");
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
@@ -483,7 +490,8 @@ export function AttachmentUploadModal({
       .then((b) => {
         if (!cancelled) setBlob(b);
       })
-      .catch(() => {
+      .catch((err) => {
+        log.error(`attachment preview load failed path=${path}`, err);
         if (!cancelled) setError(t("attachment.loadError"));
       })
       .finally(() => {
@@ -519,7 +527,8 @@ export function AttachmentUploadModal({
         // Setting the path triggers the download effect, which fetches the
         // freshly-uploaded bytes and swaps the zone for the preview.
         setPath(next);
-      } catch {
+      } catch (err) {
+        log.error(`attachment upload failed name=${file.name}`, err);
         setError(t("attachment.uploadError"));
         setBusy((cur) => (cur === "upload" ? null : cur));
       }
@@ -571,7 +580,8 @@ export function AttachmentUploadModal({
       await onRemove(path);
       setPath(undefined);
       setBlob(null);
-    } catch {
+    } catch (err) {
+      log.error(`attachment remove failed path=${path}`, err);
       setError(t("attachment.removeError"));
     } finally {
       setBusy((cur) => (cur === "remove" ? null : cur));
