@@ -28,6 +28,7 @@ import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
 import { unlinkedItems } from "../../data/items/link";
+import { itemSubtypes } from "../../data/items/subtypes";
 import { findColumnByType } from "../../data/sheet";
 import type { Action } from "../../data/reducer";
 import type {
@@ -612,7 +613,7 @@ export function BudgetModalHost(props: Props) {
         columns={activeItem.columns}
         settings={effectiveSettings}
         items={unlinkedItems(data, lineItemsPrompt?.row?.lineItems)}
-        subtypes={data.subtypes}
+        subtypes={itemSubtypes(data.subtypes)}
         types={types}
         categories={categories}
         onClose={() => setLineItemsPrompt(null)}

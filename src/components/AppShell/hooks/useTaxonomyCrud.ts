@@ -51,6 +51,11 @@ type Result = {
   onUpdateTag: (tagId: string, patch: Partial<Omit<Tag, "id">>) => void;
   onDeleteTag: (tagId: string) => void;
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
+  onUpdateSubtype: (
+    subtypeId: string,
+    patch: Partial<Omit<Subtype, "id">>,
+  ) => void;
+  onDeleteSubtype: (subtypeId: string) => void;
   onCreateItem: (draft: Omit<Item, "id">) => Item;
 };
 
@@ -173,6 +178,15 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     },
     [dispatch],
   );
+  const onUpdateSubtype = useCallback(
+    (subtypeId: string, patch: Partial<Omit<Subtype, "id">>) =>
+      dispatch({ type: "updateSubtype", subtypeId, patch }),
+    [dispatch],
+  );
+  const onDeleteSubtype = useCallback(
+    (subtypeId: string) => dispatch({ type: "deleteSubtype", subtypeId }),
+    [dispatch],
+  );
   const onCreateItem = useCallback(
     (draft: Omit<Item, "id">): Item => {
       const item: Item = { id: newId(), ...draft };
@@ -203,6 +217,8 @@ export function useTaxonomyCrud({ dispatch }: Params): Result {
     onUpdateTag,
     onDeleteTag,
     onCreateSubtype,
+    onUpdateSubtype,
+    onDeleteSubtype,
     onCreateItem,
   };
 }

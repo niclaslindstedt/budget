@@ -323,6 +323,18 @@ const settings = {
     kindAnyTitle: "Shows on both income and expense rows",
     kindIncomeTitle: "Shows only on income rows (positive amount)",
     kindExpenseTitle: "Shows only on expense rows (negative amount)",
+    subtypesTitle: "Subtypes",
+    subtypesIntro:
+      "Subtypes are the optional third tier below a type — the label you give an owned item or a property repair. They are created from the items sheet and the property repairs editor; rename or remove them here.",
+    subtypesItems: "Items",
+    subtypesRepairs: "Repairs and renovations",
+    subtypesEmpty:
+      "No subtypes yet. Add one when tagging an item or a property repair.",
+    editSubtype: "Edit subtype",
+    deleteSubtype: "Delete subtype",
+    deleteSubtypeTitle: "Delete subtype",
+    deleteSubtypeHint:
+      'Remove "{name}"? Items classified with it become unclassified.',
   },
   companiesTab: {
     title: "Companies",

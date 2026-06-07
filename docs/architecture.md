@@ -215,8 +215,11 @@ src/
 │   │   ├── link.ts             # findItemLink / unlinkedItems / collectItemReceipts /
 │   │   │                       #   collectReceiptPaths — item↔transaction linkage
 │   │   │                       #   (one transaction per item; surfaces its receipt)
-│   │   └── receipt-name.ts     # buildReceiptPath — preset-driven receipt filenames
-│   │                           #   (incl. the type-subfolder pattern) + extensionOf
+│   │   ├── receipt-name.ts     # buildReceiptPath — preset-driven receipt filenames
+│   │   │                       #   (incl. the type-subfolder pattern) + extensionOf
+│   │   └── subtypes.ts         # itemSubtypes / PROPERTY_REPAIR_TYPE_IDS — filters
+│   │                           #   out Repairs/Renovations subtypes so the Items
+│   │                           #   sheet's pickers only offer item subtypes
 │   ├── salary/
 │   │   ├── salary.ts           # brutto/netto/tax algebra + role-title resolution
 │   │   ├── detection.ts        # detectSalaries (budget-row scoring, one candidate

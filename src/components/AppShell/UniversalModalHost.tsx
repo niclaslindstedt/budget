@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { itemSubtypes } from "../../data/items/subtypes";
 import {
   allCategories,
   allCompanyCategories,
@@ -303,6 +304,8 @@ export function UniversalModalHost(props: Props) {
     onUpdateTag,
     onDeleteTag,
     onCreateSubtype,
+    onUpdateSubtype,
+    onDeleteSubtype,
     onCreateItem,
   } = taxonomyCrud;
   const { onEditMatchRule, onMoveMatchRule, onReapplyMatchRules } = matchRuleUi;
@@ -522,6 +525,8 @@ export function UniversalModalHost(props: Props) {
         onDeleteType={onDeleteType}
         onSetPresetTypeHidden={onSetPresetTypeHidden}
         onSetPresetTypeKind={onSetPresetTypeKind}
+        onUpdateSubtype={onUpdateSubtype}
+        onDeleteSubtype={onDeleteSubtype}
         onCreateCompany={onCreateCompany}
         onUpdateCompany={onUpdateCompany}
         onDeleteCompany={onDeleteCompany}
@@ -561,7 +566,7 @@ export function UniversalModalHost(props: Props) {
         open={editItemId !== null || creatingItem}
         item={editItem}
         creating={creatingItem}
-        subtypes={data.subtypes}
+        subtypes={itemSubtypes(data.subtypes)}
         types={allTypes(data)}
         categories={allCategories(data)}
         settings={effectiveSettings}
