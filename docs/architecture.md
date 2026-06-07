@@ -120,7 +120,9 @@ src/
 │       ├── RepairsEditModal.tsx       # single-repair add/edit (multi-select
 │       │                              #   transactions + description + subtype)
 │       ├── RepairEntryActionsMenu.tsx # "…" swipe-strip menu (manage receipt)
-│       └── RepairsAddModal.tsx        # bulk quick-add candidate picker
+│       ├── RepairsAddModal.tsx        # bulk quick-add candidate picker
+│       └── ManualRepairModal.tsx      # manual repair add/edit (no backing
+│                                      #   transaction; company/tags on the repair)
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
@@ -131,8 +133,9 @@ src/
 │   │   │                       #   SheetType, SheetGlyph
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
-│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair,
-│   │   │                       #   PropertySaleEstimate (saved net-sale inputs)
+│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
+│   │   │                       #   (source pair optional — manual repairs carry
+│   │   │                       #   own companyId/tagIds), PropertySaleEstimate
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
 │   │   │                       #   HistoricRow / TransferRow + Row.lineItems),
 │   │   │                       #   ColumnType
@@ -811,7 +814,13 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   by the repair (`receiptPath`), decoupled from any transaction and managed
   through the `{ kind: "repair" }` receipt target / `setRepairReceipt`. Both
   are additive optional fields needing no migration (absent ⇒ a
-  single-transaction repair with no receipt).
+  single-transaction repair with no receipt). The `accountId` /
+  `sourceHistoryId` pair is now itself **optional**: a **manual** repair (work
+  older than the imported bank history reaches) has no backing transaction, so
+  it omits the pair and instead stores its own `companyId` / `tagIds` on the
+  repair (a transaction-backed repair still resolves those live off its
+  source). Loosening a required field and adding two optional ones is
+  backward-compatible — old budgets read unchanged — so no version bump.
 
 ## State management
 

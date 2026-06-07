@@ -179,6 +179,7 @@ const properties: PropertiesCatalog = {
   repairsEmpty: "Inga reparationer eller renoveringar registrerade ännu.",
   repairsAdd: "Lägg till",
   repairsQuickAdd: "Snabblägg till",
+  repairsAddManual: "Lägg till manuellt",
   editRepair: "Redigera",
   editRepairAria: "Redigera {description}",
   deleteRepairAria: "Ta bort {description}",
@@ -223,6 +224,15 @@ const properties: PropertiesCatalog = {
   repairTagsLabel: "Taggar",
   repairTagsHint:
     "Tagga transaktionen för att gruppera reparationer mellan fastigheter.",
+
+  // Manual repair editor — en reparation / renovering utan underliggande
+  // banktransaktion (arbete äldre än din importerade historik når).
+  manualRepairAddTitle: "Lägg till reparation manuellt",
+  manualRepairEditTitle: "Redigera reparation",
+  repairTypeLabel: "Typ",
+  repairDateLabel: "Datum",
+  repairAmountLabel: "Belopp",
+  repairAmountPlaceholder: "Kostnad",
 
   // Delete property confirm.
   deletePropertyTitle: "Ta bort fastighet?",

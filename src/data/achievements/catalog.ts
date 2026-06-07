@@ -15,6 +15,7 @@ import {
   CalendarArrowUp,
   CalendarClock,
   CalendarCog,
+  CalendarPlus,
   Check,
   Cloud,
   Code2,
@@ -32,6 +33,7 @@ import {
   FolderTree,
   FunctionSquare,
   GitMerge,
+  Hammer,
   Hash,
   History,
   Home,
@@ -259,6 +261,18 @@ const hasGroupedRepair = (s: UserData) =>
   s.properties.some((p) =>
     p.repairs.some((r) => (r.additionalSources?.length ?? 0) > 0),
   );
+
+// A repair was recorded manually — no backing bank transaction (work older
+// than the imported history reaches), so neither source field is set.
+const hasManualRepair = (s: UserData) =>
+  s.properties.some((p) =>
+    p.repairs.some((r) => !(r.accountId && r.sourceHistoryId)),
+  );
+
+// A payslip was added manually — no backing bank transaction or budget row,
+// so it came from the "Add payslip" form rather than a discovery walk.
+const hasManualSalary = (s: UserData) =>
+  s.salaries.some((x) => !x.sourceHistoryId && !x.sourceRowId);
 
 // Did the named device bucket's headerAction transition away from the
 // default in this `(prev, next)` step? Used by the `shortcut`
@@ -580,6 +594,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    // The user added a payslip by hand — a paycheck older than their imported
+    // bank history reaches, recorded from the "Add payslip" form rather than a
+    // discovery walk.
+    id: "manualPayslip",
+    tier: "intermediate",
+    glyph: CalendarPlus,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.salaries],
+      predicate: (prev, next) =>
+        !hasManualSalary(prev) && hasManualSalary(next),
+    },
+  },
+  {
     id: "taxEstimator",
     tier: "intermediate",
     glyph: Calculator,
@@ -851,6 +880,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.properties],
       predicate: (prev, next) =>
         !hasGroupedRepair(prev) && hasGroupedRepair(next),
+    },
+  },
+  {
+    // The user recorded a repair / renovation by hand — work older than their
+    // imported bank history reaches, entered directly rather than sourced from
+    // a tagged charge.
+    id: "manualRepair",
+    tier: "pro",
+    glyph: Hammer,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasManualRepair(prev) && hasManualRepair(next),
     },
   },
   {

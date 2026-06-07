@@ -345,16 +345,98 @@ describe("properties reducer — repairs", () => {
     expect(next).toBe(data);
   });
 
-  it("drops a repair with a missing source on load", () => {
+  it("keeps a manual repair and coerces a half-present source pair to manual", () => {
     const data = reducer(seeded(), {
       type: "addRepairs",
       propertyId: "p1",
-      // A malformed repair (no sourceHistoryId) is swept by the validator.
-      repairs: [{ ...REPAIR }, { ...REPAIR, id: "r3", sourceHistoryId: "" }],
+      repairs: [
+        { ...REPAIR },
+        // A manual repair — no backing transaction (work older than the
+        // imported history reaches). Kept rather than dropped.
+        {
+          id: "r3",
+          date: "2025-06-01",
+          amount: 4200,
+          description: "Old roof work",
+          typeId: "preset-type-renovations",
+        },
+        // A half-present pair (accountId but blank sourceHistoryId) drops both,
+        // becoming a manual repair rather than an unresolvable half-link.
+        { ...REPAIR, id: "r4", sourceHistoryId: "" },
+      ],
     });
-    expect(revalidate(data).properties[0].repairs.map((r) => r.id)).toEqual([
-      "r1",
-    ]);
+    const repairs = revalidate(data).properties[0].repairs;
+    expect(repairs.map((r) => r.id)).toEqual(["r1", "r3", "r4"]);
+    for (const id of ["r3", "r4"]) {
+      const r = repairs.find((x) => x.id === id)!;
+      expect(r.accountId).toBeUndefined();
+      expect(r.sourceHistoryId).toBeUndefined();
+    }
+  });
+
+  it("round-trips a manual repair's company and tags, dropping a dangling company", () => {
+    let data = reducer(seeded(), {
+      type: "addCompany",
+      company: { id: "co1", name: "Roofer AB" },
+    });
+    data = reducer(data, {
+      type: "addTag",
+      tag: { id: "tg1", name: "deductible", color: "#ffffff" },
+    });
+    data = reducer(data, {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [
+        {
+          id: "r5",
+          date: "2024-03-01",
+          amount: 5000,
+          description: "Roof",
+          typeId: "preset-type-renovations",
+          companyId: "co1",
+          tagIds: ["tg1"],
+        },
+        // A dangling company id (no such company) is dropped on load.
+        {
+          id: "r6",
+          date: "2024-03-02",
+          amount: 100,
+          description: "Gutter",
+          typeId: "preset-type-repairs",
+          companyId: "ghost",
+        },
+      ],
+    });
+    const repairs = revalidate(data).properties[0].repairs;
+    const r5 = repairs.find((r) => r.id === "r5")!;
+    expect(r5.companyId).toBe("co1");
+    expect(r5.tagIds).toEqual(["tg1"]);
+    const r6 = repairs.find((r) => r.id === "r6")!;
+    expect(r6.companyId).toBeUndefined();
+  });
+
+  it("sweeps a manual repair's company on company delete", () => {
+    let data = reducer(seeded(), {
+      type: "addCompany",
+      company: { id: "co1", name: "Roofer AB" },
+    });
+    data = reducer(data, {
+      type: "addRepairs",
+      propertyId: "p1",
+      repairs: [
+        {
+          id: "r7",
+          date: "2024-03-01",
+          amount: 5000,
+          description: "Roof",
+          typeId: "preset-type-renovations",
+          companyId: "co1",
+        },
+      ],
+    });
+    data = reducer(data, { type: "deleteCompany", companyId: "co1" });
+    const r7 = data.properties[0].repairs.find((r) => r.id === "r7")!;
+    expect("companyId" in r7).toBe(false);
   });
 
   it("round-trips a multi-transaction repair's additional sources", () => {

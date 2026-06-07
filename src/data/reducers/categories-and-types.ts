@@ -236,9 +236,17 @@ export function reduceCategoriesAndTypes(
     // Properties that named the deleted company as their lender drop the
     // reference so "Find mortgage payments" falls back to its other
     // signals rather than filtering on a company that no longer exists.
-    const nextProperties = state.properties.map((property) =>
-      property.companyId === id ? stripCompany(property) : property,
-    );
+    // Manual repairs that named it as their contractor drop it too (mirrors
+    // how a budget row's `companyId` is swept).
+    const nextProperties = state.properties.map((property) => {
+      const stripped =
+        property.companyId === id ? stripCompany(property) : property;
+      const repairs = stripped.repairs.map((r) =>
+        r.companyId === id ? stripCompany(r) : r,
+      );
+      const repairsChanged = repairs.some((r, i) => r !== stripped.repairs[i]);
+      return repairsChanged ? { ...stripped, repairs } : stripped;
+    });
     return {
       ...state,
       companies: state.companies.filter((c) => c.id !== id),

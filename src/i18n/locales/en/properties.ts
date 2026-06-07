@@ -183,6 +183,7 @@ const properties = {
   repairsEmpty: "No repairs or renovations recorded yet.",
   repairsAdd: "Add",
   repairsQuickAdd: "Quick add",
+  repairsAddManual: "Add manually",
   editRepair: "Edit",
   editRepairAria: "Edit {description}",
   deleteRepairAria: "Delete {description}",
@@ -228,6 +229,15 @@ const properties = {
     "Saved on the source transaction, shared with your budget.",
   repairTagsLabel: "Tags",
   repairTagsHint: "Tag the transaction to group repairs across properties.",
+
+  // Manual repair editor — a repair / renovation with no backing bank
+  // transaction (work older than your imported history reaches).
+  manualRepairAddTitle: "Add repair manually",
+  manualRepairEditTitle: "Edit repair",
+  repairTypeLabel: "Type",
+  repairDateLabel: "Date",
+  repairAmountLabel: "Amount",
+  repairAmountPlaceholder: "Cost",
 
   // Delete property confirm.
   deletePropertyTitle: "Delete property?",

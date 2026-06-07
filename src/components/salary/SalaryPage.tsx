@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Briefcase, Pencil, Search } from "lucide-react";
+import { Briefcase, Pencil, Plus, Search } from "lucide-react";
 
 import type { Action } from "../../data/reducer";
 import type {
@@ -22,6 +22,7 @@ import {
   type SheetTitleMenuItem,
 } from "../SheetTitleMenu";
 import { EmployerManageModal } from "./EmployerManageModal";
+import { SalaryAddModal } from "./SalaryAddModal";
 import { SalaryBulkEditModal } from "./SalaryBulkEditModal";
 import type { SalaryBulkApply } from "./SalaryBulkEditModal";
 import { SalaryDiscoveryModal } from "./SalaryDiscoveryModal";
@@ -86,6 +87,7 @@ export function SalaryPage({
   }
 
   const [findOpen, setFindOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [employersOpen, setEmployersOpen] = useState(false);
   const [editing, setEditing] = useState<Salary | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Salary | null>(null);
@@ -164,6 +166,12 @@ export function SalaryPage({
         dispatchModal({ kind: "open-edit-sheet", sheetId: sheet.id }),
     },
     {
+      key: "add",
+      icon: <Plus size={16} aria-hidden focusable={false} />,
+      label: t("salary.addPayslip"),
+      onClick: () => setAddOpen(true),
+    },
+    {
       key: "find",
       icon: <Search size={16} aria-hidden focusable={false} />,
       label: t("salary.findSalaries"),
@@ -220,14 +228,24 @@ export function SalaryPage({
           {!hasSalaries ? (
             <div className="flex flex-col items-center gap-4 rounded border border-line bg-surface px-4 py-8 text-center">
               <p className="m-0 text-sm text-muted">{t("salary.noSalaries")}</p>
-              <button
-                type="button"
-                onClick={() => setFindOpen(true)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
-              >
-                <Search size={16} aria-hidden focusable={false} />
-                {t("salary.findSalaries")}
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFindOpen(true)}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
+                >
+                  <Search size={16} aria-hidden focusable={false} />
+                  {t("salary.findSalaries")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
+                >
+                  <Plus size={16} aria-hidden focusable={false} />
+                  {t("salary.addPayslip")}
+                </button>
+              </div>
             </div>
           ) : (
             yearGroups.map(([year, salaries]) => (
@@ -271,6 +289,18 @@ export function SalaryPage({
           employers={data.employers}
           onClose={onCloseBulkEdit}
           onApply={onApplyBulk}
+          onCreateEmployer={handleCreateEmployer}
+        />
+
+        <SalaryAddModal
+          open={addOpen}
+          employers={data.employers}
+          settings={settings}
+          taxParams={taxParams}
+          onClose={() => setAddOpen(false)}
+          onAdd={(salary) =>
+            dispatch({ type: "addSalaries", salaries: [salary] })
+          }
           onCreateEmployer={handleCreateEmployer}
         />
 

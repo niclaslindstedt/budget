@@ -150,6 +150,12 @@ const catalog = {
     learnMore:
       "Find salaries scans a chosen account's full bank history — even years back, before you tagged anything — finds your recurring paycheck, establishes a baseline, and walks you through it year by year so you can accept, edit, or skip each month.",
   },
+  manualPayslip: {
+    name: "Off the Books",
+    condition: "Add a payslip manually, with no bank transaction behind it.",
+    learnMore:
+      "Bank history only stretches back so far, but your salary record doesn't have to stop there. Use Add payslip on the Salary sheet to record a paycheck from scratch — pick the pay month, type the net (and gross, if you have it), and it joins the per-year tables alongside the ones Find salaries discovered.",
+  },
   taxEstimator: {
     name: "Tax Estimator",
     condition: "Create a tax profile on a salary sheet.",
@@ -282,6 +288,13 @@ const catalog = {
     condition: "Group more than one transaction under a single repair.",
     learnMore:
       "One invoice is often paid across several bank charges — a deposit and a balance, staged payments to a contractor. In a property's wrench view, add or edit a repair and tick every transaction that paid the same invoice: the amounts add up into one repair, and a single receipt on the primary transaction covers them all.",
+  },
+  manualRepair: {
+    name: "Paper Trail",
+    condition:
+      "Record a repair or renovation with no bank transaction behind it.",
+    learnMore:
+      "Some improvements predate your imported bank history — but they still count toward a property's deductible-cost record. In a property's wrench view, choose Add manually and enter the work directly: type (Repairs or Renovations), date, amount, description, contractor, and tags. Attach the receipt and the cost is ready for a future capital-gains calculation, just like a transaction-backed one.",
   },
   netSaleProfit: {
     name: "For Sale",

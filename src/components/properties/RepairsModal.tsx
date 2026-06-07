@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 
 import { PRESET_TYPE_RENOVATIONS_ID } from "../../data/presets/types";
-import { repairSourceCount } from "../../data/property-repairs/sources";
+import {
+  repairMetaKey,
+  repairSourceCount,
+} from "../../data/property-repairs/sources";
 import type {
   ReceiptNaming,
   TxnReceiptTarget,
@@ -78,14 +81,11 @@ type Props = {
   onAddSingle: () => void;
   // The bulk multi-select candidate picker (skips description / subtype).
   onQuickAdd: () => void;
+  // The manual entry form — a repair with no backing bank transaction (work
+  // older than the imported history reaches).
+  onAddManual: () => void;
   onClose: () => void;
 };
-
-// The `${accountId}:${entryId}` key of a repair's primary source, under which
-// its resolved company / tags live in the `repairMetadata` map.
-function sourceKey(repair: PropertyRepair): string {
-  return `${repair.accountId}:${repair.sourceHistoryId}`;
-}
 
 export function RepairsModal({
   open,
@@ -100,6 +100,7 @@ export function RepairsModal({
   onDeleteRepair,
   onAddSingle,
   onQuickAdd,
+  onAddManual,
   onClose,
 }: Props) {
   const t = useT();
@@ -132,7 +133,7 @@ export function RepairsModal({
     // "<date> <company> - <description>". The company is the one the row
     // resolves (off the source transaction); the description is the repair's.
     subfolder: property.name,
-    companyName: repairMetadata.get(sourceKey(repair))?.company?.name ?? "",
+    companyName: repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "",
     description: repair.description,
     entryId: repair.id,
     entryDate: repair.date,
@@ -166,7 +167,7 @@ export function RepairsModal({
                   key={repair.id}
                   repair={repair}
                   settings={settings}
-                  metadata={repairMetadata.get(sourceKey(repair)) ?? null}
+                  metadata={repairMetadata.get(repairMetaKey(repair)) ?? null}
                   hasReceipt={receiptPathFor(repair) !== undefined}
                   canManageReceipt={canManageReceipt}
                   onManageReceipt={() => setManagingReceipt(repair)}
@@ -186,6 +187,9 @@ export function RepairsModal({
         </Button>
         <Button variant="secondary" onClick={onQuickAdd}>
           {t("properties.repairsQuickAdd")}
+        </Button>
+        <Button variant="secondary" onClick={onAddManual}>
+          {t("properties.repairsAddManual")}
         </Button>
       </Modal.Footer>
 

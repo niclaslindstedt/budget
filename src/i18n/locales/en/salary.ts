@@ -4,6 +4,7 @@ const salary = {
   // Page chrome
   sheetTitle: "Salary",
   findSalaries: "Find salaries",
+  addPayslip: "Add payslip",
   manageEmployers: "Employers",
   noSalaries: "No salaries yet. Find them from your bank history below.",
   selected: "{count} selected",
@@ -33,6 +34,11 @@ const salary = {
   vacationShort: "Vacation",
   sickShort: "Sick",
   daysValue: "{n} d",
+
+  // Add modal — a payslip with no backing bank transaction
+  addTitle: "Add payslip",
+  payDateLabel: "Pay date",
+  payDateHint: "The month this paycheck belongs to.",
 
   // Edit modal
   editTitle: "Edit salary",

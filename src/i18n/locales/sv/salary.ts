@@ -4,6 +4,7 @@ const salary: SalaryCatalog = {
   // Page chrome
   sheetTitle: "Lön",
   findSalaries: "Hitta löner",
+  addPayslip: "Lägg till lönebesked",
   manageEmployers: "Arbetsgivare",
   noSalaries: "Inga löner än. Hitta dem i din bankhistorik nedan.",
   selected: "{count} markerade",
@@ -33,6 +34,11 @@ const salary: SalaryCatalog = {
   vacationShort: "Semester",
   sickShort: "Sjuk",
   daysValue: "{n} d",
+
+  // Add modal — ett lönebesked utan underliggande banktransaktion
+  addTitle: "Lägg till lönebesked",
+  payDateLabel: "Utbetalningsdatum",
+  payDateHint: "Månaden som lönen tillhör.",
 
   // Edit modal
   editTitle: "Redigera lön",
