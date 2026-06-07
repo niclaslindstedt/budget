@@ -17,7 +17,16 @@ import {
   PRESET_TYPE_RENOVATIONS_ID,
   PRESET_TYPE_REPAIRS_ID,
 } from "../presets/types";
-import type { UserData } from "../types";
+import type {
+  Company,
+  EntryType,
+  HistoryEntry,
+  PropertyRepair,
+  UserData,
+} from "../types";
+import { repairSourceKey, repairSources } from "./sources";
+
+import type { RuleMatchCache } from "../budget/synthesis";
 
 // One bank charge eligible to become a property repair / renovation.
 export type RepairCandidate = {
@@ -36,16 +45,54 @@ export type RepairCandidate = {
   tagIds: string[];
 };
 
+// Build a candidate from one resolved bank entry. Shared by the finder and
+// the source-row resolver so an already-linked source renders with exactly
+// the same fields a fresh candidate does.
+function entryToCandidate(
+  accountId: string,
+  entry: HistoryEntry,
+  companies: readonly Company[],
+  types: readonly EntryType[],
+  hints: UserData["merchantHints"],
+  rules: UserData["matchRules"],
+  ruleCache: RuleMatchCache,
+): RepairCandidate {
+  const labels = resolveEntryLabels(
+    entry,
+    hints,
+    rules,
+    companies,
+    types,
+    ruleCache,
+  );
+  return {
+    accountId,
+    entryId: entry.id,
+    date: entry.date,
+    amount: Math.abs(entry.amount),
+    // Prefer the user's own label (override / rule / hint) and fall back
+    // to the raw bank memo — never the type-name fallback, since "Repairs"
+    // / "Renovations" is already conveyed by the row's glyph and makes a
+    // poor row label next to the recognisable merchant text.
+    description: labels.userDescription || entry.description,
+    // Untagged ⇒ "", which the finder's Repairs / Renovations filter excludes;
+    // an already-linked source that was later untagged keeps its stored type
+    // on the repair, so the resolved row's empty type is harmless there.
+    typeId: labels.typeId ?? "",
+    hasReceipt: Boolean(entry.receiptPath),
+    companyId: labels.companyId,
+    tagIds: labels.tagIds,
+  };
+}
+
 // Every Repairs / Renovations outflow across all accounts that isn't
-// already bound to a property's repairs. The exclusion is global — a charge
-// already used by ANY property is dropped, so the same transaction can't
-// back two properties' repairs. Sorted newest-first for the picker.
+// already bound to a property's repairs. The exclusion is global and spans
+// every source of every repair — a charge already used by ANY property as a
+// primary OR additional source is dropped, so the same transaction can't back
+// two properties' repairs or be double-counted within one. Sorted
+// newest-first for the picker.
 export function findRepairCandidates(data: UserData): RepairCandidate[] {
-  // Every source entry already consumed by a repair, across all properties.
-  const used = new Set<string>();
-  for (const property of data.properties) {
-    for (const repair of property.repairs) used.add(repair.sourceHistoryId);
-  }
+  const used = usedSourceKeys(data);
 
   // Merged preset + user types so each entry's effective type resolves the
   // same way the budget tables tag it.
@@ -56,38 +103,71 @@ export function findRepairCandidates(data: UserData): RepairCandidate[] {
     for (const entry of entries) {
       if (entry.hidden || entry.collapsedIntoTransferId) continue;
       if (entry.amount >= 0) continue; // outflows only
-      if (used.has(entry.id)) continue;
-      const labels = resolveEntryLabels(
+      if (used.has(`${accountId}:${entry.id}`)) continue;
+      const candidate = entryToCandidate(
+        accountId,
         entry,
-        data.merchantHints,
-        data.matchRules,
         data.companies,
         types,
+        data.merchantHints,
+        data.matchRules,
         ruleCache,
       );
       if (
-        labels.typeId !== PRESET_TYPE_REPAIRS_ID &&
-        labels.typeId !== PRESET_TYPE_RENOVATIONS_ID
+        candidate.typeId !== PRESET_TYPE_REPAIRS_ID &&
+        candidate.typeId !== PRESET_TYPE_RENOVATIONS_ID
       )
         continue;
-      candidates.push({
-        accountId,
-        entryId: entry.id,
-        date: entry.date,
-        amount: Math.abs(entry.amount),
-        // Prefer the user's own label (override / rule / hint) and fall back
-        // to the raw bank memo — never the type-name fallback, since "Repairs"
-        // / "Renovations" is already conveyed by the row's glyph and makes a
-        // poor row label next to the recognisable merchant text.
-        description: labels.userDescription || entry.description,
-        typeId: labels.typeId,
-        hasReceipt: Boolean(entry.receiptPath),
-        companyId: labels.companyId,
-        tagIds: labels.tagIds,
-      });
+      candidates.push(candidate);
     }
   }
 
   candidates.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return candidates;
+}
+
+// The `${accountId}:${entryId}` key of every source consumed by any repair
+// across every property — primary and additional alike.
+function usedSourceKeys(data: UserData): Set<string> {
+  const used = new Set<string>();
+  for (const property of data.properties) {
+    for (const repair of property.repairs) {
+      for (const source of repairSources(repair))
+        used.add(repairSourceKey(source));
+    }
+  }
+  return used;
+}
+
+// Resolve a repair's own current sources to candidate rows, so the editor can
+// render them pre-selected alongside the unused candidates. Reads each source
+// live from history; a source whose entry is gone (a re-import, a deleted
+// account) is omitted — its contribution still lives in the repair's stored
+// `amount`, but it can't be unlinked individually once unresolvable. Primary
+// first, matching `repairSources`.
+export function resolveRepairSourceRows(
+  data: UserData,
+  repair: PropertyRepair,
+): RepairCandidate[] {
+  const types = allTypes(data);
+  const ruleCache = newRuleMatchCache();
+  const rows: RepairCandidate[] = [];
+  for (const source of repairSources(repair)) {
+    const entry = data.history[source.accountId]?.find(
+      (e) => e.id === source.entryId,
+    );
+    if (!entry) continue;
+    rows.push(
+      entryToCandidate(
+        source.accountId,
+        entry,
+        data.companies,
+        types,
+        data.merchantHints,
+        data.matchRules,
+        ruleCache,
+      ),
+    );
+  }
+  return rows;
 }

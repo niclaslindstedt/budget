@@ -277,6 +277,12 @@ const catalog = {
     learnMore:
       "Tag a bank charge with the Repairs or Renovations type, then open a property's wrench view and add it. Each repair links to its source transaction, and attaching the receipt keeps the cost ready for a future tax deduction — a repair with no receipt is flagged so you don't lose the paperwork.",
   },
+  groupedRepair: {
+    name: "Itemized",
+    condition: "Group more than one transaction under a single repair.",
+    learnMore:
+      "One invoice is often paid across several bank charges — a deposit and a balance, staged payments to a contractor. In a property's wrench view, add or edit a repair and tick every transaction that paid the same invoice: the amounts add up into one repair, and a single receipt on the primary transaction covers them all.",
+  },
   netSaleProfit: {
     name: "For Sale",
     condition: "Open the Net sale profit estimator on a property.",

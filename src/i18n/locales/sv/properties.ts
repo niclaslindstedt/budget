@@ -200,12 +200,18 @@ const properties: PropertiesCatalog = {
   addRepairsOther: "Lägg till {count} poster",
   repairHasReceipt: "Har kvitto",
 
-  // Single repair editor — add (with a source-transaction picker) and edit
-  // (description + subtype only; the source charge is read-only).
+  // Single repair editor — add (pick one or more source transactions) and
+  // edit (add / remove transactions, description, subtype).
   repairEditorAddTitle: "Lägg till reparation",
   repairEditorEditTitle: "Redigera reparation",
-  repairSourceLabel: "Källtransaktion",
-  repairSourcePlaceholder: "Välj en transaktion…",
+  // The multi-select list of source transactions; a repair can group several
+  // bank charges that paid one invoice, sharing one receipt.
+  repairSourcesLabel: "Transaktioner",
+  // Count of selected transactions, shown beside the running total.
+  repairSourcesCountOne: "{count} transaktion",
+  repairSourcesCountOther: "{count} transaktioner",
+  // Marks the transaction that holds the shared receipt for the repair.
+  repairPrimary: "Kvitto",
   repairSourceEmpty:
     "Inga oanvända Reparation- eller Renovering-transaktioner hittades. Tagga en utgift med typen Reparation eller Renovering i din budget och kom tillbaka.",
   repairDescriptionLabel: "Beskrivning",

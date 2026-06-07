@@ -106,20 +106,39 @@ export type Mortgage = {
   payments: MortgagePayment[];
 };
 
-// One repair or renovation on a property — a single bank charge the user
+// One extra bank transaction backing a repair, beyond its primary source
+// (the `accountId` / `sourceHistoryId` on the repair itself). A single
+// invoice for one job is often paid across several bank charges — a deposit
+// plus a balance, staged payments to a contractor — so a repair can group
+// many transactions. The primary source stays on the repair (it hosts the
+// receipt and resolves the row's company / tags); these are the rest. Each
+// is located the same way (`accountId` in `UserData.history`, `entryId` its
+// entry id) and is best-effort across re-imports, exactly like the primary.
+export type RepairSource = {
+  accountId: string;
+  entryId: string;
+};
+
+// One repair or renovation on a property — one or more bank charges the user
 // tagged as **Repairs** (`preset-type-repairs`) or **Renovations**
 // (`preset-type-renovations`) and bound to this property. Recorded for a
 // future "net value of a property" calculation (value − loan − deductible
 // repairs / renovations), where a receipt is what makes the cost
-// tax-deductible. The receipt itself is NOT stored here: it physically
-// lives on the source `HistoryEntry.receiptPath`, so attaching one later
-// clears the "missing receipt" flag without mutating the repair. A repair
-// can be sourced from at most one transaction, and a given transaction
-// backs at most one property's repair (enforced by the candidate finder).
+// tax-deductible.
+//
+// A repair groups one **primary** source transaction (`accountId` /
+// `sourceHistoryId` below) plus any number of **additional** sources
+// (`additionalSources`) — the bank charges that together paid one invoice.
+// `amount` is the sum across every source; `date` / `typeId` track the
+// primary. The single receipt covering the whole invoice is NOT stored
+// here: it physically lives on the primary `HistoryEntry.receiptPath`, so
+// attaching one later clears the "missing receipt" flag without mutating the
+// repair. A given transaction backs at most one property's repair across all
+// its sources (enforced by the candidate finder).
 export type PropertyRepair = {
   id: string;
-  date: string; // ISO yyyy-mm-dd — copied from the source transaction
-  amount: number; // the cost magnitude (>= 0)
+  date: string; // ISO yyyy-mm-dd — copied from the primary source transaction
+  amount: number; // the cost magnitude (>= 0) — sum across every source
   // The label shown on the repairs list — denormalised from the source
   // transaction's effective description at link time so the row reads
   // sensibly even if the source entry is later edited or re-imported.
@@ -135,14 +154,20 @@ export type PropertyRepair = {
   // only. Absent ⇒ unclassified. A dangling reference (the subtype was
   // deleted) simply renders unclassified — the picker resolves it to none.
   subtypeId?: string;
-  // The bank transaction this repair was sourced from. `accountId` locates
-  // it in `UserData.history`; `sourceHistoryId` is its entry id. The pair
-  // resolves the live entry to read receipt status and attach / view a
-  // receipt. Best-effort across re-imports (bank ids aren't stable), and
-  // the account may since have been deleted — the snapshot above survives
+  // The **primary** bank transaction this repair was sourced from.
+  // `accountId` locates it in `UserData.history`; `sourceHistoryId` is its
+  // entry id. The pair resolves the live entry to read receipt status, attach
+  // / view the receipt that covers the whole repair, and resolve the row's
+  // company / tags. Best-effort across re-imports (bank ids aren't stable),
+  // and the account may since have been deleted — the snapshot above survives
   // either way; only the receipt resolves as missing.
   accountId: string;
   sourceHistoryId: string;
+  // Any further transactions paying the same invoice, beyond the primary
+  // above. Absent / empty ⇒ a single-transaction repair (the common case and
+  // the only shape older budgets carry — this field is additive). Walk the
+  // full set with `repairSources` in `src/data/property-repairs/sources.ts`.
+  additionalSources?: RepairSource[];
 };
 
 // One property the user owns or has bought. `purchaseAmount` is what they

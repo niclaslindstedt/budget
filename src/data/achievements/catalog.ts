@@ -37,6 +37,7 @@ import {
   Home,
   KeyRound,
   Landmark,
+  Layers,
   LayoutDashboard,
   LayoutGrid,
   Link as LinkIcon,
@@ -251,6 +252,13 @@ const hasFullyPaidMortgage = (s: UserData) =>
 // bound a tagged bank charge to a property through the wrench view.
 const hasRepair = (s: UserData) =>
   s.properties.some((p) => p.repairs.length > 0);
+
+// A repair groups more than one bank transaction — the user gathered several
+// charges from one invoice under a single repair (and one shared receipt).
+const hasGroupedRepair = (s: UserData) =>
+  s.properties.some((p) =>
+    p.repairs.some((r) => (r.additionalSources?.length ?? 0) > 0),
+  );
 
 // Did the named device bucket's headerAction transition away from the
 // default in this `(prev, next)` step? Used by the `shortcut`
@@ -828,6 +836,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.properties],
       predicate: (prev, next) => !hasRepair(prev) && hasRepair(next),
+    },
+  },
+  {
+    // The user grouped more than one bank transaction under a single repair —
+    // an invoice paid across several charges, recorded as one deductible cost
+    // with one shared receipt.
+    id: "groupedRepair",
+    tier: "pro",
+    glyph: Layers,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasGroupedRepair(prev) && hasGroupedRepair(next),
     },
   },
   {

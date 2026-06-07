@@ -274,6 +274,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Tagga en bankutgift med typen Reparation eller Renovering, öppna sedan en fastighets skiftnyckelvy och lägg till den. Varje post länkas till sin källtransaktion, och att bifoga kvittot håller kostnaden redo för ett framtida skatteavdrag — en post utan kvitto flaggas så att du inte tappar bort underlaget.",
   },
+  groupedRepair: {
+    name: "Specificerad",
+    condition: "Gruppera fler än en transaktion under samma reparation.",
+    learnMore:
+      "En faktura betalas ofta med flera bankutgifter — en handpenning och en slutbetalning, delbetalningar till en hantverkare. I en fastighets skiftnyckelvy lägger du till eller redigerar en reparation och bockar för varje transaktion som betalade samma faktura: beloppen summeras till en reparation, och ett enda kvitto på primärtransaktionen täcker dem alla.",
+  },
   netSaleProfit: {
     name: "Till salu",
     condition: "Öppna kalkylen för nettovinst på en fastighet.",

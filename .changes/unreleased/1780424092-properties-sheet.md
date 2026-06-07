@@ -70,6 +70,10 @@ The wrench view lists each repair with its full date, company, and tags.
 A repair links back to the transaction it came from, so
 attaching its receipt keeps the cost ready for a future tax deduction; a
 repair with no receipt is flagged "missing receipt" so the paperwork
-doesn't slip. The same transaction can't be used for two properties.
-Swipe a repair left to edit its description, subtype, company, and tags,
-manage its receipt, or delete it.
+doesn't slip. When one invoice was paid across several bank charges — a
+deposit and a balance, staged payments to a contractor — tick every
+transaction in the repair editor to group them under a single repair:
+their amounts add up, and one receipt covers them all. The same
+transaction can't back two repairs. Swipe a repair left to edit its
+transactions, description, subtype, company, and tags, manage its
+receipt, or delete it.
