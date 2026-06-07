@@ -5,10 +5,19 @@ description: "Use when docs/ may be stale relative to src/ layout, the persisted
 
 # Updating docs/
 
-`docs/` is the reference manual. Today it ships two topic files:
+`docs/` is the reference manual. Today it ships two topic files this
+skill keeps in sync:
 
 - `docs/getting-started.md` — local setup walk-through.
 - `docs/architecture.md` — module layout and the planned data model.
+
+Two more docs live under `docs/` but are **not drift-swept by this
+skill** — `docs/dictionary.md` (term → file index) and
+`docs/overview.md` (a one-to-one description for every dictionary
+term). Like the achievements catalog, they are maintained in the same
+PR as the feature by the agent that ships it (see AGENTS.md →
+"Resolving user vocabulary"), not regenerated here. Leave their bodies
+alone; only confirm they stay linked from the README (below).
 
 A third doc-like artifact lives in `src/` because it ships as a page
 of the deployed SPA rather than as standalone markdown:
@@ -90,9 +99,10 @@ not drift cleanup.
   constant to today's ISO date — the value is rendered verbatim at
   the top of the page and is how readers tell the policy is fresh.
 - Cross-check the `README.md` "Documentation" link list — every file
-  the README links to must still exist and still be linked. The README
-  also carries a "Privacy" pointer to `budget.niclaslindstedt.se/privacy`;
-  if the route or the page moves, update that link too.
+  the README links to must still exist and still be linked, including
+  `docs/dictionary.md` and `docs/overview.md`. The README also carries
+  a "Privacy" pointer to `budget.niclaslindstedt.se/privacy`; if the
+  route or the page moves, update that link too.
 - Run `make fmt` and `make lint`.
 - Rewrite the tracking file:
 

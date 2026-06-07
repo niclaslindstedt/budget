@@ -116,6 +116,10 @@ check. See
 - [`docs/getting-started.md`](docs/getting-started.md) — local setup.
 - [`docs/architecture.md`](docs/architecture.md) — code layout and the
   planned data model.
+- [`docs/dictionary.md`](docs/dictionary.md) — index mapping the words
+  the team says to the files they point at.
+- [`docs/overview.md`](docs/overview.md) — how each of those subsystems
+  behaves (the description for every dictionary term).
 - [`AGENTS.md`](AGENTS.md) — guidance for AI coding agents.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch, commit, and PR
   conventions.
