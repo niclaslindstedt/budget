@@ -99,11 +99,13 @@ export type CustomThemeColors = {
   negative: string;
 };
 
-// User-authored theme applied when `Settings.theme === "custom"`. Kept
-// on disk even when another preset is active so flipping back to
-// `"custom"` restores the previous tweaks. The picker pre-fills it
-// from whichever preset (Dark or Light) was effective the first time
-// the user switches to Custom; subsequent edits move on from there.
+// User-authored theme applied when `Settings.theme === "custom"`. The
+// picker re-seeds it from whichever theme is on screen each time the
+// user switches into Custom — colours from the active preset (System
+// resolves to the OS scheme) plus the baseline shape every preset
+// renders at — so the editor always opens as a copy of the current
+// look. Subsequent edits move on from there until the next switch
+// into Custom snapshots afresh.
 export type CustomTheme = {
   colors: CustomThemeColors;
   radius: RadiusPreset;
