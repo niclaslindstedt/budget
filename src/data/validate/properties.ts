@@ -61,39 +61,73 @@ function validatePayment(raw: unknown): MortgagePayment | null {
 }
 
 // Validate one repair / renovation. Its identity fields — `id`, `date`,
-// `typeId`, and the `accountId` / `sourceHistoryId` pair locating the
-// **primary** source bank charge — are all required (a repair with no source
-// can't resolve its receipt). Any `additionalSources` (a multi-transaction
-// repair) are validated leniently below. The `accountId` is NOT gated on the known-account
-// set: a repair whose source account was later deleted keeps its snapshot
-// (the receipt simply resolves as missing), mirroring how a
-// `MortgagePayment.sourceHistoryId` is preserved unconditionally. The
-// `amount` is coerced non-negative and `description` defaults to "". The
-// optional `subtypeId` is advisory — kept when it's a non-empty string and
-// left unverified against the subtype set (properties are validated before
-// subtypes in the pipeline); a dangling reference renders unclassified, so
-// no harm in preserving it. A malformed repair is dropped rather than
-// rejecting the whole property.
-function validateRepair(raw: unknown): PropertyRepair | null {
+// `typeId` — are required. The `accountId` / `sourceHistoryId` pair locating
+// the **primary** source bank charge is optional: present (and kept together)
+// for a transaction-backed repair, absent for a **manual** repair (work older
+// than the imported history reaches). When present, the `accountId` is NOT
+// gated on the known-account set: a repair whose source account was later
+// deleted keeps its snapshot (the receipt simply resolves as missing),
+// mirroring how a `MortgagePayment.sourceHistoryId` is preserved
+// unconditionally. Any `additionalSources` (a multi-transaction repair) are
+// validated leniently below. The `amount` is coerced non-negative and
+// `description` defaults to "". The optional `subtypeId` / `tagIds` are
+// advisory — kept when non-empty and left unverified against the subtype / tag
+// sets (properties are validated before those in the pipeline); a dangling
+// reference renders unclassified / nothing. The manual `companyId` is dropped
+// if it dangles (mirrors `Property.companyId`). A malformed repair is dropped
+// rather than rejecting the whole property.
+function validateRepair(
+  raw: unknown,
+  knownCompanyIds: ReadonlySet<string>,
+): PropertyRepair | null {
   if (!isObject(raw)) return null;
   const { id, date, typeId, accountId, sourceHistoryId } = raw;
   if (typeof id !== "string" || id === "") return null;
   if (!isIsoDate(date)) return null;
   if (typeof typeId !== "string" || typeId === "") return null;
-  if (typeof accountId !== "string" || accountId === "") return null;
-  if (typeof sourceHistoryId !== "string" || sourceHistoryId === "")
-    return null;
   const repair: PropertyRepair = {
     id,
     date,
     typeId,
-    accountId,
-    sourceHistoryId,
     amount: nonNegative(raw.amount),
     description: typeof raw.description === "string" ? raw.description : "",
   };
+  // The primary source pair is kept only when BOTH are non-empty strings — a
+  // half-present pair (a hand-edited file) drops to a manual repair rather
+  // than carrying an unresolvable half-link.
+  if (
+    typeof accountId === "string" &&
+    accountId !== "" &&
+    typeof sourceHistoryId === "string" &&
+    sourceHistoryId !== ""
+  ) {
+    repair.accountId = accountId;
+    repair.sourceHistoryId = sourceHistoryId;
+  }
   if (typeof raw.subtypeId === "string" && raw.subtypeId !== "")
     repair.subtypeId = raw.subtypeId;
+  // Manual-repair company (the contractor). Dropped if it dangles, mirroring
+  // `Property.companyId`. Transaction-backed repairs leave this absent.
+  if (
+    typeof raw.companyId === "string" &&
+    raw.companyId !== "" &&
+    knownCompanyIds.has(raw.companyId)
+  )
+    repair.companyId = raw.companyId;
+  // Manual-repair tags. Non-empty strings only, deduped; left unverified
+  // against the tag set (a dangling tag renders nothing). Absent / empty ⇒
+  // omitted so a tagless repair stays byte-identical to a reloaded one.
+  if (Array.isArray(raw.tagIds)) {
+    const seen = new Set<string>();
+    const tagIds: string[] = [];
+    for (const tagId of raw.tagIds) {
+      if (typeof tagId !== "string" || tagId === "" || seen.has(tagId))
+        continue;
+      seen.add(tagId);
+      tagIds.push(tagId);
+    }
+    if (tagIds.length > 0) repair.tagIds = tagIds;
+  }
   // The repair-owned receipt path. Kept when it's a non-empty string;
   // absent / "" ⇒ no receipt (surfaces the missing-receipt flag).
   if (typeof raw.receiptPath === "string" && raw.receiptPath !== "")
@@ -303,7 +337,7 @@ export function validateProperty(
   if (Array.isArray(raw.repairs)) {
     const seen = new Set<string>();
     for (const rawRepair of raw.repairs) {
-      const repair = validateRepair(rawRepair);
+      const repair = validateRepair(rawRepair, knownCompanyIds);
       if (!repair || seen.has(repair.id)) continue;
       seen.add(repair.id);
       property.repairs.push(repair);

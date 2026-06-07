@@ -74,7 +74,11 @@ several bank charges — a deposit and a balance, staged payments to a
 contractor — tick every transaction in the repair editor to group them
 under a single repair: their amounts add up, and the one receipt you
 attach to the repair covers them all. The same transaction can't back two
-repairs. Swipe a repair left to edit its transactions, description,
+repairs. Older work that predates the bank history you imported needn't be
+left out — choose **Add manually** in the wrench view to record a repair
+with no transaction behind it: enter the type, date, amount, description,
+contractor, and tags directly (stored on the repair itself), and attach the
+receipt just the same. Swipe a repair left to edit its transactions, description,
 subtype, company, and tags, manage its receipt, or delete it. Repair
 receipts are saved into a folder named after the property, each named for
 its date, company, and the work done, so the folder reads like a dated

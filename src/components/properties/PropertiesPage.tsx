@@ -11,6 +11,7 @@ import {
   findRepairCandidates,
   resolveRepairSourceRows,
 } from "../../data/property-repairs/candidates";
+import { repairMetaKey } from "../../data/property-repairs/sources";
 import type { RepairReceiptRename } from "../AppShell/hooks/useReceiptManager";
 import type { Action } from "../../data/reducer";
 import type {
@@ -52,6 +53,7 @@ import { MortgagePaymentsModal } from "./MortgagePaymentsModal";
 import { NetSaleProfitModal } from "./NetSaleProfitModal";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyEditorModal } from "./PropertyEditorModal";
+import { ManualRepairModal } from "./ManualRepairModal";
 import { RepairsAddModal } from "./RepairsAddModal";
 import { RepairsEditModal } from "./RepairsEditModal";
 import { RepairsModal } from "./RepairsModal";
@@ -112,8 +114,17 @@ export function PropertiesPage({
     null,
   );
   // The single-repair editor — `repair: null` is add mode (with a source
-  // picker), a set repair is edit mode (description + subtype only).
+  // picker), a set repair is edit mode (description + subtype only). Used for
+  // transaction-backed repairs only; manual repairs route to the editor below.
   const [repairEditor, setRepairEditor] = useState<{
+    property: Property;
+    repair: PropertyRepair | null;
+  } | null>(null);
+  // The manual-repair editor — for work with no backing bank transaction
+  // (older than the imported history reaches). `repair: null` is add mode;
+  // a set repair is edit mode. Fields are entered directly (date, amount,
+  // type, description, company, tags), not sourced from a charge.
+  const [manualRepairEditor, setManualRepairEditor] = useState<{
     property: Property;
     repair: PropertyRepair | null;
   } | null>(null);
@@ -188,7 +199,10 @@ export function PropertiesPage({
     const referenced = new Set<string>();
     for (const property of data.properties) {
       for (const repair of property.repairs) {
-        referenced.add(`${repair.accountId}:${repair.sourceHistoryId}`);
+        // Manual repairs (no backing transaction) carry their own metadata —
+        // skip them here; only transaction-backed repairs reference an entry.
+        if (repair.accountId && repair.sourceHistoryId)
+          referenced.add(`${repair.accountId}:${repair.sourceHistoryId}`);
       }
     }
     const m = new Map<string, HistoryEntry>();
@@ -202,14 +216,14 @@ export function PropertiesPage({
     return m;
   }, [data.properties, data.history]);
 
-  // Company + tags behind each repair, resolved live from its source
-  // transaction (override → rule → hint) rather than stored on the repair.
-  // Keyed by `${accountId}:${entryId}` so the repairs view can surface them
-  // as read-only metadata. Company / tags are deliberately not denormalised
-  // onto the repair — editing them patches the source `HistoryEntry`.
+  // Company + tags behind each repair, keyed by `repairMetaKey` so the repairs
+  // view can surface them as read-only metadata. Two sources feed it:
+  // transaction-backed repairs resolve live off their primary transaction
+  // (override → rule → hint) and are NOT denormalised onto the repair (editing
+  // them patches the source `HistoryEntry`); manual repairs (no transaction)
+  // carry their own `companyId` / `tagIds` on the repair, resolved here.
   const repairMetadata = useMemo(() => {
     const m = new Map<string, { company: Company | null; tags: Tag[] }>();
-    if (repairSourceEntries.size === 0) return m;
     const ruleCache = newRuleMatchCache();
     for (const [key, entry] of repairSourceEntries) {
       const { companyId, tagIds } = resolveEntryLabels(
@@ -228,9 +242,24 @@ export function PropertiesPage({
       }
       m.set(key, { company, tags });
     }
+    for (const property of data.properties) {
+      for (const repair of property.repairs) {
+        if (repair.accountId && repair.sourceHistoryId) continue;
+        const company = repair.companyId
+          ? (companiesById.get(repair.companyId) ?? null)
+          : null;
+        const tags: Tag[] = [];
+        for (const id of repair.tagIds ?? []) {
+          const tag = tagsById.get(id);
+          if (tag) tags.push(tag);
+        }
+        m.set(repairMetaKey(repair), { company, tags });
+      }
+    }
     return m;
   }, [
     repairSourceEntries,
+    data.properties,
     data.merchantHints,
     data.matchRules,
     companiesById,
@@ -348,8 +377,7 @@ export function PropertiesPage({
     for (const repair of property.repairs) {
       if (!repair.receiptPath) continue;
       const companyName =
-        repairMetadata.get(`${repair.accountId}:${repair.sourceHistoryId}`)
-          ?.company?.name ?? "";
+        repairMetadata.get(repairMetaKey(repair))?.company?.name ?? "";
       const moved = await onRenameRepairReceipt({
         propertyId: property.id,
         repairId: repair.id,
@@ -652,8 +680,13 @@ export function PropertiesPage({
           onDownloadReceipt={onDownloadReceipt}
           onRemoveReceipt={onRemoveReceipt}
           onEditRepair={(repair) => {
-            if (liveRepairsProperty)
+            if (!liveRepairsProperty) return;
+            // A manual repair (no backing transaction) edits its own fields;
+            // a transaction-backed repair edits its source set + metadata.
+            if (repair.accountId && repair.sourceHistoryId)
               setRepairEditor({ property: liveRepairsProperty, repair });
+            else
+              setManualRepairEditor({ property: liveRepairsProperty, repair });
           }}
           onDeleteRepair={(repairId) => {
             if (liveRepairsProperty)
@@ -664,6 +697,13 @@ export function PropertiesPage({
               setRepairEditor({ property: liveRepairsProperty, repair: null });
           }}
           onQuickAdd={() => setAddingRepairsFor(liveRepairsProperty)}
+          onAddManual={() => {
+            if (liveRepairsProperty)
+              setManualRepairEditor({
+                property: liveRepairsProperty,
+                repair: null,
+              });
+          }}
           onClose={() => setRepairsProperty(null)}
         />
 
@@ -736,6 +776,55 @@ export function PropertiesPage({
           onAdd={(repairs) => {
             if (addingRepairsFor)
               handleAddRepairs(addingRepairsFor.id, repairs);
+          }}
+        />
+
+        <ManualRepairModal
+          open={manualRepairEditor !== null}
+          repair={manualRepairEditor?.repair ?? null}
+          settings={settings}
+          subtypes={data.subtypes}
+          types={types}
+          categories={categories}
+          companies={data.companies}
+          tags={data.tags}
+          onCreateSubtype={handleCreateSubtype}
+          onCreateType={handleCreateType}
+          onCreateCategory={handleCreateCategory}
+          onCreateCompany={handleCreateCompany}
+          onCreateTag={handleCreateTag}
+          onClose={() => setManualRepairEditor(null)}
+          onAdd={(repair) => {
+            if (manualRepairEditor)
+              handleAddRepairs(manualRepairEditor.property.id, [repair]);
+          }}
+          onUpdate={(repairId, patch) => {
+            if (manualRepairEditor)
+              handleUpdateRepair(
+                manualRepairEditor.property.id,
+                repairId,
+                patch,
+              );
+          }}
+          onReconcileReceipt={(repairId, next) => {
+            if (!manualRepairEditor) return;
+            const property = data.properties.find(
+              (p) => p.id === manualRepairEditor.property.id,
+            );
+            const repair = property?.repairs.find((r) => r.id === repairId);
+            if (!property || !repair?.receiptPath) return;
+            const companyName = next.companyId
+              ? (companiesById.get(next.companyId)?.name ?? "")
+              : "";
+            void onRenameRepairReceipt({
+              propertyId: property.id,
+              repairId,
+              currentPath: repair.receiptPath,
+              propertyName: property.name,
+              companyName,
+              description: next.description,
+              entryDate: repair.date,
+            });
           }}
         />
 

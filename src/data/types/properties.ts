@@ -119,35 +119,45 @@ export type RepairSource = {
   entryId: string;
 };
 
-// One repair or renovation on a property — one or more bank charges the user
-// tagged as **Repairs** (`preset-type-repairs`) or **Renovations**
+// One repair or renovation on a property — work the user tagged as
+// **Repairs** (`preset-type-repairs`) or **Renovations**
 // (`preset-type-renovations`) and bound to this property. Recorded for a
 // future "net value of a property" calculation (value − loan − deductible
 // repairs / renovations), where a receipt is what makes the cost
 // tax-deductible.
 //
-// A repair groups one **primary** source transaction (`accountId` /
-// `sourceHistoryId` below) plus any number of **additional** sources
-// (`additionalSources`) — the bank charges that together paid one invoice.
-// `amount` is the sum across every source; `date` / `typeId` track the
-// primary. The single receipt covering the whole invoice is owned by the
-// repair itself (`receiptPath`), decoupled from any one transaction — the
-// invoice is the repair's document, not a property of an arbitrary "primary"
-// charge. Attaching one clears the "missing receipt" flag; the primary
-// transaction still resolves the row's company / tags. A given transaction
-// backs at most one property's repair across all its sources (enforced by
-// the candidate finder).
+// A repair comes from one of two paths:
+//
+// - **Transaction-backed** (the common case): one **primary** source
+//   transaction (`accountId` / `sourceHistoryId` below) plus any number of
+//   **additional** sources (`additionalSources`) — the bank charges that
+//   together paid one invoice. `date` / `typeId` track the primary, and the
+//   row's company / tags resolve live off the primary transaction (they are
+//   NOT stored on the repair). A given transaction backs at most one
+//   property's repair across all its sources (enforced by the candidate
+//   finder).
+// - **Manual** (no backing transaction): for work older than the imported
+//   bank history reaches, or paid in a way the ledger never saw. `accountId`
+//   / `sourceHistoryId` are absent and there are no sources, so `date`,
+//   `typeId`, `companyId`, and `tagIds` are entered by the user and stored on
+//   the repair itself — there is no transaction to carry them.
+//
+// `amount` is the sum across every source (transaction-backed) or the entered
+// cost (manual), always >= 0. The single receipt covering the whole invoice
+// is owned by the repair itself (`receiptPath`), decoupled from any one
+// transaction — the invoice is the repair's document. Attaching one clears
+// the "missing receipt" flag.
 export type PropertyRepair = {
   id: string;
-  date: string; // ISO yyyy-mm-dd — copied from the primary source transaction
+  date: string; // ISO yyyy-mm-dd — primary source's date, or entered (manual)
   amount: number; // the cost magnitude (>= 0) — sum across every source
   // The label shown on the repairs list — denormalised from the source
-  // transaction's effective description at link time so the row reads
-  // sensibly even if the source entry is later edited or re-imported.
+  // transaction's effective description at link time (transaction-backed) or
+  // entered by the user (manual) so the row reads sensibly.
   description: string;
   // Which kind of work this is, for the row glyph / label: the preset type
-  // id the source charge was tagged with — `PRESET_TYPE_REPAIRS_ID` or
-  // `PRESET_TYPE_RENOVATIONS_ID`.
+  // id the source charge was tagged with, or the user's pick (manual) —
+  // `PRESET_TYPE_REPAIRS_ID` or `PRESET_TYPE_RENOVATIONS_ID`.
   typeId: string;
   // The user's classification of this work, one tier below the Repairs /
   // Renovations type: a `Subtype` id (`UserData.subtypes`) whose parent
@@ -161,9 +171,22 @@ export type PropertyRepair = {
   // entry id. The pair resolves the live entry to read the row's company /
   // tags (which stay on the transaction, shared with the budget). Best-effort
   // across re-imports (bank ids aren't stable), and the account may since have
-  // been deleted — the snapshot above survives either way.
-  accountId: string;
-  sourceHistoryId: string;
+  // been deleted — the snapshot above survives either way. **Both absent for
+  // a manual repair** (no backing transaction); the pair is always set or
+  // cleared together.
+  accountId?: string;
+  sourceHistoryId?: string;
+  // The contractor / company behind a **manual** repair — a `UserData.companies`
+  // id. Transaction-backed repairs leave this absent and resolve company off
+  // the primary transaction instead; only a manual repair (no transaction to
+  // carry it) stores company here. A dangling reference (the company was
+  // deleted) is swept to absent on load, mirroring `Property.companyId`.
+  companyId?: string;
+  // The tags on a **manual** repair — `UserData.tags` ids. As with `companyId`,
+  // transaction-backed repairs resolve tags off the primary transaction and
+  // leave this absent; only manual repairs store tags here. Absent / empty ⇒
+  // untagged; a dangling reference renders nothing.
+  tagIds?: string[];
   // Any further transactions paying the same invoice, beyond the primary
   // above. Absent / empty ⇒ a single-transaction repair (the common case and
   // the only shape older budgets carry — this field is additive). Walk the

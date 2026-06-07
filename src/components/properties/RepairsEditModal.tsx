@@ -313,7 +313,10 @@ export function RepairsEditModal({
         additionalSources: additional.length > 0 ? additional : undefined,
       };
       onUpdate(repair.id, patch);
-      persistEntryMetadata(repair.accountId, repair.sourceHistoryId);
+      // This editor only handles transaction-backed repairs (manual ones route
+      // to `ManualRepairModal`), so the primary source pair is always present.
+      if (repair.accountId && repair.sourceHistoryId)
+        persistEntryMetadata(repair.accountId, repair.sourceHistoryId);
       // Re-file the repair's receipt if its company / description changed —
       // the receipt name encodes both. A no-op when nothing relevant moved.
       onReconcileReceipt(repair.id, { companyId, description: desc });

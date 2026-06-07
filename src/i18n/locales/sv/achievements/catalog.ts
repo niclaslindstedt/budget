@@ -145,6 +145,13 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Hitta löner söker igenom ett valt kontos hela bankhistorik — även flera år bakåt, innan du märkte något — hittar din återkommande lön, fastställer en baslinje och går igenom den år för år så att du kan lägga till, redigera eller hoppa över varje månad.",
   },
+  manualPayslip: {
+    name: "Utanför böckerna",
+    condition:
+      "Lägg till ett lönebesked manuellt, utan någon banktransaktion bakom.",
+    learnMore:
+      "Bankhistoriken sträcker sig bara så långt bakåt, men din löneöversikt behöver inte sluta där. Använd Lägg till lönebesked på Lön-sidan för att registrera en lön från grunden — välj utbetalningsmånad, ange nettot (och bruttot, om du har det), så hamnar den i årstabellerna bredvid dem som Hitta löner hittade.",
+  },
   taxEstimator: {
     name: "Skatteberäknare",
     condition: "Skapa en skatteprofil på en lönesida.",
@@ -279,6 +286,13 @@ const catalog: AchievementsCatalogEntries = {
     condition: "Gruppera fler än en transaktion under samma reparation.",
     learnMore:
       "En faktura betalas ofta med flera bankutgifter — en handpenning och en slutbetalning, delbetalningar till en hantverkare. I en fastighets skiftnyckelvy lägger du till eller redigerar en reparation och bockar för varje transaktion som betalade samma faktura: beloppen summeras till en reparation, och ett enda kvitto på primärtransaktionen täcker dem alla.",
+  },
+  manualRepair: {
+    name: "Pappersspår",
+    condition:
+      "Registrera en reparation eller renovering utan någon banktransaktion bakom.",
+    learnMore:
+      "Vissa förbättringar är äldre än din importerade bankhistorik — men de räknas ändå mot en fastighets avdragsgilla kostnader. I en fastighets skiftnyckelvy väljer du Lägg till manuellt och anger arbetet direkt: typ (Reparation eller Renovering), datum, belopp, beskrivning, hantverkare och taggar. Bifoga kvittot så är kostnaden redo för en framtida reavinstberäkning, precis som en transaktionsbunden post.",
   },
   netSaleProfit: {
     name: "Till salu",
