@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="theme-color"
+      content="#1d2027"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#eef0f2"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="author" content="Niclas Lindstedt" />
+    <meta name="application-name" content="Budget" />
+    <meta property="og:site_name" content="Budget" />
+    <meta property="og:locale" content="en_US" />
+
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <link rel="icon" type="image/svg+xml" href="/branch/favicon.svg" />
+    <link rel="me" href="https://github.com/niclaslindstedt" />
+
+    <!-- PWA: vite-plugin-pwa injects <link rel="manifest"> here at
+         build time. The Apple-specific tags below are static; the
+         `apple-mobile-web-app-title` value is rewritten to
+         "Budget pre" for the /preview/ build via the
+         `patchAppleTitle` Vite plugin so the two home-screen
+         installs are visually distinguishable on iOS. -->
+    <link rel="apple-touch-icon" href="/branch/apple-touch-icon-180x180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Budget br" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- HEAD_SEO_START
+         Everything between these markers is the homepage's per-route SEO
+         payload. The build-time splicer in `vite.config.ts` reads
+         `dist/index.html`, copies it to `dist/<route>/index.html`, and
+         replaces this block with the route-specific <title>,
+         <meta name="description">, canonical, og:*, twitter:*, and JSON-LD
+         derived from `src/seo/routes.ts`. Keep these markers verbatim or
+         the splicer will fall back to the homepage payload on every alias.
+    -->
+    <title>Budget</title>
+    <meta
+      name="description"
+      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+    />
+    <link rel="canonical" href="https://budget.niclaslindstedt.se/" />
+    <meta name="robots" content="noindex,nofollow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Budget — local-first budget app" />
+    <meta
+      property="og:description"
+      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+    />
+    <meta property="og:url" content="https://budget.niclaslindstedt.se/" />
+    <meta
+      property="og:image"
+      content="https://budget.niclaslindstedt.se/og-default.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Budget — A local-first budget app" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Budget — local-first budget app" />
+    <meta
+      name="twitter:description"
+      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+    />
+    <meta
+      name="twitter:image"
+      content="https://budget.niclaslindstedt.se/og-default.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Budget — A local-first budget app"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "@id": "https://budget.niclaslindstedt.se/#author",
+        "name": "Niclas Lindstedt",
+        "url": "https://niclaslindstedt.se",
+        "sameAs": [
+          "https://github.com/niclaslindstedt",
+          "https://www.linkedin.com/in/niclaslindstedt/"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": "https://budget.niclaslindstedt.se/#website",
+        "url": "https://budget.niclaslindstedt.se/",
+        "name": "Budget",
+        "description": "A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://budget.niclaslindstedt.se/#author" }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "@id": "https://budget.niclaslindstedt.se/#app",
+        "name": "Budget",
+        "url": "https://budget.niclaslindstedt.se/",
+        "description": "A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": { "@id": "https://budget.niclaslindstedt.se/#author" },
+        "publisher": { "@id": "https://budget.niclaslindstedt.se/#author" },
+        "screenshot": "https://budget.niclaslindstedt.se/og-default.png",
+        "keywords": "local-first, budget, finance, spreadsheet, no account, no backend, privacy, offline, pwa",
+        "featureList": [
+          "Local-first storage — data lives in your browser",
+          "Spreadsheet-style monthly sheets",
+          "JSON export / import for portability",
+          "Optional Dropbox sync to your own app folder",
+          "No account, no backend, no behavioural tracking"
+        ]
+      }
+    </script>
+    <!-- HEAD_SEO_END -->
+    <script type="module" crossorigin src="/branch/assets/index-C_zoDfhc.js"></script>
+    <link rel="modulepreload" crossorigin href="/branch/assets/rolldown-runtime-C0phanGV.js">
+    <link rel="modulepreload" crossorigin href="/branch/assets/preload-helper-D3OZAUez.js">
+    <link rel="modulepreload" crossorigin href="/branch/assets/react-vendor-aiE_7PBW.js">
+    <link rel="modulepreload" crossorigin href="/branch/assets/Modal-DM0plrAg.js">
+    <link rel="stylesheet" crossorigin href="/branch/assets/index-BBBVklbA.css">
+  <link rel="manifest" href="/branch/manifest.webmanifest"></head>
+  <body>
+    <div id="root">
+      <!--
+        Pre-hydration fallback shown only to clients that can't or won't
+        execute the SPA bundle: search-engine crawlers, link unfurlers,
+        and readers with JavaScript disabled. React's createRoot() in
+        src/main.tsx replaces this content the moment the bundle runs,
+        so a normal browser visitor never sees it. The copy intentionally
+        mirrors the og:description so Google can't read the body and the
+        meta description and decide they disagree.
+      -->
+      <noscript>
+        <!-- NOSCRIPT_START
+             Everything between these markers is the homepage's
+             pre-hydration fallback. The build-time route splicer in
+             `vite.config.ts` swaps this block for the per-route body
+             from `RouteSeo.noscriptBody` (see `src/seo/routes.ts`)
+             when emitting `dist/<route>/index.html`. Keep the
+             markers verbatim or the splicer falls back to this
+             home-page copy on every alias.
+        -->
+        <main
+          style="
+            font-family:
+              ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+              &quot;Liberation Mono&quot;, monospace;
+            max-width: 42rem;
+            margin: 0 auto;
+            padding: 2.5rem 1.25rem;
+            color: #c8c8c8;
+            background: #1d2027;
+            line-height: 1.55;
+          "
+        >
+          <h1 style="font-size: 1.5rem; color: #e5c07b; margin: 0 0 1rem">
+            Budget — a local-first budget app
+          </h1>
+          <p>
+            Budget is a spreadsheet-style budget app that keeps your data in
+            your browser's local storage. There is no account, no backend, and
+            no behavioural tracking SDK — the production site loads a
+            privacy-friendly page-view counter (GoatCounter) that records
+            aggregated hits only. You can export and import your full ledger as
+            a JSON file, and optionally sync the same bytes to your own Dropbox
+            app folder.
+          </p>
+          <p>
+            The app needs JavaScript to run. Enable JavaScript and reload, or
+            visit one of the static reference pages:
+          </p>
+          <ul>
+            <li><a href="/privacy/">Privacy policy</a></li>
+            <li><a href="/changelog/">Changelog</a></li>
+            <li>
+              <a href="https://github.com/niclaslindstedt/budget"
+                >Source on GitHub</a
+              >
+            </li>
+          </ul>
+        </main>
+        <!-- NOSCRIPT_END -->
+      </noscript>
+    </div>
+  </body>
+</html>

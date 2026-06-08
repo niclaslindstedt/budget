@@ -1,0 +1,1 @@
+var e=`/branch/assets/pdf.worker.min-yatZIOMy.mjs`;export{e as default};
