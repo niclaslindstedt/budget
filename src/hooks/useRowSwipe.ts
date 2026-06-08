@@ -20,6 +20,8 @@ type Options = {
   disabled?: boolean;
 };
 
+export type RowSwipeOptions = Options;
+
 export type RowSwipe = {
   swiped: boolean;
   setSwiped: (next: boolean) => void;

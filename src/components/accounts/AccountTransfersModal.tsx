@@ -213,7 +213,7 @@ export function AccountTransfersModal({
         )}
         <ActiveRowProvider>
           <table
-            className="transfers-table transfers-table-modal w-full border-collapse text-sm md:text-[13px]"
+            className="swipe-table transfers-table transfers-table-modal w-full border-collapse text-sm md:text-[13px]"
             style={
               {
                 "--transfers-row-template": mobileRowTemplate,
@@ -302,7 +302,7 @@ export function AccountTransfersModal({
                 </th>
                 <th
                   scope="col"
-                  className="transfer-action-cell w-16 px-2.5 py-2 text-xs"
+                  className="swipe-action-cell transfer-action-cell w-16 px-2.5 py-2 text-xs"
                   aria-label={t("budget.rowActions")}
                 >
                   <span className="flex items-center justify-center gap-1.5 md:gap-2">

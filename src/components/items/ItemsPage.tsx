@@ -203,7 +203,7 @@ export function ItemsPage({
               } as React.CSSProperties
             }
           >
-            <table className="items-table w-full border-collapse text-sm md:text-[13px]">
+            <table className="swipe-table items-table w-full border-collapse text-sm md:text-[13px]">
               <thead>
                 <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
                   <th
@@ -284,7 +284,7 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="items-action-cell w-32 px-2.5 py-2"
+                    className="swipe-action-cell items-action-cell w-32 px-2.5 py-2"
                     aria-label={t("itemsSheet.actions")}
                   >
                     <span className="flex items-center justify-start gap-1.5 md:gap-2">
@@ -349,7 +349,7 @@ export function ItemsPage({
                     >
                       <span>{formatBalance(totals.current, settings)}</span>
                     </td>
-                    <td className="items-action-cell px-2.5 py-2" />
+                    <td className="swipe-action-cell items-action-cell px-2.5 py-2" />
                   </tr>
                 )}
               </tbody>

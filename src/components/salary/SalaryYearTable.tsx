@@ -123,7 +123,7 @@ export function SalaryYearTable({
         }
       >
         <table
-          className={`salary-table w-full border-collapse text-sm md:text-[13px]${
+          className={`swipe-table salary-table w-full border-collapse text-sm md:text-[13px]${
             selectMode ? " is-selecting" : ""
           }`}
         >
@@ -276,7 +276,7 @@ export function SalaryYearTable({
               </th>
               <th
                 scope="col"
-                className="salary-action-cell w-32 px-2.5 py-2"
+                className="swipe-action-cell salary-action-cell w-32 px-2.5 py-2"
                 aria-label={t("salary.actions")}
               >
                 <span className="flex items-center justify-start gap-1.5 md:gap-2">
@@ -333,7 +333,7 @@ export function SalaryYearTable({
                 {formatBalance(totals.net, settings)}
               </td>
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="salary-action-cell px-2.5 py-2" />
+              <td className="swipe-action-cell salary-action-cell px-2.5 py-2" />
             </tr>
           </tbody>
         </table>

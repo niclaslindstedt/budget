@@ -110,7 +110,7 @@ function TransferRowImpl({
       <td className="px-2.5 py-2 text-right align-middle font-mono tabular-nums whitespace-nowrap text-fg-bright">
         {formatBalance(transfer.amount, settings)}
       </td>
-      <td className="transfer-action-cell w-16 p-0 align-middle">
+      <td className="swipe-action-cell transfer-action-cell w-16 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"

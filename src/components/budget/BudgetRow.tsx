@@ -4,13 +4,12 @@ import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
-import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import type { CellValue, Column, Row } from "../../data/types";
 import { formatAmount, formatShortDate } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { useModalDispatch } from "../modal-dispatch";
-import { useClaimActiveRow } from "../useClaimActiveRow";
+import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 import { BudgetCell } from "./BudgetCell";
 import { useBudgetContext } from "./BudgetContext";
 import type { CellLineItem } from "./cells/DescriptionCell";
@@ -113,14 +112,12 @@ function BudgetRowImpl({
     (next: boolean) => onSetRowNoCompany(row, next),
     [onSetRowNoCompany, row],
   );
-  const { swiped, setSwiped, touchHandlers } = useRowSwipe({
+  // A swiped row exposes destructive action buttons; the active-row
+  // claim (folded into the hook) makes a tap outside only dismiss the
+  // swipe instead of also firing the button that was tapped.
+  const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(row.id, {
     disabled: selectMode,
   });
-
-  // A swiped row exposes destructive action buttons; mark it active so
-  // a tap outside only dismisses the swipe instead of also firing the
-  // button that was tapped.
-  useClaimActiveRow(row.id, swiped, () => setSwiped(false));
 
   // Resolve the four standard columns once per `columns` reference so
   // a balances-map change (which re-renders every row in the workspace)
@@ -371,7 +368,7 @@ function BudgetRowImpl({
           onCommitCell={onCommitCell}
         />
       ))}
-      <td className="action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
+      <td className="swipe-action-cell action-cell border-r border-b border-line bg-surface-3 p-0 text-center last:border-r-0">
         <div className="action-stack flex h-full w-full items-stretch">
           {isTransfer && (
             <button

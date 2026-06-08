@@ -4,7 +4,6 @@ import { FileText, Pencil, Trash2 } from "lucide-react";
 import { resolveSalary, roleForSalary } from "../../data/salary/salary";
 import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
-import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import {
   formatBalance,
@@ -12,7 +11,7 @@ import {
   formatMonthName,
 } from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
-import { useClaimActiveRow } from "../useClaimActiveRow";
+import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 import { SalaryEntryActionsMenu } from "./SalaryEntryActionsMenu";
 
 type Props = {
@@ -94,14 +93,13 @@ function SalaryRowImpl({
   const { cellClass } = useAmountColumns();
   const title = roleForSalary(salary, employer)?.title;
   // Bulk-select mode suppresses the per-row swipe so the gesture doesn't
-  // fight the select tap, matching the budget sheet.
-  const { swiped, setSwiped, touchHandlers } = useRowSwipe({
+  // fight the select tap, matching the budget sheet. A swiped row exposes
+  // edit / delete; the active-row claim (folded into the hook) makes a
+  // tap elsewhere only retract the swipe instead of firing the control
+  // underneath.
+  const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(salary.id, {
     disabled: selectMode,
   });
-  // A swiped row exposes edit / delete; claim the active-row slot so a
-  // tap elsewhere only retracts the swipe instead of also firing the
-  // control underneath.
-  useClaimActiveRow(salary.id, swiped, () => setSwiped(false));
   const { gross, tax, estimated } = resolveSalary(salary, taxParams);
   // Estimated gross / tax render muted + italic with a "≈" prefix and a
   // tooltip, so an estimate is visually distinct from an entered figure.
@@ -226,7 +224,7 @@ function SalaryRowImpl({
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">
         <DayBadges salary={salary} />
       </td>
-      <td className="salary-action-cell w-32 p-0 align-middle">
+      <td className="swipe-action-cell salary-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"

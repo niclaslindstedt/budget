@@ -4,12 +4,11 @@ import { Package, Pencil, Trash2 } from "lucide-react";
 import type { EntryType, Item, Settings } from "../../data/types";
 import { computeItemCurrentValue } from "../../data/items/value";
 import { type FloatingPlacement, useAmountColumns } from "../../hooks";
-import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
-import { useClaimActiveRow } from "../useClaimActiveRow";
+import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 import { ItemEntryActionsMenu } from "./ItemEntryActionsMenu";
 
 type Props = {
@@ -55,13 +54,12 @@ function ItemRowImpl({
   const t = useT();
   const lang = useLang();
   const { cellClass } = useAmountColumns();
-  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
+  // A swiped row claims the active-row slot (folded into the hook) so a
+  // tap elsewhere dismisses it before firing the underlying control; the
+  // description popover below claims it too while open.
+  const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(item.id);
   const [descOpen, setDescOpen] = useState(false);
   const nameRef = useRef<HTMLButtonElement>(null);
-
-  // A swiped row and an open popover both claim the active-row slot so a
-  // tap elsewhere dismisses them before firing the underlying control.
-  useClaimActiveRow(item.id, swiped, () => setSwiped(false));
 
   const hasNote = item.note !== undefined && item.note.trim() !== "";
   const currentValue = computeItemCurrentValue(item, todayIso);
@@ -164,7 +162,7 @@ function ItemRowImpl({
       >
         <span>{formatBalance(currentValue, settings)}</span>
       </td>
-      <td className="items-action-cell w-32 p-0 align-middle">
+      <td className="swipe-action-cell items-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"

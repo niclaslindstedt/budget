@@ -447,6 +447,31 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 
 ## Landed
 
+- **Row-swipe action strip duplicated across seven tables → shared
+  `swipe-table` / `swipe-action-cell` CSS + `useRowSwipeAndClaim` hook**
+  (2026-06): the ~40-line mobile swipe block (the absolute 128px action
+  overlay, the `translateX` reveal transforms, and the
+  `action-btn-pen` / `-delete` / `-more` colours) was copy-pasted
+  byte-for-byte under seven different table classes — `budget-table`,
+  `accounts-table`, `items-table`, `salary-table`, `transfers-table`,
+  `mortgage-payments-table`, `repairs-table`. Collapsed into one shared
+  block keyed on two opt-in classes (`swipe-table` on the `<table>`,
+  `swipe-action-cell` on the action `<td>`/`<th>` alongside the kept
+  per-table class), with the only two real variations parameterised: the
+  strip width is a `--swipe-strip-width` custom property (128px default,
+  64px for the single-button transfer log), and budget's centred strip
+  is a one-rule override. The per-table classes stay on the elements
+  because a few non-swipe rules and one JS `closest(".action-cell")`
+  guard still target them. On the JS side, every `*Row` component made
+  the identical `useRowSwipe(opts)` + `useClaimActiveRow(id, swiped, …)`
+  pair; folded into one `useRowSwipeAndClaim(rowId, opts)`
+  (`src/components/`, next to `useClaimActiveRow` since it needs the
+  `ActiveRowProvider` context). Pure refactor — swipe verified visually
+  on all four sheet tables (3-button and 2-button strips, centre vs
+  stretch); fast loop + build + icons-check green, all 1522 tests pass.
+  A new swipe table now needs only the two classes, no new CSS. Found by
+  the cross-sheet table audit; never sat in Pending.
+
 - **Custom-dropdown listbox row/footer classes duplicated across four
   pickers → shared `LISTBOX_OPTION_CLASS` / `LISTBOX_CREATE_OPTION_CLASS`**
   (2026-06): the roving-focus `role="option"` row class
