@@ -356,6 +356,29 @@ function patchAppleTitle(): Plugin {
   };
 }
 
+// Strip the legacy `woff` fallback from fontsource's `@font-face`
+// rules. Each fontsource subset CSS ships `src: url(...woff2)
+// format('woff2'), url(...woff) format('woff')`; every browser this
+// PWA targets supports woff2 (it requires service workers), so the
+// woff copy is never fetched — it would only be emitted into `dist/`
+// as dead weight (~850 KB across all families before this). Running as
+// an `enforce: "pre"` transform means the woff `url()` is gone before
+// Vite's CSS plugin resolves it, so the file is never emitted at all.
+function stripWoffFallback(): Plugin {
+  return {
+    name: "strip-woff-fallback",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.includes("@fontsource") || !id.endsWith(".css")) return null;
+      const stripped = code.replace(
+        /,\s*url\([^)]+\)\s*format\((['"])woff\1\)/g,
+        "",
+      );
+      return stripped === code ? null : { code: stripped, map: null };
+    },
+  };
+}
+
 // Inject a GoatCounter page-view tracker into the deployed HTML
 // when `VITE_GOATCOUNTER_ENDPOINT` is set AND this is the production
 // slot (`VITE_BASE_PATH === "/"`). The preview slot is deliberately
@@ -488,6 +511,14 @@ function pwaPlugin(): Plugin[] {
       // precaching its ~1.7 MB would make every install / SW update pay
       // for a feature most sessions never touch. They load on demand and
       // the browser HTTP-caches them after first use.
+      //
+      // The non-default webfont families (Inter, Source Serif 4,
+      // OpenDyslexic) get the same treatment: they load on demand from
+      // `src/utils/fonts.ts` only when the user selects or previews one,
+      // so precaching their woff2 would make every install pay for faces
+      // most sessions never render (OpenDyslexic alone is ~230 KB). Only
+      // the default JetBrains Mono woff2 stays precached for offline
+      // first paint; the others HTTP-cache on first use.
       globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
       globIgnores: [
         "**/*.map",
@@ -495,6 +526,9 @@ function pwaPlugin(): Plugin[] {
         "sitemap.xml",
         "llms.txt",
         "**/pdf*.{js,mjs}",
+        "**/inter-*.woff2",
+        "**/source-serif-4-*.woff2",
+        "**/opendyslexic-*.woff2",
       ],
       navigateFallback: `${BASE_PATH}index.html`,
       navigateFallbackDenylist,
@@ -525,6 +559,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     emitChangelogData(),
+    stripWoffFallback(),
     patchAppleTitle(),
     injectGoatcounter(),
     pwaPlugin(),
