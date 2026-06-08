@@ -3,8 +3,9 @@ type: Added
 ---
 
 New **Properties** sheet — track the homes and apartments you own: what
-each was bought for, its size, its value over time (record a new value
-any time to add a point to its history), the lender (the bank its
+each was bought for, its size, its monthly fee (the recurring charge to
+hold it, like a bostadsrätt avgift), its value over time (record a new
+value any time to add a point to its history), the lender (the bank its
 mortgages are held with), and the mortgages themselves. For each mortgage
 you can record the sum you borrowed, the current balance, the amortisation
 (a percentage of the initial loan or a fixed sum per month), how often the
