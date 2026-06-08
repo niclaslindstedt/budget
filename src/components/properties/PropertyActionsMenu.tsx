@@ -4,7 +4,6 @@ import {
   MoreHorizontal,
   Paperclip,
   Pencil,
-  ReceiptText,
   Share2,
   TrendingUp,
   Trash2,
@@ -18,16 +17,12 @@ import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
   property: Property;
-  // Whether any mortgage on the property has recorded payments — gates the
-  // "View payments" entry, mirroring the old inline button's condition.
-  hasPayments: boolean;
   // Repairs whose source charge lacks a receipt — surfaces a small dot on
   // the trigger and a count suffix on the "View repairs" entry.
   missingReceiptCount: number;
   onUpdateValue: (property: Property) => void;
   onUploadFile: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
-  onViewPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
   onExportProperty: (property: Property) => void;
   onEditProperty: (property: Property) => void;
@@ -49,18 +44,18 @@ type MenuItem = {
 };
 
 // The "…" overflow menu in a property card's header. Collapses the
-// per-property actions (update value, net sale profit, view payments /
-// repairs, edit, delete) into one trigger so the header stays uncluttered
-// as the action set grows. The danger dot on the trigger flags repairs
-// missing a receipt the way the old inline wrench button did.
+// per-property actions (update value, net sale profit, view repairs, edit,
+// delete) into one trigger so the header stays uncluttered as the action set
+// grows. The danger dot on the trigger flags repairs missing a receipt the
+// way the old inline wrench button did. Mortgage-level actions (add mortgage,
+// view payments, toggle the unified view) live in the mortgage section's own
+// "…" menu, not here.
 export function PropertyActionsMenu({
   property,
-  hasPayments,
   missingReceiptCount,
   onUpdateValue,
   onUploadFile,
   onNetSaleProfit,
-  onViewPayments,
   onViewRepairs,
   onExportProperty,
   onEditProperty,
@@ -96,15 +91,6 @@ export function PropertyActionsMenu({
       onClick: () => pick(() => onNetSaleProfit(property)),
     },
   ];
-
-  if (hasPayments) {
-    items.push({
-      key: "viewPayments",
-      icon: <ReceiptText size={16} aria-hidden focusable={false} />,
-      label: t("properties.viewPayments"),
-      onClick: () => pick(() => onViewPayments(property)),
-    });
-  }
 
   items.push({
     key: "viewRepairs",

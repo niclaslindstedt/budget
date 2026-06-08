@@ -747,6 +747,10 @@ both carrying the parent `propertyId`; the interest field is a
 rate-history editor); deleted via a confirm (`deleteMortgage`). Surfaced
 on the `MortgageRow` in `PropertyCard` with its current rate and payment
 count; the property's bound account is what Find mortgage payments scans.
+The `rateChangeMonths` reset cadence shows as a pill next to the rate —
+read in months below a year ("monthly", "3 months") and in whole years at
+or above one ("yearly", "2 years"), since a reset interval is always a
+whole number of months and of years once it reaches a year.
 
 ### Mortgage payoff bar
 
@@ -764,6 +768,39 @@ a collapse toggle (a chevron on the "Paid off" label): the Paid /
 Interest / Amortisation breakdown card below it starts hidden and is
 revealed by pressing the bar. With recorded payments but no loan terms
 (so no bar to press) the breakdown stays always-on.
+
+### Unified mortgage view
+
+The summed presentation of a property's mortgages, the default on a card
+that carries two or more loans. `UnifiedMortgageView` in `PropertyCard`
+renders one card from `aggregateMortgages(mortgages)`
+(`src/data/property-mortgage/aggregate.ts`): combined `currentBalance` and
+`loanAmount`, the **effective rate** (balance-weighted annual rate — each
+loan's rate weighted by the balance it accrues on, so an unrated or
+zero-balance loan doesn't drag it), total monthly interest and
+amortisation (Σ of the per-loan `resolveMonthlyInterest` /
+`resolveMonthlyAmortization`), an aggregate payoff bar over the combined
+principal, and a combined paid breakdown — all sharing the per-mortgage
+`PayoffSection` so the summed and split views behave identically. Each
+total is hidden when no mortgage supplied it. The **split view** (the
+toggle's other state) is the per-loan list of `MortgageRow`s, where an
+individual loan is edited or deleted; the unified card carries no per-loan
+controls. The toggle lives in the mortgage section menu, defaults to
+unified, and is ephemeral per-card local state (resets on reload, like the
+payoff breakdown toggle). Switching into unified unlocks the
+`unifiedMortgage` achievement. A property with 0 or 1 mortgage always shows
+the split row(s) and offers no toggle.
+
+### Mortgage section menu
+
+The "…" overflow menu at the right of a property card's "MORTGAGES"
+section header (`MortgageSectionMenu.tsx`), sitting where the "Add
+mortgage" button used to. Collects the mortgage-level actions: the unified
+⇄ split view toggle (only when the property has two or more mortgages —
+each label names the view it switches to), "Add mortgage", and "View
+payments" (only when a mortgage has recorded payments — moved here from the
+`PropertyActionsMenu`). Built on the shared `FloatingPanel` like the other
+"…" menus.
 
 ### Mortgage rate change
 
@@ -1222,11 +1259,12 @@ focused name creator (`onCreateFileCategory`).
 overflow menu in a `PropertyCard` header, collapsing the per-property
 actions into one trigger (modelled on `RepairEntryActionsMenu` /
 `SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, **Upload
-file** (opens the **property files modal**), Net sale profit, View
-payments (only when the property has a recorded payment), View repairs
+file** (opens the **property files modal**), Net sale profit, View repairs
 (with a missing-receipt count suffix), **Export property** (opens the
 **property export modal**), Edit property, Delete property. A small
-`--danger` dot marks the trigger when any repair lacks a receipt.
+`--danger` dot marks the trigger when any repair lacks a receipt. The
+mortgage-level actions (Add mortgage, View payments, the unified/split view
+toggle) live in the **mortgage section menu**, not here.
 
 ### Property export / import
 

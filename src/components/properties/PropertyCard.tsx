@@ -1,6 +1,11 @@
-import { Check, ChevronRight, Home, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Home, Pencil, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
+import { unlock } from "../../data/achievements";
+import {
+  aggregateMortgages,
+  type MortgageAggregate,
+} from "../../data/property-mortgage/aggregate";
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
 import { splitRecordedPayment } from "../../data/property-mortgage/payment";
@@ -12,8 +17,9 @@ import type {
   Property,
   Settings,
 } from "../../data/types";
-import { useT } from "../../i18n";
+import { useT, type TFunction } from "../../i18n";
 import { formatBalance, formatNumber, formatRate } from "../../utils/format";
+import { MortgageSectionMenu } from "./MortgageSectionMenu";
 import { PropertyActionsMenu } from "./PropertyActionsMenu";
 
 // One property's block on the Properties page: its name, what it cost,
@@ -47,6 +53,23 @@ type Props = {
   onDeleteMortgage: (property: Property, mortgage: Mortgage) => void;
 };
 
+// The rate-reset cadence pill next to a mortgage's rate. Sub-year cadences
+// read in months ("monthly", "3 months"); whole-year cadences read in years
+// ("yearly", "2 years"). A reset interval is always a whole number of months
+// and, at or above a year, a whole number of years (never "1.5 years"), so a
+// clean `% 12` check picks the unit.
+function rateResetPillLabel(t: TFunction, months: number): string {
+  if (months >= 12 && months % 12 === 0) {
+    const years = months / 12;
+    return years === 1
+      ? t("properties.rateResetPillYearOne")
+      : t("properties.rateResetPillYearOther", { count: years });
+  }
+  return months === 1
+    ? t("properties.rateResetPillOne")
+    : t("properties.rateResetPillOther", { count: months });
+}
+
 // The most recent recorded value, or undefined when none recorded.
 function currentValue(property: Property): number | undefined {
   let latest: { date: string; value: number } | undefined;
@@ -77,6 +100,15 @@ export function PropertyCard({
   const t = useT();
   const value = currentValue(property);
   const hasPayments = property.mortgages.some((m) => m.payments.length > 0);
+  // The unified view collapses every mortgage into one summed card; it's only
+  // meaningful (and only offered) when there are two or more loans to combine.
+  // Ephemeral per-card state — resets to the unified default on reload, like
+  // the per-row "show paid breakdown" toggle below.
+  const canToggleView = property.mortgages.length >= 2;
+  const [mortgageView, setMortgageView] = useState<"unified" | "split">(
+    "unified",
+  );
+  const showUnified = canToggleView && mortgageView === "unified";
   const lender = property.companyId
     ? companiesById.get(property.companyId)
     : undefined;
@@ -98,12 +130,10 @@ export function PropertyCard({
         </span>
         <PropertyActionsMenu
           property={property}
-          hasPayments={hasPayments}
           missingReceiptCount={repairSummary.missingReceiptCount}
           onUpdateValue={onUpdateValue}
           onUploadFile={onUploadFile}
           onNetSaleProfit={onNetSaleProfit}
-          onViewPayments={onViewPayments}
           onViewRepairs={onViewRepairs}
           onExportProperty={onExportProperty}
           onEditProperty={onEditProperty}
@@ -164,19 +194,31 @@ export function PropertyCard({
           <span className="text-xs font-bold tracking-wider uppercase text-muted">
             {t("properties.mortgages")}
           </span>
-          <button
-            type="button"
-            onClick={() => onAddMortgage(property)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded border-0 bg-transparent px-1 text-xs text-accent hover:underline"
-          >
-            <Plus size={14} aria-hidden focusable={false} />
-            {t("properties.addMortgage")}
-          </button>
+          <MortgageSectionMenu
+            property={property}
+            hasPayments={hasPayments}
+            view={showUnified ? "unified" : "split"}
+            canToggle={canToggleView}
+            onToggleView={() => {
+              const next = showUnified ? "split" : "unified";
+              setMortgageView(next);
+              // The unified view is the default, but the unlock rewards
+              // actively reaching for it through the toggle.
+              if (next === "unified") unlock("unifiedMortgage");
+            }}
+            onAddMortgage={onAddMortgage}
+            onViewPayments={onViewPayments}
+          />
         </div>
         {property.mortgages.length === 0 ? (
           <p className="m-0 text-xs text-muted">
             {t("properties.noMortgages")}
           </p>
+        ) : showUnified ? (
+          <UnifiedMortgageView
+            mortgages={property.mortgages}
+            settings={settings}
+          />
         ) : (
           <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
             {property.mortgages.map((mortgage) => (
@@ -225,11 +267,6 @@ function MortgageRow({
   onDelete: (property: Property, mortgage: Mortgage) => void;
 }) {
   const t = useT();
-  const paidPanelId = useId();
-  // The paid / interest / amortisation breakdown starts collapsed; pressing
-  // the payoff "power bar" toggles it open (only meaningful once there are
-  // recorded payments and the bar itself is shown).
-  const [showPaid, setShowPaid] = useState(false);
   const count = mortgage.payments.length;
   // Sum what's been paid and how it divides between interest and
   // amortisation, so a loan that carries all the principal (or all the
@@ -253,17 +290,6 @@ function MortgageRow({
   // Share of the original loan amortised away so far — drives the payoff
   // "power bar". `null` when the loan / balance terms can't resolve it.
   const progress = mortgagePayoffProgress(mortgage);
-  const payoffComplete = progress !== null && progress >= 1;
-  const payoffPercent =
-    progress === null
-      ? 0
-      : payoffComplete
-        ? 100
-        : Math.min(99, Math.round(progress * 100));
-  // The payoff bar doubles as the toggle for the paid breakdown, but only
-  // when there's both a bar to press and a breakdown to expose. With no bar
-  // (no loan terms) but recorded payments, the breakdown stays always-on.
-  const canCollapse = progress !== null && count > 0;
   const hasTerms =
     mortgage.loanAmount !== undefined ||
     mortgage.currentBalance !== undefined ||
@@ -347,11 +373,7 @@ function MortgageRow({
                   </span>
                   {mortgage.rateChangeMonths !== undefined && (
                     <span className="inline-flex shrink-0 items-center rounded-full border border-line bg-surface-3 px-1.5 py-0.5 text-xs font-medium text-muted">
-                      {mortgage.rateChangeMonths === 1
-                        ? t("properties.rateResetPillOne")
-                        : t("properties.rateResetPillOther", {
-                            count: mortgage.rateChangeMonths,
-                          })}
+                      {rateResetPillLabel(t, mortgage.rateChangeMonths)}
                     </span>
                   )}
                 </span>
@@ -378,6 +400,52 @@ function MortgageRow({
         </>
       )}
 
+      <PayoffSection
+        progress={progress}
+        paid={{
+          total: paid,
+          interest: paidSplit.interest,
+          amortization: paidSplit.amortization,
+        }}
+        paymentCount={count}
+        settings={settings}
+      />
+    </li>
+  );
+}
+
+// The payoff "power bar" plus its collapsible paid / interest / amortisation
+// breakdown — shared by a single mortgage row and the unified summary so both
+// behave identically. The bar shows whenever payoff `progress` resolves; the
+// breakdown shows once there are recorded payments, and the bar doubles as the
+// toggle that hides / shows it (only when there's both a bar to press and a
+// breakdown to expose). With no bar (no loan terms) but recorded payments, the
+// breakdown stays always-on.
+function PayoffSection({
+  progress,
+  paid,
+  paymentCount,
+  settings,
+}: {
+  progress: number | null;
+  paid: { total: number; interest: number; amortization: number };
+  paymentCount: number;
+  settings: Settings;
+}) {
+  const t = useT();
+  const paidPanelId = useId();
+  const [showPaid, setShowPaid] = useState(false);
+  const payoffComplete = progress !== null && progress >= 1;
+  const payoffPercent =
+    progress === null
+      ? 0
+      : payoffComplete
+        ? 100
+        : Math.min(99, Math.round(progress * 100));
+  const canCollapse = progress !== null && paymentCount > 0;
+
+  return (
+    <>
       {progress !== null &&
         (() => {
           const bar = (
@@ -446,27 +514,92 @@ function MortgageRow({
           );
         })()}
 
-      {count > 0 && (progress === null || showPaid) && (
+      {paymentCount > 0 && (progress === null || showPaid) && (
         <dl
           id={paidPanelId}
           className="m-0 grid grid-cols-3 gap-x-3 rounded bg-surface-3 px-2.5 py-2"
         >
           <MortgageStat label={t("properties.paidTotal")} emphasize>
-            {formatBalance(paid, settings, { neverAbbreviate: true })}
+            {formatBalance(paid.total, settings, { neverAbbreviate: true })}
           </MortgageStat>
           <MortgageStat label={t("properties.interestShort")}>
-            {formatBalance(paidSplit.interest, settings, {
+            {formatBalance(paid.interest, settings, {
               neverAbbreviate: true,
             })}
           </MortgageStat>
           <MortgageStat label={t("properties.amortShort")}>
-            {formatBalance(paidSplit.amortization, settings, {
+            {formatBalance(paid.amortization, settings, {
               neverAbbreviate: true,
             })}
           </MortgageStat>
         </dl>
       )}
-    </li>
+    </>
+  );
+}
+
+// The unified mortgage view: every loan on the property collapsed into one
+// summed card — combined balance / loan, the balance-weighted effective rate,
+// total monthly interest and amortisation, and an aggregate payoff bar. The
+// toggle to this view lives in the mortgage section's "…" menu; switching back
+// to "split" shows the individual `MortgageRow`s (where each loan is edited).
+function UnifiedMortgageView({
+  mortgages,
+  settings,
+}: {
+  mortgages: Mortgage[];
+  settings: Settings;
+}) {
+  const t = useT();
+  const agg: MortgageAggregate = aggregateMortgages(mortgages);
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded border border-line bg-surface-2 px-3 py-2.5 text-sm">
+      <span className="block truncate text-xs font-bold tracking-wider uppercase text-muted">
+        {t("properties.mortgageCountOther", { count: agg.count })}
+      </span>
+
+      <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
+        {agg.totalBalance !== undefined && (
+          <MortgageStat label={t("properties.balanceShort")}>
+            {formatBalance(agg.totalBalance, settings, {
+              neverAbbreviate: true,
+            })}
+          </MortgageStat>
+        )}
+        {agg.totalLoan !== undefined && (
+          <MortgageStat label={t("properties.loanShort")}>
+            {formatBalance(agg.totalLoan, settings, { neverAbbreviate: true })}
+          </MortgageStat>
+        )}
+        {agg.effectiveRate !== null && (
+          <MortgageStat label={t("properties.effectiveRateShort")}>
+            {formatRate(agg.effectiveRate, settings)}%
+          </MortgageStat>
+        )}
+        {agg.monthlyAmortization !== null && (
+          <MortgageStat label={t("properties.amortPerMonthLabel")}>
+            {formatBalance(agg.monthlyAmortization, settings, {
+              neverAbbreviate: true,
+            })}
+          </MortgageStat>
+        )}
+        {agg.monthlyInterest !== null && (
+          <MortgageStat label={t("properties.interestPerMonthLabel")}>
+            {formatBalance(agg.monthlyInterest, settings, {
+              neverAbbreviate: true,
+            })}
+          </MortgageStat>
+        )}
+      </dl>
+
+      <PayoffSection
+        progress={agg.progress}
+        paid={agg.paid}
+        paymentCount={agg.paymentCount}
+        settings={settings}
+      />
+    </div>
   );
 }
 

@@ -237,6 +237,10 @@ src/
 │   │   └── payslip-name.ts     # buildPayslipPath — flat "Employer - YYYY-MM"
 │   │                           #   payslip filenames (+ re-exports extensionOf)
 │   ├── property-mortgage/  # properties page — mortgage helpers
+│   │   ├── aggregate.ts        # aggregateMortgages — sums a property's mortgages
+│   │   │                       #   into one picture (totals, balance-weighted
+│   │   │                       #   effective rate, monthly interest/amort,
+│   │   │                       #   aggregate payoff) for the unified view
 │   │   ├── discovery.ts        # discoverMortgagePayments — scans a property's
 │   │   │                       #   bound account history for charges tagged with
 │   │   │                       #   a lender / the Mortgage type, expands by bank

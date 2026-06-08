@@ -270,6 +270,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Varje bolånekort har en avbetalningsstapel som visar hur stor del av det ursprungliga lånet du amorterat bort. Håll lånebelopp och aktuell skuld uppdaterade allt eftersom du betalar av; när skulden når noll fylls stapeln grön och visar 100 % — bostaden är din, helt skuldfri.",
   },
+  unifiedMortgage: {
+    name: "Helhetsbild",
+    condition: "Slå om en fastighets bolån till den sammanslagna vyn.",
+    learnMore:
+      "En fastighet med flera lån är svår att överblicka rad för rad. Välj Sammanslagen vy i bolånesektionens …-meny: alla bolån slås ihop till ett kort som visar samlad skuld och lånebelopp, den skuldvägda effektiva räntan och total månadsränta och amortering. Byt tillbaka till Delad vy i samma meny för att redigera ett enskilt lån.",
+  },
   paymentLedger: {
     name: "Betalningsbok",
     condition: "Redigera eller ta bort en registrerad bolånebetalning.",

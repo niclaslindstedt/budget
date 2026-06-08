@@ -273,6 +273,12 @@ const catalog = {
     learnMore:
       "Each mortgage card carries a payoff bar showing how much of the original loan you've amortised away. Keep the loan amount and current balance up to date as you pay it down; when the balance reaches zero the bar fills green and reads 100% — the house is yours, free and clear.",
   },
+  unifiedMortgage: {
+    name: "Big Picture",
+    condition: "Switch a property's mortgages into the unified summary view.",
+    learnMore:
+      "A property with several loans is hard to read row by row. From the mortgage section's … menu, pick Unified view: every mortgage collapses into one card showing the combined balance and loan, the balance-weighted effective rate, and the total monthly interest and amortisation. Switch back to Split view from the same menu to edit an individual loan.",
+  },
   paymentLedger: {
     name: "Payment Ledger",
     condition: "Edit or remove a recorded mortgage payment from a property.",
