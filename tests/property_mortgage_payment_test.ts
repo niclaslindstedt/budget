@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   resolveRateAt,
@@ -66,6 +66,17 @@ describe("resolveMonthlyInterestAt", () => {
 });
 
 describe("resolveMonthlyPaymentAt", () => {
+  // Pin "today" to the charge date so the reconstructed balance collapses to
+  // the recorded `currentBalance` (the historical-balance math is exercised
+  // in its own block below).
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-08-28T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("sums amortisation and dated interest", () => {
     const m = mortgage({
       currentBalance: 1_200_000,
@@ -78,6 +89,17 @@ describe("resolveMonthlyPaymentAt", () => {
 });
 
 describe("splitPaymentAcrossMortgages", () => {
+  // Pin "today" to the charge date so each loan's reconstructed balance
+  // equals its recorded `currentBalance` — these cases exercise the
+  // amortisation-first / interest-weight split, not the date reconstruction.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-08-28T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const a = mortgage({
     id: "a",
     currentBalance: 1_200_000,
@@ -183,6 +205,57 @@ describe("splitPaymentAcrossMortgages", () => {
     const split = splitPaymentAcrossMortgages([x, y], 8000, "2024-08-28");
     expect(split.get("x")).toBeCloseTo(2000);
     expect(split.get("y")).toBeCloseTo(6000);
+  });
+});
+
+describe("splitPaymentAcrossMortgages — date-aware balances", () => {
+  // "Today" is fixed so the reconstructed balances are deterministic.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // An interest-only loan at a static rate alongside an amortising loan.
+  // The combined charge shrinks month over month purely because the
+  // amortising loan pays down — so the whole decline must land on it, and
+  // the interest-only loan's share must stay flat. A flat-`currentBalance`
+  // snapshot would instead smear the decline across both by interest weight
+  // (the bug behind "interest going down on a loan that never amortises").
+  const interestOnly = mortgage({
+    id: "io",
+    currentBalance: 2_000_000,
+    interestRate: 3, // 5000/mo, constant
+  });
+  const amortising = mortgage({
+    id: "am",
+    currentBalance: 200_000, // today's balance
+    interestRate: 3,
+    amortization: { mode: "fixed", amount: 5000 },
+  });
+  const loans = [interestOnly, amortising];
+
+  it("keeps the interest-only loan's share flat across months", () => {
+    // This month's true charge: 5000 (io interest) + 5000 (am amort) + 500
+    // (am interest on 200 000 @ 3%).
+    const thisMonth = splitPaymentAcrossMortgages(loans, 10_500, "2026-06-01");
+    // Last month am's balance was 205 000 ⇒ 512.5 interest, so the charge was
+    // 12.5 higher.
+    const lastMonth = splitPaymentAcrossMortgages(
+      loans,
+      10_512.5,
+      "2026-05-01",
+    );
+
+    // The interest-only loan is pinned to exactly its 5000 both months — the
+    // 12.5 difference is entirely the amortising loan's.
+    expect(thisMonth.get("io")).toBeCloseTo(5000);
+    expect(lastMonth.get("io")).toBeCloseTo(5000);
+
+    expect(thisMonth.get("am")).toBeCloseTo(5500); // 5000 amort + 500 interest
+    expect(lastMonth.get("am")).toBeCloseTo(5512.5); // 5000 amort + 512.5
   });
 });
 
