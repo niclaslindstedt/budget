@@ -770,7 +770,14 @@ across the property's mortgages (`splitPaymentAcrossMortgages` in
 `src/data/property-mortgage/payment.ts` — each loan's amortisation is
 settled in full first, then the leftover interest is shared by interest
 weight, so an amortising loan stays pinned to its amortisation and the
-interest-bearing loans absorb the variance) and records one payment per
+interest-bearing loans absorb the variance). The interest weight is each
+loan's interest **for that month**, taken on the balance reconstructed for
+the charge's date by `balanceAt` (`interest.ts` — `currentBalance` walked
+back along the deterministic monthly amortisation, capped at `loanAmount`),
+not a flat snapshot of today's balance. So a charge that shrinks month over
+month because one loan is paying down is attributed to that loan, and an
+interest-only loan at a static rate keeps a constant share instead of
+drifting down with it. It records one payment per
 mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
 
 - the re-scan dedupe key). `PropertyCard` sums a mortgage's payments as
