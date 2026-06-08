@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import {
   Calculator,
-  LineChart,
   MoreHorizontal,
   Paperclip,
   Pencil,
+  Plus,
   Share2,
   Trash2,
-  Wrench,
 } from "lucide-react";
 
 import type { Property } from "../../data/types";
@@ -17,13 +16,9 @@ import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
   property: Property;
-  // Repairs whose source charge lacks a receipt — surfaces a small dot on
-  // the trigger and a count suffix on the "View repairs" entry.
-  missingReceiptCount: number;
   onUploadFile: (property: Property) => void;
-  onVisualizeValue: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
-  onViewRepairs: (property: Property) => void;
+  onAddMortgage: (property: Property) => void;
   onExportProperty: (property: Property) => void;
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
@@ -44,20 +39,17 @@ type MenuItem = {
 };
 
 // The "…" overflow menu in a property card's header. Collapses the
-// per-property actions (upload file, net sale profit, view repairs, edit,
-// delete) into one trigger so the header stays uncluttered as the action set
-// grows. Updating the recorded value is reached by pressing the current-value
-// figure in the card's stat grid, not from here. The danger dot on the trigger
-// flags repairs missing a receipt the way the old inline wrench button did.
-// Mortgage-level actions (add mortgage, view payments, toggle the unified view)
-// live in the mortgage section's own "…" menu, not here.
+// per-property actions (upload file, net sale profit, add mortgage, export,
+// edit, delete) into one trigger so the header stays uncluttered as the action
+// set grows. Updating the recorded value is reached by pressing the
+// current-value figure in the card's stat grid; visualizing value and viewing
+// repairs are their own glyph buttons to the left of this menu. View payments
+// and find payments are glyph buttons in the mortgage section.
 export function PropertyActionsMenu({
   property,
-  missingReceiptCount,
   onUploadFile,
-  onVisualizeValue,
   onNetSaleProfit,
-  onViewRepairs,
+  onAddMortgage,
   onExportProperty,
   onEditProperty,
   onDeleteProperty,
@@ -74,16 +66,16 @@ export function PropertyActionsMenu({
 
   const items: MenuItem[] = [
     {
+      key: "addMortgage",
+      icon: <Plus size={16} aria-hidden focusable={false} />,
+      label: t("properties.addMortgage"),
+      onClick: () => pick(() => onAddMortgage(property)),
+    },
+    {
       key: "uploadFile",
       icon: <Paperclip size={16} aria-hidden focusable={false} />,
       label: t("properties.uploadFile"),
       onClick: () => pick(() => onUploadFile(property)),
-    },
-    {
-      key: "visualizeValue",
-      icon: <LineChart size={16} aria-hidden focusable={false} />,
-      label: t("properties.valueChartTitle"),
-      onClick: () => pick(() => onVisualizeValue(property)),
     },
     {
       key: "netSaleProfit",
@@ -92,16 +84,6 @@ export function PropertyActionsMenu({
       onClick: () => pick(() => onNetSaleProfit(property)),
     },
   ];
-
-  items.push({
-    key: "viewRepairs",
-    icon: <Wrench size={16} aria-hidden focusable={false} />,
-    label:
-      missingReceiptCount > 0
-        ? t("properties.viewRepairsMissing", { count: missingReceiptCount })
-        : t("properties.viewRepairs"),
-    onClick: () => pick(() => onViewRepairs(property)),
-  });
 
   items.push(
     {
@@ -130,19 +112,13 @@ export function PropertyActionsMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="relative cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+        className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
         aria-label={t("cell.moreActions")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         <MoreHorizontal size={16} aria-hidden focusable={false} />
-        {missingReceiptCount > 0 && (
-          <span
-            className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger"
-            aria-hidden
-          />
-        )}
       </button>
       <FloatingPanel
         open={open}

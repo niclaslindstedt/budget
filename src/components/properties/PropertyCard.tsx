@@ -2,9 +2,13 @@ import {
   Check,
   ChevronRight,
   Home,
+  LineChart,
   Pencil,
+  ReceiptText,
+  Search,
   Trash2,
   TrendingUp,
+  Wrench,
 } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -27,7 +31,6 @@ import type {
 } from "../../data/types";
 import { useT, type TFunction } from "../../i18n";
 import { formatBalance, formatNumber, formatRate } from "../../utils/format";
-import { MortgageSectionMenu } from "./MortgageSectionMenu";
 import { MortgageViewToggle } from "./MortgageViewToggle";
 import { PropertyActionsMenu } from "./PropertyActionsMenu";
 
@@ -62,6 +65,7 @@ type Props = {
   onVisualizeValue: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
   onViewPayments: (property: Property) => void;
+  onFindPayments: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
   onExportProperty: (property: Property) => void;
   onAddMortgage: (property: Property) => void;
@@ -99,6 +103,7 @@ export function PropertyCard({
   onVisualizeValue,
   onNetSaleProfit,
   onViewPayments,
+  onFindPayments,
   onViewRepairs,
   onExportProperty,
   onAddMortgage,
@@ -149,13 +154,39 @@ export function PropertyCard({
         <span className="flex-1 truncate font-bold text-fg-bright">
           {property.name}
         </span>
+        <button
+          type="button"
+          onClick={() => onVisualizeValue(property)}
+          aria-label={t("properties.valueChartTitle")}
+          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+        >
+          <LineChart size={16} aria-hidden focusable={false} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewRepairs(property)}
+          aria-label={
+            repairSummary.missingReceiptCount > 0
+              ? t("properties.viewRepairsMissing", {
+                  count: repairSummary.missingReceiptCount,
+                })
+              : t("properties.viewRepairs")
+          }
+          className="relative cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+        >
+          <Wrench size={16} aria-hidden focusable={false} />
+          {repairSummary.missingReceiptCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger"
+              aria-hidden
+            />
+          )}
+        </button>
         <PropertyActionsMenu
           property={property}
-          missingReceiptCount={repairSummary.missingReceiptCount}
           onUploadFile={onUploadFile}
-          onVisualizeValue={onVisualizeValue}
           onNetSaleProfit={onNetSaleProfit}
-          onViewRepairs={onViewRepairs}
+          onAddMortgage={onAddMortgage}
           onExportProperty={onExportProperty}
           onEditProperty={onEditProperty}
           onDeleteProperty={onDeleteProperty}
@@ -288,12 +319,26 @@ export function PropertyCard({
                 }}
               />
             )}
-            <MortgageSectionMenu
-              property={property}
-              hasPayments={hasPayments}
-              onAddMortgage={onAddMortgage}
-              onViewPayments={onViewPayments}
-            />
+            {hasPayments && (
+              <button
+                type="button"
+                onClick={() => onViewPayments(property)}
+                aria-label={t("properties.viewPayments")}
+                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+              >
+                <ReceiptText size={16} aria-hidden focusable={false} />
+              </button>
+            )}
+            {property.mortgages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onFindPayments(property)}
+                aria-label={t("properties.findTitle")}
+                className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+              >
+                <Search size={16} aria-hidden focusable={false} />
+              </button>
+            )}
           </div>
         </div>
         {property.mortgages.length === 0 ? (

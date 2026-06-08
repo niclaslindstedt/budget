@@ -825,7 +825,7 @@ or zero value hides it. The **split view** (the
 toggle's other state) is the per-loan list of `MortgageRow`s, where an
 individual loan is edited or deleted; the unified card carries no per-loan
 controls. The toggle is a two-glyph segmented control
-(`MortgageViewToggle`) to the left of the mortgage section menu — one
+(`MortgageViewToggle`) to the left of the mortgage section actions — one
 glyph per view, molded into a single track, with an "active" pill that
 slides between them when the view changes. It defaults to unified and is
 ephemeral per-card local state (resets on reload, like the payoff
@@ -833,16 +833,18 @@ breakdown toggle). Switching into unified unlocks the
 `unifiedMortgage` achievement. A property with 0 or 1 mortgage always shows
 the split row(s) and offers no toggle.
 
-### Mortgage section menu
+### Mortgage section actions
 
-The "…" overflow menu at the right of a property card's "MORTGAGES"
-section header (`MortgageSectionMenu.tsx`), sitting where the "Add
-mortgage" button used to. Collects the mortgage-level actions: "Add
-mortgage" and "View payments" (only when a mortgage has recorded payments —
-moved here from the `PropertyActionsMenu`). Built on the shared
-`FloatingPanel` like the other "…" menus. The unified ⇄ split view toggle
-is a separate two-glyph segmented control (`MortgageViewToggle`) to the
-left of this menu — see the **Unified mortgage view** entry.
+The glyph buttons at the right of a property card's "MORTGAGES" section
+header (`PropertyCard.tsx`): a **View payments** button (receipt glyph,
+shown only when a mortgage has recorded payments) and a **Find mortgage
+payments** button (magnifier glyph, shown whenever the property has ≥ 1
+mortgage). Find opens the `MortgageDiscoveryModal` scoped to that
+property (its `initialPropertyId`); the modal's own picker can still
+switch to another property. The unified ⇄ split view toggle is a
+two-glyph segmented control (`MortgageViewToggle`) to the left of these
+buttons — see the **Unified mortgage view** entry. "Add mortgage" lives
+in the property's "…" menu (`PropertyActionsMenu`).
 
 ### Mortgage rate change
 
@@ -897,8 +899,9 @@ mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
 ### Mortgage payments view
 
 `MortgagePaymentsModal.tsx` — a per-property list of all recorded
-mortgage payments, opened from the property card's "… actions menu" (the
-View payments entry, shown only when the property has ≥ 1 payment). Rows
+mortgage payments, opened from the View payments glyph button in the
+property card's "MORTGAGES" header (shown only when the property has ≥ 1
+payment). Rows
 are grouped by the monthly charge they came from (`groupPaymentsByCharge`
 in `src/data/property-mortgage/payment.ts` — keyed by `sourceHistoryId`,
 falling back to date) with a per-charge total, one row per mortgage's
@@ -942,10 +945,11 @@ both figures and a ≥ 1 difference.
 
 ### Find mortgage payments
 
-`MortgageDiscoveryModal.tsx` — a per-property walk opened from the
-Properties sheet's "…" title menu (`SheetTitleMenu`), driven by
+`MortgageDiscoveryModal.tsx` — a per-property walk opened from the Find
+mortgage payments glyph button in a property card's "MORTGAGES" header
+(scoped to that property via `initialPropertyId`), driven by
 `discoverMortgagePayments` (`src/data/property-mortgage/discovery.ts`).
-The user picks a property (when more than one); the walk scans the
+The modal's picker can still switch to another property; the walk scans the
 property's bound account (`Property.accountId`) history, resolving each
 entry's effective company / type via `resolveEntryLabels` and anchoring
 on the charges tagged with the property's lender (`Property.companyId`)
@@ -1300,16 +1304,16 @@ focused name creator (`onCreateFileCategory`).
 `PropertyActionsMenu.tsx` (`src/components/properties/`) — the "…"
 overflow menu in a `PropertyCard` header, collapsing the per-property
 actions into one trigger (modelled on `RepairEntryActionsMenu` /
-`SheetTitleMenu`, on `FloatingPanel`). Entries: **Upload
-file** (opens the **property files modal**), Net sale profit, View repairs
-(with a missing-receipt count suffix), **Export property** (opens the
-**property export modal**), Edit property, Delete property. Updating the
-recorded value is not here — the current-value figure in the card's stat
-grid is itself the button that opens the **Update value** modal. A small
-`--danger` dot marks the trigger when any repair lacks a receipt. The
-mortgage-level actions (Add mortgage, View payments) live in the **mortgage
-section menu**, and the unified/split view toggle is the segmented control
-beside it, not here.
+`SheetTitleMenu`, on `FloatingPanel`). Entries: **Add mortgage**, **Upload
+file** (opens the **property files modal**), Net sale profit, **Export
+property** (opens the **property export modal**), Edit property, Delete
+property. Updating the recorded value is not here — the current-value
+figure in the card's stat grid is itself the button that opens the
+**Update value** modal. Visualize value and View repairs (the latter with
+a `--danger` dot when any repair lacks a receipt) are their own glyph
+buttons to the left of this menu; View payments and Find mortgage payments
+are glyph buttons in the **mortgage section actions**, and the
+unified/split view toggle is the segmented control beside them.
 
 ### Property export / import
 

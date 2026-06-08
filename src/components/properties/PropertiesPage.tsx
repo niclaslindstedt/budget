@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileDown, Home, Pencil, Plus, Search } from "lucide-react";
+import { FileDown, Home, Pencil, Plus } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
 import {
@@ -95,7 +95,7 @@ type PropertyModalState =
   | { kind: "import" }
   | { kind: "editMortgage"; ref: MortgageRef }
   | { kind: "createMortgage"; property: Property }
-  | { kind: "find" }
+  | { kind: "find"; property: Property }
   | { kind: "deleteProperty"; property: Property }
   | { kind: "deleteMortgage"; ref: MortgageRef };
 
@@ -328,20 +328,8 @@ export function PropertiesPage({
     return m;
   }, [livePaymentsProperty?.accountId, data.history]);
 
-  const hasAnyMortgage = data.properties.some((p) => p.mortgages.length > 0);
-
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
-    ...(hasAnyMortgage
-      ? [
-          {
-            key: "find-payments",
-            icon: <Search size={16} aria-hidden focusable={false} />,
-            label: t("properties.findTitle"),
-            onClick: () => setModal({ kind: "find" }),
-          },
-        ]
-      : []),
     {
       key: "import",
       icon: <FileDown size={16} aria-hidden focusable={false} />,
@@ -651,6 +639,9 @@ export function PropertiesPage({
                   onNetSaleProfit={handleNetSaleProfit}
                   onViewPayments={(property) =>
                     setModal({ kind: "payments", property })
+                  }
+                  onFindPayments={(property) =>
+                    setModal({ kind: "find", property })
                   }
                   onViewRepairs={(property) =>
                     setModal({ kind: "repairs", property })
@@ -971,6 +962,7 @@ export function PropertiesPage({
 
         <MortgageDiscoveryModal
           open={modal?.kind === "find"}
+          initialPropertyId={modal?.kind === "find" ? modal.property.id : null}
           properties={data.properties}
           history={data.history}
           merchantHints={data.merchantHints}
