@@ -372,29 +372,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   `parseDecimal(text, lang)` would cover. Re-rate if
   thousands-separator support lands. **Severity: 3.**
 
-- **`properties/PropertiesPage.tsx` modal-state fragmentation** —
-  `PropertiesPage.tsx` (1007) declares **18 `useState`s** (`:90`–`:136`), of
-  which ~17 are independent modal open/close selectors
-  (`editingProperty` / `creatingProperty` / `valueProperty` /
-  `paymentsProperty` / `repairsProperty` / `filesProperty` / `saleProperty` /
-  `exportingProperty` / `importOpen` / `addingRepairsFor` / `repairEditor` /
-  `manualRepairEditor` / `editingMortgage` / `findOpen` / …), each opened and
-  closed by its own setter pair. The widest page-level open/close setter
-  surface in the codebase.
-  - **Plan**: collapse the mutually-exclusive modal selectors into a single
-    discriminated `ModalState` union behind one `useReducer` (or a small
-    `useModalRouter` helper), so only one modal kind is open at a time by
-    construction and transitions are explicit.
-  - **Risk**: medium — the payloads genuinely diverge (`Property | null`,
-    `MortgageRef | null`, the `repairEditor` / `manualRepairEditor` object
-    shapes), so the union must carry each kind's payload rather than
-    flattening to one id; a few selectors may be intentionally
-    co-openable (verify none are stacked) before forcing mutual exclusion.
-    No persisted-shape impact.
-  - **Severity: 4.** Multiplier — every new sheet-type page (savings, loans)
-    will grow the same page-level modal-selector pile; a `useModalRouter`
-    shape established here is the template the next page copies.
-
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
@@ -449,6 +426,33 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`properties/PropertiesPage.tsx` 17 modal selectors → one discriminated
+  `modal` router + 3 kept-separate stacked sub-editors** (2026-06): the page
+  declared 17 independent modal open/close `useState`s. Collapsed the
+  **mutually-exclusive** property-/mortgage-action selectors
+  (`editingProperty` / `creatingProperty` / `valueProperty` /
+  `paymentsProperty` / `repairsProperty` / `filesProperty` / `saleProperty` /
+  `exportingProperty` / `importOpen` / `editingMortgage` / `creatingMortgageFor`
+  / `findOpen` / `pendingDeleteProperty` / `pendingDeleteMortgage`) into one
+  `useState<PropertyModalState | null>` discriminated union (14 `kind`s, each
+  carrying its own `Property` / `MortgageRef` payload), so only one of those
+  modals can be open at a time by construction. **Re-verify corrected the
+  roadmap's "single union, mutually exclusive by construction" plan**: the
+  three repair sub-editors (`addingRepairsFor`, `repairEditor`,
+  `manualRepairEditor`) are opened from _inside_ the `RepairsModal` and
+  intentionally **stack on top of** it (the list stays open behind the
+  editor), so they are genuinely co-open with `modal.kind === "repairs"` and
+  were kept as their own state — the seam is two-layer, not one flat union.
+  The `liveXProperty` re-resolution (held-by-id lookup against `data` so an
+  edit reflects immediately) is preserved, now keyed off `modal.kind`. Pure
+  refactor — every modal's open condition / payload / close maps 1:1 to the
+  old setter; no persisted-shape impact, no behaviour change. Fast loop +
+  build + icons-check green, all 1510 tests pass. **Was severity 4.** The
+  discriminated-`modal`-state shape is the template the next sheet-type page
+  (savings, loans) copies instead of re-growing a flat selector pile;
+  per-page in-file unions stay non-speculative (a shared `useModalRouter`
+  helper waits for a second consumer).
 
 - **Date-input class string duplicated across five properties modals →
   shared `DATE_INPUT_CLASS`** (2026-06): the `w-full`-less
