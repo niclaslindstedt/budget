@@ -43,6 +43,12 @@ type RepairSummary = {
   missingReceiptCount: number;
 };
 
+// Shared pill styling for the small data tokens on a property card — the
+// rate-reset cadence, the per-area value / fee, and the loan-to-value
+// share. A rounded, muted chip that reads as metadata next to the figure.
+const PILL_CLASS =
+  "inline-flex shrink-0 items-center rounded-full border border-line bg-surface-3 px-1.5 py-0.5 text-xs font-medium text-muted";
+
 type Props = {
   property: Property;
   accountsById: ReadonlyMap<string, Account>;
@@ -99,6 +105,15 @@ export function PropertyCard({
 }: Props) {
   const t = useT();
   const value = currentPropertyValue(property);
+  // Per-area figures shown as pills next to the current value and the
+  // monthly fee. Only when a positive living area is recorded, so a
+  // missing or zero size hides the pill rather than dividing by nothing.
+  const size = property.size;
+  const hasArea = size !== undefined && size > 0;
+  const valuePerArea =
+    hasArea && value !== undefined ? value / size : undefined;
+  const feePerArea =
+    hasArea && property.fee !== undefined ? property.fee / size : undefined;
   const hasPayments = property.mortgages.some((m) => m.payments.length > 0);
   // The unified view collapses every mortgage into one summed card; it's only
   // meaningful (and only offered) when there are two or more loans to combine.
@@ -142,28 +157,41 @@ export function PropertyCard({
 
       <div className="grid grid-cols-2 gap-2 px-3 py-2 text-sm sm:grid-cols-3">
         <Stat label={t("properties.currentValue")}>
-          <button
-            type="button"
-            onClick={() => onUpdateValue(property)}
-            aria-label={t("properties.updateValue")}
-            className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-          >
-            {value !== undefined ? (
-              <span className="tabular-nums text-fg-bright group-hover:text-accent">
-                {formatBalance(value, settings, { neverAbbreviate: true })}
-              </span>
-            ) : (
-              <span className="text-xs text-muted group-hover:text-accent">
-                {t("properties.noValue")}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onUpdateValue(property)}
+              aria-label={t("properties.updateValue")}
+              className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              {value !== undefined ? (
+                <span className="tabular-nums text-fg-bright group-hover:text-accent">
+                  {formatBalance(value, settings, { neverAbbreviate: true })}
+                </span>
+              ) : (
+                <span className="text-xs text-muted group-hover:text-accent">
+                  {t("properties.noValue")}
+                </span>
+              )}
+              <TrendingUp
+                size={12}
+                aria-hidden
+                focusable={false}
+                className="shrink-0 text-muted group-hover:text-accent"
+              />
+            </button>
+            {valuePerArea !== undefined && (
+              <span
+                title={t("properties.valuePerAreaTitle", {
+                  unit: settings.propertySizeUnit,
+                })}
+                className={PILL_CLASS}
+              >
+                {formatNumber(valuePerArea, settings)}/
+                {settings.propertySizeUnit}
               </span>
             )}
-            <TrendingUp
-              size={12}
-              aria-hidden
-              focusable={false}
-              className="shrink-0 text-muted group-hover:text-accent"
-            />
-          </button>
+          </div>
         </Stat>
         <Stat label={t("properties.boughtFor")}>
           {property.purchaseAmount !== undefined ? (
@@ -201,9 +229,26 @@ export function PropertyCard({
         )}
         {property.fee !== undefined && (
           <Stat label={t("properties.fee")}>
-            <span className="tabular-nums text-fg">
-              {formatBalance(property.fee, settings, { neverAbbreviate: true })}
-            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="tabular-nums text-fg">
+                {formatBalance(property.fee, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+              {feePerArea !== undefined && (
+                <span
+                  title={t("properties.feePerAreaTitle", {
+                    unit: settings.propertySizeUnit,
+                  })}
+                  className={PILL_CLASS}
+                >
+                  {formatBalance(feePerArea, settings, {
+                    neverAbbreviate: true,
+                  })}
+                  /{settings.propertySizeUnit}
+                </span>
+              )}
+            </div>
           </Stat>
         )}
       </div>
@@ -396,7 +441,7 @@ function MortgageRow({
                     {formatRate(mortgage.interestRate, settings)}%
                   </span>
                   {mortgage.rateChangeMonths !== undefined && (
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-line bg-surface-3 px-1.5 py-0.5 text-xs font-medium text-muted">
+                    <span className={PILL_CLASS}>
                       {rateResetPillLabel(t, mortgage.rateChangeMonths)}
                     </span>
                   )}
@@ -598,12 +643,21 @@ function UnifiedMortgageView({
       <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
         {agg.totalBalance !== undefined && (
           <MortgageStat label={t("properties.balanceShort")}>
-            {formatBalance(agg.totalBalance, settings, {
-              neverAbbreviate: true,
-            })}
-            {loanShare !== undefined && (
-              <span className="text-muted"> ({loanShare}%)</span>
-            )}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate">
+                {formatBalance(agg.totalBalance, settings, {
+                  neverAbbreviate: true,
+                })}
+              </span>
+              {loanShare !== undefined && (
+                <span
+                  title={t("properties.loanToValueTitle")}
+                  className={PILL_CLASS}
+                >
+                  {loanShare}%
+                </span>
+              )}
+            </span>
           </MortgageStat>
         )}
         {agg.totalLoan !== undefined && (
