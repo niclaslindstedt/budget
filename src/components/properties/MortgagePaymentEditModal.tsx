@@ -15,6 +15,7 @@ import {
 } from "../../utils/format";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { DATE_INPUT_CLASS } from "./date-input";
 
 // Edit one mortgage's share within a charge. The charge total is fixed
 // (it's what the bank drew), so pinning this mortgage's amount re-splits
@@ -150,7 +151,7 @@ export function MortgagePaymentEditModal({
               type="date"
               value={dateText}
               onChange={(e) => setDateText(e.target.value)}
-              className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
+              className={DATE_INPUT_CLASS}
             />
           </label>
           <label className="flex flex-col gap-1">

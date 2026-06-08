@@ -12,6 +12,7 @@ import { Button, ClearableInput } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
+import { DATE_INPUT_CLASS } from "./date-input";
 
 // Create / edit one `Property` — name, lender, the bank account "Find
 // mortgage payments" scans, what it was bought for, and the purchase date.
@@ -122,8 +123,6 @@ export function PropertyEditorModal({
 
   const amountInputClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
-  const dateInputClass =
-    "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
   return (
     <Modal
@@ -212,7 +211,7 @@ export function PropertyEditorModal({
               type="date"
               value={purchaseDate}
               onChange={(e) => setPurchaseDate(e.target.value)}
-              className={dateInputClass}
+              className={DATE_INPUT_CLASS}
             />
           </label>
 

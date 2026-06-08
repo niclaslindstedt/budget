@@ -9,6 +9,7 @@ import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { DATE_INPUT_CLASS } from "./date-input";
 
 // Record a new market value for a property — appends one point to its
 // `valueHistory` (the current value is the latest point). Also lists the
@@ -65,8 +66,6 @@ export function UpdatePropertyValueModal({
 
   const amountInputClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
-  const dateInputClass =
-    "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
   return (
     <Modal
@@ -107,7 +106,7 @@ export function UpdatePropertyValueModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className={dateInputClass}
+              className={DATE_INPUT_CLASS}
             />
           </label>
 

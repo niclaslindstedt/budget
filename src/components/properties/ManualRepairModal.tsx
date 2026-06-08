@@ -21,6 +21,7 @@ import { todayIso } from "../../utils/date";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { DATE_INPUT_CLASS } from "./date-input";
 import { RepairFields } from "./RepairFields";
 
 // The manual-repair editor — a repair / renovation with NO backing bank
@@ -68,11 +69,6 @@ type Props = {
 
 const FIELD_CLASS =
   "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
-// Native `<input type="date">` keeps the intrinsic width of its editing
-// controls on iOS WebKit and won't shrink to a `w-full` container, so it omits
-// `w-full` and sizes to its content (matches every other date field).
-const DATE_CLASS =
-  "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
 export function ManualRepairModal({
   open,
@@ -219,7 +215,7 @@ export function ManualRepairModal({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className={DATE_CLASS}
+                className={DATE_INPUT_CLASS}
               />
             </label>
             <label className="flex flex-col gap-1">

@@ -18,6 +18,7 @@ import {
 } from "../../utils/format";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
+import { DATE_INPUT_CLASS } from "./date-input";
 
 // Create / edit one mortgage (loan) under a property — its name, loan
 // terms, interest history, and amortisation. The bank account "Find
@@ -203,13 +204,6 @@ export function MortgageEditorModal({
   const fieldClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
-  // Native `<input type="date">` keeps the intrinsic width of its editing
-  // controls on iOS WebKit and won't shrink to a `w-full` container, so it
-  // overflows the modal. Match the sibling property modals: omit `w-full`
-  // and let the control size to its content.
-  const dateInputClass =
-    "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
-
   // Live preview of the resolved monthly amortisation, reusing the same
   // resolver the card and data layer use. `null` when there's nothing to
   // show yet (blank value, or percent mode without a loan amount to take
@@ -299,7 +293,7 @@ export function MortgageEditorModal({
                       updateRateRow(row.id, { date: e.target.value })
                     }
                     aria-label={t("properties.rateChangeDateLabel")}
-                    className={dateInputClass}
+                    className={DATE_INPUT_CLASS}
                   />
                   <ClearableInput
                     value={row.rate}
@@ -359,7 +353,7 @@ export function MortgageEditorModal({
               type="date"
               value={nextRateChangeDate}
               onChange={(e) => setNextRateChangeDate(e.target.value)}
-              className={dateInputClass}
+              className={DATE_INPUT_CLASS}
             />
           </label>
 
