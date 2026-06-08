@@ -593,7 +593,16 @@ increase, labelled "Raise" in the walk instead of "Likely new
 employer". A salary-typed transaction only boosts confidence — the
 trigger for the walk is the absence of top-level `Salary` objects, not
 of tagged rows. Added salaries link back via `Salary.sourceHistoryId`
-for dedupe.
+for dedupe. When the paychecks already added all trace back to bank
+deposits sharing one description (`confirmedSalarySignal`), that
+description is fed back into the scan as a confirmed signal: discovery
+then also surfaces every other deposit under it that landed within the
+confirmed payout-day window (the day-of-month span those paychecks
+landed in). That recovers months the recurring-cadence family dropped —
+a reduced parental-leave month, a half-month for a new hire — and works
+even when too few deposits exist for any recurring series to be
+detected; the day-of-month guard keeps a same-description mid-month
+reimbursement out of the suggestions.
 
 ### Employer
 

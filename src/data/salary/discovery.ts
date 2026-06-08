@@ -11,6 +11,14 @@
 // deposit, so no future month is ever synthesised (gross/tax aren't
 // known ahead of the money landing).
 //
+// When the user has already added paychecks that all trace back to one
+// bank description (`confirmedSalarySignal`), that description is fed
+// back in as a confirmed signal: discovery then also surfaces every
+// deposit under that description landing within the confirmed
+// payout-day window, catching months the recurring-cadence family
+// dropped (reduced parental-leave months, a half-month for a new hire)
+// and working even when no recurring series was detected at all.
+//
 // Pure: fed an account's history + a dedupe set, emits chronological
 // candidates. Reuses `detectRecurringCandidates` for the cadence /
 // regularity scoring and `assignEmployerGroups` for the job-change /
@@ -133,14 +141,83 @@ export type DiscoveryInput = {
   // History entry ids already turned into top-level `Salary` objects —
   // their months are skipped so the same paycheck isn't offered twice.
   excludeHistoryIds?: ReadonlySet<string>;
+  // A user-confirmed salary line, derived from the deposits already added
+  // as `Salary` objects (see `confirmedSalarySignal`). When every backing
+  // bank entry shares one description, that description IS the salary —
+  // a stronger signal than the recurring-cadence heuristic — so discovery
+  // additionally surfaces every matching deposit that landed within the
+  // payout-day window, even months the recurring family dropped (a
+  // reduced parental-leave month, a half-month for a new hire), and
+  // surfaces them even when no recurring series was detected at all.
+  confirmedSalary?: ConfirmedSalarySignal;
   referenceDate?: string;
 };
+
+// A salary line the user has effectively confirmed by adding paychecks
+// that all trace back to bank deposits sharing one normalised
+// description. `payoutDays` is the inclusive day-of-month span those
+// confirmed paychecks landed in — the window a future paycheck under the
+// same description is expected to fall in.
+export type ConfirmedSalarySignal = {
+  descriptionKey: string; // `normaliseDescription` of the shared bank text
+  payoutDays: { min: number; max: number }; // day-of-month, 1..31
+};
+
+// Derive the confirmed-salary signal from the bank entries already
+// backing `Salary` objects (their `sourceHistoryId`s). Returns the shared
+// normalised description and the day-of-month span the paychecks landed
+// in — but only when EVERY backing entry agrees on one meaningful
+// description. Disagreement, an unmeaningful key, or no backing entry at
+// all yields `undefined`: there is nothing the user has confirmed.
+export function confirmedSalarySignal(
+  entries: readonly HistoryEntry[],
+  backingIds: ReadonlySet<string>,
+): ConfirmedSalarySignal | undefined {
+  if (backingIds.size === 0) return undefined;
+  let key: string | undefined;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const entry of entries) {
+    if (!backingIds.has(entry.id)) continue;
+    const k = normaliseDescription(entry.description);
+    if (!isNormalisedKeyMeaningful(k)) return undefined;
+    if (key === undefined) key = k;
+    else if (key !== k) return undefined;
+    const day = Number(entry.date.slice(8, 10));
+    if (day < min) min = day;
+    if (day > max) max = day;
+  }
+  if (key === undefined) return undefined;
+  return { descriptionKey: key, payoutDays: { min, max } };
+}
+
+// True when a deposit is the confirmed salary line landing in its payout
+// window: same normalised description, day-of-month inside the confirmed
+// span. The day guard keeps a same-description NON-salary deposit (a
+// reimbursement booked under the payroll line mid-month) out of the
+// suggestions.
+function matchesConfirmed(
+  entry: HistoryEntry,
+  key: string,
+  confirmed: ConfirmedSalarySignal | undefined,
+): boolean {
+  if (!confirmed || key !== confirmed.descriptionKey) return false;
+  const day = Number(entry.date.slice(8, 10));
+  return day >= confirmed.payoutDays.min && day <= confirmed.payoutDays.max;
+}
 
 // A recurring deposit counts as part of the salary family when it's at
 // least half the largest recurring deposit. A job change or a raise
 // stays comfortably in this band; small steady inflows (child benefit,
 // a fixed savings transfer) fall out so they don't masquerade as pay.
 const SALARY_BAND = 0.5;
+
+// Base confidence for a deposit surfaced solely because it matches the
+// user's confirmed salary description within the payout window (i.e. not
+// also part of a detected recurring series). The user has effectively
+// vouched for this description, so it starts high — the off-baseline
+// penalty below still knocks down an unusual month for a closer look.
+const CONFIRMED_CONFIDENCE = 0.8;
 
 // The description shown for a discovered paycheck: the raw bank text when
 // present, otherwise the user-added description (a manually-entered
@@ -192,21 +269,27 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
       c.suggestedAmount > 0 &&
       (c.cadence.kind === "monthly" || c.cadence.kind === "biweekly"),
   );
-  if (paycheckSeries.length === 0) return empty;
 
   // The salary is the family of the LARGEST recurring deposits. Anchor
   // on the biggest, keep series within the job-change/raise band, and
   // drop smaller recurring inflows. A different employer name (a job
   // change) is a different normalised key, so this naturally spans
   // multiple employers across time.
-  const anchor = Math.max(...paycheckSeries.map((c) => c.suggestedAmount));
   const seriesConfidence = new Map<string, number>();
-  for (const c of paycheckSeries) {
-    if (c.suggestedAmount >= anchor * SALARY_BAND) {
-      seriesConfidence.set(c.key, c.confidence);
+  if (paycheckSeries.length > 0) {
+    const anchor = Math.max(...paycheckSeries.map((c) => c.suggestedAmount));
+    for (const c of paycheckSeries) {
+      if (c.suggestedAmount >= anchor * SALARY_BAND) {
+        seriesConfidence.set(c.key, c.confidence);
+      }
     }
   }
-  if (seriesConfidence.size === 0) return empty;
+
+  // Need at least one signal to go on: a detected recurring family, or a
+  // user-confirmed description to match deposits against. With neither
+  // there is nothing to suggest.
+  const confirmed = input.confirmedSalary;
+  if (seriesConfidence.size === 0 && !confirmed) return empty;
 
   // Months already backed by an added salary — skip the whole month so
   // a smaller same-month deposit doesn't get re-offered in its place.
@@ -216,9 +299,10 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
   }
 
   // 2. Re-derive contributing entries: every positive, non-excluded
-  //    entry whose normalised description is one of the kept series.
-  //    One winner per month — the largest deposit, so a salary outranks
-  //    a smaller same-month benefit that shares the band.
+  //    entry that is either one of the kept recurring series, or a match
+  //    for the user-confirmed salary description within its payout
+  //    window. One winner per month — the largest deposit, so a salary
+  //    outranks a smaller same-month benefit that shares the band.
   const byMonth = new Map<string, HistoryEntry>();
   for (const entry of input.entries) {
     if (entry.hidden) continue;
@@ -228,7 +312,8 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
     if (excludedMonths.has(month)) continue;
     const key = normaliseDescription(entry.description);
     if (!isNormalisedKeyMeaningful(key)) continue;
-    if (!seriesConfidence.has(key)) continue;
+    if (!seriesConfidence.has(key) && !matchesConfirmed(entry, key, confirmed))
+      continue;
     const current = byMonth.get(month);
     if (!current || entry.amount > current.amount) byMonth.set(month, entry);
   }
@@ -257,7 +342,9 @@ export function discoverSalaries(input: DiscoveryInput): DiscoveryResult {
   //    so the walk flags it for a closer look.
   const candidates: DiscoveredSalary[] = winners.map((entry, i) => {
     const key = normaliseDescription(entry.description);
-    const base = seriesConfidence.get(key) ?? 0.45;
+    const base =
+      seriesConfidence.get(key) ??
+      (key === confirmed?.descriptionKey ? CONFIRMED_CONFIDENCE : 0.45);
     const baselineNet = baselineByGroup.get(groups[i]) ?? entry.amount;
     const typedSalary = entryTypedAsSalary(entry);
     let confidence = base;
