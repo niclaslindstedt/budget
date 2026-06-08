@@ -805,8 +805,9 @@ principal, and a combined paid breakdown — all sharing the per-mortgage
 `PayoffSection` so the summed and split views behave identically. Each
 total is hidden when no mortgage supplied it. The combined balance also
 carries a parenthetical loan-to-value share — combined balance ÷ the
-property's current value, rounded to a whole percent (`6 028 400 (82%)`) —
-shown only when both figures resolve and the value is positive, so a missing
+price the property was bought for (`Property.purchaseAmount`), the way the
+bank reads LTV, rounded to a whole percent (`6 028 400 (82%)`) — shown only
+when both figures resolve and the purchase amount is positive, so a missing
 or zero value hides it. The **split view** (the
 toggle's other state) is the per-loan list of `MortgageRow`s, where an
 individual loan is edited or deleted; the unified card carries no per-loan

@@ -18,7 +18,7 @@ const properties: PropertiesCatalog = {
   valuePerAreaTitle: "Värde per {unit}",
   feePerAreaTitle: "Årsavgift per {unit}",
   perYearUnit: "år",
-  loanToValueTitle: "Andel av nuvarande värde",
+  loanToValueTitle: "Andel av köpeskillingen",
   updateValue: "Uppdatera värde",
   uploadFile: "Ladda upp fil",
   netSaleProfit: "Nettovinst vid försäljning",
