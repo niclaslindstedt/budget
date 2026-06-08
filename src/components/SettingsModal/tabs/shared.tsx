@@ -72,12 +72,7 @@ export function Section({
           : "mt-3 rounded border border-line bg-surface-3 p-3 first:mt-0"
       }
     >
-      {/* Solid background matching the fieldset fill: the legend straddles
-          the fieldset's top edge, so a transparent legend lets the
-          surface ↔ surface-3 transition show straight through the title
-          text — invisible on low-contrast palettes, a hard line through
-          the words on high-contrast ones (GitHub Light, Excel). */}
-      <legend className="bg-surface-3 px-1">
+      <legend className="px-1">
         {collapsible ? (
           <button
             type="button"
