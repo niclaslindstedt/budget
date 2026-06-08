@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo } from "react";
 
 import {
   type AppShellAuth,
@@ -25,14 +25,8 @@ import { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 import { useToastEffects } from "./hooks/useToastEffects";
 import { useUndoRedo } from "./hooks/useUndoRedo";
 
-import { AccountsModalHost } from "./AccountsModalHost";
-import { AccountsPage } from "../accounts/AccountsPage";
-import { ItemsPage } from "../items/ItemsPage";
-import { PropertiesPage } from "../properties/PropertiesPage";
-import { SalaryPage } from "../salary/SalaryPage";
 import { AppLoading } from "../AppLoading";
 import { BottomBar } from "../BottomBar";
-import { BudgetModalHost } from "./BudgetModalHost";
 import { BudgetPage } from "../budget/BudgetPage";
 import { BudgetRecurringCandidatesPanel } from "../budget/BudgetRecurringCandidatesPanel";
 import { HeaderMenu } from "../HeaderMenu";
@@ -43,7 +37,6 @@ import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
 import { SheetSwitcher } from "../SheetSwitcher";
 import { SyncStatus } from "../SyncStatus";
-import { UniversalModalHost } from "./UniversalModalHost";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import {
   companyTypeSuggestionsFromHints,
@@ -83,6 +76,45 @@ import {
   useToast,
 } from "../../hooks";
 import { createDevSeedAdapter } from "../../storage/dev-seed-adapter";
+
+// Non-default pages are lazy so their code (and the salary tax engine,
+// property modals, etc.) stays out of the entry chunk — they only
+// download when the user opens a sheet of that type. The budget page is
+// the default first paint, so it stays statically imported above.
+//
+// The modal hosts are lazy too: together they pull in dozens of modals
+// (~0.5 MB) that no first paint needs, so their chunks load after the
+// initial render rather than blocking it. They each register a slice of
+// the modal-dispatch handler table on mount, and the chrome (HeaderMenu,
+// BottomBar) can fire a command before a host's chunk has resolved —
+// `ModalDispatchProvider` holds such a command and replays it once the
+// owning slice registers, so the deferral doesn't drop early clicks.
+const AccountsPage = lazy(() =>
+  import("../accounts/AccountsPage").then((m) => ({ default: m.AccountsPage })),
+);
+const ItemsPage = lazy(() =>
+  import("../items/ItemsPage").then((m) => ({ default: m.ItemsPage })),
+);
+const PropertiesPage = lazy(() =>
+  import("../properties/PropertiesPage").then((m) => ({
+    default: m.PropertiesPage,
+  })),
+);
+const SalaryPage = lazy(() =>
+  import("../salary/SalaryPage").then((m) => ({ default: m.SalaryPage })),
+);
+const UniversalModalHost = lazy(() =>
+  import("./UniversalModalHost").then((m) => ({
+    default: m.UniversalModalHost,
+  })),
+);
+const AccountsModalHost = lazy(() =>
+  import("./AccountsModalHost").then((m) => ({ default: m.AccountsModalHost })),
+);
+const BudgetModalHost = lazy(() =>
+  import("./BudgetModalHost").then((m) => ({ default: m.BudgetModalHost })),
+);
+
 type AppShellProps = {
   auth: AppShellAuth;
   storage: AppShellStorage;
@@ -917,137 +949,141 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               tabIndex={-1}
               className="flex-1 will-change-transform"
             >
-              {status.kind === "loading" ? (
-                <AppLoading />
-              ) : activeSheet.type === "accounts" ? (
-                <AccountsPage
-                  sheet={activeSheet}
-                  data={data}
-                  settings={effectiveSettings}
-                  onCreateAccount={onOpenCreateAccount}
-                  onEditAccount={onOpenEditAccount}
-                  onDeleteAccount={onRequestDeleteAccount}
-                  onUpdateBalance={onOpenUpdateBalance}
-                  onCreateTransfer={onOpenCreateTransfer}
-                  onEditTransfer={onOpenEditTransfer}
-                  onImportHistory={onOpenImportHistory}
-                  onViewHistory={onOpenViewHistory}
-                  onCutHistory={onOpenCutHistory}
-                />
-              ) : activeSheet.type === "items" ? (
-                <ItemsPage
-                  sheet={activeSheet}
-                  data={data}
-                  settings={effectiveSettings}
-                  onDeleteItem={(itemId) =>
-                    dispatch({ type: "deleteItem", itemId })
-                  }
-                  canManageReceipt={canManageItemReceipt}
-                  onUploadReceipt={onUploadItemReceipt}
-                  onDownloadReceipt={onDownloadItemReceipt}
-                  onRemoveReceipt={onRemoveItemReceipt}
-                />
-              ) : activeSheet.type === "properties" ? (
-                <PropertiesPage
-                  sheet={activeSheet}
-                  data={data}
-                  settings={effectiveSettings}
-                  dispatch={dispatch}
-                  attachments={propertyAttachments}
-                />
-              ) : activeSheet.type === "salary" ? (
-                <SalaryPage
-                  sheet={activeSheet}
-                  data={data}
-                  settings={effectiveSettings}
-                  dispatch={dispatch}
-                  selectMode={salaryBulk.selectMode}
-                  selectedIds={salaryBulk.selectedIds}
-                  onToggleSelect={salaryBulk.onToggleSelect}
-                  onToggleSelectMany={salaryBulk.onToggleSelectMany}
-                  bulkEditOpen={salaryBulk.bulkEditOpen}
-                  onCloseBulkEdit={() => salaryBulk.setBulkEditOpen(false)}
-                  onApplyBulk={salaryBulk.onApplyBulk}
-                  bulkDeleteOpen={salaryBulk.bulkDeleteOpen}
-                  onCloseBulkDelete={() => salaryBulk.setBulkDeleteOpen(false)}
-                  onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
-                  canManagePayslip={canUploadPayslip}
-                  onUploadPayslip={onUploadPayslip}
-                  onDownloadPayslip={onDownloadPayslip}
-                  onRemovePayslip={onRemovePayslip}
-                />
-              ) : (
-                <>
-                  <BudgetRecurringCandidatesPanel
-                    history={
-                      activeItem.accountId
-                        ? (data.history[activeItem.accountId] ?? [])
-                        : []
-                    }
-                    dismissedKeys={data.recurringDismissals}
-                    merchantHints={data.merchantHints}
-                    types={allTypesMerged}
-                    settings={effectiveSettings}
-                    onPromote={onPromoteRecurringCandidate}
-                    onDismiss={onDismissRecurringCandidate}
-                    onDismissAll={onDismissAllRecurringCandidates}
-                  />
-                  <BudgetPage
+              <Suspense fallback={<AppLoading />}>
+                {status.kind === "loading" ? (
+                  <AppLoading />
+                ) : activeSheet.type === "accounts" ? (
+                  <AccountsPage
                     sheet={activeSheet}
-                    item={activeItem}
                     data={data}
-                    types={allTypesMerged}
-                    categories={allCategoriesMerged}
-                    companies={data.companies}
-                    companyTypeSuggestions={companyTypeSuggestions}
-                    companyTypeHints={companyTypeHints}
-                    onCreateType={onCreateType}
-                    onCreateCategory={onCreateCategory}
-                    onCreateCompany={onCreateCompany}
-                    accounts={data.accounts}
-                    transfers={data.transfers}
-                    history={
-                      activeItem.accountId
-                        ? (data.history[activeItem.accountId] ?? [])
-                        : []
-                    }
-                    merchantHints={data.merchantHints}
-                    matchRules={data.matchRules}
-                    openingBalance={
-                      activeItem.accountId
-                        ? (data.accounts.find(
-                            (a) => a.id === activeItem.accountId,
-                          )?.openingBalance ?? 0)
-                        : 0
-                    }
                     settings={effectiveSettings}
-                    selectMode={selectMode}
-                    selectedIds={selectedIds}
-                    scrollToRowRequest={scrollToRowRequest}
-                    onUpdateCell={onUpdateCell}
-                    onCommitCell={onCommitCell}
-                    onAddRow={onAddRow}
-                    onAddComplex={onAddComplex}
-                    onToggleRowTransfer={onToggleRowTransfer}
-                    onSetFiscalMonthShift={onSetFiscalMonthShift}
-                    onUpdateHistoryEntry={onUpdateHistoryEntry}
-                    onApplyMetadataToMatchingHistory={
-                      onApplyMetadataToMatchingHistory
-                    }
-                    onSplitHistoryEntry={onSplitHistoryEntry}
-                    tags={data.tags}
-                    onCreateTag={onCreateTag}
-                    onReorderColumns={onReorderColumns}
-                    onToggleSelect={onToggleSelect}
-                    onToggleSelectMonth={onToggleSelectMonth}
-                    onMergeConflictIntoHistory={onMergeConflictIntoHistory}
-                    onMergeConflictUserRows={onMergeConflictUserRows}
-                    onTriageMonth={onTriageMonth}
-                    onSetRowCompany={onSetRowCompany}
-                    onSetRowNoCompany={onSetRowNoCompany}
+                    onCreateAccount={onOpenCreateAccount}
+                    onEditAccount={onOpenEditAccount}
+                    onDeleteAccount={onRequestDeleteAccount}
+                    onUpdateBalance={onOpenUpdateBalance}
+                    onCreateTransfer={onOpenCreateTransfer}
+                    onEditTransfer={onOpenEditTransfer}
+                    onImportHistory={onOpenImportHistory}
+                    onViewHistory={onOpenViewHistory}
+                    onCutHistory={onOpenCutHistory}
                   />
-                </>
-              )}
+                ) : activeSheet.type === "items" ? (
+                  <ItemsPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    onDeleteItem={(itemId) =>
+                      dispatch({ type: "deleteItem", itemId })
+                    }
+                    canManageReceipt={canManageItemReceipt}
+                    onUploadReceipt={onUploadItemReceipt}
+                    onDownloadReceipt={onDownloadItemReceipt}
+                    onRemoveReceipt={onRemoveItemReceipt}
+                  />
+                ) : activeSheet.type === "properties" ? (
+                  <PropertiesPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    dispatch={dispatch}
+                    attachments={propertyAttachments}
+                  />
+                ) : activeSheet.type === "salary" ? (
+                  <SalaryPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    dispatch={dispatch}
+                    selectMode={salaryBulk.selectMode}
+                    selectedIds={salaryBulk.selectedIds}
+                    onToggleSelect={salaryBulk.onToggleSelect}
+                    onToggleSelectMany={salaryBulk.onToggleSelectMany}
+                    bulkEditOpen={salaryBulk.bulkEditOpen}
+                    onCloseBulkEdit={() => salaryBulk.setBulkEditOpen(false)}
+                    onApplyBulk={salaryBulk.onApplyBulk}
+                    bulkDeleteOpen={salaryBulk.bulkDeleteOpen}
+                    onCloseBulkDelete={() =>
+                      salaryBulk.setBulkDeleteOpen(false)
+                    }
+                    onConfirmBulkDelete={salaryBulk.onConfirmBulkDelete}
+                    canManagePayslip={canUploadPayslip}
+                    onUploadPayslip={onUploadPayslip}
+                    onDownloadPayslip={onDownloadPayslip}
+                    onRemovePayslip={onRemovePayslip}
+                  />
+                ) : (
+                  <>
+                    <BudgetRecurringCandidatesPanel
+                      history={
+                        activeItem.accountId
+                          ? (data.history[activeItem.accountId] ?? [])
+                          : []
+                      }
+                      dismissedKeys={data.recurringDismissals}
+                      merchantHints={data.merchantHints}
+                      types={allTypesMerged}
+                      settings={effectiveSettings}
+                      onPromote={onPromoteRecurringCandidate}
+                      onDismiss={onDismissRecurringCandidate}
+                      onDismissAll={onDismissAllRecurringCandidates}
+                    />
+                    <BudgetPage
+                      sheet={activeSheet}
+                      item={activeItem}
+                      data={data}
+                      types={allTypesMerged}
+                      categories={allCategoriesMerged}
+                      companies={data.companies}
+                      companyTypeSuggestions={companyTypeSuggestions}
+                      companyTypeHints={companyTypeHints}
+                      onCreateType={onCreateType}
+                      onCreateCategory={onCreateCategory}
+                      onCreateCompany={onCreateCompany}
+                      accounts={data.accounts}
+                      transfers={data.transfers}
+                      history={
+                        activeItem.accountId
+                          ? (data.history[activeItem.accountId] ?? [])
+                          : []
+                      }
+                      merchantHints={data.merchantHints}
+                      matchRules={data.matchRules}
+                      openingBalance={
+                        activeItem.accountId
+                          ? (data.accounts.find(
+                              (a) => a.id === activeItem.accountId,
+                            )?.openingBalance ?? 0)
+                          : 0
+                      }
+                      settings={effectiveSettings}
+                      selectMode={selectMode}
+                      selectedIds={selectedIds}
+                      scrollToRowRequest={scrollToRowRequest}
+                      onUpdateCell={onUpdateCell}
+                      onCommitCell={onCommitCell}
+                      onAddRow={onAddRow}
+                      onAddComplex={onAddComplex}
+                      onToggleRowTransfer={onToggleRowTransfer}
+                      onSetFiscalMonthShift={onSetFiscalMonthShift}
+                      onUpdateHistoryEntry={onUpdateHistoryEntry}
+                      onApplyMetadataToMatchingHistory={
+                        onApplyMetadataToMatchingHistory
+                      }
+                      onSplitHistoryEntry={onSplitHistoryEntry}
+                      tags={data.tags}
+                      onCreateTag={onCreateTag}
+                      onReorderColumns={onReorderColumns}
+                      onToggleSelect={onToggleSelect}
+                      onToggleSelectMonth={onToggleSelectMonth}
+                      onMergeConflictIntoHistory={onMergeConflictIntoHistory}
+                      onMergeConflictUserRows={onMergeConflictUserRows}
+                      onTriageMonth={onTriageMonth}
+                      onSetRowCompany={onSetRowCompany}
+                      onSetRowNoCompany={onSetRowNoCompany}
+                    />
+                  </>
+                )}
+              </Suspense>
             </div>
           </main>
           {status.kind === "loading" ? null : (
@@ -1088,91 +1124,93 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             />
           )}
         </div>
-        <UniversalModalHost
-          data={data}
-          effectiveSettings={effectiveSettings}
-          dispatch={dispatch}
-          user={user}
-          isGuest={isGuest}
-          storageState={{
-            status,
-            dirty,
-            saveNow,
-            resolveKeepLocal,
-            resolveKeepRemote,
-            confirmShrinkSave,
-            discardShrinkSave,
-            historyEntries,
-            historyIndex,
-            jumpToHistory,
-          }}
-          storage={storage}
-          auth={{ getEncryptionPassword, onDeleteAccount }}
-          warningSecondsLeft={warningSecondsLeft}
-          onStaySignedIn={onStaySignedIn}
-          sheetMetaDialog={sheetMetaDialog}
-          downloadFlow={downloadFlow}
-          searchModal={searchModal}
-          searchBulk={{
-            selectMode,
-            selectedIds,
-            activeSheetId: activeSheet.id,
-            onToggleSelectMode,
-            onToggleSelect,
-            onSelectMany: (rowIds) => onToggleSelectMonth(rowIds, true),
-            onSelectSheet,
-            onBulkEdit,
-            onBulkMove,
-            onBulkCopy,
-            onBulkDelete,
-            onBulkCancel: onCancelSelect,
-          }}
-          taxonomyCrud={taxonomyCrud}
-          matchRuleUi={matchRuleUi}
-          onClearMerchantHints={onClearMerchantHints}
-          onClearRecurringDismissals={onClearRecurringDismissals}
-          onClearTransferDismissals={onClearTransferDismissals}
-          onClearIgnoredItemEntries={onClearIgnoredItemEntries}
-          onClearItemFindExclusions={onClearItemFindExclusions}
-          onSaveSettings={onSaveSettings}
-          onImport={onImport}
-        />
-        <AccountsModalHost
-          data={data}
-          effectiveSettings={effectiveSettings}
-          categories={allCategoriesMerged}
-          types={allTypesMerged}
-          accountDialog={accountDialog}
-          importFlow={importFlow}
-          transferFlow={transferFlow}
-          onCreateType={onCreateType}
-          onCreateCategory={onCreateCategory}
-        />
-        <BudgetModalHost
-          data={data}
-          effectiveSettings={effectiveSettings}
-          categories={allCategoriesMerged}
-          types={allTypesMerged}
-          companyTypeSuggestions={companyTypeSuggestions}
-          companyTypeHints={companyTypeHints}
-          sheetId={sheetId}
-          itemId={itemId}
-          activeItem={activeItem}
-          dateCol={dateCol}
-          dispatch={dispatch}
-          editPrompts={editPrompts}
-          deletePrompts={deletePrompts}
-          complexEntry={complexEntry}
-          matchRuleUi={matchRuleUi}
-          bulkSelection={bulkSelection}
-          onCreateType={onCreateType}
-          onCreateCategory={onCreateCategory}
-          onCreateCompany={onCreateCompany}
-          onCreateTag={onCreateTag}
-          onCreateSubtype={onCreateSubtype}
-          onCreateItem={onCreateItem}
-          onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
-        />
+        <Suspense fallback={null}>
+          <UniversalModalHost
+            data={data}
+            effectiveSettings={effectiveSettings}
+            dispatch={dispatch}
+            user={user}
+            isGuest={isGuest}
+            storageState={{
+              status,
+              dirty,
+              saveNow,
+              resolveKeepLocal,
+              resolveKeepRemote,
+              confirmShrinkSave,
+              discardShrinkSave,
+              historyEntries,
+              historyIndex,
+              jumpToHistory,
+            }}
+            storage={storage}
+            auth={{ getEncryptionPassword, onDeleteAccount }}
+            warningSecondsLeft={warningSecondsLeft}
+            onStaySignedIn={onStaySignedIn}
+            sheetMetaDialog={sheetMetaDialog}
+            downloadFlow={downloadFlow}
+            searchModal={searchModal}
+            searchBulk={{
+              selectMode,
+              selectedIds,
+              activeSheetId: activeSheet.id,
+              onToggleSelectMode,
+              onToggleSelect,
+              onSelectMany: (rowIds) => onToggleSelectMonth(rowIds, true),
+              onSelectSheet,
+              onBulkEdit,
+              onBulkMove,
+              onBulkCopy,
+              onBulkDelete,
+              onBulkCancel: onCancelSelect,
+            }}
+            taxonomyCrud={taxonomyCrud}
+            matchRuleUi={matchRuleUi}
+            onClearMerchantHints={onClearMerchantHints}
+            onClearRecurringDismissals={onClearRecurringDismissals}
+            onClearTransferDismissals={onClearTransferDismissals}
+            onClearIgnoredItemEntries={onClearIgnoredItemEntries}
+            onClearItemFindExclusions={onClearItemFindExclusions}
+            onSaveSettings={onSaveSettings}
+            onImport={onImport}
+          />
+          <AccountsModalHost
+            data={data}
+            effectiveSettings={effectiveSettings}
+            categories={allCategoriesMerged}
+            types={allTypesMerged}
+            accountDialog={accountDialog}
+            importFlow={importFlow}
+            transferFlow={transferFlow}
+            onCreateType={onCreateType}
+            onCreateCategory={onCreateCategory}
+          />
+          <BudgetModalHost
+            data={data}
+            effectiveSettings={effectiveSettings}
+            categories={allCategoriesMerged}
+            types={allTypesMerged}
+            companyTypeSuggestions={companyTypeSuggestions}
+            companyTypeHints={companyTypeHints}
+            sheetId={sheetId}
+            itemId={itemId}
+            activeItem={activeItem}
+            dateCol={dateCol}
+            dispatch={dispatch}
+            editPrompts={editPrompts}
+            deletePrompts={deletePrompts}
+            complexEntry={complexEntry}
+            matchRuleUi={matchRuleUi}
+            bulkSelection={bulkSelection}
+            onCreateType={onCreateType}
+            onCreateCategory={onCreateCategory}
+            onCreateCompany={onCreateCompany}
+            onCreateTag={onCreateTag}
+            onCreateSubtype={onCreateSubtype}
+            onCreateItem={onCreateItem}
+            onSetSeriesPrimaryIncome={onSetSeriesPrimaryIncome}
+          />
+        </Suspense>
       </div>
     </ModalDispatchProvider>
   );

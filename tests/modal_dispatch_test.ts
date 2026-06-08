@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyModalCommand,
   mergeHandlerSlices,
+  modalCommandTarget,
   type ModalCommand,
   type ModalCommandHandlers,
   type PartialModalCommandHandlers,
@@ -109,6 +110,21 @@ describe("applyModalCommand", () => {
     applyModalCommand({ kind: "open-correction-delete", row: ROW }, handlers);
     expect(handlers.correctionDelete).toHaveBeenCalledWith(ROW);
   });
+});
+
+// `modalCommandTarget` names the handler a command needs without firing
+// it — the provider uses it to detect "this handler isn't registered
+// yet" (a code-split modal host whose chunk is still loading) so it can
+// hold the command and replay it once the slice registers. Lock it to
+// the same command→handler pairing the switch uses, so the data map and
+// `applyModalCommand` can't drift: a mismatch would replay the wrong
+// handler when a lazy host mounts.
+describe("modalCommandTarget", () => {
+  for (const [command, expected] of cases) {
+    it(`${command.kind} targets ${expected}`, () => {
+      expect(modalCommandTarget(command)).toBe(expected);
+    });
+  }
 });
 
 // The provider merges AppShell's base slice with the slices modal hosts

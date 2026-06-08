@@ -193,6 +193,49 @@ export function applyModalCommand(
   }
 }
 
+// The one handler key each command routes to, as data rather than a
+// control-flow switch. `applyModalCommand` above invokes the handler;
+// this lets a caller ask *which* handler a command needs without firing
+// it — the provider uses it to tell "this handler isn't registered yet"
+// (a lazily-mounted host whose chunk hasn't loaded) apart from a real
+// dispatch, so it can hold the command and replay it once the slice
+// registers. The `Record` is exhaustive over `ModalCommand["kind"]`, so
+// a new command kind is a compile error until it is listed here too.
+const COMMAND_TARGET: Record<ModalCommand["kind"], keyof ModalCommandHandlers> =
+  {
+    "open-settings": "openSettings",
+    "open-changelog": "openChangelog",
+    "open-search": "openSearch",
+    "open-action-history": "openActionHistory",
+    "open-achievements-list": "openAchievementsList",
+    "open-achievements-unlock": "openAchievementsUnlock",
+    "open-sync-details": "openSyncDetails",
+    "open-new-sheet": "openNewSheet",
+    "open-edit-sheet": "openEditSheet",
+    "open-download-sheet": "openDownloadSheet",
+    "toggle-sheet-favorite": "toggleSheetFavorite",
+    "open-edit-entry": "editEntry",
+    "open-edit-row": "editRow",
+    "open-delete-row": "deleteRow",
+    "open-split-row": "splitRow",
+    "open-line-items": "lineItems",
+    "open-transfer-row": "transferRow",
+    "open-match-rule": "matchRule",
+    "open-edit-history": "editHistory",
+    "open-copy-row": "copyRow",
+    "open-correction-delete": "correctionDelete",
+    "open-edit-company": "editCompany",
+    "open-edit-item": "editItem",
+    "open-create-item": "createItem",
+    "open-find-items": "findItems",
+  };
+
+export function modalCommandTarget(
+  command: ModalCommand,
+): keyof ModalCommandHandlers {
+  return COMMAND_TARGET[command.kind];
+}
+
 // Fold the base slice and every registered slice into one handler table.
 // Later slices win on key collision, so a host that takes over a handler
 // AppShell still lists in its base slice would override it — but the
