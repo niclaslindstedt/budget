@@ -4,6 +4,8 @@ import {
   ModalDispatchContext,
   applyModalCommand,
   mergeHandlerSlices,
+  modalCommandTarget,
+  type ModalCommand,
   type ModalCommandHandlers,
   type ModalDispatch,
   type ModalDispatchContextValue,
@@ -31,22 +33,55 @@ export function ModalDispatchProvider({
   baseRef.current = handlers ?? {};
 
   const slicesRef = useRef<Set<SliceGetter>>(new Set());
-  const registerHandlers = useCallback((getter: SliceGetter) => {
-    slicesRef.current.add(getter);
-    return () => {
-      slicesRef.current.delete(getter);
-    };
+
+  // A command dispatched before the host that owns its handler has
+  // mounted (its slice is registered in a mount effect, and the modal
+  // hosts are code-split so a host's chunk may still be loading when the
+  // chrome paints). We hold the latest such command here and replay it
+  // the moment a newly-registered slice supplies the missing handler, so
+  // a click on "Settings" during that window opens the modal once the
+  // chunk lands instead of being silently dropped. Latest-wins: a second
+  // command before the flush overwrites the first, which matches modal
+  // semantics (you only ever want the last-requested modal open).
+  const pendingRef = useRef<ModalCommand | null>(null);
+
+  // Try to run a command against the currently-registered handlers.
+  // Returns false (without invoking anything) when the target handler
+  // isn't registered yet, so the caller can decide to hold it. Reads the
+  // refs, so its identity stays stable across renders.
+  const tryApply = useCallback((command: ModalCommand): boolean => {
+    const getters: PartialModalCommandHandlers[] = [];
+    for (const get of slicesRef.current) getters.push(get());
+    const merged = mergeHandlerSlices(baseRef.current, getters);
+    if (typeof merged[modalCommandTarget(command)] !== "function") return false;
+    applyModalCommand(command, merged as ModalCommandHandlers);
+    return true;
   }, []);
+
+  const registerHandlers = useCallback(
+    (getter: SliceGetter) => {
+      slicesRef.current.add(getter);
+      // This slice may carry the handler a just-dispatched command was
+      // waiting on — replay it now that the host has mounted.
+      if (pendingRef.current && tryApply(pendingRef.current)) {
+        pendingRef.current = null;
+      }
+      return () => {
+        slicesRef.current.delete(getter);
+      };
+    },
+    [tryApply],
+  );
 
   // Stable across renders: the merge happens at dispatch time against the
   // refs, so a column reorder (which mints a fresh base slice) no longer
   // changes `dispatch`'s identity and re-renders the memoized chrome / rows.
-  const dispatch = useCallback<ModalDispatch>((command) => {
-    const getters: PartialModalCommandHandlers[] = [];
-    for (const get of slicesRef.current) getters.push(get());
-    const merged = mergeHandlerSlices(baseRef.current, getters);
-    applyModalCommand(command, merged as ModalCommandHandlers);
-  }, []);
+  const dispatch = useCallback<ModalDispatch>(
+    (command) => {
+      if (!tryApply(command)) pendingRef.current = command;
+    },
+    [tryApply],
+  );
 
   const value = useMemo<ModalDispatchContextValue>(
     () => ({ dispatch, registerHandlers }),

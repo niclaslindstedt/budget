@@ -533,6 +533,26 @@ export default defineConfig({
     }),
   ],
   base: BASE_PATH,
+  build: {
+    rollupOptions: {
+      output: {
+        // Split a stable vendor chunk for the React runtime. React and
+        // react-dom change rarely between releases, so pinning them in
+        // their own content-hashed chunk keeps that hash stable across
+        // app updates — a returning user re-downloads only the app code
+        // that actually changed, not the whole framework, instead of
+        // busting one monolithic `index-*.js` on every deploy.
+        advancedChunks: {
+          groups: [
+            {
+              name: "react-vendor",
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __IS_PREVIEW__: JSON.stringify(IS_PREVIEW),
