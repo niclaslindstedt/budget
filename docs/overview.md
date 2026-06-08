@@ -1090,7 +1090,7 @@ the user's global `receiptNamePattern` (`buildReceiptPath`). The Items
 
 ### Property attachments
 
-`usePropertyAttachments` (`src/components/AppShell/hooks/`) — the
+`usePropertyAttachments` (`src/components/properties/`) — the
 per-property file layer. Both a property's repair receipts and the
 arbitrary files the user uploads against it live in the backend's
 `properties/` store (a sibling of `receipts/` / `payslips/`, gated on the

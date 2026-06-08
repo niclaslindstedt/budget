@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { FileText, FolderClosed, Pencil, Plus, Trash2 } from "lucide-react";
 
-import type { PropertyFileMeta } from "../AppShell/hooks/usePropertyAttachments";
+import type { PropertyFileMeta } from "./usePropertyAttachments";
 import type {
   FileCategory,
   Property,

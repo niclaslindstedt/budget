@@ -372,33 +372,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   `parseDecimal(text, lang)` would cover. Re-rate if
   thousands-separator support lands. **Severity: 3.**
 
-- **`usePropertyAttachments.ts` + `PropertyFileMeta` are page-specific but
-  live under `src/components/AppShell/hooks/`** —
-  `AppShell/hooks/usePropertyAttachments.ts` (752) is properties-only (its
-  exported `PropertyAttachments` / `PropertyFileMeta` types are consumed by
-  `properties/PropertyFilesModal.tsx`, which imports the type _upward_ from
-  `../AppShell/hooks/usePropertyAttachments`), the same placement smell that
-  the landed `useSalaryBulkSelection` relocation fixed. The `useReceiptManager` /
-  `data/receipts/target.ts` references are **comments only** (re-verified
-  2026-06 — no import), so there is no shared-hook entanglement and no
-  data→components violation.
-  - **Plan**: `git mv` the hook into `src/components/properties/`, move
-    `PropertyFileMeta` / `PropertyAttachments` there (or into a
-    `properties/` types file), and fix the relative imports + AppShell's
-    import path (AppShell already imports `PropertiesPage` from there as the
-    router, so the direction stays consistent).
-  - **Risk**: low, but **re-verify the standalone-vs-host-consumed question
-    first** — the landed `useSalaryBulkSelection` note drew the line between
-    "standalone misplacement" (move it) and "consumed by a modal host the
-    shell already owns" (leave it, like `useComplexEntry` / `useMatchRuleUi`).
-    `usePropertyAttachments` is called in `AppShell.tsx` and threaded to
-    `PropertiesPage`; confirm it's a standalone properties hook the shell
-    merely wires (move) rather than a host-owned collaborator (leave) before
-    committing. Pure module relocation, no behaviour change.
-  - **Severity: 4** (easy-win-flavoured). Multiplier-adjacent — every new
-    page type will grow its own attachment/plumbing hook, and "where do
-    page-specific hooks live" should have one answer.
-
 - **`properties/PropertiesPage.tsx` modal-state fragmentation** —
   `PropertiesPage.tsx` (1007) declares **18 `useState`s** (`:90`–`:136`), of
   which ~17 are independent modal open/close selectors
@@ -512,6 +485,31 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Page-specific `usePropertyAttachments.ts` relocated to
+  `src/components/properties/`** (2026-06): the properties-only
+  attachment hook (752 lines — repair-receipt + uploaded-file write
+  plus the data commit for each) lived under
+  `src/components/AppShell/hooks/`, the same placement smell the landed
+  `useSalaryBulkSelection` relocation fixed. Its exported
+  `PropertyAttachments` / `PropertyFileMeta` types were imported
+  _upward_ by `properties/PropertiesPage.tsx` and
+  `properties/PropertyFilesModal.tsx`. Re-verified the
+  standalone-vs-host-consumed question first: AppShell only _wires_ the
+  hook (`usePropertyAttachments({ data, adapter, dispatch })`) and
+  threads its result straight into `PropertiesPage` via the
+  `attachments` prop — it's a standalone page hook the shell routes, not
+  a host-owned collaborator like `useComplexEntry` / `useMatchRuleUi`,
+  so it moves. `git mv`d it into `src/components/properties/`, fixed the
+  15 internal `../../../` → `../../` import paths, pointed AppShell's
+  import at `../properties/usePropertyAttachments` (mirroring the
+  existing `../salary/useSalaryBulkSelection` line in the same block),
+  and switched the two type-import consumers to `./usePropertyAttachments`.
+  The `useReceiptManager` / `data/receipts/target.ts` references were
+  comment-only (no import), so there was no shared-hook entanglement.
+  Updated the path references in `docs/dictionary.md` +
+  `docs/overview.md`. Pure module relocation, no behaviour change. **Was
+  severity 4 (easy-win-flavoured).**
 
 - **Page-specific `useSalaryBulkSelection.ts` relocated to
   `src/components/salary/`** (2026-06): the salary-only bulk-selection

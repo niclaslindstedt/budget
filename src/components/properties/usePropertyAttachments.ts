@@ -1,36 +1,36 @@
 import { useCallback, useEffect } from "react";
 
-import { unlock } from "../../../data/achievements";
-import { collectReceiptPaths } from "../../../data/items/link";
+import { unlock } from "../../data/achievements";
+import { collectReceiptPaths } from "../../data/items/link";
 import {
   buildPropertyFilePath,
   buildRepairReceiptPath,
   extensionOf,
   extensionOfPath,
-} from "../../../data/items/receipt-name";
+} from "../../data/items/receipt-name";
 import {
   buildPropertyExport,
   serializePropertyManifest,
   type PropertyExportLookups,
   type PropertyExportOptions,
-} from "../../../data/property-transfer/export";
-import { planPropertyImport } from "../../../data/property-transfer/import";
-import type { PropertyExportManifest } from "../../../data/property-transfer/manifest";
-import type { Action } from "../../../data/reducer";
-import { newId } from "../../../data/sheet";
+} from "../../data/property-transfer/export";
+import { planPropertyImport } from "../../data/property-transfer/import";
+import type { PropertyExportManifest } from "../../data/property-transfer/manifest";
+import type { Action } from "../../data/reducer";
+import { newId } from "../../data/sheet";
 import type {
   Property,
   PropertyFile,
   PropertyRepair,
   RepairReceipt,
   UserData,
-} from "../../../data/types";
-import { useT } from "../../../i18n";
-import type { StorageAdapter } from "../../../storage/adapter";
-import { APP_VERSION } from "../../../utils/build-env";
-import { todayIso } from "../../../utils/date";
-import { createLogger } from "../../../utils/logger";
-import { buildZip, type ZipEntry } from "../../../utils/zip";
+} from "../../data/types";
+import { useT } from "../../i18n";
+import type { StorageAdapter } from "../../storage/adapter";
+import { APP_VERSION } from "../../utils/build-env";
+import { todayIso } from "../../utils/date";
+import { createLogger } from "../../utils/logger";
+import { buildZip, type ZipEntry } from "../../utils/zip";
 
 const log = createLogger("property-files");
 

@@ -15,7 +15,7 @@ import { hasReceipt } from "../../data/property-repairs/receipts";
 import { repairMetaKey } from "../../data/property-repairs/sources";
 import type { PropertyExportLookups } from "../../data/property-transfer/export";
 import type { ManifestTag } from "../../data/property-transfer/manifest";
-import type { PropertyAttachments } from "../AppShell/hooks/usePropertyAttachments";
+import type { PropertyAttachments } from "./usePropertyAttachments";
 import type { Action } from "../../data/reducer";
 import { newId } from "../../data/sheet";
 import type {
