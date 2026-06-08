@@ -217,6 +217,7 @@ export function PropertyCard({
         ) : showUnified ? (
           <UnifiedMortgageView
             mortgages={property.mortgages}
+            propertyValue={value}
             settings={settings}
           />
         ) : (
@@ -545,13 +546,25 @@ function PayoffSection({
 // to "split" shows the individual `MortgageRow`s (where each loan is edited).
 function UnifiedMortgageView({
   mortgages,
+  propertyValue,
   settings,
 }: {
   mortgages: Mortgage[];
+  propertyValue: number | undefined;
   settings: Settings;
 }) {
   const t = useT();
   const agg: MortgageAggregate = aggregateMortgages(mortgages);
+  // Share of the property's current value tied up in loans (combined balance ÷
+  // current value), shown after the balance. Only when both figures resolve
+  // and the value is positive, so a missing or zero value hides it rather than
+  // dividing by nothing.
+  const loanShare =
+    agg.totalBalance !== undefined &&
+    propertyValue !== undefined &&
+    propertyValue > 0
+      ? Math.round((agg.totalBalance / propertyValue) * 100)
+      : undefined;
 
   return (
     <div className="flex flex-col gap-2.5 rounded border border-line bg-surface-2 px-3 py-2.5 text-sm">
@@ -565,6 +578,9 @@ function UnifiedMortgageView({
             {formatBalance(agg.totalBalance, settings, {
               neverAbbreviate: true,
             })}
+            {loanShare !== undefined && (
+              <span className="text-muted"> ({loanShare}%)</span>
+            )}
           </MortgageStat>
         )}
         {agg.totalLoan !== undefined && (
