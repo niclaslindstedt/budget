@@ -15,6 +15,12 @@ const properties = {
   fee: "Monthly fee",
   currentValue: "Current value",
   noValue: "No value recorded",
+  // Title text for the per-area pills next to the current value and the
+  // monthly fee, and the share-of-value pill on the unified mortgage
+  // balance. `{unit}` is the user's area unit (e.g. "kvm").
+  valuePerAreaTitle: "Value per {unit}",
+  feePerAreaTitle: "Monthly fee per {unit}",
+  loanToValueTitle: "Share of current value",
   updateValue: "Update value",
   uploadFile: "Upload file",
   netSaleProfit: "Net sale profit",
