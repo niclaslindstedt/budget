@@ -5,6 +5,7 @@ import type { TaxProfile } from "../../data/types";
 import { type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { FloatingPanel } from "../FloatingPanel";
+import { LISTBOX_CREATE_OPTION_CLASS } from "../form";
 import { TaxProfileModal } from "./TaxProfileModal";
 
 // Custom tax-profile dropdown (no native <select>) for the sheet editor.
@@ -91,7 +92,7 @@ export function TaxProfilePicker({ value, profiles, onPick, onCreate }: Props) {
                 setOpen(false);
                 setCreating(true);
               }}
-              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              className={LISTBOX_CREATE_OPTION_CLASS}
             >
               <Plus size={14} aria-hidden focusable={false} />
               {t("tax.newProfile")}

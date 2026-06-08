@@ -18,7 +18,13 @@ import {
 import { useT } from "../../i18n";
 import { ColorPalette } from "../ColorPalette";
 import { FloatingPanel } from "../FloatingPanel";
-import { Button, ClearableInput, FormSection } from "../form";
+import {
+  Button,
+  ClearableInput,
+  FormSection,
+  LISTBOX_CREATE_OPTION_CLASS,
+  LISTBOX_OPTION_CLASS,
+} from "../form";
 import { GlyphGrid } from "../GlyphGrid";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -35,9 +41,6 @@ const PLACEMENT: FloatingPlacement = {
   anchor: "left",
   coordinateSpace: "document",
 };
-
-const ROW_CLASS =
-  "flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
 
 type Props = {
   // The selected employer id, or undefined for "no employer".
@@ -155,7 +158,7 @@ export function EmployerPicker({
               role="option"
               aria-selected={value === undefined}
               onClick={() => handlePick(undefined)}
-              className={ROW_CLASS}
+              className={LISTBOX_OPTION_CLASS}
             >
               <Briefcase
                 size={14}
@@ -186,7 +189,7 @@ export function EmployerPicker({
                 tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => handlePick(e.id)}
                 onKeyDown={onKeyDown}
-                className={ROW_CLASS}
+                className={LISTBOX_OPTION_CLASS}
               >
                 <span
                   className="shrink-0"
@@ -214,7 +217,7 @@ export function EmployerPicker({
               <button
                 type="button"
                 onClick={beginCreating}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                className={LISTBOX_CREATE_OPTION_CLASS}
               >
                 <Plus size={14} aria-hidden focusable={false} />
                 {t("salary.newEmployer")}
