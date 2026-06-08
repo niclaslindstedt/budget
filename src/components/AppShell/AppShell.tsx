@@ -16,7 +16,7 @@ import { useSearchModal } from "./hooks/useSearchModal";
 import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useReceiptManager } from "./hooks/useReceiptManager";
-import { usePropertyAttachments } from "./hooks/usePropertyAttachments";
+import { usePropertyAttachments } from "../properties/usePropertyAttachments";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
