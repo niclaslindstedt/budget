@@ -76,6 +76,27 @@ type Props = {
 // mortgage editor / discovery modals and the per-mortgage actions need.
 type MortgageRef = { property: Property; mortgage: Mortgage };
 
+// The page's mutually-exclusive modal set, modelled as one discriminated
+// state so only one can be open at a time by construction. Each of these
+// opens from a property card (or the sheet "…" menu) with the card behind it,
+// so none of them stack. The repair sub-editors are deliberately NOT in here:
+// they layer on top of the `repairs` modal and keep their own state.
+type PropertyModalState =
+  | { kind: "edit"; property: Property }
+  | { kind: "create" }
+  | { kind: "value"; property: Property }
+  | { kind: "payments"; property: Property }
+  | { kind: "repairs"; property: Property }
+  | { kind: "files"; property: Property }
+  | { kind: "sale"; property: Property }
+  | { kind: "export"; property: Property }
+  | { kind: "import" }
+  | { kind: "editMortgage"; ref: MortgageRef }
+  | { kind: "createMortgage"; property: Property }
+  | { kind: "find" }
+  | { kind: "deleteProperty"; property: Property }
+  | { kind: "deleteMortgage"; ref: MortgageRef };
+
 export function PropertiesPage({
   sheet,
   data,
@@ -86,20 +107,16 @@ export function PropertiesPage({
   const t = useT();
   const dispatchModal = useModalDispatch();
 
-  // Property-level modal state.
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
-  const [creatingProperty, setCreatingProperty] = useState(false);
-  const [valueProperty, setValueProperty] = useState<Property | null>(null);
-  const [paymentsProperty, setPaymentsProperty] = useState<Property | null>(
-    null,
-  );
-  const [repairsProperty, setRepairsProperty] = useState<Property | null>(null);
-  const [filesProperty, setFilesProperty] = useState<Property | null>(null);
-  const [saleProperty, setSaleProperty] = useState<Property | null>(null);
-  const [exportingProperty, setExportingProperty] = useState<Property | null>(
-    null,
-  );
-  const [importOpen, setImportOpen] = useState(false);
+  // The page's single-open modal router — every property-/mortgage-action
+  // modal is mutually exclusive (opened from a card or the "…" menu, with the
+  // card behind it), so one discriminated state models the whole set and only
+  // one modal can be open at a time. The repair sub-editors below are the
+  // exception: they stack ON TOP of the `repairs` list modal.
+  const [modal, setModal] = useState<PropertyModalState | null>(null);
+
+  // Repair sub-editors — these open ON TOP of the `repairs` list modal
+  // (`modal.kind === "repairs"`), so they keep their own state instead of
+  // joining the mutually-exclusive router above.
   // The bulk multi-select quick-add picker.
   const [addingRepairsFor, setAddingRepairsFor] = useState<Property | null>(
     null,
@@ -119,21 +136,6 @@ export function PropertiesPage({
     property: Property;
     repair: PropertyRepair | null;
   } | null>(null);
-  const [pendingDeleteProperty, setPendingDeleteProperty] =
-    useState<Property | null>(null);
-
-  // Mortgage-level modal state, held with the parent property.
-  const [editingMortgage, setEditingMortgage] = useState<MortgageRef | null>(
-    null,
-  );
-  const [creatingMortgageFor, setCreatingMortgageFor] =
-    useState<Property | null>(null);
-  // The "Find mortgage payments" walk runs per property (one combined
-  // transaction covers every loan), so it's a single sheet-level modal
-  // opened from the "…" menu rather than per-mortgage.
-  const [findOpen, setFindOpen] = useState(false);
-  const [pendingDeleteMortgage, setPendingDeleteMortgage] =
-    useState<MortgageRef | null>(null);
 
   // Land at the top of the page when switching to this sheet.
   useEffect(() => {
@@ -181,24 +183,20 @@ export function PropertiesPage({
 
   // The modals read the live record after each dispatch so an edit / add
   // is reflected immediately (held by id, resolved against `data`).
-  const liveValueProperty = valueProperty
-    ? (data.properties.find((p) => p.id === valueProperty.id) ?? null)
-    : null;
-  const livePaymentsProperty = paymentsProperty
-    ? (data.properties.find((p) => p.id === paymentsProperty.id) ?? null)
-    : null;
-  const liveRepairsProperty = repairsProperty
-    ? (data.properties.find((p) => p.id === repairsProperty.id) ?? null)
-    : null;
-  const liveFilesProperty = filesProperty
-    ? (data.properties.find((p) => p.id === filesProperty.id) ?? null)
-    : null;
-  const liveSaleProperty = saleProperty
-    ? (data.properties.find((p) => p.id === saleProperty.id) ?? null)
-    : null;
-  const liveExportProperty = exportingProperty
-    ? (data.properties.find((p) => p.id === exportingProperty.id) ?? null)
-    : null;
+  const liveProperty = (property: Property): Property | null =>
+    data.properties.find((p) => p.id === property.id) ?? null;
+  const liveValueProperty =
+    modal?.kind === "value" ? liveProperty(modal.property) : null;
+  const livePaymentsProperty =
+    modal?.kind === "payments" ? liveProperty(modal.property) : null;
+  const liveRepairsProperty =
+    modal?.kind === "repairs" ? liveProperty(modal.property) : null;
+  const liveFilesProperty =
+    modal?.kind === "files" ? liveProperty(modal.property) : null;
+  const liveSaleProperty =
+    modal?.kind === "sale" ? liveProperty(modal.property) : null;
+  const liveExportProperty =
+    modal?.kind === "export" ? liveProperty(modal.property) : null;
 
   // The primary source bank entries behind every property's repairs, keyed by
   // `${accountId}:${entryId}`, so each repair resolves its company / tags
@@ -336,7 +334,7 @@ export function PropertiesPage({
             key: "find-payments",
             icon: <Search size={16} aria-hidden focusable={false} />,
             label: t("properties.findTitle"),
-            onClick: () => setFindOpen(true),
+            onClick: () => setModal({ kind: "find" }),
           },
         ]
       : []),
@@ -344,7 +342,7 @@ export function PropertiesPage({
       key: "import",
       icon: <FileDown size={16} aria-hidden focusable={false} />,
       label: t("properties.importProperty"),
-      onClick: () => setImportOpen(true),
+      onClick: () => setModal({ kind: "import" }),
     },
     {
       key: "edit",
@@ -357,7 +355,7 @@ export function PropertiesPage({
 
   function handleCreateProperty(property: Property) {
     dispatch({ type: "addProperty", property });
-    setCreatingProperty(false);
+    setModal(null);
   }
 
   // Mint a new file category from the inline "create" affordance on the file
@@ -374,7 +372,7 @@ export function PropertiesPage({
   ) {
     const before = data.properties.find((p) => p.id === propertyId);
     dispatch({ type: "updateProperty", propertyId, patch });
-    setEditingProperty(null);
+    setModal(null);
     // A renamed property changes the subfolder every repair receipt files
     // under, so move each one into the new folder.
     const nextName = patch.name;
@@ -416,27 +414,27 @@ export function PropertiesPage({
   }
 
   function handleCreateMortgage(mortgage: Mortgage) {
-    if (!creatingMortgageFor) return;
+    if (modal?.kind !== "createMortgage") return;
     dispatch({
       type: "addMortgage",
-      propertyId: creatingMortgageFor.id,
+      propertyId: modal.property.id,
       mortgage,
     });
-    setCreatingMortgageFor(null);
+    setModal(null);
   }
 
   function handleEditMortgage(
     mortgageId: string,
     patch: Partial<Omit<Mortgage, "id">>,
   ) {
-    if (!editingMortgage) return;
+    if (modal?.kind !== "editMortgage") return;
     dispatch({
       type: "updateMortgage",
-      propertyId: editingMortgage.property.id,
+      propertyId: modal.ref.property.id,
       mortgageId,
       patch,
     });
-    setEditingMortgage(null);
+    setModal(null);
   }
 
   function handleAddValue(propertyId: string, point: PropertyValuePoint) {
@@ -550,7 +548,7 @@ export function PropertiesPage({
   // Open the net-sale-profit estimator, recording the achievement the
   // first time the user models a sale.
   function handleNetSaleProfit(property: Property) {
-    setSaleProperty(property);
+    setModal({ kind: "sale", property });
     unlock("netSaleProfit");
   }
 
@@ -609,7 +607,7 @@ export function PropertiesPage({
               </p>
               <button
                 type="button"
-                onClick={() => setCreatingProperty(true)}
+                onClick={() => setModal({ kind: "create" })}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
               >
                 <Home size={16} aria-hidden focusable={false} />
@@ -626,26 +624,48 @@ export function PropertiesPage({
                   companiesById={companiesById}
                   settings={settings}
                   repairSummary={repairSummaryFor(property)}
-                  onEditProperty={setEditingProperty}
-                  onDeleteProperty={setPendingDeleteProperty}
-                  onUpdateValue={setValueProperty}
-                  onUploadFile={setFilesProperty}
+                  onEditProperty={(property) =>
+                    setModal({ kind: "edit", property })
+                  }
+                  onDeleteProperty={(property) =>
+                    setModal({ kind: "deleteProperty", property })
+                  }
+                  onUpdateValue={(property) =>
+                    setModal({ kind: "value", property })
+                  }
+                  onUploadFile={(property) =>
+                    setModal({ kind: "files", property })
+                  }
                   onNetSaleProfit={handleNetSaleProfit}
-                  onViewPayments={setPaymentsProperty}
-                  onViewRepairs={setRepairsProperty}
-                  onExportProperty={setExportingProperty}
-                  onAddMortgage={setCreatingMortgageFor}
+                  onViewPayments={(property) =>
+                    setModal({ kind: "payments", property })
+                  }
+                  onViewRepairs={(property) =>
+                    setModal({ kind: "repairs", property })
+                  }
+                  onExportProperty={(property) =>
+                    setModal({ kind: "export", property })
+                  }
+                  onAddMortgage={(property) =>
+                    setModal({ kind: "createMortgage", property })
+                  }
                   onEditMortgage={(property, mortgage) =>
-                    setEditingMortgage({ property, mortgage })
+                    setModal({
+                      kind: "editMortgage",
+                      ref: { property, mortgage },
+                    })
                   }
                   onDeleteMortgage={(property, mortgage) =>
-                    setPendingDeleteMortgage({ property, mortgage })
+                    setModal({
+                      kind: "deleteMortgage",
+                      ref: { property, mortgage },
+                    })
                   }
                 />
               ))}
               <button
                 type="button"
-                onClick={() => setCreatingProperty(true)}
+                onClick={() => setModal({ kind: "create" })}
                 className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-line bg-surface-3 px-3 py-2 text-sm text-accent hover:bg-surface"
               >
                 <Plus size={16} aria-hidden focusable={false} />
@@ -656,15 +676,12 @@ export function PropertiesPage({
         </section>
 
         <PropertyEditorModal
-          open={editingProperty !== null || creatingProperty}
-          property={editingProperty}
+          open={modal?.kind === "edit" || modal?.kind === "create"}
+          property={modal?.kind === "edit" ? modal.property : null}
           companies={data.companies}
           accounts={data.accounts}
           settings={settings}
-          onClose={() => {
-            setEditingProperty(null);
-            setCreatingProperty(false);
-          }}
+          onClose={() => setModal(null)}
           onSubmit={handleEditProperty}
           onCreate={handleCreateProperty}
           onCreateCompany={handleCreateCompany}
@@ -674,7 +691,7 @@ export function PropertiesPage({
           open={liveValueProperty !== null}
           property={liveValueProperty}
           settings={settings}
-          onClose={() => setValueProperty(null)}
+          onClose={() => setModal(null)}
           onAddValue={handleAddValue}
           onDeleteValue={handleDeleteValue}
         />
@@ -683,18 +700,17 @@ export function PropertiesPage({
           open={liveSaleProperty !== null}
           property={liveSaleProperty}
           settings={settings}
-          onClose={() => setSaleProperty(null)}
+          onClose={() => setModal(null)}
           onSaveEstimate={handleSetSaleEstimate}
         />
 
         <MortgageEditorModal
-          open={editingMortgage !== null || creatingMortgageFor !== null}
-          mortgage={editingMortgage?.mortgage ?? null}
+          open={
+            modal?.kind === "editMortgage" || modal?.kind === "createMortgage"
+          }
+          mortgage={modal?.kind === "editMortgage" ? modal.ref.mortgage : null}
           settings={settings}
-          onClose={() => {
-            setEditingMortgage(null);
-            setCreatingMortgageFor(null);
-          }}
+          onClose={() => setModal(null)}
           onSubmit={handleEditMortgage}
           onCreate={handleCreateMortgage}
         />
@@ -705,7 +721,7 @@ export function PropertiesPage({
           settings={settings}
           account={paymentsAccount}
           sourceTransactions={paymentsSourceTransactions}
-          onClose={() => setPaymentsProperty(null)}
+          onClose={() => setModal(null)}
           onSetChargeSplit={(updates) => {
             if (livePaymentsProperty)
               handleSetChargeSplit(livePaymentsProperty.id, updates);
@@ -760,7 +776,7 @@ export function PropertiesPage({
                 repair: null,
               });
           }}
-          onClose={() => setRepairsProperty(null)}
+          onClose={() => setModal(null)}
         />
 
         <PropertyFilesModal
@@ -789,7 +805,7 @@ export function PropertiesPage({
           }
           onCreateFileCategory={handleCreateFileCategory}
           onCreateTag={handleCreateTag}
-          onClose={() => setFilesProperty(null)}
+          onClose={() => setModal(null)}
         />
 
         <PropertyExportModal
@@ -805,14 +821,14 @@ export function PropertiesPage({
             )
           }
           onSaveToBackend={attachments.saveExportToBackend}
-          onClose={() => setExportingProperty(null)}
+          onClose={() => setModal(null)}
         />
 
         <PropertyImportModal
-          open={importOpen}
+          open={modal?.kind === "import"}
           canManage={attachments.canManage}
           onImport={attachments.importProperty}
-          onClose={() => setImportOpen(false)}
+          onClose={() => setModal(null)}
         />
 
         <RepairsEditModal
@@ -935,7 +951,7 @@ export function PropertiesPage({
         />
 
         <MortgageDiscoveryModal
-          open={findOpen}
+          open={modal?.kind === "find"}
           properties={data.properties}
           history={data.history}
           merchantHints={data.merchantHints}
@@ -943,17 +959,17 @@ export function PropertiesPage({
           companies={data.companies}
           types={types}
           settings={settings}
-          onClose={() => setFindOpen(false)}
+          onClose={() => setModal(null)}
           onAdd={handleAddPayments}
         />
 
         <ConfirmDialog
-          open={pendingDeleteProperty !== null}
+          open={modal?.kind === "deleteProperty"}
           title={t("properties.deletePropertyTitle")}
           description={
-            pendingDeleteProperty
+            modal?.kind === "deleteProperty"
               ? t("properties.deletePropertyConfirm", {
-                  name: pendingDeleteProperty.name,
+                  name: modal.property.name,
                 })
               : null
           }
@@ -962,25 +978,25 @@ export function PropertiesPage({
               label: t("properties.delete"),
               tone: "danger",
               onSelect: () => {
-                if (pendingDeleteProperty)
+                if (modal?.kind === "deleteProperty")
                   dispatch({
                     type: "deleteProperty",
-                    propertyId: pendingDeleteProperty.id,
+                    propertyId: modal.property.id,
                   });
-                setPendingDeleteProperty(null);
+                setModal(null);
               },
             },
           ]}
-          onCancel={() => setPendingDeleteProperty(null)}
+          onCancel={() => setModal(null)}
         />
 
         <ConfirmDialog
-          open={pendingDeleteMortgage !== null}
+          open={modal?.kind === "deleteMortgage"}
           title={t("properties.deleteMortgageTitle")}
           description={
-            pendingDeleteMortgage
+            modal?.kind === "deleteMortgage"
               ? t("properties.deleteMortgageConfirm", {
-                  name: pendingDeleteMortgage.mortgage.name,
+                  name: modal.ref.mortgage.name,
                 })
               : null
           }
@@ -989,17 +1005,17 @@ export function PropertiesPage({
               label: t("properties.delete"),
               tone: "danger",
               onSelect: () => {
-                if (pendingDeleteMortgage)
+                if (modal?.kind === "deleteMortgage")
                   dispatch({
                     type: "deleteMortgage",
-                    propertyId: pendingDeleteMortgage.property.id,
-                    mortgageId: pendingDeleteMortgage.mortgage.id,
+                    propertyId: modal.ref.property.id,
+                    mortgageId: modal.ref.mortgage.id,
                   });
-                setPendingDeleteMortgage(null);
+                setModal(null);
               },
             },
           ]}
-          onCancel={() => setPendingDeleteMortgage(null)}
+          onCancel={() => setModal(null)}
         />
       </section>
     </ActiveRowProvider>
