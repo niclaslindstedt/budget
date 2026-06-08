@@ -173,28 +173,41 @@ function SalaryRowImpl({
         className={`px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
         title={estTitle}
       >
-        <span className="inline-flex items-center justify-start gap-1.5">
-          {showPayslipIcon && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSwiped(false);
-                onManagePayslip(salary);
-              }}
-              aria-label={t("salary.viewPayslipAria", {
-                month: formatMonthLabel(salary.date.slice(0, 7), lang),
-              })}
-              className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted hover:text-accent"
-            >
-              <FileText size={14} aria-hidden focusable={false} />
-            </button>
-          )}
+        {showPayslipIcon ? (
+          // Document glyph + amount fused into one tappable pill that
+          // opens the payslip attachment modal (same target as the row's
+          // "…" menu). Inherits the cell's estimate styling; the pill
+          // chrome's width is reserved in the gross column via
+          // --salary-gross-col-buffer so it never clips.
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSwiped(false);
+              onManagePayslip(salary);
+            }}
+            aria-label={t("salary.viewPayslipAria", {
+              month: formatMonthLabel(salary.date.slice(0, 7), lang),
+            })}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-line bg-surface-2 px-1.5 py-0.5 text-inherit hover:border-accent hover:bg-surface-3 hover:text-accent"
+          >
+            <FileText
+              size={14}
+              aria-hidden
+              focusable={false}
+              className="shrink-0"
+            />
+            <span>
+              {estimated && `${t("tax.estimatedBadge")} `}
+              {formatBalance(gross, settings)}
+            </span>
+          </button>
+        ) : (
           <span>
             {estimated && `${t("tax.estimatedBadge")} `}
             {formatBalance(gross, settings)}
           </span>
-        </span>
+        )}
       </td>
       <td
         className="salary-secondary-cell hidden px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"

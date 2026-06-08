@@ -124,7 +124,7 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
 }
 
 /* Salary header glyphs: in the mobile / landscape grid layout the gross
-   and net columns hit their 56px min-width floor (components.css), so
+   and net columns hit their 64px min-width floor (components.css), so
    the cell number renders as flex content at the column's LEFT edge —
    not the desktop right-aligned table-cell. The JSX `justify-end` on
    those header spans then floats the glyph to the far right of the

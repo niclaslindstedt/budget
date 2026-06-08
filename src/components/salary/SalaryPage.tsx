@@ -10,8 +10,9 @@ import type {
   Sheet,
   UserData,
 } from "../../data/types";
+import { resolveSalary } from "../../data/salary/salary";
 import { useLang, useT } from "../../i18n";
-import { formatMonthLabel } from "../../utils/format";
+import { formatBalance, formatMonthLabel } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -145,6 +146,46 @@ export function SalaryPage({
     return [...groups.entries()];
   }, [data.salaries]);
 
+  // Drive the mobile gross / net column widths off the longest formatted
+  // value in the whole sheet (mirrors the budget sheet's --amount-col-ch
+  // pass) so the narrow 64px floor grows only as far as the numbers
+  // need — currency, large amounts, or the "≈ " estimate prefix the
+  // gross column can carry. The per-year footer totals are summed in
+  // too: they're the widest figure each column renders (a 6-digit yearly
+  // sum dwarfs a 5-digit monthly value), so leaving them out lets the
+  // bold total wrap to a second line. The buffer widens the gross track
+  // when any row shows a payslip pill so the document glyph + amount fit.
+  // Every year table receives the same values so the columns line up
+  // across years.
+  const colWidths = useMemo(() => {
+    const estPrefix = `${t("tax.estimatedBadge")} `;
+    let grossChars = 0;
+    let netChars = 0;
+    let anyPayslip = false;
+    const yearGrossTotal = new Map<string, number>();
+    const yearNetTotal = new Map<string, number>();
+    for (const s of data.salaries) {
+      const { gross, estimated } = resolveSalary(s, taxParams);
+      const grossStr =
+        (estimated ? estPrefix : "") + formatBalance(gross, settings);
+      grossChars = Math.max(grossChars, grossStr.length);
+      netChars = Math.max(netChars, formatBalance(s.net, settings).length);
+      if (s.payslipPath !== undefined) anyPayslip = true;
+      const y = s.date.slice(0, 4);
+      yearGrossTotal.set(y, (yearGrossTotal.get(y) ?? 0) + gross);
+      yearNetTotal.set(y, (yearNetTotal.get(y) ?? 0) + s.net);
+    }
+    for (const total of yearGrossTotal.values())
+      grossChars = Math.max(grossChars, formatBalance(total, settings).length);
+    for (const total of yearNetTotal.values())
+      netChars = Math.max(netChars, formatBalance(total, settings).length);
+    return {
+      grossChars,
+      netChars,
+      payslipPill: anyPayslip && canManagePayslip,
+    };
+  }, [data.salaries, settings, taxParams, canManagePayslip, t]);
+
   // Bank entries already backing a salary — passed to the discovery
   // walk so an added paycheck isn't offered again. Keyed on
   // `sourceHistoryId`; the modal pairs this with a month+net backstop
@@ -256,6 +297,7 @@ export function SalaryPage({
                 employersById={employersById}
                 settings={settings}
                 taxParams={taxParams}
+                colWidths={colWidths}
                 selectMode={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import {
   Banknote,
   Briefcase,
@@ -25,6 +25,11 @@ type Props = {
   settings: Settings;
   // Tax params from the sheet's profile, or null for no estimation.
   taxParams: TaxParams | null;
+  // Sheet-wide gross / net column widths (longest formatted value, in
+  // chars) plus whether any row carries a payslip pill. Computed once in
+  // SalaryPage and shared by every year table so the money columns line
+  // up across years. Drives the --salary-*-col-* CSS vars below.
+  colWidths: { grossChars: number; netChars: number; payslipPill: boolean };
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   onToggleSelect: (salaryId: string) => void;
@@ -46,6 +51,7 @@ export function SalaryYearTable({
   employersById,
   settings,
   taxParams,
+  colWidths,
   selectMode,
   selectedIds,
   onToggleSelect,
@@ -99,7 +105,21 @@ export function SalaryYearTable({
       >
         {year}
       </h3>
-      <div className="overflow-clip rounded border border-line bg-surface">
+      <div
+        className="overflow-clip rounded border border-line bg-surface"
+        style={
+          {
+            "--salary-gross-col-ch": colWidths.grossChars || undefined,
+            "--salary-net-col-ch": colWidths.netChars || undefined,
+            // The gross track widens to fit the payslip pill (document
+            // glyph + amount) when any row in the sheet carries one;
+            // otherwise it hugs the number like the net track.
+            "--salary-gross-col-buffer": colWidths.payslipPill
+              ? "3.25rem"
+              : undefined,
+          } as CSSProperties
+        }
+      >
         <table
           className={`salary-table w-full border-collapse text-sm md:text-[13px]${
             selectMode ? " is-selecting" : ""
@@ -293,11 +313,11 @@ export function SalaryYearTable({
               </td>
               <td className="px-2.5 py-2" />
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="px-2.5 py-2 text-left tabular-nums">
+              <td className="px-2.5 py-2 text-left whitespace-nowrap tabular-nums">
                 {formatBalance(totals.gross, settings)}
               </td>
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="px-2.5 py-2 text-left tabular-nums">
+              <td className="px-2.5 py-2 text-left whitespace-nowrap tabular-nums">
                 {formatBalance(totals.net, settings)}
               </td>
               <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
