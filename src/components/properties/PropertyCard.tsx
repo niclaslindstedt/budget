@@ -194,8 +194,10 @@ export function PropertyCard({
                 })}
                 className={PILL_CLASS}
               >
-                {formatNumber(valuePerArea, settings)}/
-                {settings.propertySizeUnit}
+                {formatNumber(valuePerArea, settings, {
+                  forceAbbreviate: true,
+                })}
+                /{settings.propertySizeUnit}
               </span>
             )}
           </div>
