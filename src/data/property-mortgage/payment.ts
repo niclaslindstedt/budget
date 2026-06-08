@@ -2,10 +2,12 @@
 // transaction, but it covers every loan against the property. These
 // helpers compute each mortgage's amortisation and its interest at the rate
 // in effect that month, then split a real combined bank charge so that
-// amortisation is settled first (per-loan, exactly) and only the leftover
-// interest is shared out by interest weight — so the per-mortgage payment
-// records add up to exactly what was paid while still being derived, never
-// hand-allocated.
+// amortisation is settled first (per-loan, exactly) and each loan is pinned
+// to its own computed interest — with only the small residual (the gap
+// between what the charge actually paid in interest and what the loans
+// model) attributed to the loans whose balance moved. The per-mortgage
+// payment records add up to exactly what was paid while still being derived,
+// never hand-allocated.
 
 import type { Mortgage, MortgagePayment, Property } from "../types";
 import { resolveMonthlyAmortization } from "./amortization";
@@ -27,14 +29,28 @@ export function resolveMonthlyPaymentAt(
 // Split a combined charge of `amount` (paid on `date`) across `mortgages`.
 // Amortisation is the deterministic leg (a fixed sum, or a fixed percent of
 // the initial loan), so it's settled first: each mortgage is assigned its
-// own amortisation in full, and only the leftover (`amount` minus the total
-// amortisation) — which is interest — is shared out by interest weight. A
-// mortgage with no amortisation therefore receives none of the principal
-// and only its share of the interest, while the amortising loans stay
-// pinned to their amortisation and the interest-bearing loans absorb the
-// whole variance between the charge and the expected total. Fallbacks: when
-// the charge doesn't even cover the amortisation there's no interest left
-// to share, so the whole charge is split by amortisation weight (never a
+// own amortisation in full. Each mortgage is then pinned to its **own**
+// computed interest for that month (`resolveMonthlyInterestAt`, on the
+// balance reconstructed for the charge's date) rather than to a share of the
+// leftover by interest weight. That distinction is the whole point: a fixed
+// interest-only loan's computed interest is constant month over month, so it
+// keeps a flat share, while an amortising loan's reconstructed interest
+// falls as it pays down — and the per-month decline of the combined charge
+// is attributed to the loan whose balance actually moved. Using interest as
+// a mere weight would instead smear that decline across every loan in
+// proportion to its interest magnitude, making a large never-amortising loan
+// appear to pay less interest each month (the bug this guards against).
+//
+// Only the **residual** — the gap between the charge's actual interest
+// (`amount` minus total amortisation) and the modelled total interest, the
+// model's estimate error — is shared out, and it rides the loans whose
+// balance the model had to reconstruct: the amortising, interest-bearing
+// ones, by amortisation weight. Fallbacks: when no interest-bearing loan
+// amortises the residual is interest that only they can hold, so it's shared
+// by interest weight (equivalent to the old leftover-by-interest split, the
+// right behaviour when there's no amortising loan to attribute drift to);
+// when the charge doesn't even cover the amortisation there's no interest
+// left to share, so the whole charge is split by amortisation weight (never a
 // negative interest); when no mortgage charges interest the leftover is
 // spread by amortisation weight instead; when no mortgage has any terms the
 // charge is split evenly.
@@ -70,17 +86,49 @@ export function splitPaymentAcrossMortgages(
     // to share. Split it by amortisation weight (totalAmort > 0 here, since
     // amount > 0 and the all-zero case is handled above).
     shares = amorts.map((a) => (amount * a) / totalAmort);
-  } else {
-    // Settle amortisation per-loan in full, then share the leftover interest.
+  } else if (totalInterest <= 0) {
+    // No interest charged anywhere ⇒ settle amortisation, then spread the
+    // leftover by amortisation weight (totalAmort > 0 since amount > totalAmort).
     const remainder = amount - totalAmort;
-    shares = mortgages.map((_, i) =>
-      totalInterest > 0
-        ? amorts[i] + (remainder * interests[i]) / totalInterest
-        : // No interest charged anywhere ⇒ spread the leftover by
-          // amortisation weight (totalAmort > 0 since amount > totalAmort).
-          amorts[i] + (remainder * amorts[i]) / totalAmort,
+    shares = mortgages.map(
+      (_, i) => amorts[i] + (remainder * amorts[i]) / totalAmort,
     );
+  } else {
+    // Settle amortisation per-loan in full, pin each loan to its own computed
+    // interest, then attribute only the residual (the model's estimate error)
+    // to the loans whose balance moved.
+    const remainder = amount - totalAmort;
+    const residual = remainder - totalInterest;
+    // The amortisation carried by the interest-bearing loans — the ones whose
+    // reconstructed balance (and so computed interest) is uncertain. The
+    // residual rides them by amortisation weight, so a fixed interest-only
+    // loan (zero amortisation) keeps exactly its computed interest.
+    const carriedAmort = mortgages.reduce(
+      (sum, _, i) => (interests[i] > 0 ? sum + amorts[i] : sum),
+      0,
+    );
+    if (carriedAmort > 0) {
+      shares = mortgages.map(
+        (_, i) =>
+          amorts[i] +
+          interests[i] +
+          (residual * (interests[i] > 0 ? amorts[i] : 0)) / carriedAmort,
+      );
+    } else {
+      // Interest-bearing loans exist but none of them amortise ⇒ the residual
+      // is interest only they can hold; share it by interest weight (this
+      // reduces to the plain leftover-by-interest split).
+      shares = mortgages.map(
+        (_, i) => amorts[i] + (remainder * interests[i]) / totalInterest,
+      );
+    }
   }
+
+  // A strongly-negative residual (a charge only just covering the
+  // amortisation) could drive a carrier loan's share below zero; clamp so the
+  // split never reports a negative payment. The largest share absorbs the
+  // resulting rounding remainder below, keeping the parts summed to `amount`.
+  shares = shares.map((s) => Math.max(0, s));
 
   // Work in integer cents so the parts sum back to `amount` exactly. The
   // mortgage with the largest share absorbs the rounding remainder.

@@ -768,16 +768,23 @@ property is paid to the bank as a single transaction covering every loan
 against it, so Find mortgage payments splits each found transaction
 across the property's mortgages (`splitPaymentAcrossMortgages` in
 `src/data/property-mortgage/payment.ts` — each loan's amortisation is
-settled in full first, then the leftover interest is shared by interest
-weight, so an amortising loan stays pinned to its amortisation and the
-interest-bearing loans absorb the variance). The interest weight is each
-loan's interest **for that month**, taken on the balance reconstructed for
-the charge's date by `balanceAt` (`interest.ts` — `currentBalance` walked
-back along the deterministic monthly amortisation, capped at `loanAmount`),
-not a flat snapshot of today's balance. So a charge that shrinks month over
-month because one loan is paying down is attributed to that loan, and an
-interest-only loan at a static rate keeps a constant share instead of
-drifting down with it. It records one payment per
+settled in full first, then each loan is pinned to its **own** computed
+interest for that month, with only the residual shared out). Each loan's
+interest is taken on the balance reconstructed for the charge's date by
+`balanceAt` (`interest.ts` — `currentBalance` walked back along the
+deterministic monthly amortisation, capped at `loanAmount`), not a flat
+snapshot of today's balance: a fixed interest-only loan's reconstructed
+interest is constant month over month, while an amortising loan's falls as
+it pays down. Crucially the interest is used as the loan's **absolute**
+share, not as a weight to apportion the leftover — so a charge that shrinks
+month over month because one loan is paying down is attributed to that loan,
+and an interest-only loan at a static rate keeps a constant share instead of
+drifting down with it. Only the residual (the gap between the charge's actual
+interest and the modelled total — the model's estimate error) is shared out,
+and it rides the amortising interest-bearing loans by amortisation weight, so
+the fixed loan never absorbs another loan's amortisation-driven decline. When
+no interest-bearing loan amortises the residual is shared by interest weight
+instead (it is interest and only they can hold it). It records one payment per
 mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
 
 - the re-scan dedupe key). `PropertyCard` sums a mortgage's payments as
