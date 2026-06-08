@@ -3,7 +3,7 @@ import { Package, Pencil, Trash2 } from "lucide-react";
 
 import type { EntryType, Item, Settings } from "../../data/types";
 import { computeItemCurrentValue } from "../../data/items/value";
-import type { FloatingPlacement } from "../../hooks";
+import { type FloatingPlacement, useAmountColumns } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
@@ -54,6 +54,7 @@ function ItemRowImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass } = useAmountColumns();
   const { swiped, setSwiped, touchHandlers } = useRowSwipe();
   const [descOpen, setDescOpen] = useState(false);
   const nameRef = useRef<HTMLButtonElement>(null);
@@ -149,14 +150,18 @@ function ItemRowImpl({
       <td className="items-purchased-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap text-muted tabular-nums md:table-cell">
         {acquired}
       </td>
-      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-muted tabular-nums">
+      <td
+        className={`px-2.5 py-2 align-middle font-mono whitespace-nowrap text-muted tabular-nums ${cellClass}`}
+      >
         <span>
           {item.purchasePrice !== undefined
             ? formatBalance(item.purchasePrice, settings)
             : "—"}
         </span>
       </td>
-      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-fg tabular-nums">
+      <td
+        className={`px-2.5 py-2 align-middle font-mono whitespace-nowrap text-fg tabular-nums ${cellClass}`}
+      >
         <span>{formatBalance(currentValue, settings)}</span>
       </td>
       <td className="items-action-cell w-32 p-0 align-middle">

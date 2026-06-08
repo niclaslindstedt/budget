@@ -496,17 +496,21 @@
     }
     .items-table > thead > tr,
     .items-table > tbody > tr:not(.items-fullspan) {
-      /* 40px icon · flex name · purchase value · current value, each
-         money column sized to its content with a 60px floor. The
-         purchased-date column drops on mobile (Tailwind `hidden`); its
-         landscape `md:table-cell` is overridden unlayered in chrome.css,
-         mirroring the accounts bank cell. The action cell sits outside
-         the grid as an absolute overlay so the wrench column reserves no
-         track on mobile. */
+      /* 40px icon · flex name · purchase value · current value. The two
+         money columns mirror the budget / salary ch-var pattern: a narrow
+         64px floor that grows with the widest formatted figure in the
+         sheet (incl. the footer total), driven by --items-purchase-col-ch
+         / --items-current-col-ch so every row aligns on one width instead
+         of reflowing per row with `max-content`. The purchased-date column
+         drops on mobile (Tailwind `hidden`); its landscape `md:table-cell`
+         is overridden unlayered in chrome.css, mirroring the accounts bank
+         cell. The action cell sits outside the grid as an absolute overlay
+         so the wrench column reserves no track on mobile. */
       display: grid;
       grid-template-columns:
-        40px minmax(0, 1fr) minmax(60px, max-content)
-        minmax(60px, max-content);
+        40px minmax(0, 1fr)
+        minmax(64px, calc(var(--items-purchase-col-ch, 7) * 1ch + 1.5rem))
+        minmax(64px, calc(var(--items-current-col-ch, 7) * 1ch + 1.5rem));
       position: relative;
       overflow: hidden;
     }
