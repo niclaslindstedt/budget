@@ -918,7 +918,10 @@ closeness to the expected combined figure (Σ `resolveMonthlyPaymentAt`
 across the mortgages — `targetDelta`); any whose typical charge is more
 than `MORTGAGE_PLAUSIBILITY_FACTOR`× off every expected figure is
 dropped as too far from the maths to be the payment (only when the loan
-terms resolve a figure). The user ticks charge groups; each month within
+terms resolve a figure). The user ticks charge groups; the walk pre-checks
+only the "highly probable" charges when any surfaced (so the weaker
+candidates are opt-in), falling back to pre-checking everything found when
+none were promoted. Each month within
 the ± band (a `Slider`, default ±10 %, `DEFAULT_MORTGAGE_TOLERANCE`,
 `monthsWithinBand`) is split across the mortgages by their amortisation +
 dated interest and recorded via `addMortgagePaymentsForProperty`,

@@ -23,7 +23,10 @@ cadence under the same description, for an amount that matches the expected
 payment, AND that has been charged for every period since the loan started
 is flagged "Highly probable" and stands out at the top of the list — that
 steady, complete rhythm is the surest sign it's the mortgage, so it outranks
-even a charge you tagged. A charge that recurs cleanly but only covers part
+even a charge you tagged. When any charge is flagged this way, only those are
+ticked for you to begin with — the weaker candidates are left for you to add
+deliberately — and when nothing is flagged, every charge found is ticked as
+before. A charge that recurs cleanly but only covers part
 of that span — say five of the eight months since you took the loan out —
 stays an ordinary candidate instead, and when two charges match the same
 expected amount only the strongest is flagged, so look-alikes don't all
