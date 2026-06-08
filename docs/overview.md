@@ -825,7 +825,7 @@ or zero value hides it. The **split view** (the
 toggle's other state) is the per-loan list of `MortgageRow`s, where an
 individual loan is edited or deleted; the unified card carries no per-loan
 controls. The toggle is a two-glyph segmented control
-(`MortgageViewToggle`) to the left of the mortgage section actions — one
+(`MortgageViewToggle`) to the right of the mortgage section actions — one
 glyph per view, molded into a single track, with an "active" pill that
 slides between them when the view changes. It defaults to unified and is
 ephemeral per-card local state (resets on reload, like the payoff
@@ -842,7 +842,7 @@ payments** button (magnifier glyph, shown whenever the property has ≥ 1
 mortgage). Find opens the `MortgageDiscoveryModal` scoped to that
 property (its `initialPropertyId`); the modal's own picker can still
 switch to another property. The unified ⇄ split view toggle is a
-two-glyph segmented control (`MortgageViewToggle`) to the left of these
+two-glyph segmented control (`MortgageViewToggle`) to the right of these
 buttons — see the **Unified mortgage view** entry. "Add mortgage" lives
 in the property's "…" menu (`PropertyActionsMenu`).
 

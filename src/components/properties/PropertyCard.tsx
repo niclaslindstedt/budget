@@ -308,17 +308,6 @@ export function PropertyCard({
             {t("properties.mortgages")}
           </span>
           <div className="flex items-center gap-1.5">
-            {canToggleView && (
-              <MortgageViewToggle
-                view={mortgageView}
-                onChange={(next) => {
-                  setMortgageView(next);
-                  // The unified view is the default, but the unlock rewards
-                  // actively reaching for it through the toggle.
-                  if (next === "unified") unlock("unifiedMortgage");
-                }}
-              />
-            )}
             {hasPayments && (
               <button
                 type="button"
@@ -338,6 +327,17 @@ export function PropertyCard({
               >
                 <Search size={16} aria-hidden focusable={false} />
               </button>
+            )}
+            {canToggleView && (
+              <MortgageViewToggle
+                view={mortgageView}
+                onChange={(next) => {
+                  setMortgageView(next);
+                  // The unified view is the default, but the unlock rewards
+                  // actively reaching for it through the toggle.
+                  if (next === "unified") unlock("unifiedMortgage");
+                }}
+              />
             )}
           </div>
         </div>
