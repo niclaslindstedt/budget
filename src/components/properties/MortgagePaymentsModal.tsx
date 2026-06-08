@@ -28,7 +28,7 @@ import type { FloatingPlacement } from "../../hooks";
 import { useResetOnOpen } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
-import { formatBalance, formatShortDate } from "../../utils/format";
+import { formatBalance, formatDate, formatShortDate } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { FloatingPanel } from "../FloatingPanel";
@@ -423,7 +423,7 @@ function MortgageChargeHeader({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  const dateText = formatShortDate(group.date, settings.shortDateFormat, lang);
+  const dateText = formatDate(group.date, settings.dateFormat, lang);
   const totalText = formatBalance(group.total, settings, {
     neverAbbreviate: true,
   });

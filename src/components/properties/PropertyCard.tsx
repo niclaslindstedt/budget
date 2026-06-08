@@ -272,15 +272,13 @@ function MortgageRow({
     mortgage.nextRateChangeDate !== undefined ||
     mortgage.amortization !== undefined;
 
-  // The per-month amortisation, formatted with its "/mo" suffix and an
-  // optional "(N%)" tail when the loan amortises by a percentage of its
-  // original amount — so the figure reads the same as the editor's preview.
+  // The per-month amortisation amount, with an optional "(N%)" tail when the
+  // loan amortises by a percentage of its original amount — the "/ month"
+  // cadence lives in the stat label, so the figure stays a bare amount.
   const amortPerMonth =
     monthlyAmort !== null
-      ? t("properties.amortPerMonth", {
-          amount: formatBalance(monthlyAmort, settings, {
-            neverAbbreviate: true,
-          }),
+      ? formatBalance(monthlyAmort, settings, {
+          neverAbbreviate: true,
         }) +
         (mortgage.amortization?.mode === "percent"
           ? ` (${formatNumber(mortgage.amortization.percent, settings, {
@@ -343,21 +341,20 @@ function MortgageRow({
             )}
             {mortgage.interestRate !== undefined && (
               <MortgageStat label={t("properties.rateShort")}>
-                {formatRate(mortgage.interestRate, settings)}%
-              </MortgageStat>
-            )}
-            {amortPerMonth !== null && (
-              <MortgageStat label={t("properties.amortShort")}>
-                {amortPerMonth}
-              </MortgageStat>
-            )}
-            {monthlyInterest !== null && (
-              <MortgageStat label={t("properties.interestShort")}>
-                {t("properties.interestPerMonth", {
-                  amount: formatBalance(monthlyInterest, settings, {
-                    neverAbbreviate: true,
-                  }),
-                })}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="shrink-0">
+                    {formatRate(mortgage.interestRate, settings)}%
+                  </span>
+                  {mortgage.rateChangeMonths !== undefined && (
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-line bg-surface-3 px-1.5 py-0.5 text-xs font-medium text-muted">
+                      {mortgage.rateChangeMonths === 1
+                        ? t("properties.rateResetPillOne")
+                        : t("properties.rateResetPillOther", {
+                            count: mortgage.rateChangeMonths,
+                          })}
+                    </span>
+                  )}
+                </span>
               </MortgageStat>
             )}
             {mortgage.nextRateChangeDate !== undefined && (
@@ -365,16 +362,19 @@ function MortgageRow({
                 {mortgage.nextRateChangeDate}
               </MortgageStat>
             )}
+            {amortPerMonth !== null && (
+              <MortgageStat label={t("properties.amortPerMonthLabel")}>
+                {amortPerMonth}
+              </MortgageStat>
+            )}
+            {monthlyInterest !== null && (
+              <MortgageStat label={t("properties.interestPerMonthLabel")}>
+                {formatBalance(monthlyInterest, settings, {
+                  neverAbbreviate: true,
+                })}
+              </MortgageStat>
+            )}
           </dl>
-          {mortgage.rateChangeMonths !== undefined && (
-            <p className="m-0 text-xs text-muted">
-              {mortgage.rateChangeMonths === 1
-                ? t("properties.rateResetsOne")
-                : t("properties.rateResetsOther", {
-                    count: mortgage.rateChangeMonths,
-                  })}
-            </p>
-          )}
         </>
       )}
 
