@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Landmark, Plus, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, ChevronDown, Landmark, Plus, X } from "lucide-react";
 
 import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
 import { newId } from "../../data/sheet";
@@ -9,16 +9,23 @@ import type {
   MortgageRateChange,
   Settings,
 } from "../../data/types";
-import { useResetOnOpen } from "../../hooks";
+import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import {
   formatAmountForInput,
   formatBalance,
   parseAmount,
 } from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { DATE_INPUT_CLASS } from "./date-input";
+
+// The payment-frequency presets offered in the editor, in months. Most loans
+// charge monthly; the rest cover the common quarterly / semi-annual / annual
+// cases. A loaded value outside this set still renders (via a generic label),
+// it just isn't one of the quick picks.
+const CADENCE_OPTIONS = [1, 3, 6, 12] as const;
 
 // Create / edit one mortgage (loan) under a property — its name, loan
 // terms, interest history, and amortisation. The bank account "Find
@@ -80,6 +87,10 @@ export function MortgageEditorModal({
   const [nextRateChangeDate, setNextRateChangeDate] = useState("");
   const [amortMode, setAmortMode] = useState<"percent" | "fixed">("percent");
   const [amortValue, setAmortValue] = useState("");
+  // How often amortisation + interest is charged, in months (1 = monthly).
+  const [cadenceMonths, setCadenceMonths] = useState(1);
+  const [cadenceOpen, setCadenceOpen] = useState(false);
+  const [loanStartDate, setLoanStartDate] = useState("");
 
   useResetOnOpen(open, mortgage?.id ?? "__create__", () => {
     setName(mortgage?.name ?? "");
@@ -92,6 +103,9 @@ export function MortgageEditorModal({
         : "",
     );
     setNextRateChangeDate(mortgage?.nextRateChangeDate ?? "");
+    setCadenceMonths(mortgage?.paymentCadenceMonths ?? 1);
+    setCadenceOpen(false);
+    setLoanStartDate(mortgage?.loanStartDate ?? "");
     const amort = mortgage?.amortization;
     setAmortMode(amort?.mode ?? "percent");
     if (!amort) setAmortValue("");
@@ -154,6 +168,10 @@ export function MortgageEditorModal({
       nextRateChangeDate:
         nextRateChangeDate !== "" ? nextRateChangeDate : undefined,
       amortization: buildAmortization(),
+      // Monthly is the default — store the cadence only when it differs, so a
+      // plain monthly loan stays byte-clean.
+      paymentCadenceMonths: cadenceMonths === 1 ? undefined : cadenceMonths,
+      loanStartDate: loanStartDate !== "" ? loanStartDate : undefined,
     };
   }
 
@@ -198,6 +216,10 @@ export function MortgageEditorModal({
       fresh.nextRateChangeDate = terms.nextRateChangeDate;
     if (terms.amortization !== undefined)
       fresh.amortization = terms.amortization;
+    if (terms.paymentCadenceMonths !== undefined)
+      fresh.paymentCadenceMonths = terms.paymentCadenceMonths;
+    if (terms.loanStartDate !== undefined)
+      fresh.loanStartDate = terms.loanStartDate;
     onCreate(fresh);
   }
 
@@ -414,6 +436,40 @@ export function MortgageEditorModal({
               </p>
             )}
           </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.cadenceLabel")}
+            </span>
+            <CadencePicker
+              value={cadenceMonths}
+              open={cadenceOpen}
+              onToggle={() => setCadenceOpen((v) => !v)}
+              onClose={() => setCadenceOpen(false)}
+              onPick={(months) => {
+                setCadenceMonths(months);
+                setCadenceOpen(false);
+              }}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.cadenceHint")}
+            </p>
+          </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.loanStartLabel")}
+            </span>
+            <input
+              type="date"
+              value={loanStartDate}
+              onChange={(e) => setLoanStartDate(e.target.value)}
+              className={DATE_INPUT_CLASS}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.loanStartHint")}
+            </p>
+          </label>
         </div>
       </Modal.Body>
       <Modal.Footer>
@@ -425,5 +481,91 @@ export function MortgageEditorModal({
         </Button>
       </Modal.Footer>
     </Modal>
+  );
+}
+
+const CADENCE_PICKER_PLACEMENT: FloatingPlacement = {
+  // minPx 0 ⇒ the panel grows to the trigger's width and no wider.
+  width: { kind: "min", minPx: 0 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
+
+// A custom dropdown for the payment frequency — never a native <select>, per
+// the project's picker convention. Offers the common presets; a loaded value
+// outside the presets still reads via the generic "Every {n} months" label.
+function CadencePicker({
+  value,
+  open,
+  onToggle,
+  onClose,
+  onPick,
+}: {
+  value: number;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onPick: (months: number) => void;
+}) {
+  const t = useT();
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const label = (months: number): string => {
+    switch (months) {
+      case 1:
+        return t("properties.cadenceMonthly");
+      case 3:
+        return t("properties.cadenceQuarterly");
+      case 6:
+        return t("properties.cadenceSemiAnnual");
+      case 12:
+        return t("properties.cadenceAnnual");
+      default:
+        return t("properties.cadenceEveryN", { n: months });
+    }
+  };
+  // Surface a non-preset loaded value as an extra option so it stays selectable.
+  const options = CADENCE_OPTIONS.includes(
+    value as (typeof CADENCE_OPTIONS)[number],
+  )
+    ? CADENCE_OPTIONS
+    : [...CADENCE_OPTIONS, value];
+  return (
+    <div ref={triggerRef} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg hover:border-accent focus-visible:outline-none"
+      >
+        <span className="flex-1 truncate">{label(value)}</span>
+        <ChevronDown size={14} className="shrink-0 text-muted" aria-hidden />
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={CADENCE_PICKER_PLACEMENT}
+      >
+        <ul role="listbox" className="max-h-64 overflow-auto py-1">
+          {options.map((months) => (
+            <li key={months}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={months === value}
+                onClick={() => onPick(months)}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <span className="flex-1 truncate">{label(months)}</span>
+                {months === value && (
+                  <Check size={14} className="text-accent" aria-hidden />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </FloatingPanel>
+    </div>
   );
 }

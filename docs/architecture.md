@@ -241,7 +241,10 @@ src/
 │   │   │                       #   bound account history for charges tagged with
 │   │   │                       #   a lender / the Mortgage type, expands by bank
 │   │   │                       #   description + amount band, ranks by the
-│   │   │                       #   expected figures (Find mortgage payments walk)
+│   │   │                       #   expected figures; promotes the best complete
+│   │   │                       #   on-cadence run per figure (cadence + window
+│   │   │                       #   from targetSchedules) to "highly probable"
+│   │   │                       #   (Find mortgage payments walk)
 │   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
 │   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
 │   │   ├── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages

@@ -97,6 +97,17 @@ const properties: PropertiesCatalog = {
     "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp för att se månadsbeloppet.",
   amortFixedHint: "Ett fast belopp som amorteras varje månad.",
   amortPreview: "≈ {amount} per månad",
+  cadenceLabel: "Betalningsintervall",
+  cadenceHint:
+    "Hur ofta amortering och ränta dras. De flesta lån betalas månadsvis — ”Hitta bolånebetalningar” förväntar sig en dragning så här ofta sedan lånet togs.",
+  cadenceMonthly: "Månadsvis",
+  cadenceQuarterly: "Kvartalsvis",
+  cadenceSemiAnnual: "Var 6:e månad",
+  cadenceAnnual: "Årsvis",
+  cadenceEveryN: "Var {n}:e månad",
+  loanStartLabel: "Lånets startdatum",
+  loanStartHint:
+    "När lånet började betalas. ”Hitta bolånebetalningar” räknar hur många dragningar som förväntas sedan dess, så en dragning som saknar några av de månaderna flaggas inte som mycket trolig. Utgår från fastighetens köpdatum.",
   accountLabel: "Konto",
   accountHint:
     "Kontot fastighetens bolån betalas från. ”Hitta bolånebetalningar” söker igenom kontots bankhistorik efter dragningarna.",

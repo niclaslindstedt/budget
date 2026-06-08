@@ -7,9 +7,10 @@ each was bought for, its size, its value over time (record a new value
 any time to add a point to its history), the lender (the bank its
 mortgages are held with), and the mortgages themselves. For each mortgage
 you can record the sum you borrowed, the current balance, the amortisation
-(a percentage of the initial loan or a fixed sum per month), and a history
-of interest-rate changes so older payments are valued at the rate that was
-in effect then. Give the property a bank account and open "Find mortgage
+(a percentage of the initial loan or a fixed sum per month), how often the
+loan is paid (monthly by default, or quarterly / every 6 months / yearly),
+when the loan started, and a history of interest-rate changes so older
+payments are valued at the rate that was in effect then. Give the property a bank account and open "Find mortgage
 payments" from
 the sheet's "…" menu: pick a property and it scans that account's history
 for the single monthly charge that pays its loans — homing in on the
@@ -17,11 +18,16 @@ charges you tagged with a lender or the Mortgage type, learning their bank
 description, and sweeping the rest of the history for every matching month,
 ranking the likeliest first, leaving a previous home's loan out by its
 different amount, and ignoring charges that are nowhere near what the loan's
-amortisation and interest add up to. A charge that recurs every single month
-under the same description for an amount that matches the expected payment is
-flagged "Highly probable" and stands out at the top of the list — that steady
-monthly rhythm is the surest sign it's the mortgage, so it outranks even a
-charge you tagged. Haven't tagged anything yet? As long
+amortisation and interest add up to. A charge that recurs on the loan's
+cadence under the same description, for an amount that matches the expected
+payment, AND that has been charged for every period since the loan started
+is flagged "Highly probable" and stands out at the top of the list — that
+steady, complete rhythm is the surest sign it's the mortgage, so it outranks
+even a charge you tagged. A charge that recurs cleanly but only covers part
+of that span — say five of the eight months since you took the loan out —
+stays an ordinary candidate instead, and when two charges match the same
+expected amount only the strongest is flagged, so look-alikes don't all
+light up. Haven't tagged anything yet? As long
 as the loan's terms are filled in, the finder still picks out the charges
 whose amount matches the expected monthly payment, so a freshly imported
 account turns up its mortgage straight from the maths. Each found transaction is split across the property's

@@ -1110,12 +1110,14 @@ describe("discoverMortgagePayments — ranking across strictness and closeness",
 
 // ── Monthly recurrence: the highly-probable promotion ──────────────────────
 //
-// A mortgage is paid once a month, every month, for the same amount. A charge
-// that recurs on a clean once-a-month cadence (no gaps) over a meaningful span,
+// A mortgage is paid on a fixed cadence, every period, for the same amount. A
+// charge that recurs on that clean cadence (no gaps) over a meaningful span,
 // under one stable description, whose typical amount lands in the tight band of
 // an expected figure is the surest signal a charge IS the mortgage — surer than
 // any single tag the user happened to apply. It is flagged `highlyProbable` and
-// RANKS above the tag / company anchor.
+// RANKS above the tag / company anchor. (Completeness over the loan's whole
+// active window, the configurable cadence, and the one-winner-per-figure rule
+// are exercised in the "cadence and window completeness" battery below.)
 describe("discoverMortgagePayments — monthly recurrence promotion", () => {
   function monthly(
     prefix: string,
@@ -1136,7 +1138,7 @@ describe("discoverMortgagePayments — monthly recurrence promotion", () => {
       }),
     );
     expect(series).toHaveLength(1);
-    expect(series[0].monthlyCadence).toBe(true);
+    expect(series[0].regularCadence).toBe(true);
     expect(series[0].highlyProbable).toBe(true);
   });
 
@@ -1174,7 +1176,7 @@ describe("discoverMortgagePayments — monthly recurrence promotion", () => {
       baseInput(entries, { targetAmounts: [18_750] }),
     );
     expect(series).toHaveLength(1);
-    expect(series[0].monthlyCadence).toBe(false);
+    expect(series[0].regularCadence).toBe(false);
     expect(series[0].highlyProbable).toBe(false);
   });
 
@@ -1186,7 +1188,7 @@ describe("discoverMortgagePayments — monthly recurrence promotion", () => {
       }),
     );
     expect(series).toHaveLength(1);
-    expect(series[0].monthlyCadence).toBe(false);
+    expect(series[0].regularCadence).toBe(false);
     expect(series[0].highlyProbable).toBe(false);
   });
 
@@ -1199,10 +1201,153 @@ describe("discoverMortgagePayments — monthly recurrence promotion", () => {
       aviCharges(19_636, { word: "" }),
     );
     expect(series).toHaveLength(1);
-    expect(series[0].monthlyCadence).toBe(true);
+    expect(series[0].regularCadence).toBe(true);
     expect(series[0].highlyProbable).toBe(false);
     expect(diagnostics.candidates[0].synthetic).toBe(true);
     expect(diagnostics.candidates[0].highlyProbable).toBe(false);
+  });
+});
+
+// ── Cadence and window completeness: don't flag an incomplete run ───────────
+//
+// A charge that recurs cleanly but covers only part of the window the loan has
+// been active — five of the eight months expected since it was taken out —
+// must not be flagged highly probable even though its amount matches and it has
+// no internal gaps. And only ONE charge per expected figure is flagged: a
+// second clean-but-wrong charge near the same amount never also lights up.
+describe("discoverMortgagePayments — cadence and window completeness", () => {
+  function monthly(
+    prefix: string,
+    description: string,
+    amount: number,
+    startYear: number,
+    startMonth: number,
+    count: number,
+  ): HistoryEntry[] {
+    return monthlyDates(startYear, startMonth, count).map((d, i) =>
+      entry(`${prefix}-${i}`, d, -amount, description),
+    );
+  }
+
+  it("flags a charge that covers the whole window since the loan started", () => {
+    // The mortgage runs every month from the purchase (2025-09) to the latest
+    // data the account has (2026-04) — eight of eight expected months.
+    const prop = screenshotProperty();
+    const { series } = runFinder(
+      prop,
+      monthly("loan", "Avibetalning bolan", 19_636, 2025, 9, 8),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].regularCadence).toBe(true);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("does NOT flag a clean monthly run that covers only part of the window", () => {
+    // Same mortgage amount, but the charge only appears for the last five of the
+    // eight months since the purchase (it started late, or stopped). Ordinary
+    // spending (groceries) keeps running all eight months, so the data window
+    // reaches 2026-04 and the five-month run falls short. It stays a candidate,
+    // just not "highly probable".
+    const prop = screenshotProperty();
+    const entries = [
+      ...monthly("loan", "Avibetalning bolan", 19_636, 2025, 12, 5),
+      ...monthly("food", "MATBUTIK", 1_250, 2025, 9, 8),
+    ];
+    const { series } = runFinder(prop, entries);
+    const loan = series.find((s) => s.suggestedAmount === 19_636);
+    expect(loan).toBeDefined();
+    // Clean cadence, no internal gaps...
+    expect(loan!.regularCadence).toBe(true);
+    // ...but it covers only 5 of the 8 expected months, so it isn't promoted.
+    expect(loan!.highlyProbable).toBe(false);
+    const cand = series.find((s) => s.suggestedAmount === 19_636);
+    expect(cand).toBeDefined();
+  });
+
+  it("counts charges on the configured cadence for a quarterly loan", () => {
+    // A loan charged every three months: four draws over a year is a complete
+    // quarterly cadence, so it IS flagged when the schedule says cadence 3.
+    const m = mort("m1", {
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 4,
+      amortization: { mode: "fixed", amount: 9_000 },
+    });
+    const each = [resolveMonthlyPaymentAt(m, REF_DATE)];
+    const combined = each[0];
+    const quarterly = [
+      entry("q-0", "2024-01-28", -combined, "Avibetalning bolan"),
+      entry("q-1", "2024-04-28", -combined, "Avibetalning bolan"),
+      entry("q-2", "2024-07-28", -combined, "Avibetalning bolan"),
+      entry("q-3", "2024-10-28", -combined, "Avibetalning bolan"),
+    ];
+    const schedule = { startDate: "2024-01-01", cadenceMonths: 3 };
+    const { series: quarterlySeries } = discoverMortgagePayments(
+      baseInput(quarterly, {
+        fromDate: "2024-01-01",
+        targetAmounts: [combined, ...each],
+        targetSchedules: [schedule, schedule],
+      }),
+    );
+    expect(quarterlySeries).toHaveLength(1);
+    expect(quarterlySeries[0].regularCadence).toBe(true);
+    expect(quarterlySeries[0].highlyProbable).toBe(true);
+
+    // The same draws read as a BROKEN cadence (and so no promotion) when the
+    // loan is assumed monthly — three-month gaps aren't a monthly rhythm.
+    const monthlySchedule = { startDate: "2024-01-01", cadenceMonths: 1 };
+    const { series: monthlySeries } = discoverMortgagePayments(
+      baseInput(quarterly, {
+        fromDate: "2024-01-01",
+        targetAmounts: [combined, ...each],
+        targetSchedules: [monthlySchedule, monthlySchedule],
+      }),
+    );
+    expect(monthlySeries[0].regularCadence).toBe(false);
+    expect(monthlySeries[0].highlyProbable).toBe(false);
+  });
+
+  it("flags only the strongest charge when two match the same figure", () => {
+    // Two clean monthly in-band charges sit near the same 18 750 estimate. Both
+    // surface, but only the closer one earns "highly probable" — the other is a
+    // plain candidate.
+    const entries = [
+      ...monthly("a", "Stora Bolanet", 18_756, 2024, 1, 12),
+      ...monthly("b", "Andra Lanet", 18_200, 2024, 1, 12),
+    ];
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series.map((s) => s.highlyProbable)).toEqual([true, false]);
+    expect(series.filter((s) => s.highlyProbable)).toHaveLength(1);
+    expect(series[0].suggestedAmount).toBe(18_756);
+  });
+
+  it("flags one charge per figure for a property paid as separate per-loan draws", () => {
+    // Two loans, each paid as its own monthly draw near its own expected figure.
+    // Each draw is the best for its figure, so BOTH are highly probable.
+    const m1 = mort("m1", {
+      loanAmount: 2_000_000,
+      currentBalance: 2_000_000,
+      interestRate: 2,
+      amortization: { mode: "fixed", amount: 4_000 },
+    });
+    const m2 = mort("m2", {
+      loanAmount: 500_000,
+      currentBalance: 500_000,
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 2_000 },
+    });
+    const prop = property([m1, m2], { purchaseAmount: 3_500_000 });
+    const [c1, c2] = eachCharge([m1, m2]); // 7,333 and 3,250
+    const entries = [
+      ...monthly("a", "Bolan Ett", c1, 2024, 1, 12),
+      ...monthly("b", "Bolan Tva", c2, 2024, 1, 12),
+    ];
+    const { series } = runFinder(prop, entries);
+    expect(series.filter((s) => s.highlyProbable)).toHaveLength(2);
+    expect(series.every((s) => s.highlyProbable)).toBe(true);
   });
 });
 

@@ -103,6 +103,21 @@ export type Mortgage = {
   rateChangeMonths?: number; // how often the rate resets, in months
   nextRateChangeDate?: string; // ISO yyyy-mm-dd of the next rate change
   amortization?: MortgageAmortization; // monthly amortisation (percent-of-initial or fixed)
+  // How often the loan's amortisation + interest is charged, in months: 1 =
+  // monthly (the default and overwhelmingly common case), 3 = quarterly, 6 =
+  // semi-annual, 12 = annual. Drives "Find mortgage payments": the number of
+  // charges expected since the loan started is the months elapsed divided by
+  // this cadence, so a charge that recurs cleanly but covers only part of that
+  // window (5 of 8 expected months) isn't promoted to "highly probable".
+  // Absent ⇒ monthly.
+  paymentCadenceMonths?: number;
+  // When the loan started being paid (ISO yyyy-mm-dd) — the month its first
+  // charge is expected. "Find mortgage payments" measures the expected number
+  // of payments from here to the latest charge the account has seen (at
+  // `paymentCadenceMonths` cadence), so a charge covering only the last few of
+  // many expected months isn't flagged "highly probable". Absent ⇒ fall back
+  // to the property's `purchaseDate`.
+  loanStartDate?: string;
   payments: MortgagePayment[];
 };
 
