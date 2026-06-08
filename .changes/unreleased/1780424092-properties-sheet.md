@@ -3,7 +3,7 @@ type: Added
 ---
 
 New **Properties** sheet — track the homes and apartments you own: what
-each was bought for, its size, its monthly fee (the recurring charge to
+each was bought for, its size, its number of rooms, its monthly fee (the recurring charge to
 hold it, like a bostadsrätt avgift), its value over time (record a new
 value any time to add a point to its history) — the current value shows a
 per-area figure (e.g. 102k/kvm) and the fee a yearly per-area figure
