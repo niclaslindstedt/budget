@@ -60,8 +60,9 @@ a hint that a payment is missing or a figure is off. A property can carry severa
 mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.
 
-Every per-property action — record a value, estimate a sale, view
-repairs, edit, delete — now lives behind a single "…" menu on the property
+Record a new value any time by tapping the property's current value on
+its card. Every other per-property action — estimate a sale, view
+repairs, edit, delete — lives behind a single "…" menu on the property
 card, so the header stays tidy as the feature grows.
 
 Estimate what a sale would net you with the new **Net sale profit**
