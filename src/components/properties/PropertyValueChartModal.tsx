@@ -11,13 +11,14 @@ import { Modal } from "../Modal";
 import { LineChart, type ChartSeries } from "../charts/LineChart";
 
 // "Visualize value" — the first analysis surface in the app. Charts a
-// property's recorded market value over time, with two toggles that overlay
-// derived lines: "Include repairs" adds the cumulative repair spend onto the
-// value (value including the money invested), and "Show net value" overlays
-// the full net sale profit per snapshot (after broker, advertising, repairs,
-// purchase price, and capital-gains tax). The heavy lifting lives in the
-// reusable `LineChart` primitive and the pure `buildPropertyValueSeries`
-// builder; this modal only maps data to themed, translated series.
+// property's recorded market value over time as a single line that the two
+// toggles transform in place: "Include repairs" adds the cumulative repair
+// spend onto the value (the money invested shows in the curve), and "Show net
+// value" turns the curve into the full net sale profit per snapshot (after
+// broker, advertising, repairs, purchase price, and capital-gains tax). The
+// heavy lifting lives in the reusable `LineChart` primitive and the pure
+// `buildPropertyValueSeries` builder; this modal only maps data to a themed,
+// translated series.
 //
 // `centered`: the only controls are toggle checkboxes, so nothing opens the
 // soft keyboard.
@@ -49,37 +50,22 @@ export function PropertyValueChartModal({
 
   if (!open || !property) return null;
 
-  const data = buildPropertyValueSeries(property, settings, {
+  const points = buildPropertyValueSeries(property, settings, {
     includeRepairs,
     showNetValue,
   });
 
-  const hasChart = data.marketValue.length >= 2;
+  const hasChart = points.length >= 2;
 
+  // One line; its colour + label track what the toggles are showing so the
+  // tooltip names the right figure (net value vs. market value).
+  const seriesColor = showNetValue ? "--meta" : "--accent";
+  const seriesLabel = showNetValue
+    ? t("properties.valueChartNetValue")
+    : t("properties.valueChartMarketValue");
   const series: ChartSeries[] = [
-    {
-      id: "marketValue",
-      label: t("properties.valueChartMarketValue"),
-      colorVar: "--accent",
-      points: data.marketValue,
-    },
+    { id: "value", label: seriesLabel, colorVar: seriesColor, points },
   ];
-  if (data.withRepairs) {
-    series.push({
-      id: "withRepairs",
-      label: t("properties.valueChartWithRepairs"),
-      colorVar: "--flag",
-      points: data.withRepairs,
-    });
-  }
-  if (data.netProfit) {
-    series.push({
-      id: "netProfit",
-      label: t("properties.valueChartNetValue"),
-      colorVar: "--meta",
-      points: data.netProfit,
-    });
-  }
 
   const formatX = (x: number) =>
     formatDate(
@@ -113,26 +99,7 @@ export function PropertyValueChartModal({
           </p>
 
           {hasChart ? (
-            <>
-              <LineChart series={series} formatX={formatX} formatY={formatY} />
-
-              {/* Legend — swatches read the theme tokens directly. */}
-              <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
-                {series.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex items-center gap-1.5 text-xs text-muted"
-                  >
-                    <span
-                      aria-hidden
-                      className="inline-block size-2.5 rounded-full"
-                      style={{ backgroundColor: `var(${s.colorVar})` }}
-                    />
-                    {s.label}
-                  </li>
-                ))}
-              </ul>
-            </>
+            <LineChart series={series} formatX={formatX} formatY={formatY} />
           ) : (
             <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">
               {t("properties.valueChartEmpty")}

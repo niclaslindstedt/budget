@@ -106,7 +106,6 @@ const properties = {
   valueChartEmpty:
     "Record at least two values over time to chart how this property has changed.",
   valueChartMarketValue: "Market value",
-  valueChartWithRepairs: "Value incl. repairs",
   valueChartNetValue: "Net value",
   valueChartIncludeRepairs: "Include repairs",
   valueChartIncludeRepairsHint:
