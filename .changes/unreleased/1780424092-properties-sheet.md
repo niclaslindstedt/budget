@@ -43,8 +43,10 @@ its rate applied to what's still owed — alongside the monthly amortisation.
 When a property carries more than one mortgage the card opens in a unified
 view that sums every loan into one picture — combined balance and debt, a
 blended effective rate, and the total monthly interest and amortisation —
-with a "…" menu in the mortgage section (where "Add mortgage" and "View
-payments" now live) to switch to a split view and see each loan on its own.
+with the combined balance also showing, as a percentage, how much of the
+property's current value is tied up in loans (e.g. 6 028 400 (82%)), and a
+"…" menu in the mortgage section (where "Add mortgage" and "View payments"
+now live) to switch to a split view and see each loan on its own.
 Open a property's payments to
 review every recorded charge and how it split across the loans — tap a
 charge to see the original bank transaction it came from — and edit or
