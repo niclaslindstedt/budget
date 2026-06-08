@@ -32,12 +32,12 @@ const properties = {
   loanShort: "Loan",
   rateShort: "Rate",
   interestShort: "Interest",
-  rateResetsOne: "resets monthly",
-  rateResetsOther: "resets every {count} mo",
+  rateResetPillOne: "monthly",
+  rateResetPillOther: "{count} months",
   nextRateChangeShort: "Next change",
   amortShort: "Amortisation",
-  amortPerMonth: "{amount}/mo",
-  interestPerMonth: "{amount}/mo",
+  amortPerMonthLabel: "Amortisation / month",
+  interestPerMonthLabel: "Interest / month",
   // Payoff "power bar" on the mortgage card — the share of the original
   // loan amortised away so far (100% = the loan is fully paid off).
   payoffLabel: "Paid off",
