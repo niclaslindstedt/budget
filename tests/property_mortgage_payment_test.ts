@@ -91,7 +91,7 @@ describe("resolveMonthlyPaymentAt", () => {
 describe("splitPaymentAcrossMortgages", () => {
   // Pin "today" to the charge date so each loan's reconstructed balance
   // equals its recorded `currentBalance` — these cases exercise the
-  // amortisation-first / interest-weight split, not the date reconstruction.
+  // amortisation-first / computed-interest split, not the date reconstruction.
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2024-08-28T00:00:00Z"));
@@ -136,7 +136,7 @@ describe("splitPaymentAcrossMortgages", () => {
     expect(split.get("b")).toBeCloseTo(500);
   });
 
-  it("settles amortisation in full first, then splits the rest by interest", () => {
+  it("pins each loan to its computed interest, then rides the residual on amortisation", () => {
     const x = mortgage({
       id: "x",
       currentBalance: 1_200_000,
@@ -151,11 +151,12 @@ describe("splitPaymentAcrossMortgages", () => {
     }); // expected total = 10000
 
     // Charge runs 1000 over the expected total. Amortisation stays pinned
-    // (2000 / 6000); only the leftover interest (3000) is shared by interest
-    // weight, which is equal here ⇒ +1500 each.
+    // (2000 / 6000) and each loan keeps its computed 1000 interest; the 1000
+    // residual is the model's estimate error, attributed to the loans whose
+    // balance moved by amortisation weight (2000 : 6000 ⇒ +250 / +750).
     const split = splitPaymentAcrossMortgages([x, y], 11_000, "2024-08-28");
-    expect(split.get("x")).toBeCloseTo(3500);
-    expect(split.get("y")).toBeCloseTo(7500);
+    expect(split.get("x")).toBeCloseTo(3250); // 2000 amort + 1000 int + 250
+    expect(split.get("y")).toBeCloseTo(7750); // 6000 amort + 1000 int + 750
     const total = [...split.values()].reduce((s, v) => s + v, 0);
     expect(total).toBeCloseTo(11_000);
   });
@@ -256,6 +257,63 @@ describe("splitPaymentAcrossMortgages — date-aware balances", () => {
 
     expect(thisMonth.get("am")).toBeCloseTo(5500); // 5000 amort + 500 interest
     expect(lastMonth.get("am")).toBeCloseTo(5512.5); // 5000 amort + 512.5
+  });
+
+  // The real-data case: the recorded charge is the actual bank amount, which
+  // never lines up exactly with the modelled total (historical balances and
+  // rounding drift). A large fixed interest-only loan beside a smaller
+  // amortising loan — when the recorded charge differs from the model, the
+  // interest-only loan must still keep its computed interest flat. The old
+  // interest-weight split smeared that gap by interest magnitude, so the
+  // dominant interest-only loan absorbed almost all of it and its "interest"
+  // visibly fell month over month even though its balance never moved.
+  const bigFixed = mortgage({
+    id: "fixed",
+    currentBalance: 6_000_000,
+    interestRate: 1.63, // 6_000_000 * 1.63% / 12 = 8150/mo, constant
+  });
+  const smallAmortising = mortgage({
+    id: "amort",
+    currentBalance: 2_000_000, // today's balance
+    interestRate: 3,
+    amortization: { mode: "fixed", amount: 10_000 },
+  });
+  const realLoans = [bigFixed, smallAmortising];
+
+  it("keeps a large fixed interest-only loan flat when the charge drifts from the model", () => {
+    // This month the recorded charge happens to match the model exactly:
+    // 8150 (fixed interest) + 10000 (amort) + 5000 (amort interest @ today).
+    const thisMonth = splitPaymentAcrossMortgages(
+      realLoans,
+      23_150,
+      "2026-06-01",
+    );
+    // Last month the amortising loan's balance was 2_010_000 ⇒ 5025 interest,
+    // so the model expects 23_175 — but the bank actually charged 23_100. The
+    // 75 shortfall is the amortising loan's, NOT the fixed loan's.
+    const lastMonth = splitPaymentAcrossMortgages(
+      realLoans,
+      23_100,
+      "2026-05-01",
+    );
+
+    // The fixed interest-only loan stays pinned to exactly 8150 both months,
+    // despite the charge drifting from the model (the old split dropped it to
+    // ~8104 last month, the reported bug).
+    expect(thisMonth.get("fixed")).toBeCloseTo(8150);
+    expect(lastMonth.get("fixed")).toBeCloseTo(8150);
+
+    // The amortising loan carries its amortisation, its computed interest, and
+    // the whole residual.
+    expect(thisMonth.get("amort")).toBeCloseTo(15_000); // 10000 + 5000
+    expect(lastMonth.get("amort")).toBeCloseTo(14_950); // 10000 + 5025 - 75
+
+    expect([...thisMonth.values()].reduce((s, v) => s + v, 0)).toBeCloseTo(
+      23_150,
+    );
+    expect([...lastMonth.values()].reduce((s, v) => s + v, 0)).toBeCloseTo(
+      23_100,
+    );
   });
 });
 
