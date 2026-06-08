@@ -153,7 +153,7 @@ export function AppearanceTab({
                   >[0],
                 )}
               >
-                <div className="flex flex-wrap gap-3">
+                <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-x-2 gap-y-2.5">
                   {group.keys.map((k) => (
                     <ColorSwatchInput
                       key={k}
@@ -440,12 +440,16 @@ function SegmentedRow<T extends string>({
   );
 }
 
-// Native `<input type="color">` wrapped in a labelled flex column.
-// Native is the right call here: 18 colour controls × an 8-swatch
-// palette grid would be overwhelming, and a user customising "exactly
-// my shade of green" wants hex entry the OS already provides. The
-// swatch itself doubles as the trigger — clicking opens the system
-// colour picker.
+// Native `<input type="color">` captioned beneath the swatch. Native
+// is the right call here: 18 colour controls × an 8-swatch palette
+// grid would be overwhelming, and a user customising "exactly my shade
+// of green" wants hex entry the OS already provides. The swatch itself
+// doubles as the trigger — clicking opens the system colour picker.
+//
+// The swatch sits *above* the caption (not below) so it pins to the
+// top of its grid cell: every swatch in a row then aligns regardless
+// of whether its label wraps to one line or two. The swatch fills the
+// column so the groups read as one tidy tiled grid.
 function ColorSwatchInput({
   label,
   value,
@@ -456,15 +460,15 @@ function ColorSwatchInput({
   onChange: (color: string) => void;
 }) {
   return (
-    <label className="flex flex-col items-start gap-1 text-xs text-muted">
-      <span>{label}</span>
+    <label className="flex cursor-pointer flex-col gap-1 text-xs text-muted">
       <input
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className="h-7 w-12 cursor-pointer rounded border border-line bg-transparent p-0"
+        className="h-7 w-full cursor-pointer rounded border border-line bg-transparent p-0"
       />
+      <span className="leading-tight">{label}</span>
     </label>
   );
 }
