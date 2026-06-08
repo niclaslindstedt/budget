@@ -691,9 +691,10 @@
          body row are independent grids, so content-sized tracks would make
          the tiny header glyphs and the wider body figures resolve to
          different widths and drift apart column-to-column. Fixed tracks
-         resolve identically in every grid, so the left-aligned header glyph
-         sits directly above its left-aligned column. The action cell sits
-         outside the grid as an absolute overlay so it reserves no track. */
+         resolve identically in every grid, so the header glyph sits
+         directly above its column (right-aligned, via the shared
+         `useAmountColumns` knob). The action cell sits outside the grid
+         as an absolute overlay so it reserves no track. */
       display: grid;
       grid-template-columns: minmax(0, 1fr) 5rem 5rem 5.5rem;
       position: relative;
