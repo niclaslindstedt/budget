@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import {
   Calculator,
+  LineChart,
   MoreHorizontal,
   Paperclip,
   Pencil,
@@ -20,6 +21,7 @@ type Props = {
   // the trigger and a count suffix on the "View repairs" entry.
   missingReceiptCount: number;
   onUploadFile: (property: Property) => void;
+  onVisualizeValue: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
   onExportProperty: (property: Property) => void;
@@ -53,6 +55,7 @@ export function PropertyActionsMenu({
   property,
   missingReceiptCount,
   onUploadFile,
+  onVisualizeValue,
   onNetSaleProfit,
   onViewRepairs,
   onExportProperty,
@@ -75,6 +78,12 @@ export function PropertyActionsMenu({
       icon: <Paperclip size={16} aria-hidden focusable={false} />,
       label: t("properties.uploadFile"),
       onClick: () => pick(() => onUploadFile(property)),
+    },
+    {
+      key: "visualizeValue",
+      icon: <LineChart size={16} aria-hidden focusable={false} />,
+      label: t("properties.valueChartTitle"),
+      onClick: () => pick(() => onVisualizeValue(property)),
     },
     {
       key: "netSaleProfit",

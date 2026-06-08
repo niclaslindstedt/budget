@@ -44,6 +44,7 @@ import {
   Layers,
   LayoutDashboard,
   LayoutGrid,
+  LineChart,
   Link as LinkIcon,
   ListChecks,
   ListOrdered,
@@ -918,6 +919,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "netSaleProfit",
     tier: "pro",
     glyph: Calculator,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user opened the property value-over-time chart — the app's first
+    // visualization. A manual unlock — opening a read-only modal can't be
+    // spotted from a derived state slice.
+    id: "valueChart",
+    tier: "pro",
+    glyph: LineChart,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

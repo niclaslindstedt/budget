@@ -306,6 +306,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Nettovinst vid försäljning i en fastighets …-meny. Dra i reglaget för försäljningspris och se uppdelningen: mäklararvode, annonsering, reparationer, inköpspriset och din plats vinstskatt dras alla av före slutsumman. Prova mäklarlägena — fast belopp, en procentsats, eller en bas plus en procentsats över en gräns — för att matcha hur din mäklare tar betalt.",
   },
+  valueChart: {
+    name: "Trendspanare",
+    condition: "Visualisera en fastighets värde över tid.",
+    learnMore:
+      "Välj Visualisera värde i en fastighets …-meny för att rita upp dess registrerade värden över tid — appens första visualisering. Slå på Inkludera reparationer för att lägga pengarna du investerat på linjen, och Visa nettovärde för att lägga till vad du faktiskt får kvar efter mäklararvode, annonsering, reparationer, inköpspris och vinstskatt. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

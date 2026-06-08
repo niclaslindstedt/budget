@@ -308,6 +308,12 @@ const catalog = {
     learnMore:
       "From a property's … menu, pick Net sale profit. Drag the sale-price slider and watch the breakdown: broker fee, advertising, repairs, the purchase price, and your location's capital-gains tax all come off before the bottom line. Try the broker modes — fixed, a percentage, or a base plus a percentage above a threshold — to match how your agent charges.",
   },
+  valueChart: {
+    name: "Trend Spotter",
+    condition: "Visualize a property's value over time.",
+    learnMore:
+      "From a property's … menu, pick Visualize value to chart its recorded values over time — the app's first visualization. Toggle Include repairs to fold the money you've put in onto the line, and Show net value to overlay what you'd actually take home after broker, advertising, repairs, purchase price, and capital-gains tax. The chart follows your theme: colours, font, corners, and spacing all match.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

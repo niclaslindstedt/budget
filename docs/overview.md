@@ -1379,6 +1379,51 @@ price above a threshold). Edited via a `SelectPicker` mode dropdown with
 that mode's inputs; resolved to a fee by `brokerFee` in
 `src/data/tax/se/property-sale.ts`.
 
+### Visualize value
+
+`PropertyValueChartModal.tsx` (`src/components/properties/`) — the app's
+first data visualization, opened from a property card's "… actions
+menu" ("Visualize value"). Plots the recorded market value over time
+(`Property.valueHistory`) as a line, with two toggles that overlay
+derived lines:
+
+- **Include repairs** — value PLUS the cumulative repair spend up to
+  each snapshot date, so the line reads as the property's value
+  including the money invested in it.
+- **Show net value** — the full net sale profit per snapshot
+  (`computePropertySale`, deducting broker, advertising, the cumulative
+  repair spend, the purchase price, and capital-gains tax) — what you'd
+  actually take home. Repairs are _deducted_ here, so the two toggles
+  point opposite ways on purpose.
+
+The series math is the pure `buildPropertyValueSeries`
+(`src/data/property-value/series.ts`), sampled at the value-snapshot
+dates (the only dates a market value is known for). The drawing is the
+reusable `LineChart` primitive (see below); this modal only maps the
+data to themed colours (`--accent` / `--flag` / `--meta`) and
+translated labels, and shows an empty state until there are at least
+two snapshots. `centered` (only toggle checkboxes — no soft keyboard).
+Opening it unlocks the `valueChart` ("Trend Spotter") achievement.
+
+### Line chart
+
+`LineChart` in `src/components/charts/LineChart.tsx` — the reusable,
+theme-aware multi-series line-chart primitive (the first member of the
+app's `charts/` layer), built on visx (`@visx/*`: SVG, modular, so the
+bundle only carries what's used). It owns no domain knowledge and ships
+no user-facing copy: the caller passes data series (each naming a CSS
+colour token like `--accent`), tick formatters, and labels. All
+colours, the font, the grid weight, and the tooltip's surface / radius
+read through `useThemeTokens` (`src/hooks/useThemeTokens.ts`), which
+reads the requested CSS custom properties off `<html>` into JS and
+re-reads them on theme change (a `MutationObserver` on the `data-theme`
+/ `style` / `data-reduce-motion` attributes `useTheme` mutates). So the
+chart follows the active theme — presets and the Custom theme's colour
+/ radius / border-width choices — and introduces no animation, so
+reduce-motion is respected by construction. Fluid width via
+`@visx/responsive`'s `ParentSize`; a hover crosshair + tooltip snap to
+the nearest sampled x.
+
 ### Location
 
 `Settings.location` (a `TaxLocation`, `"SE"` today) — the global

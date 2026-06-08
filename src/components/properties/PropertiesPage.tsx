@@ -56,6 +56,7 @@ import { PropertyEditorModal } from "./PropertyEditorModal";
 import { PropertyExportModal } from "./PropertyExportModal";
 import { PropertyFilesModal } from "./PropertyFilesModal";
 import { PropertyImportModal } from "./PropertyImportModal";
+import { PropertyValueChartModal } from "./PropertyValueChartModal";
 import { ManualRepairModal } from "./ManualRepairModal";
 import { RepairsAddModal } from "./RepairsAddModal";
 import { RepairsEditModal } from "./RepairsEditModal";
@@ -85,6 +86,7 @@ type PropertyModalState =
   | { kind: "edit"; property: Property }
   | { kind: "create" }
   | { kind: "value"; property: Property }
+  | { kind: "chart"; property: Property }
   | { kind: "payments"; property: Property }
   | { kind: "repairs"; property: Property }
   | { kind: "files"; property: Property }
@@ -187,6 +189,8 @@ export function PropertiesPage({
     data.properties.find((p) => p.id === property.id) ?? null;
   const liveValueProperty =
     modal?.kind === "value" ? liveProperty(modal.property) : null;
+  const liveChartProperty =
+    modal?.kind === "chart" ? liveProperty(modal.property) : null;
   const livePaymentsProperty =
     modal?.kind === "payments" ? liveProperty(modal.property) : null;
   const liveRepairsProperty =
@@ -545,6 +549,13 @@ export function PropertiesPage({
     dispatch({ type: "deleteRepair", propertyId, repairId });
   }
 
+  // Open the value-over-time chart, recording the achievement the first
+  // time the user visualizes a property.
+  function handleVisualizeValue(property: Property) {
+    setModal({ kind: "chart", property });
+    unlock("valueChart");
+  }
+
   // Open the net-sale-profit estimator, recording the achievement the
   // first time the user models a sale.
   function handleNetSaleProfit(property: Property) {
@@ -636,6 +647,7 @@ export function PropertiesPage({
                   onUploadFile={(property) =>
                     setModal({ kind: "files", property })
                   }
+                  onVisualizeValue={handleVisualizeValue}
                   onNetSaleProfit={handleNetSaleProfit}
                   onViewPayments={(property) =>
                     setModal({ kind: "payments", property })
@@ -694,6 +706,13 @@ export function PropertiesPage({
           onClose={() => setModal(null)}
           onAddValue={handleAddValue}
           onDeleteValue={handleDeleteValue}
+        />
+
+        <PropertyValueChartModal
+          open={liveChartProperty !== null}
+          property={liveChartProperty}
+          settings={settings}
+          onClose={() => setModal(null)}
         />
 
         <NetSaleProfitModal
