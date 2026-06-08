@@ -800,9 +800,12 @@ shown only when both figures resolve and the value is positive, so a missing
 or zero value hides it. The **split view** (the
 toggle's other state) is the per-loan list of `MortgageRow`s, where an
 individual loan is edited or deleted; the unified card carries no per-loan
-controls. The toggle lives in the mortgage section menu, defaults to
-unified, and is ephemeral per-card local state (resets on reload, like the
-payoff breakdown toggle). Switching into unified unlocks the
+controls. The toggle is a two-glyph segmented control
+(`MortgageViewToggle`) to the left of the mortgage section menu — one
+glyph per view, molded into a single track, with an "active" pill that
+slides between them when the view changes. It defaults to unified and is
+ephemeral per-card local state (resets on reload, like the payoff
+breakdown toggle). Switching into unified unlocks the
 `unifiedMortgage` achievement. A property with 0 or 1 mortgage always shows
 the split row(s) and offers no toggle.
 
@@ -810,12 +813,12 @@ the split row(s) and offers no toggle.
 
 The "…" overflow menu at the right of a property card's "MORTGAGES"
 section header (`MortgageSectionMenu.tsx`), sitting where the "Add
-mortgage" button used to. Collects the mortgage-level actions: the unified
-⇄ split view toggle (only when the property has two or more mortgages —
-each label names the view it switches to), "Add mortgage", and "View
-payments" (only when a mortgage has recorded payments — moved here from the
-`PropertyActionsMenu`). Built on the shared `FloatingPanel` like the other
-"…" menus.
+mortgage" button used to. Collects the mortgage-level actions: "Add
+mortgage" and "View payments" (only when a mortgage has recorded payments —
+moved here from the `PropertyActionsMenu`). Built on the shared
+`FloatingPanel` like the other "…" menus. The unified ⇄ split view toggle
+is a separate two-glyph segmented control (`MortgageViewToggle`) to the
+left of this menu — see the **Unified mortgage view** entry.
 
 ### Mortgage rate change
 
@@ -1280,8 +1283,9 @@ file** (opens the **property files modal**), Net sale profit, View repairs
 recorded value is not here — the current-value figure in the card's stat
 grid is itself the button that opens the **Update value** modal. A small
 `--danger` dot marks the trigger when any repair lacks a receipt. The
-mortgage-level actions (Add mortgage, View payments, the unified/split view
-toggle) live in the **mortgage section menu**, not here.
+mortgage-level actions (Add mortgage, View payments) live in the **mortgage
+section menu**, and the unified/split view toggle is the segmented control
+beside it, not here.
 
 ### Property export / import
 

@@ -46,8 +46,10 @@ view that sums every loan into one picture — combined balance and debt, a
 blended effective rate, and the total monthly interest and amortisation —
 with the combined balance also showing, as a percentage, how much of the
 property's current value is tied up in loans (e.g. 6 028 400 (82%)), and a
-"…" menu in the mortgage section (where "Add mortgage" and "View payments"
-now live) to switch to a split view and see each loan on its own.
+two-glyph toggle in the mortgage section header to switch to a split view
+and see each loan on its own — the active mode slides between the glyphs as
+you press it. "Add mortgage" and "View payments" live in the "…" menu
+beside it.
 Open a property's payments to
 review every recorded charge and how it split across the loans — tap a
 charge to see the original bank transaction it came from — and edit or

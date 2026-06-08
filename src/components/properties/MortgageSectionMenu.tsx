@@ -1,29 +1,16 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  LayoutList,
-  MoreHorizontal,
-  Plus,
-  ReceiptText,
-  Rows3,
-} from "lucide-react";
+import { MoreHorizontal, Plus, ReceiptText } from "lucide-react";
 
 import type { Property } from "../../data/types";
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { FloatingPanel } from "../FloatingPanel";
 
-type MortgageView = "unified" | "split";
-
 type Props = {
   property: Property;
   // Whether any mortgage on the property has recorded payments — gates the
   // "View payments" entry (moved here from the property actions menu).
   hasPayments: boolean;
-  // The view the card currently renders, and whether the toggle is offered at
-  // all (only meaningful with two or more mortgages to collapse).
-  view: MortgageView;
-  canToggle: boolean;
-  onToggleView: () => void;
   onAddMortgage: (property: Property) => void;
   onViewPayments: (property: Property) => void;
 };
@@ -43,14 +30,12 @@ type MenuItem = {
 
 // The "…" overflow menu in a property card's mortgage section header, sitting
 // where the "Add mortgage" button used to. It collects the mortgage-level
-// actions — toggle the unified ⇄ split view, add a mortgage, view recorded
-// payments — so the section header stays a single trigger.
+// actions — add a mortgage, view recorded payments — so the section header
+// stays a single trigger. The unified ⇄ split view toggle is a separate
+// segmented control (`MortgageViewToggle`) to the left of this menu.
 export function MortgageSectionMenu({
   property,
   hasPayments,
-  view,
-  canToggle,
-  onToggleView,
   onAddMortgage,
   onViewPayments,
 }: Props) {
@@ -65,25 +50,6 @@ export function MortgageSectionMenu({
   }
 
   const items: MenuItem[] = [];
-
-  if (canToggle) {
-    items.push({
-      key: "toggleView",
-      // The label names the view the toggle switches TO, so it reads as an
-      // action ("Split view" when currently unified, and vice versa).
-      icon:
-        view === "unified" ? (
-          <Rows3 size={16} aria-hidden focusable={false} />
-        ) : (
-          <LayoutList size={16} aria-hidden focusable={false} />
-        ),
-      label:
-        view === "unified"
-          ? t("properties.viewSplit")
-          : t("properties.viewUnified"),
-      onClick: () => pick(onToggleView),
-    });
-  }
 
   items.push({
     key: "addMortgage",

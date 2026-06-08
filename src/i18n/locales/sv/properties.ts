@@ -25,6 +25,7 @@ const properties: PropertiesCatalog = {
   addMortgage: "Lägg till bolån",
   viewUnified: "Sammanslagen vy",
   viewSplit: "Delad vy",
+  viewToggle: "Bolånevy",
   mortgageCountOne: "{count} bolån",
   mortgageCountOther: "{count} bolån",
   editMortgage: "Redigera bolån",
