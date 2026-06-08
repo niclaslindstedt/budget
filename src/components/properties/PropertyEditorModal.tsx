@@ -65,6 +65,7 @@ export function PropertyEditorModal({
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [size, setSize] = useState("");
+  const [fee, setFee] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
     setName(property?.name ?? "");
@@ -74,6 +75,7 @@ export function PropertyEditorModal({
     setPurchaseAmount(seedAmount(property?.purchaseAmount, settings));
     setPurchaseDate(property?.purchaseDate ?? "");
     setSize(seedAmount(property?.size, settings));
+    setFee(seedAmount(property?.fee, settings));
   });
 
   if (!open) return null;
@@ -96,6 +98,7 @@ export function PropertyEditorModal({
       purchaseAmount: num(purchaseAmount),
       purchaseDate: purchaseDate !== "" ? purchaseDate : undefined,
       size: num(size),
+      fee: num(fee),
     };
     if (property) {
       onSubmit(property.id, patch);
@@ -118,6 +121,7 @@ export function PropertyEditorModal({
     if (patch.purchaseDate !== undefined)
       fresh.purchaseDate = patch.purchaseDate;
     if (patch.size !== undefined) fresh.size = patch.size;
+    if (patch.fee !== undefined) fresh.fee = patch.fee;
     onCreate(fresh);
   }
 
@@ -231,6 +235,20 @@ export function PropertyEditorModal({
                 {settings.propertySizeUnit}
               </span>
             </div>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.feeLabel")}
+            </span>
+            <ClearableInput
+              value={fee}
+              onValueChange={setFee}
+              inputMode="decimal"
+              placeholder={t("properties.feePlaceholder")}
+              className={amountInputClass}
+            />
+            <p className="m-0 text-xs text-muted">{t("properties.feeHint")}</p>
           </label>
         </div>
       </Modal.Body>

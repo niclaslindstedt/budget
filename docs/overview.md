@@ -701,6 +701,16 @@ unit it renders with is a global display preference,
 mean square metres), edited in the Property settings tab. The card and
 editor append the chosen label next to the number.
 
+### Property fee
+
+`Property.fee` is a flat recurring monthly charge to hold the property,
+separate from any mortgage — the Swedish bostadsrätt "avgift" to the
+housing association, or an equivalent HOA / service fee. A non-negative
+number in the user's currency, entered in `PropertyEditorModal` and
+shown as a stat on `PropertyCard` (formatted with the currency, like the
+purchase amount). Optional and additive — absent until the user records
+one, so old budgets simply lack it and no migration is needed.
+
 ### Property settings tab
 
 `src/components/SettingsModal/tabs/properties.tsx` (`PropertiesTab`) —

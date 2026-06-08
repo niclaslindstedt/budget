@@ -12,6 +12,7 @@ const properties = {
   boughtFor: "Bought for",
   purchased: "Purchased",
   size: "Size",
+  fee: "Monthly fee",
   currentValue: "Current value",
   noValue: "No value recorded",
   updateValue: "Update value",
@@ -71,6 +72,9 @@ const properties = {
   purchaseDateLabel: "Purchase date",
   sizeLabel: "Size",
   sizePlaceholder: "Living area",
+  feeLabel: "Monthly fee",
+  feePlaceholder: "What you pay each month",
+  feeHint: "Recurring charge to hold the property, e.g. a bostadsrätt fee.",
 
   // Update-value modal.
   updateValueTitle: "Update value",
