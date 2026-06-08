@@ -37,6 +37,7 @@ import { PullToRefreshIndicator } from "../PullToRefreshIndicator";
 import { SaveStateButton } from "../SaveStateButton";
 import { SheetSwitcher } from "../SheetSwitcher";
 import { SyncStatus } from "../SyncStatus";
+import { ViewportDebug } from "../ViewportDebug";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import {
   companyTypeSuggestionsFromHints,
@@ -833,6 +834,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         data-budget-shell
         className="mx-auto flex min-h-svh max-w-full flex-col px-1 md:px-5"
       >
+        <ViewportDebug />
         {/* Pull-to-refresh pip lives outside the `data-modal-background`
           wrapper so an open modal's `inert` doesn't disable its
           fixed-position rendering. The hook itself gates on
