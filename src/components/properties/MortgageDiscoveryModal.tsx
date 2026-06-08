@@ -56,6 +56,9 @@ const log = createLogger("mortgage-finder");
 
 type Props = {
   open: boolean;
+  // Which property to scan when the modal opens — the card that launched the
+  // walk. The in-modal property picker can still switch to another property.
+  initialPropertyId: string | null;
   properties: readonly Property[];
   history: Record<string, HistoryEntry[]>;
   merchantHints: Readonly<Record<string, MerchantHint>>;
@@ -72,6 +75,7 @@ type Props = {
 
 export function MortgageDiscoveryModal({
   open,
+  initialPropertyId,
   properties,
   history,
   merchantHints,
@@ -84,7 +88,9 @@ export function MortgageDiscoveryModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
-  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState<string | null>(
+    initialPropertyId,
+  );
   const [propertyPickerOpen, setPropertyPickerOpen] = useState(false);
   // null = "use the default (everything selected)"; a Set once the user
   // has toggled at least one group.
@@ -99,6 +105,13 @@ export function MortgageDiscoveryModal({
   const property =
     properties.find((p) => p.id === propertyId) ?? properties[0] ?? null;
   const mortgages = useMemo(() => property?.mortgages ?? [], [property]);
+
+  // Snap to the launching card's property each time the walk opens; switching
+  // property inside the modal (via the picker) still re-runs the per-property
+  // reset below through `property?.id`.
+  useResetOnOpen(open, initialPropertyId, () => {
+    setPropertyId(initialPropertyId);
+  });
 
   useResetOnOpen(open, property?.id, () => {
     setSelectedKeys(null);
