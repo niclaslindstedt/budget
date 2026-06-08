@@ -110,12 +110,16 @@ export function PropertyCard({
   // Per-area figures shown as pills next to the current value and the
   // monthly fee. Only when a positive living area is recorded, so a
   // missing or zero size hides the pill rather than dividing by nothing.
+  // The fee is stored per month, so the per-area pill annualises it (×12)
+  // to read as a yearly cost per unit of area.
   const size = property.size;
   const hasArea = size !== undefined && size > 0;
   const valuePerArea =
     hasArea && value !== undefined ? value / size : undefined;
   const feePerArea =
-    hasArea && property.fee !== undefined ? property.fee / size : undefined;
+    hasArea && property.fee !== undefined
+      ? (property.fee * 12) / size
+      : undefined;
   const hasPayments = property.mortgages.some((m) => m.payments.length > 0);
   // The unified view collapses every mortgage into one summed card; it's only
   // meaningful (and only offered) when there are two or more loans to combine.
@@ -248,7 +252,7 @@ export function PropertyCard({
                   {formatBalance(feePerArea, settings, {
                     neverAbbreviate: true,
                   })}
-                  /{settings.propertySizeUnit}
+                  /{settings.propertySizeUnit}/{t("properties.perYearUnit")}
                 </span>
               )}
             </div>

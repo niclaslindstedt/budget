@@ -19,7 +19,10 @@ const properties = {
   // monthly fee, and the share-of-value pill on the unified mortgage
   // balance. `{unit}` is the user's area unit (e.g. "kvm").
   valuePerAreaTitle: "Value per {unit}",
-  feePerAreaTitle: "Monthly fee per {unit}",
+  // The fee is stored per month; the per-area pill annualises it, so the
+  // title and the pill's trailing unit both read "per year".
+  feePerAreaTitle: "Yearly fee per {unit}",
+  perYearUnit: "yr",
   loanToValueTitle: "Share of current value",
   updateValue: "Update value",
   uploadFile: "Upload file",
