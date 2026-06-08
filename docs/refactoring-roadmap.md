@@ -440,7 +440,7 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
   modals can be open at a time by construction. **Re-verify corrected the
   roadmap's "single union, mutually exclusive by construction" plan**: the
   three repair sub-editors (`addingRepairsFor`, `repairEditor`,
-  `manualRepairEditor`) are opened from *inside* the `RepairsModal` and
+  `manualRepairEditor`) are opened from _inside_ the `RepairsModal` and
   intentionally **stack on top of** it (the list stays open behind the
   editor), so they are genuinely co-open with `modal.kind === "repairs"` and
   were kept as their own state — the seam is two-layer, not one flat union.
