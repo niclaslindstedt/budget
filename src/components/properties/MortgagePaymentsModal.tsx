@@ -24,8 +24,11 @@ import type {
   Property,
   Settings,
 } from "../../data/types";
-import type { FloatingPlacement } from "../../hooks";
-import { useResetOnOpen } from "../../hooks";
+import {
+  type FloatingPlacement,
+  useAmountColumns,
+  useResetOnOpen,
+} from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate, formatShortDate } from "../../utils/format";
@@ -88,6 +91,7 @@ export function MortgagePaymentsModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { headerClass, headerJustifyClass } = useAmountColumns();
 
   const groups = useMemo(
     () => (property ? groupPaymentsByCharge(property) : []),
@@ -184,10 +188,12 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className="px-1 py-1 text-left font-normal"
+                          className={`px-1 py-1 font-normal ${headerClass}`}
                           title={t("properties.amortShort")}
                         >
-                          <span className="inline-flex items-center justify-start">
+                          <span
+                            className={`inline-flex items-center ${headerJustifyClass}`}
+                          >
                             <TrendingDown
                               size={13}
                               className="shrink-0 text-accent"
@@ -197,10 +203,12 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className="px-1 py-1 text-left font-normal"
+                          className={`px-1 py-1 font-normal ${headerClass}`}
                           title={t("properties.interestShort")}
                         >
-                          <span className="inline-flex items-center justify-start">
+                          <span
+                            className={`inline-flex items-center ${headerJustifyClass}`}
+                          >
                             <Percent
                               size={13}
                               className="shrink-0 text-accent"
@@ -210,10 +218,12 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className="px-1 py-1 text-left font-normal"
+                          className={`px-1 py-1 font-normal ${headerClass}`}
                           title={t("properties.paymentAmount")}
                         >
-                          <span className="inline-flex items-center justify-start">
+                          <span
+                            className={`inline-flex items-center ${headerJustifyClass}`}
+                          >
                             <Coins
                               size={13}
                               className="shrink-0 text-accent"
@@ -527,6 +537,7 @@ function MortgagePaymentRowImpl({
   onDelete,
 }: RowProps) {
   const t = useT();
+  const { cellClass } = useAmountColumns();
   const { swiped, setSwiped, touchHandlers } = useRowSwipe();
   // A swiped row exposes edit / delete; claim the active-row slot so a tap
   // elsewhere only retracts the swipe instead of also firing the control
@@ -544,17 +555,23 @@ function MortgagePaymentRowImpl({
       <td className="px-2.5 py-1.5 text-fg">
         <span className="block truncate">{item.mortgage.name}</span>
       </td>
-      <td className="px-1 py-1.5 text-left text-xs whitespace-nowrap tabular-nums text-muted">
+      <td
+        className={`px-1 py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+      >
         {formatBalance(split.amortization, settings, {
           neverAbbreviate: true,
         })}
       </td>
-      <td className="px-1 py-1.5 text-left text-xs whitespace-nowrap tabular-nums text-muted">
+      <td
+        className={`px-1 py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+      >
         {formatBalance(split.interest, settings, {
           neverAbbreviate: true,
         })}
       </td>
-      <td className="px-1 py-1.5 text-left whitespace-nowrap tabular-nums text-fg-bright">
+      <td
+        className={`px-1 py-1.5 whitespace-nowrap tabular-nums text-fg-bright ${cellClass}`}
+      >
         {formatBalance(item.payment.amount, settings, {
           neverAbbreviate: true,
         })}
