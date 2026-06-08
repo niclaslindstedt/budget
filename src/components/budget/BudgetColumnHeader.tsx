@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Column } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { ColumnIcon } from "../icons";
 
 type Props = {
@@ -12,6 +13,12 @@ const DRAG_MIME = "application/x-budget-column";
 
 export function BudgetColumnHeader({ column, onReorder }: Props) {
   const [dragOver, setDragOver] = useState(false);
+  const { headerJustifyClass } = useAmountColumns();
+  // The money columns align their header glyph over the figures beneath
+  // them (right by default, via the shared amount-column knob); the
+  // descriptive columns keep their centered glyph.
+  const isMoney = column.type === "amount" || column.type === "balance";
+  const glyphJustify = isMoney ? headerJustifyClass : "justify-center";
 
   return (
     <th
@@ -46,7 +53,9 @@ export function BudgetColumnHeader({ column, onReorder }: Props) {
         if (fromId && fromId !== column.id) onReorder(fromId, column.id);
       }}
     >
-      <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
+      <span
+        className={`column-header-cell flex items-center gap-1.5 px-2.5 py-2 md:gap-2 ${glyphJustify}`}
+      >
         <ColumnIcon
           type={column.type}
           className="shrink-0 text-accent md:text-accent"

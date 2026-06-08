@@ -3,6 +3,7 @@ import { FileText, Pencil, Trash2 } from "lucide-react";
 
 import { resolveSalary, roleForSalary } from "../../data/salary/salary";
 import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useLang, useT } from "../../i18n";
 import {
@@ -90,6 +91,7 @@ function SalaryRowImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass } = useAmountColumns();
   const title = roleForSalary(salary, employer)?.title;
   // Bulk-select mode suppresses the per-row swipe so the gesture doesn't
   // fight the select tap, matching the budget sheet.
@@ -170,7 +172,7 @@ function SalaryRowImpl({
         {title ?? <span className="text-muted">—</span>}
       </td>
       <td
-        className={`px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
+        className={`px-2.5 py-2 align-middle font-mono whitespace-nowrap tabular-nums ${cellClass} ${estClass}`}
         title={estTitle}
       >
         {showPayslipIcon ? (
@@ -210,13 +212,15 @@ function SalaryRowImpl({
         )}
       </td>
       <td
-        className="salary-secondary-cell hidden px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell"
+        className={`salary-secondary-cell hidden px-2.5 py-2 align-middle font-mono whitespace-nowrap text-muted tabular-nums md:table-cell ${cellClass}`}
         title={estTitle}
       >
         {estimated && `${t("tax.estimatedBadge")} `}
         {formatBalance(tax, settings)}
       </td>
-      <td className="px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap text-fg-bright tabular-nums">
+      <td
+        className={`px-2.5 py-2 align-middle font-mono whitespace-nowrap text-fg-bright tabular-nums ${cellClass}`}
+      >
         {formatBalance(salary.net, settings)}
       </td>
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">

@@ -14,6 +14,7 @@ import {
 import { unlock } from "../../data/achievements";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import type { Settings, Sheet, UserData } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { AccountRow } from "./AccountRow";
 import { AccountTransfersModal } from "./AccountTransfersModal";
@@ -67,6 +68,7 @@ export function AccountsPage({
   onCutHistory,
 }: Props) {
   const t = useT();
+  const { headerClass, headerJustifyClass } = useAmountColumns();
   const dispatchModal = useModalDispatch();
   // Transfer log lives behind a modal opened from the title menu —
   // mirrors the budget page's "Viewing mode" modal so the accounts
@@ -194,10 +196,12 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-right"
+                    className={`px-2.5 py-2 ${headerClass}`}
                     aria-label={t("accountsSheet.balance")}
                   >
-                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                    >
                       <Wallet
                         size={16}
                         className="shrink-0 text-accent"

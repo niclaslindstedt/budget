@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Pencil, Trash2, Wallet } from "lucide-react";
 
+import { useAmountColumns } from "../../hooks";
 import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useT } from "../../i18n";
 import type { Account, Settings } from "../../data/types";
@@ -40,6 +41,7 @@ function AccountRowImpl({
   onCutHistory,
 }: Props) {
   const t = useT();
+  const { cellClass } = useAmountColumns();
   const { swiped, setSwiped, touchHandlers } = useRowSwipe();
 
   // Hook the row into the ActiveRowProvider so a tap elsewhere in the
@@ -124,7 +126,7 @@ function AccountRowImpl({
         {account.iban && <span className="block">{account.iban}</span>}
       </td>
       <td
-        className={`px-2.5 py-2 text-right align-middle tabular-nums whitespace-nowrap ${
+        className={`px-2.5 py-2 align-middle tabular-nums whitespace-nowrap ${cellClass} ${
           balance < 0 ? "text-negative" : "text-positive"
         }`}
       >

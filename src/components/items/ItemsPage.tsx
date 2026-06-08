@@ -20,9 +20,10 @@ import type {
   Sheet,
   UserData,
 } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
-import { formatBalance } from "../../utils/format";
+import { formatBalance, widestFormattedAmount } from "../../utils/format";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -63,6 +64,7 @@ export function ItemsPage({
   onRemoveReceipt,
 }: Props) {
   const t = useT();
+  const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
   const dispatchModal = useModalDispatch();
   // Pending delete confirmation: the item id + name the trash button
   // armed, or null when no confirmation is open.
@@ -129,6 +131,32 @@ export function ItemsPage({
     return { purchase, current };
   }, [ownedItems, today]);
 
+  // Mobile price / value column widths, sized to the widest formatted
+  // figure each column renders (incl. the footer total) so the narrow
+  // 64px floor grows only as far as the numbers need — the budget /
+  // salary ch-var pattern, shared here so all four sheet tables size
+  // their money columns the same way instead of reflowing per row with
+  // `max-content`.
+  const colWidths = useMemo(() => {
+    function* purchaseValues() {
+      for (const it of ownedItems)
+        if (it.purchasePrice !== undefined) yield it.purchasePrice;
+      yield totals.purchase;
+    }
+    function* currentValues() {
+      for (const it of ownedItems) yield computeItemCurrentValue(it, today);
+      yield totals.current;
+    }
+    return {
+      purchaseChars: widestFormattedAmount(purchaseValues(), settings, {
+        alwaysTwoFractionDigits: true,
+      }),
+      currentChars: widestFormattedAmount(currentValues(), settings, {
+        alwaysTwoFractionDigits: true,
+      }),
+    };
+  }, [ownedItems, totals, settings, today]);
+
   // Switching to the Items overview from another sheet lands the user at
   // the top of the page. Keyed on `sheet.id` so it only fires on the
   // actual switch, never on a row edit that re-renders the component.
@@ -166,7 +194,15 @@ export function ItemsPage({
           <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
             {t("itemsSheet.title")}
           </h3>
-          <div className="overflow-clip rounded border border-line bg-surface">
+          <div
+            className="overflow-clip rounded border border-line bg-surface"
+            style={
+              {
+                "--items-purchase-col-ch": colWidths.purchaseChars || undefined,
+                "--items-current-col-ch": colWidths.currentChars || undefined,
+              } as React.CSSProperties
+            }
+          >
             <table className="items-table w-full border-collapse text-sm md:text-[13px]">
               <thead>
                 <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
@@ -210,10 +246,12 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-left"
+                    className={`px-2.5 py-2 ${headerClass}`}
                     aria-label={t("itemsSheet.purchaseValue")}
                   >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                    >
                       <DollarSign
                         size={16}
                         className="shrink-0 text-accent"
@@ -227,10 +265,12 @@ export function ItemsPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-left"
+                    className={`px-2.5 py-2 ${headerClass}`}
                     aria-label={t("itemsSheet.currentValue")}
                   >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                    >
                       <Coins
                         size={16}
                         className="shrink-0 text-accent"
@@ -299,10 +339,14 @@ export function ItemsPage({
                       {t("itemsSheet.total")}
                     </td>
                     <td className="items-purchased-cell hidden md:table-cell" />
-                    <td className="px-2.5 py-2 text-left tabular-nums">
+                    <td
+                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                    >
                       <span>{formatBalance(totals.purchase, settings)}</span>
                     </td>
-                    <td className="px-2.5 py-2 text-left tabular-nums">
+                    <td
+                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                    >
                       <span>{formatBalance(totals.current, settings)}</span>
                     </td>
                     <td className="items-action-cell px-2.5 py-2" />
