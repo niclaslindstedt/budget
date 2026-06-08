@@ -512,12 +512,16 @@ function PayoffSection({
   const paidPanelId = useId();
   const [showPaid, setShowPaid] = useState(false);
   const payoffComplete = progress !== null && progress >= 1;
+  // Two-decimal precision (e.g. "82,35%") — the bar has room for it, and a
+  // near-complete loan reads more honestly than a rounded "99%". Capped just
+  // below 100 until actually paid off so it never reads "100,00%" early.
   const payoffPercent =
     progress === null
       ? 0
       : payoffComplete
         ? 100
-        : Math.min(99, Math.round(progress * 100));
+        : Math.min(99.99, progress * 100);
+  const payoffPercentLabel = formatRate(payoffPercent, settings);
   const canCollapse = progress !== null && paymentCount > 0;
 
   return (
@@ -548,7 +552,9 @@ function PayoffSection({
                   {payoffComplete && (
                     <Check size={12} aria-hidden focusable={false} />
                   )}
-                  {t("properties.payoffPercent", { percent: payoffPercent })}
+                  {t("properties.payoffPercent", {
+                    percent: payoffPercentLabel,
+                  })}
                 </span>
               </div>
               <div
@@ -557,7 +563,7 @@ function PayoffSection({
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={t("properties.payoffBarLabel", {
-                  percent: payoffPercent,
+                  percent: payoffPercentLabel,
                 })}
                 className="h-2 overflow-clip rounded-full bg-surface-3"
               >
