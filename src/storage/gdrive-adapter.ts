@@ -320,6 +320,39 @@ export function createGdriveAdapter(
     return { text, revision };
   }
 
+  // Cheap revision probe used by the cloud-mirror to revalidate its
+  // cache without re-downloading the whole budget. A metadata GET
+  // (`fields=id`) returns the file's ETag in the response header — the
+  // same token `load` reads off the `alt=media` download — so the
+  // wrapper can compare it against the mirror's last-known cloud
+  // revision and skip the body fetch when nothing has changed. The
+  // create flow already relies on this metadata-GET ETag being the
+  // same token, so the two stay comparable.
+  async function getRevision(): Promise<string | null> {
+    log.info("getRevision: start");
+    const fileId = await findFileId();
+    if (!fileId) {
+      log.info("getRevision: no file id — empty");
+      return null;
+    }
+    const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}?fields=id`, {
+      headers: authHeader(),
+    });
+    if (res.status === 404) {
+      log.warn("getRevision: 404 — cached id is stale, clearing");
+      cachedFileId = null;
+      return null;
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`getRevision: failed ${res.status}`, body);
+      throw gdriveError("getRevision", res.status, body);
+    }
+    const revision = res.headers.get("ETag");
+    log.info(`getRevision: etag=${revision ?? "<none>"}`);
+    return revision;
+  }
+
   async function create(text: string): Promise<Snapshot> {
     log.info(`create: multipart upload bytes=${text.length}`);
     // Multipart upload — one part is the metadata (the file name +
@@ -914,6 +947,7 @@ export function createGdriveAdapter(
       "payslips",
       "propertyFiles",
       "exports",
+      "getRevision",
     ]),
     backups,
     receipts,
@@ -922,6 +956,7 @@ export function createGdriveAdapter(
     exports: exportsOps,
     load,
     save,
+    getRevision,
   };
 }
 

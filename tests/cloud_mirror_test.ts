@@ -37,6 +37,12 @@ function memoryStorage(initial: CloudMirrorState | null = null): {
   };
 }
 
+// Drain the microtask + macrotask queue so a background `revalidate`
+// (fired with `void` from `load()`) settles before assertions run.
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 function makeInner(
   overrides: Partial<StorageAdapter> = {},
 ): StorageAdapter & { calls: { method: string; args: unknown[] }[] } {
@@ -106,7 +112,127 @@ describe("withCloudMirror", () => {
     expect(adapter.propertyFiles).toBe(propertyFiles);
   });
 
-  it("serves the mirror as `offline: true` when load throws a network error", async () => {
+  it("serves a clean cache instantly and revalidates in the background", async () => {
+    // Stale-while-revalidate: with no pending offline edits the cache is
+    // painted immediately and the network round-trip moves to a
+    // background revalidation. When the cheap revision probe matches,
+    // the body download is skipped entirely.
+    const { storage } = memoryStorage({
+      text: "cached-bytes",
+      cloudRevision: "rev-7",
+      localRevision: 0,
+      updatedAt: 1,
+      backendId: "dropbox",
+    });
+    let loadCalls = 0;
+    const inner = makeInner({
+      capabilities: new Set(["getRevision"]),
+      async getRevision() {
+        return "rev-7";
+      },
+      async load() {
+        loadCalls += 1;
+        return { text: "should-not-download", revision: "rev-7" };
+      },
+    });
+    const adapter = withCloudMirror(inner, { storage });
+
+    const snap = await adapter.load();
+    // Painted from the cache, not the network.
+    expect(snap).toEqual({ text: "cached-bytes", revision: "rev-7" });
+    await flush();
+    // The matching probe meant the full body was never downloaded.
+    expect(loadCalls).toBe(0);
+  });
+
+  it("delivers fresh remote bytes through watch when the revision moved", async () => {
+    const { storage, peek } = memoryStorage({
+      text: "cached-bytes",
+      cloudRevision: "rev-7",
+      localRevision: 0,
+      updatedAt: 1,
+      backendId: "dropbox",
+    });
+    const inner = makeInner({
+      capabilities: new Set(["getRevision"]),
+      async getRevision() {
+        return "rev-8";
+      },
+      async load() {
+        return { text: "fresh-bytes", revision: "rev-8" };
+      },
+    });
+    const adapter = withCloudMirror(inner, { storage });
+
+    const delivered: Snapshot[] = [];
+    adapter.watch!((snap) => delivered.push(snap));
+
+    const snap = await adapter.load();
+    expect(snap).toEqual({ text: "cached-bytes", revision: "rev-7" });
+    await flush();
+    // The moved revision triggered a body download, delivered through
+    // the watch channel and persisted to the mirror.
+    expect(delivered).toEqual([{ text: "fresh-bytes", revision: "rev-8" }]);
+    expect(peek()?.text).toBe("fresh-bytes");
+    expect(peek()?.cloudRevision).toBe("rev-8");
+  });
+
+  it("buffers a background delivery until a watcher subscribes", async () => {
+    // The mount load() can resolve and revalidate before the hook's
+    // watch effect runs. The fresh snapshot is parked and flushed on
+    // subscribe so the re-paint isn't lost to the mount-order race.
+    const { storage } = memoryStorage({
+      text: "cached-bytes",
+      cloudRevision: "rev-7",
+      localRevision: 0,
+      updatedAt: 1,
+      backendId: "dropbox",
+    });
+    const inner = makeInner({
+      async load() {
+        return { text: "fresh-bytes", revision: "rev-9" };
+      },
+    });
+    const adapter = withCloudMirror(inner, { storage });
+
+    await adapter.load();
+    await flush();
+    // Subscribe only after the revalidation has already resolved.
+    const delivered: Snapshot[] = [];
+    adapter.watch!((snap) => delivered.push(snap));
+    expect(delivered).toEqual([{ text: "fresh-bytes", revision: "rev-9" }]);
+  });
+
+  it("falls back to a full load to revalidate when getRevision is absent", async () => {
+    const { storage } = memoryStorage({
+      text: "cached-bytes",
+      cloudRevision: "rev-7",
+      localRevision: 0,
+      updatedAt: 1,
+      backendId: "dropbox",
+    });
+    let loadCalls = 0;
+    const inner = makeInner({
+      async load() {
+        loadCalls += 1;
+        // Same revision — nothing to deliver, but the body was fetched.
+        return { text: "cached-bytes", revision: "rev-7" };
+      },
+    });
+    const adapter = withCloudMirror(inner, { storage });
+
+    const delivered: Snapshot[] = [];
+    adapter.watch!((snap) => delivered.push(snap));
+    await adapter.load();
+    await flush();
+    expect(loadCalls).toBe(1);
+    expect(delivered).toEqual([]);
+  });
+
+  it("keeps the cache (no reject) when a background revalidation hits offline", async () => {
+    // A network failure discovered in the background doesn't yank the
+    // user off their cached data — offline surfaces and queues on the
+    // next save through the existing save path.
     const { storage } = memoryStorage({
       text: "cached-bytes",
       cloudRevision: "rev-7",
@@ -122,15 +248,15 @@ describe("withCloudMirror", () => {
     });
     const adapter = withCloudMirror(inner, { storage });
 
+    const delivered: Snapshot[] = [];
+    adapter.watch!((snap) => delivered.push(snap));
     const snap = await adapter.load();
-    expect(snap).toEqual({
-      text: "cached-bytes",
-      revision: "rev-7",
-      offline: true,
-    });
+    expect(snap).toEqual({ text: "cached-bytes", revision: "rev-7" });
+    await flush();
+    expect(delivered).toEqual([]);
   });
 
-  it("propagates AuthError without falling back to the mirror", async () => {
+  it("keeps the cache (no reject) when a background revalidation hits AuthError", async () => {
     const { storage } = memoryStorage({
       text: "cached",
       cloudRevision: "rev-3",
@@ -138,6 +264,25 @@ describe("withCloudMirror", () => {
       updatedAt: 1,
       backendId: "dropbox",
     });
+    const inner = makeInner({
+      async load() {
+        throw new AuthError("expired");
+      },
+    });
+    const adapter = withCloudMirror(inner, { storage });
+
+    const delivered: Snapshot[] = [];
+    adapter.watch!((snap) => delivered.push(snap));
+    const snap = await adapter.load();
+    expect(snap).toEqual({ text: "cached", revision: "rev-3" });
+    await flush();
+    expect(delivered).toEqual([]);
+  });
+
+  it("propagates AuthError on the blocking path when there is no cache", async () => {
+    // First load (nothing cached) still surfaces auth synchronously so
+    // the hook can show the Reconnect affordance instead of a blank app.
+    const { storage } = memoryStorage();
     const inner = makeInner({
       async load() {
         throw new AuthError("expired");
@@ -347,7 +492,11 @@ describe("withCloudMirror", () => {
     expect(mirror?.localRevision).toBe(0);
   });
 
-  it("clears the mirror when the remote returns null and a cache existed", async () => {
+  it("clears the mirror in the background when the remote was deleted", async () => {
+    // Remote deleted out from under a clean cache: the user keeps
+    // seeing their cached data this session (the cache is still served),
+    // but the background revalidation clears the mirror so the next
+    // load seeds a fresh budget rather than resurrecting deleted bytes.
     const { storage, peek } = memoryStorage({
       text: "stale",
       cloudRevision: "rev-1",
@@ -363,7 +512,10 @@ describe("withCloudMirror", () => {
     const adapter = withCloudMirror(inner, { storage });
 
     const snap = await adapter.load();
-    expect(snap).toBeNull();
+    // Cache is still painted this session.
+    expect(snap).toEqual({ text: "stale", revision: "rev-1" });
+    await flush();
+    // ...but the mirror is cleared so the next load starts fresh.
     expect(peek()).toBeNull();
   });
 });

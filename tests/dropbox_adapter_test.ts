@@ -80,6 +80,43 @@ describe("dropbox adapter", () => {
     expect(loaded).toEqual({ text: "payload-1", revision: "def456" });
   });
 
+  it("getRevision returns the rev from get_metadata without downloading the body", async () => {
+    let downloaded = false;
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/get_metadata")) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ rev: "meta-rev-1" }),
+        });
+      }
+      if (call.url.includes("/files/download")) {
+        downloaded = true;
+        return makeResponse({ status: 200, body: "{}" });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter("token-123", fn);
+
+    expect(await adapter.getRevision!()).toBe("meta-rev-1");
+    expect(downloaded).toBe(false);
+    expect(calls.some((c) => c.url.includes("/files/get_metadata"))).toBe(true);
+    expect(adapter.capabilities.has("getRevision")).toBe(true);
+  });
+
+  it("getRevision returns null when the app folder is empty (409 not_found)", async () => {
+    const { fn } = fakeFetch(() =>
+      makeResponse({
+        status: 409,
+        body: JSON.stringify({
+          error_summary: "path/not_found/",
+          error: { ".tag": "path", path: { ".tag": "not_found" } },
+        }),
+      }),
+    );
+    const adapter = createDropboxAdapter("token-123", fn);
+    expect(await adapter.getRevision!()).toBeNull();
+  });
+
   it("returns null on first load when Dropbox responds 409 not_found", async () => {
     const { fn } = fakeFetch(() =>
       makeResponse({

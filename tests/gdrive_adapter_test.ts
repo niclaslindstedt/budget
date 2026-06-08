@@ -107,6 +107,49 @@ describe("gdrive adapter", () => {
     expect(await adapter.load()).toBeNull();
   });
 
+  it("getRevision returns the ETag from a metadata GET without downloading the body", async () => {
+    let downloaded = false;
+    const { fn } = fakeFetch((call) => {
+      if (isSearch(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ files: [{ id: "file-abc" }] }),
+        });
+      }
+      if (isMetadata(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "file-abc" }),
+          headers: { ETag: "etag-meta-1" },
+        });
+      }
+      if (isDownload(call.url)) {
+        downloaded = true;
+        return makeResponse({ status: 200, body: "{}" });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createGdriveAdapter("token-123", fn);
+
+    expect(await adapter.getRevision!()).toBe("etag-meta-1");
+    expect(downloaded).toBe(false);
+    expect(adapter.capabilities.has("getRevision")).toBe(true);
+  });
+
+  it("getRevision returns null when no file matches the search", async () => {
+    const { fn } = fakeFetch((call) => {
+      if (isSearch(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ files: [] }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createGdriveAdapter("token-123", fn);
+    expect(await adapter.getRevision!()).toBeNull();
+  });
+
   it("loads the snapshot when a matching file exists", async () => {
     const { fn } = fakeFetch((call) => {
       if (isSearch(call.url)) {

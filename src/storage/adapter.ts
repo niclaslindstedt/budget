@@ -39,6 +39,10 @@ export type AdapterCapability =
   // `watch()` is implemented — adapter delivers out-of-band remote
   // change events.
   | "watch"
+  // `getRevision()` is implemented — the current remote revision token
+  // can be fetched without downloading the full body. Lets a caching
+  // wrapper skip a multi-MB download when the remote hasn't moved.
+  | "getRevision"
   // `markSynced()` is implemented — caller can stamp the inner
   // mirror with a freshly-resolved remote snapshot.
   | "markSynced"
@@ -105,6 +109,18 @@ export type StorageAdapter = {
   // carrying the newer snapshot. Local adapters can ignore the
   // argument because nothing else writes to the same key.
   save(text: string, baseRevision?: string): Promise<Snapshot>;
+
+  // Optional cheap "what's the current remote revision?" probe. Returns
+  // the same opaque token `load()` / `save()` put on `Snapshot.revision`
+  // (Dropbox `rev`, Drive ETag, …), or null when nothing is stored yet.
+  // Implemented by cloud adapters whose backend exposes a metadata call
+  // that returns the revision without transferring the file body, so the
+  // `withCloudMirror` wrapper can revalidate its cache with a tiny
+  // request and only download the body when the token actually moved.
+  // Errors (offline, auth) surface the same way `load()`'s do — the
+  // caller treats a throw as "couldn't probe" and falls back. Present
+  // iff `capabilities` carries `"getRevision"`.
+  getRevision?(): Promise<string | null>;
 
   // Optional subscription to out-of-band remote changes. Cloud
   // adapters that support long-poll or push notifications wake the
