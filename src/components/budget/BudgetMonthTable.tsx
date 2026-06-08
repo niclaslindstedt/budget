@@ -309,7 +309,7 @@ function MonthTableImpl({
         }
       >
         <table
-          className={`budget-table w-full border-collapse text-sm md:text-[13px] ${
+          className={`swipe-table budget-table w-full border-collapse text-sm md:text-[13px] ${
             selectMode ? "is-selecting" : ""
           }`}
         >
@@ -358,7 +358,7 @@ function MonthTableImpl({
               ))}
               <th
                 scope="col"
-                className="action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
+                className="swipe-action-cell action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
                 aria-label={t("budget.rowActions")}
               >
                 <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">

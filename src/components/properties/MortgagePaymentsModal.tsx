@@ -164,7 +164,7 @@ export function MortgagePaymentsModal({
                         : null
                     }
                   />
-                  <table className="mortgage-payments-table w-full border-collapse text-sm">
+                  <table className="swipe-table mortgage-payments-table w-full border-collapse text-sm">
                     <thead>
                       <tr className="text-muted">
                         <th
@@ -223,7 +223,7 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className="mortgage-payments-action-cell w-32 px-2.5 py-1 text-right font-normal"
+                          className="swipe-action-cell mortgage-payments-action-cell w-32 px-2.5 py-1 text-right font-normal"
                           title={t("properties.actionsColumn")}
                         >
                           <span className="inline-flex items-center justify-end gap-1.5">
@@ -559,7 +559,7 @@ function MortgagePaymentRowImpl({
           neverAbbreviate: true,
         })}
       </td>
-      <td className="mortgage-payments-action-cell w-32 p-0 align-middle">
+      <td className="swipe-action-cell mortgage-payments-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"

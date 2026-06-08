@@ -153,7 +153,7 @@ export function AccountsPage({
             {t("accountsSheet.title")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="accounts-table w-full border-collapse text-sm md:text-[13px]">
+            <table className="swipe-table accounts-table w-full border-collapse text-sm md:text-[13px]">
               <thead>
                 <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
                   <th
@@ -233,7 +233,7 @@ export function AccountsPage({
                   </th>
                   <th
                     scope="col"
-                    className="account-action-cell w-32 px-2.5 py-2"
+                    className="swipe-action-cell account-action-cell w-32 px-2.5 py-2"
                     aria-label={t("budget.rowActions")}
                   >
                     <span className="flex items-center justify-center gap-1.5 md:gap-2">

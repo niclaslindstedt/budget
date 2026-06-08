@@ -2,12 +2,11 @@ import { memo } from "react";
 import { Pencil, Trash2, Wallet } from "lucide-react";
 
 import { useAmountColumns } from "../../hooks";
-import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { useT } from "../../i18n";
 import type { Account, Settings } from "../../data/types";
 import { formatBalance, formatCount } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
-import { useClaimActiveRow } from "../useClaimActiveRow";
+import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 import { CategoryIconGlyph } from "../icons";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 
@@ -42,13 +41,10 @@ function AccountRowImpl({
 }: Props) {
   const t = useT();
   const { cellClass } = useAmountColumns();
-  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
-
-  // Hook the row into the ActiveRowProvider so a tap elsewhere in the
-  // accounts table only dismisses the swipe — the underlying control
-  // still gets a follow-up tap to fire properly. Mirrors the budget
-  // sheet's BudgetRow wiring.
-  useClaimActiveRow(account.id, swiped, () => setSwiped(false));
+  // Hook the row into the ActiveRowProvider (folded into the hook) so a
+  // tap elsewhere in the accounts table only dismisses the swipe — the
+  // underlying control still gets a follow-up tap to fire properly.
+  const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(account.id);
 
   const rowClass = [
     swiped ? "is-swiped" : "",
@@ -151,7 +147,7 @@ function AccountRowImpl({
           {formatCount(historyCount, accountSettings)}
         </span>
       </td>
-      <td className="account-action-cell w-32 p-0 align-middle">
+      <td className="swipe-action-cell account-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"

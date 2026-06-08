@@ -181,7 +181,7 @@ export function RepairsModal({
             {t("properties.repairsEmpty")}
           </p>
         ) : (
-          <table className="repairs-table w-full border-collapse">
+          <table className="swipe-table repairs-table w-full border-collapse">
             <tbody>
               {repairs.map((repair) => (
                 <RepairRow
@@ -392,7 +392,7 @@ function RepairRowImpl({
           {formatBalance(repair.amount, settings, { neverAbbreviate: true })}
         </span>
       </td>
-      <td className="repairs-action-cell w-32 p-0 align-middle">
+      <td className="swipe-action-cell repairs-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
           <button
             type="button"
