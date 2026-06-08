@@ -1,4 +1,11 @@
-import { Check, ChevronRight, Home, Pencil, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Home,
+  Pencil,
+  Trash2,
+  TrendingUp,
+} from "lucide-react";
 import { useId, useState } from "react";
 
 import { unlock } from "../../data/achievements";
@@ -131,7 +138,6 @@ export function PropertyCard({
         <PropertyActionsMenu
           property={property}
           missingReceiptCount={repairSummary.missingReceiptCount}
-          onUpdateValue={onUpdateValue}
           onUploadFile={onUploadFile}
           onNetSaleProfit={onNetSaleProfit}
           onViewRepairs={onViewRepairs}
@@ -143,15 +149,28 @@ export function PropertyCard({
 
       <div className="grid grid-cols-2 gap-2 px-3 py-2 text-sm sm:grid-cols-3">
         <Stat label={t("properties.currentValue")}>
-          {value !== undefined ? (
-            <span className="tabular-nums text-fg-bright">
-              {formatBalance(value, settings, { neverAbbreviate: true })}
-            </span>
-          ) : (
-            <span className="text-xs text-muted">
-              {t("properties.noValue")}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => onUpdateValue(property)}
+            aria-label={t("properties.updateValue")}
+            className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+          >
+            {value !== undefined ? (
+              <span className="tabular-nums text-fg-bright group-hover:text-accent">
+                {formatBalance(value, settings, { neverAbbreviate: true })}
+              </span>
+            ) : (
+              <span className="text-xs text-muted group-hover:text-accent">
+                {t("properties.noValue")}
+              </span>
+            )}
+            <TrendingUp
+              size={12}
+              aria-hidden
+              focusable={false}
+              className="shrink-0 text-muted group-hover:text-accent"
+            />
+          </button>
         </Stat>
         <Stat label={t("properties.boughtFor")}>
           {property.purchaseAmount !== undefined ? (

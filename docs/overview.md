@@ -715,11 +715,12 @@ property files are filed under). Registered in `TAB_REGISTRY` with the
 ### Current value (property)
 
 `PropertyValuePoint` (`{ id, date, value }`) on `Property.valueHistory`.
-A property's current value is the latest point by date. "Update value"
-(`UpdatePropertyValueModal.tsx`) appends one point (`addPropertyValue`);
-the modal also lists and deletes past points (`deletePropertyValue` /
-`updatePropertyValue`). Manually entered — there is no automatic
-valuation.
+A property's current value is the latest point by date. The current-value
+figure in the card's stat grid is a button — pressing it opens the
+**Update value** modal (`UpdatePropertyValueModal.tsx`), which appends one
+point (`addPropertyValue`); the modal also lists and deletes past points
+(`deletePropertyValue` / `updatePropertyValue`). Manually entered — there
+is no automatic valuation.
 
 ### Mortgage
 
@@ -1234,7 +1235,7 @@ untouched).
 
 `PropertyFilesModal.tsx` (`src/components/properties/`) — the per-property
 files manager, opened by the **Upload file** entry on the property card's
-"… actions menu" (directly below Update value). Lists the property's
+"… actions menu" (its first entry). Lists the property's
 uploaded files (each with its description, tags, and category) — a file
 opens in the shared `AttachmentUploadModal` (view / replace / download /
 remove), its metadata is editable, and it can be deleted. The footer's
@@ -1258,10 +1259,12 @@ focused name creator (`onCreateFileCategory`).
 `PropertyActionsMenu.tsx` (`src/components/properties/`) — the "…"
 overflow menu in a `PropertyCard` header, collapsing the per-property
 actions into one trigger (modelled on `RepairEntryActionsMenu` /
-`SheetTitleMenu`, on `FloatingPanel`). Entries: Update value, **Upload
+`SheetTitleMenu`, on `FloatingPanel`). Entries: **Upload
 file** (opens the **property files modal**), Net sale profit, View repairs
 (with a missing-receipt count suffix), **Export property** (opens the
-**property export modal**), Edit property, Delete property. A small
+**property export modal**), Edit property, Delete property. Updating the
+recorded value is not here — the current-value figure in the card's stat
+grid is itself the button that opens the **Update value** modal. A small
 `--danger` dot marks the trigger when any repair lacks a receipt. The
 mortgage-level actions (Add mortgage, View payments, the unified/split view
 toggle) live in the **mortgage section menu**, not here.

@@ -5,7 +5,6 @@ import {
   Paperclip,
   Pencil,
   Share2,
-  TrendingUp,
   Trash2,
   Wrench,
 } from "lucide-react";
@@ -20,7 +19,6 @@ type Props = {
   // Repairs whose source charge lacks a receipt — surfaces a small dot on
   // the trigger and a count suffix on the "View repairs" entry.
   missingReceiptCount: number;
-  onUpdateValue: (property: Property) => void;
   onUploadFile: (property: Property) => void;
   onNetSaleProfit: (property: Property) => void;
   onViewRepairs: (property: Property) => void;
@@ -44,16 +42,16 @@ type MenuItem = {
 };
 
 // The "…" overflow menu in a property card's header. Collapses the
-// per-property actions (update value, net sale profit, view repairs, edit,
+// per-property actions (upload file, net sale profit, view repairs, edit,
 // delete) into one trigger so the header stays uncluttered as the action set
-// grows. The danger dot on the trigger flags repairs missing a receipt the
-// way the old inline wrench button did. Mortgage-level actions (add mortgage,
-// view payments, toggle the unified view) live in the mortgage section's own
-// "…" menu, not here.
+// grows. Updating the recorded value is reached by pressing the current-value
+// figure in the card's stat grid, not from here. The danger dot on the trigger
+// flags repairs missing a receipt the way the old inline wrench button did.
+// Mortgage-level actions (add mortgage, view payments, toggle the unified view)
+// live in the mortgage section's own "…" menu, not here.
 export function PropertyActionsMenu({
   property,
   missingReceiptCount,
-  onUpdateValue,
   onUploadFile,
   onNetSaleProfit,
   onViewRepairs,
@@ -72,12 +70,6 @@ export function PropertyActionsMenu({
   }
 
   const items: MenuItem[] = [
-    {
-      key: "updateValue",
-      icon: <TrendingUp size={16} aria-hidden focusable={false} />,
-      label: t("properties.updateValue"),
-      onClick: () => pick(() => onUpdateValue(property)),
-    },
     {
       key: "uploadFile",
       icon: <Paperclip size={16} aria-hidden focusable={false} />,
