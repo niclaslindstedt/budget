@@ -19,11 +19,9 @@ import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
-import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
-import { SubtypePicker } from "../SubtypePicker";
-import { TagsPicker } from "../TagsPicker";
+import { RepairFields } from "./RepairFields";
 
 // The manual-repair editor — a repair / renovation with NO backing bank
 // transaction, for work older than the imported bank history reaches (or paid
@@ -250,48 +248,25 @@ export function ManualRepairModal({
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.repairSubtypeLabel")}
-            </span>
-            <SubtypePicker
-              subtypes={scopedSubtypes}
-              types={types}
-              categories={categories}
-              selectedId={subtypeId}
-              onSelect={setSubtypeId}
-              onCreate={onCreateSubtype}
-              onCreateType={onCreateType}
-              onCreateCategory={onCreateCategory}
-              fixedParentTypeId={typeId}
-              placeholder={t("properties.repairSubtypePlaceholder")}
-            />
-          </label>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.repairCompanyLabel")}
-            </span>
-            <CompanyPicker
-              variant="field"
-              companies={companies}
-              selectedId={companyId}
-              onSelect={setCompanyId}
-              onCreate={onCreateCompany}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.repairTagsLabel")}
-            </span>
-            <TagsPicker
-              tags={tags}
-              selectedIds={tagIds}
-              onChange={setTagIds}
-              onCreate={onCreateTag}
-            />
-          </div>
+          <RepairFields
+            subtypes={scopedSubtypes}
+            types={types}
+            categories={categories}
+            companies={companies}
+            tags={tags}
+            subtypeId={subtypeId}
+            onSubtypeChange={setSubtypeId}
+            fixedParentTypeId={typeId}
+            companyId={companyId}
+            onCompanyChange={setCompanyId}
+            tagIds={tagIds}
+            onTagsChange={setTagIds}
+            onCreateSubtype={onCreateSubtype}
+            onCreateType={onCreateType}
+            onCreateCategory={onCreateCategory}
+            onCreateCompany={onCreateCompany}
+            onCreateTag={onCreateTag}
+          />
         </div>
       </Modal.Body>
       <Modal.Footer>

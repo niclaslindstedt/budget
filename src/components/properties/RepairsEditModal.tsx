@@ -17,11 +17,9 @@ import type {
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
-import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput } from "../form";
 import { Modal } from "../Modal";
-import { SubtypePicker } from "../SubtypePicker";
-import { TagsPicker } from "../TagsPicker";
+import { RepairFields } from "./RepairFields";
 
 // Resolved company / tags for the repair being edited (edit mode) — the
 // seed the company + tags pickers open on. Add mode reads the same shape off
@@ -427,54 +425,26 @@ export function RepairsEditModal({
                   />
                 </label>
 
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("properties.repairSubtypeLabel")}
-                  </span>
-                  <SubtypePicker
-                    subtypes={scopedSubtypes}
-                    types={types}
-                    categories={categories}
-                    selectedId={subtypeId}
-                    onSelect={setSubtypeId}
-                    onCreate={onCreateSubtype}
-                    onCreateType={onCreateType}
-                    onCreateCategory={onCreateCategory}
-                    fixedParentTypeId={typeId ?? undefined}
-                    placeholder={t("properties.repairSubtypePlaceholder")}
-                  />
-                </label>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("properties.repairCompanyLabel")}
-                  </span>
-                  <CompanyPicker
-                    variant="field"
-                    companies={companies}
-                    selectedId={companyId}
-                    onSelect={setCompanyId}
-                    onCreate={onCreateCompany}
-                  />
-                  <span className="text-xs text-muted">
-                    {t("properties.repairCompanyHint")}
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("properties.repairTagsLabel")}
-                  </span>
-                  <TagsPicker
-                    tags={tags}
-                    selectedIds={tagIds}
-                    onChange={setTagIds}
-                    onCreate={onCreateTag}
-                  />
-                  <span className="text-xs text-muted">
-                    {t("properties.repairTagsHint")}
-                  </span>
-                </div>
+                <RepairFields
+                  subtypes={scopedSubtypes}
+                  types={types}
+                  categories={categories}
+                  companies={companies}
+                  tags={tags}
+                  subtypeId={subtypeId}
+                  onSubtypeChange={setSubtypeId}
+                  fixedParentTypeId={typeId ?? undefined}
+                  companyId={companyId}
+                  onCompanyChange={setCompanyId}
+                  tagIds={tagIds}
+                  onTagsChange={setTagIds}
+                  showEntryHints
+                  onCreateSubtype={onCreateSubtype}
+                  onCreateType={onCreateType}
+                  onCreateCategory={onCreateCategory}
+                  onCreateCompany={onCreateCompany}
+                  onCreateTag={onCreateTag}
+                />
               </>
             )}
           </div>
