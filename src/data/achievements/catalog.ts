@@ -848,6 +848,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    // The user collapsed a property's several mortgages into the unified
+    // summary view from the mortgage section's "…" menu — a manual unlock
+    // because flipping a view toggle leaves no trace in persisted state.
+    id: "unifiedMortgage",
+    tier: "pro",
+    glyph: Combine,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     // Fired from the payments view when the user edits or removes a
     // recorded payment — a manual unlock because an in-place edit can't
     // be spotted from a derived state slice.

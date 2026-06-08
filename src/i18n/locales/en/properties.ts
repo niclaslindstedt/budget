@@ -22,6 +22,13 @@ const properties = {
   mortgages: "Mortgages",
   noMortgages: "No mortgages on this property.",
   addMortgage: "Add mortgage",
+  // The mortgage section's "…" menu toggles between the unified (summed) view
+  // and the split (per-mortgage) view; each label names the view it switches
+  // to. The count heads the unified card.
+  viewUnified: "Unified view",
+  viewSplit: "Split view",
+  mortgageCountOne: "{count} mortgage",
+  mortgageCountOther: "{count} mortgages",
   editMortgage: "Edit mortgage",
   deleteMortgage: "Delete mortgage",
   noPaymentsYet: "No payments yet",
@@ -31,9 +38,15 @@ const properties = {
   balanceShort: "Balance",
   loanShort: "Loan",
   rateShort: "Rate",
+  effectiveRateShort: "Effective rate",
   interestShort: "Interest",
   rateResetPillOne: "monthly",
   rateResetPillOther: "{count} months",
+  // Whole-year reset cadences read in years instead of months — a reset
+  // interval is always a whole number of months, and a whole number of years
+  // once it reaches a year (never "1.5 years").
+  rateResetPillYearOne: "yearly",
+  rateResetPillYearOther: "{count} years",
   nextRateChangeShort: "Next change",
   amortShort: "Amortisation",
   amortPerMonthLabel: "Amortisation / month",

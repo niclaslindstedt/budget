@@ -40,6 +40,11 @@ payments view break each total down into interest and amortisation, so a
 loan carrying all the principal is obvious instead of hidden in a single
 number; the card also shows the interest the loan is accruing right now —
 its rate applied to what's still owed — alongside the monthly amortisation.
+When a property carries more than one mortgage the card opens in a unified
+view that sums every loan into one picture — combined balance and debt, a
+blended effective rate, and the total monthly interest and amortisation —
+with a "…" menu in the mortgage section (where "Add mortgage" and "View
+payments" now live) to switch to a split view and see each loan on its own.
 Open a property's payments to
 review every recorded charge and how it split across the loans — tap a
 charge to see the original bank transaction it came from — and edit or
@@ -53,8 +58,8 @@ mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.
 
 Every per-property action — record a value, estimate a sale, view
-payments or repairs, edit, delete — now lives behind a single "…" menu
-on the property card, so the header stays tidy as the feature grows.
+repairs, edit, delete — now lives behind a single "…" menu on the property
+card, so the header stays tidy as the feature grows.
 
 Estimate what a sale would net you with the new **Net sale profit**
 calculator (in a property's "…" menu): drag a slider to try different
