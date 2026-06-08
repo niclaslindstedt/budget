@@ -3,9 +3,13 @@ import { LineChart as LineChartIcon } from "lucide-react";
 
 import { buildPropertyValueSeries } from "../../data/property-value/series";
 import type { Property, Settings } from "../../data/types";
-import { useResetOnOpen } from "../../hooks";
+import { useIsMobile, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
-import { formatDate, formatNumber, withCurrency } from "../../utils/format";
+import {
+  formatMonthYearShort,
+  formatNumber,
+  withCurrency,
+} from "../../utils/format";
 import { Checkbox } from "../form";
 import { Modal } from "../Modal";
 import { LineChart, type ChartSeries } from "../charts/LineChart";
@@ -38,6 +42,7 @@ export function PropertyValueChartModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const isMobile = useIsMobile();
 
   const [includeRepairs, setIncludeRepairs] = useState(false);
   const [showNetValue, setShowNetValue] = useState(false);
@@ -68,14 +73,21 @@ export function PropertyValueChartModal({
   ];
 
   const formatX = (x: number) =>
-    formatDate(
-      new Date(x).toISOString().slice(0, 10),
-      settings.dateFormat,
-      lang,
-    );
+    formatMonthYearShort(new Date(x).toISOString().slice(0, 10), lang);
+  // Desktop renders the full grouped figure (the chart sizes its left
+  // gutter to fit, so number formatting never clips the axis); mobile is
+  // too narrow for that, so the Y axis always abbreviates to "3.2M kr"
+  // regardless of the user's `abbreviateNumbers` preference. Property
+  // value ranges are often narrow relative to their magnitude (a 3M cabin
+  // worth 2.95M–3.3M across snapshots), so the mobile abbreviation forces
+  // one decimal — without it every tick collapses to an identical "3M kr".
   const formatY = (y: number) =>
     withCurrency(
-      formatNumber(y, settings, { alwaysAbbreviate: true }),
+      formatNumber(
+        y,
+        isMobile ? { ...settings, showDecimals: true } : settings,
+        isMobile ? { forceAbbreviate: true } : {},
+      ),
       settings,
     );
 

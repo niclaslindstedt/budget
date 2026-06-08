@@ -88,7 +88,8 @@ export type FormatNumberOpts = {
   // the `ABBREVIATE_THRESHOLD`, so the value always renders compact
   // ("99K"). Set by space-constrained pills where the exact figure would
   // overflow and the magnitude is what matters — the property card's
-  // per-area value pill ("99K/kvm"). `neverAbbreviate` still wins.
+  // per-area value pill ("99K/kvm") and the property value chart's Y axis
+  // on mobile. `neverAbbreviate` still wins.
   forceAbbreviate?: boolean;
 };
 
@@ -131,7 +132,9 @@ export function formatNumber(
   // the user opted into a compact form, and threading thousands
   // separators or trailing zeros through "12K" makes no sense. The
   // `alwaysAbbreviate` opt bypasses the threshold so the balance
-  // column can keep every row compact when its dedicated setting is on.
+  // column can keep every row compact when its dedicated setting is on;
+  // `forceAbbreviate` bypasses the `abbreviateNumbers` setting entirely
+  // for surfaces too narrow to fit the grouped figure.
   if (
     !opts.neverAbbreviate &&
     (opts.forceAbbreviate ||
@@ -406,6 +409,18 @@ export function formatMonthLabel(monthKey: string, lang?: Lang): string {
   const monthNum = Number(monthKey.slice(5, 7));
   if (!Number.isFinite(monthNum)) return "";
   return `${monthShort(lang, monthNum)} ${y}`;
+}
+
+// ISO date (`YYYY-MM-DD`, or any string whose first seven chars are
+// `YYYY-MM`) rendered as "MMM YY" ("May 25"), language-aware. The
+// compact x-axis tick for charts that span months — keeps the label
+// from overflowing while still disambiguating the year.
+export function formatMonthYearShort(iso: string, lang?: Lang): string {
+  if (typeof iso !== "string" || iso.length < 7) return "";
+  const monthNum = Number(iso.slice(5, 7));
+  if (!Number.isFinite(monthNum)) return "";
+  const yy = iso.slice(2, 4);
+  return `${monthShort(lang, monthNum)} ${yy}`;
 }
 
 // Month-key (`YYYY-MM`) rendered as the short month name alone, no

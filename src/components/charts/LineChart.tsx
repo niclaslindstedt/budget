@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { AxisBottom, AxisLeft } from "@visx/axis";
+import { curveMonotoneX } from "@visx/curve";
 import { localPoint } from "@visx/event";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
@@ -43,7 +44,18 @@ type Props = {
   height?: number;
 };
 
-const MARGIN = { top: 12, right: 18, bottom: 28, left: 64 };
+// `left` is a floor: the chart widens the gutter to fit the actual Y-axis
+// tick labels (see `leftMargin` below) so a fully-grouped figure like
+// "1 234 567 kr" is never clipped at the SVG edge.
+const MARGIN = { top: 12, right: 18, bottom: 28, left: 44 };
+
+// Approximate width of one axis-label glyph at `fontSize: 11`. Erring wide
+// keeps labels from clipping at the SVG's left edge — the monospaced default
+// face advances ~7.3px/char at this size, and a proportional Custom-theme
+// font averages narrower, so this slightly-generous figure covers both.
+const AXIS_CHAR_W = 7.5;
+// Padding between the widest tick label and the plot area (tick mark + `dx`).
+const AXIS_GUTTER_PAD = 12;
 
 // Structural tokens the chart chrome reads, kept module-level so the hook key
 // stays stable across renders. The series colours are appended per render.
@@ -133,7 +145,6 @@ function Chart({
   radius,
   borderWidth,
 }: ChartProps) {
-  const innerW = Math.max(0, width - MARGIN.left - MARGIN.right);
   const innerH = Math.max(0, height - MARGIN.top - MARGIN.bottom);
 
   const { xDomain, yDomain, sortedXs } = useMemo(() => {
@@ -173,13 +184,35 @@ function Chart({
     };
   }, [series]);
 
-  const xScale = useMemo(
-    () => scaleLinear<number>({ domain: xDomain, range: [0, innerW] }),
-    [xDomain, innerW],
-  );
   const yScale = useMemo(
     () => scaleLinear<number>({ domain: yDomain, range: [innerH, 0] }),
     [yDomain, innerH],
+  );
+
+  // Keep the horizontal gridlines sparse: a denser axis on a narrow,
+  // high-magnitude range (a property worth 2.95M–3.3M across snapshots)
+  // forces d3 onto a 50K step that the abbreviated mobile labels round to
+  // duplicate "3,2M / 3,2M" pairs. ~4 ticks lands on a clean 0.1M step.
+  const numTicksY = Math.max(2, Math.min(5, Math.floor(innerH / 48)));
+
+  // Size the left gutter to the widest Y-axis tick label so a fully
+  // grouped figure ("1 234 567 kr") never clips at the SVG edge. The
+  // Y scale doesn't depend on the left margin, so the ticks are stable
+  // even though `innerW` (and the X scale) are derived from the result.
+  const leftMargin = useMemo(() => {
+    const widest = yScale
+      .ticks(numTicksY)
+      .reduce((max, v) => Math.max(max, formatY(Number(v)).length), 0);
+    return Math.max(
+      MARGIN.left,
+      Math.ceil(widest * AXIS_CHAR_W) + AXIS_GUTTER_PAD,
+    );
+  }, [yScale, numTicksY, formatY]);
+
+  const innerW = Math.max(0, width - leftMargin - MARGIN.right);
+  const xScale = useMemo(
+    () => scaleLinear<number>({ domain: xDomain, range: [0, innerW] }),
+    [xDomain, innerW],
   );
 
   const {
@@ -196,7 +229,7 @@ function Chart({
       if (sortedXs.length === 0) return;
       const point = localPoint(event);
       if (!point) return;
-      const xValue = xScale.invert(point.x - MARGIN.left);
+      const xValue = xScale.invert(point.x - leftMargin);
       // Snap to the nearest x at which we have samples (the value snapshots).
       let nearest = sortedXs[0];
       for (const candidate of sortedXs) {
@@ -211,15 +244,14 @@ function Chart({
       if (rows.length === 0) return;
       showTooltip({
         tooltipData: { x: nearest, rows },
-        tooltipLeft: MARGIN.left + xScale(nearest),
+        tooltipLeft: leftMargin + xScale(nearest),
         tooltipTop: MARGIN.top + yScale(rows[0].y),
       });
     },
-    [sortedXs, series, xScale, yScale, showTooltip],
+    [sortedXs, series, xScale, yScale, leftMargin, showTooltip],
   );
 
   const numTicksX = Math.max(2, Math.min(8, Math.floor(innerW / 90)));
-  const numTicksY = Math.max(2, Math.min(6, Math.floor(innerH / 40)));
   const axisLabelProps = {
     fill: mutedColor,
     fontFamily,
@@ -229,7 +261,7 @@ function Chart({
   return (
     <>
       <svg width={width} height={height}>
-        <Group left={MARGIN.left} top={MARGIN.top}>
+        <Group left={leftMargin} top={MARGIN.top}>
           <GridRows
             scale={yScale}
             width={innerW}
@@ -270,6 +302,10 @@ function Chart({
               data={s.points}
               x={(p) => xScale(p.x)}
               y={(p) => yScale(p.y)}
+              // Monotone-in-x smoothing rounds the line without overshooting
+              // past the samples, so the curve never dips below a trough the
+              // data never hit.
+              curve={curveMonotoneX}
               stroke={colorFor(s.colorVar)}
               strokeWidth={2}
               strokeLinejoin="round"

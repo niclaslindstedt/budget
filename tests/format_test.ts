@@ -8,6 +8,7 @@ import {
   formatBalance,
   formatDate,
   formatDayOnly,
+  formatMonthYearShort,
   formatNumber,
   formatRate,
   formatRunningBalance,
@@ -172,6 +173,14 @@ describe("formatNumber", () => {
     expect(formatNumber(1_250_000, s, { neverAbbreviate: true })).toBe(
       "1 250 000",
     );
+  });
+
+  it("abbreviates when forceAbbreviate is on even if abbreviateNumbers is off", () => {
+    const s = settings({ abbreviateNumbers: false });
+    expect(formatNumber(1_250_000, s, { forceAbbreviate: true })).toBe("1M");
+    expect(formatNumber(13_000, s, { forceAbbreviate: true })).toBe("13K");
+    // Below the threshold too — forceAbbreviate also bypasses it.
+    expect(formatNumber(900, s, { forceAbbreviate: true })).toBe("1K");
   });
 });
 
@@ -399,6 +408,27 @@ describe("formatDate", () => {
   it("returns an empty string for malformed input", () => {
     expect(formatDate("", "YYYY-MM-DD")).toBe("");
     expect(formatDate("abc", "YYYY-MM-DD")).toBe("");
+  });
+});
+
+describe("formatMonthYearShort", () => {
+  it("renders the short month name plus a two-digit year", () => {
+    expect(formatMonthYearShort("2025-05-16")).toBe("May 25");
+    expect(formatMonthYearShort("2026-01-01")).toBe("Jan 26");
+    expect(formatMonthYearShort("2025-12-31")).toBe("Dec 25");
+  });
+
+  it("follows the active language for the month name", () => {
+    expect(formatMonthYearShort("2025-05-16", "sv")).toBe("maj 25");
+  });
+
+  it("accepts a bare YYYY-MM key", () => {
+    expect(formatMonthYearShort("2025-05")).toBe("May 25");
+  });
+
+  it("returns an empty string for malformed input", () => {
+    expect(formatMonthYearShort("")).toBe("");
+    expect(formatMonthYearShort("2025")).toBe("");
   });
 });
 
