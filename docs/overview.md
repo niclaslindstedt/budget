@@ -683,7 +683,8 @@ whose history Find mortgage payments scans — one account per property,
 shared across all its mortgages because a property is paid to the bank
 as a single charge covering every loan; a dangling reference is dropped
 to `null` on load), optional `purchaseAmount` (what it was bought for) +
-`purchaseDate`, optional `size` (living area in square metres), a
+`purchaseDate`, optional `size` (living area in square metres), optional
+`rooms` (number of rooms), a
 `valueHistory` of value points, `mortgages`, `repairs`, `files` (uploaded
 documents / photos — see Property file), and an optional `saleEstimate`
 (the saved Net sale profit inputs). Created / edited via
@@ -700,6 +701,15 @@ unit it renders with is a global display preference,
 `Settings.propertySizeUnit` (`"kvm"` | `"sqm"`, default `"kvm"`; both
 mean square metres), edited in the Property settings tab. The card and
 editor append the chosen label next to the number.
+
+### Property rooms
+
+`Property.rooms` is the number of rooms in the property, a bare
+non-negative number. Sweden counts half-rooms ("rok"), so fractional
+values like `1.5` are allowed. Entered in `PropertyEditorModal` and shown
+as a stat on `PropertyCard`. Optional and additive — absent until the
+user records one, so old budgets simply lack it and no migration is
+needed.
 
 ### Property fee
 

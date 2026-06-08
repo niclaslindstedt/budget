@@ -12,6 +12,7 @@ const properties: PropertiesCatalog = {
   boughtFor: "Köpt för",
   purchased: "Köpt",
   size: "Storlek",
+  rooms: "Rum",
   fee: "Månadsavgift",
   currentValue: "Nuvarande värde",
   noValue: "Inget värde registrerat",
@@ -67,6 +68,8 @@ const properties: PropertiesCatalog = {
   purchaseDateLabel: "Köpdatum",
   sizeLabel: "Storlek",
   sizePlaceholder: "Boyta",
+  roomsLabel: "Rum",
+  roomsPlaceholder: "Antal rum",
   feeLabel: "Månadsavgift",
   feePlaceholder: "Vad du betalar varje månad",
   feeHint:
