@@ -89,7 +89,6 @@ const properties: PropertiesCatalog = {
   valueChartEmpty:
     "Registrera minst två värden över tid för att se hur fastigheten har förändrats.",
   valueChartMarketValue: "Marknadsvärde",
-  valueChartWithRepairs: "Värde inkl. reparationer",
   valueChartNetValue: "Nettovärde",
   valueChartIncludeRepairs: "Inkludera reparationer",
   valueChartIncludeRepairsHint:
