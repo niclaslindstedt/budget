@@ -87,6 +87,9 @@ export function PropertyValueChartModal({
       label: t("properties.valueChartPurchaseValue"),
       colorVar: "--muted",
       dashed: true,
+      // Flat baseline — its value is constant, so listing it in the hover
+      // tooltip alongside the market value adds noise without information.
+      omitFromTooltip: true,
       points: points.map((p) => ({ x: p.x, y: purchaseAmount })),
     });
   }
