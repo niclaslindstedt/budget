@@ -779,9 +779,12 @@ The slim progress bar on each `MortgageRow` in `PropertyCard` labelled
 "Paid off" (the "power bar"). Shows the share of the original loan
 amortised away — `mortgagePayoffProgress(mortgage)` in
 `src/data/property-mortgage/progress.ts` = `(loanAmount − currentBalance)
-/ loanAmount`, clamped to [0, 1]. 0 % when the balance still equals the
-loan, 100 % (full green bar + a check, `--success`) when the balance
-reaches zero. Hidden when either `loanAmount` or `currentBalance` is
+/ loanAmount`, clamped to [0, 1]. The percentage is rendered with two
+decimals via `formatRate` (e.g. "82,35 %"), capped just below 100 until
+the loan is actually paid off so it never reads "100 %" early. 0 % when
+the balance still equals the loan, 100 % (full green bar + a check,
+`--success`) when the balance reaches zero. Hidden when either
+`loanAmount` or `currentBalance` is
 unset. Interest paid is deliberately excluded — only amortising the
 principal pays the loan _off_. Reaching 100 % unlocks the `mortgageFree`
 achievement. When the mortgage has recorded payments, the bar doubles as
