@@ -696,7 +696,7 @@
          `useAmountColumns` knob). The action cell sits outside the grid
          as an absolute overlay so it reserves no track. */
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 5rem 5rem 5.5rem;
+      grid-template-columns: minmax(0, 1fr) 5.5rem 5.5rem 6rem;
       position: relative;
       overflow: hidden;
     }
