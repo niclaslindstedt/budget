@@ -23,11 +23,13 @@ const properties = {
   mortgages: "Mortgages",
   noMortgages: "No mortgages on this property.",
   addMortgage: "Add mortgage",
-  // The mortgage section's "…" menu toggles between the unified (summed) view
-  // and the split (per-mortgage) view; each label names the view it switches
-  // to. The count heads the unified card.
+  // The segmented control beside the mortgage section's "…" menu toggles
+  // between the unified (summed) view and the split (per-mortgage) view; each
+  // label names the view its glyph selects. The count heads the unified card.
   viewUnified: "Unified view",
   viewSplit: "Split view",
+  // aria-label on the two-glyph view toggle as a whole.
+  viewToggle: "Mortgage view",
   mortgageCountOne: "{count} mortgage",
   mortgageCountOther: "{count} mortgages",
   editMortgage: "Edit mortgage",

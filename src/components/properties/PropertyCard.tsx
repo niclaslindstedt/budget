@@ -28,6 +28,7 @@ import type {
 import { useT, type TFunction } from "../../i18n";
 import { formatBalance, formatNumber, formatRate } from "../../utils/format";
 import { MortgageSectionMenu } from "./MortgageSectionMenu";
+import { MortgageViewToggle } from "./MortgageViewToggle";
 import { PropertyActionsMenu } from "./PropertyActionsMenu";
 
 // One property's block on the Properties page: its name, what it cost,
@@ -212,21 +213,25 @@ export function PropertyCard({
           <span className="text-xs font-bold tracking-wider uppercase text-muted">
             {t("properties.mortgages")}
           </span>
-          <MortgageSectionMenu
-            property={property}
-            hasPayments={hasPayments}
-            view={showUnified ? "unified" : "split"}
-            canToggle={canToggleView}
-            onToggleView={() => {
-              const next = showUnified ? "split" : "unified";
-              setMortgageView(next);
-              // The unified view is the default, but the unlock rewards
-              // actively reaching for it through the toggle.
-              if (next === "unified") unlock("unifiedMortgage");
-            }}
-            onAddMortgage={onAddMortgage}
-            onViewPayments={onViewPayments}
-          />
+          <div className="flex items-center gap-1.5">
+            {canToggleView && (
+              <MortgageViewToggle
+                view={mortgageView}
+                onChange={(next) => {
+                  setMortgageView(next);
+                  // The unified view is the default, but the unlock rewards
+                  // actively reaching for it through the toggle.
+                  if (next === "unified") unlock("unifiedMortgage");
+                }}
+              />
+            )}
+            <MortgageSectionMenu
+              property={property}
+              hasPayments={hasPayments}
+              onAddMortgage={onAddMortgage}
+              onViewPayments={onViewPayments}
+            />
+          </div>
         </div>
         {property.mortgages.length === 0 ? (
           <p className="m-0 text-xs text-muted">

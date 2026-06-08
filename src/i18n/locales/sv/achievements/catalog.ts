@@ -274,7 +274,7 @@ const catalog: AchievementsCatalogEntries = {
     name: "Helhetsbild",
     condition: "Slå om en fastighets bolån till den sammanslagna vyn.",
     learnMore:
-      "En fastighet med flera lån är svår att överblicka rad för rad. Välj Sammanslagen vy i bolånesektionens …-meny: alla bolån slås ihop till ett kort som visar samlad skuld och lånebelopp, den skuldvägda effektiva räntan och total månadsränta och amortering. Byt tillbaka till Delad vy i samma meny för att redigera ett enskilt lån.",
+      "En fastighet med flera lån är svår att överblicka rad för rad. Använd vyväljaren bredvid bolånesektionens …-meny för att välja Sammanslagen vy: alla bolån slås ihop till ett kort som visar samlad skuld och lånebelopp, den skuldvägda effektiva räntan och total månadsränta och amortering. Tryck på den andra symbolen för att byta tillbaka till Delad vy och redigera ett enskilt lån.",
   },
   paymentLedger: {
     name: "Betalningsbok",

@@ -277,7 +277,7 @@ const catalog = {
     name: "Big Picture",
     condition: "Switch a property's mortgages into the unified summary view.",
     learnMore:
-      "A property with several loans is hard to read row by row. From the mortgage section's … menu, pick Unified view: every mortgage collapses into one card showing the combined balance and loan, the balance-weighted effective rate, and the total monthly interest and amortisation. Switch back to Split view from the same menu to edit an individual loan.",
+      "A property with several loans is hard to read row by row. Use the view toggle beside the mortgage section's … menu to pick Unified view: every mortgage collapses into one card showing the combined balance and loan, the balance-weighted effective rate, and the total monthly interest and amortisation. Tap the other glyph to switch back to Split view and edit an individual loan.",
   },
   paymentLedger: {
     name: "Payment Ledger",
