@@ -320,6 +320,11 @@ export type Property = {
   // property — both labels mean the same square-metre quantity. Absent
   // when the user hasn't recorded a size.
   size?: number;
+  // Number of rooms in the property. A bare non-negative count (Sweden
+  // counts half-rooms, e.g. 3.5 "rok", so fractional values are allowed).
+  // Absent when the user hasn't recorded it. Additive / optional, so old
+  // budgets simply lack it — no migration needed.
+  rooms?: number;
   // A recurring monthly charge the user pays just to hold the property,
   // separate from any mortgage — the Swedish bostadsrätt "avgift" to the
   // housing association, or an equivalent HOA / service fee. A flat

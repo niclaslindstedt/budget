@@ -65,6 +65,7 @@ export function PropertyEditorModal({
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [size, setSize] = useState("");
+  const [rooms, setRooms] = useState("");
   const [fee, setFee] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
@@ -75,6 +76,7 @@ export function PropertyEditorModal({
     setPurchaseAmount(seedAmount(property?.purchaseAmount, settings));
     setPurchaseDate(property?.purchaseDate ?? "");
     setSize(seedAmount(property?.size, settings));
+    setRooms(seedAmount(property?.rooms, settings));
     setFee(seedAmount(property?.fee, settings));
   });
 
@@ -98,6 +100,7 @@ export function PropertyEditorModal({
       purchaseAmount: num(purchaseAmount),
       purchaseDate: purchaseDate !== "" ? purchaseDate : undefined,
       size: num(size),
+      rooms: num(rooms),
       fee: num(fee),
     };
     if (property) {
@@ -121,6 +124,7 @@ export function PropertyEditorModal({
     if (patch.purchaseDate !== undefined)
       fresh.purchaseDate = patch.purchaseDate;
     if (patch.size !== undefined) fresh.size = patch.size;
+    if (patch.rooms !== undefined) fresh.rooms = patch.rooms;
     if (patch.fee !== undefined) fresh.fee = patch.fee;
     onCreate(fresh);
   }
@@ -235,6 +239,19 @@ export function PropertyEditorModal({
                 {settings.propertySizeUnit}
               </span>
             </div>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.roomsLabel")}
+            </span>
+            <ClearableInput
+              value={rooms}
+              onValueChange={setRooms}
+              inputMode="decimal"
+              placeholder={t("properties.roomsPlaceholder")}
+              className={amountInputClass}
+            />
           </label>
 
           <label className="flex flex-col gap-1">

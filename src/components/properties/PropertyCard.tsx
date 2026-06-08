@@ -234,6 +234,15 @@ export function PropertyCard({
             </span>
           </Stat>
         )}
+        {property.rooms !== undefined && (
+          <Stat label={t("properties.rooms")}>
+            <span className="tabular-nums text-fg">
+              {formatNumber(property.rooms, settings, {
+                neverAbbreviate: true,
+              })}
+            </span>
+          </Stat>
+        )}
         {property.fee !== undefined && (
           <Stat label={t("properties.fee")}>
             <div className="flex flex-wrap items-center gap-1.5">

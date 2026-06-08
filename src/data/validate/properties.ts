@@ -384,6 +384,10 @@ export function validateProperty(
   // Living area in square metres. Non-negative finite only; a bad value
   // is dropped (the field goes absent) rather than rejecting the file.
   if (isFiniteNumber(raw.size) && raw.size >= 0) property.size = raw.size;
+  // Number of rooms. Non-negative finite only (fractional half-rooms are
+  // allowed); a bad value is dropped (the field goes absent) rather than
+  // rejecting the file.
+  if (isFiniteNumber(raw.rooms) && raw.rooms >= 0) property.rooms = raw.rooms;
   // The recurring monthly fee (Swedish bostadsrätt "avgift" / HOA dues).
   // Non-negative finite only; a bad value is dropped (the field goes
   // absent) rather than rejecting the file.
