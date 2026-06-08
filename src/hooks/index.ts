@@ -42,6 +42,7 @@ export { useSelectAllOnFocus } from "./useSelectAllOnFocus";
 export { useSheetSwipe } from "./useSheetSwipe";
 export { useStandardColumns } from "./useStandardColumns";
 export { useTheme } from "./useTheme";
+export { type ThemeTokens, useThemeTokens } from "./useThemeTokens";
 export { type ToastInput, type ToastKind, useToast } from "./useToast";
 export {
   useVirtualKeyboardInset,

@@ -98,6 +98,20 @@ const properties = {
   deleteValueConfirm:
     "The value recorded for {date} will be removed. This cannot be undone.",
 
+  // Visualize-value chart modal — reached from the property "…" menu.
+  valueChartTitle: "Visualize value",
+  valueChartEmpty:
+    "Record at least two values over time to chart how this property has changed.",
+  valueChartMarketValue: "Market value",
+  valueChartWithRepairs: "Value incl. repairs",
+  valueChartNetValue: "Net value",
+  valueChartIncludeRepairs: "Include repairs",
+  valueChartIncludeRepairsHint:
+    "Add the money spent on repairs to the value, as each was made.",
+  valueChartShowNetValue: "Show net value",
+  valueChartShowNetValueHint:
+    "What you'd actually take home — after broker, advertising, repairs, purchase price, and capital-gains tax.",
+
   // Mortgage editor modal.
   newMortgageTitle: "New mortgage",
   editMortgageTitle: "Edit mortgage",

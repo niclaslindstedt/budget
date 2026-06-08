@@ -83,6 +83,20 @@ const properties: PropertiesCatalog = {
   deleteValueConfirm:
     "Värdet som registrerats för {date} tas bort. Det går inte att ångra.",
 
+  // Visualisera värde-diagrammet — nås från fastighetens "…"-meny.
+  valueChartTitle: "Visualisera värde",
+  valueChartEmpty:
+    "Registrera minst två värden över tid för att se hur fastigheten har förändrats.",
+  valueChartMarketValue: "Marknadsvärde",
+  valueChartWithRepairs: "Värde inkl. reparationer",
+  valueChartNetValue: "Nettovärde",
+  valueChartIncludeRepairs: "Inkludera reparationer",
+  valueChartIncludeRepairsHint:
+    "Lägg pengarna du lagt på reparationer till värdet, allt eftersom de gjordes.",
+  valueChartShowNetValue: "Visa nettovärde",
+  valueChartShowNetValueHint:
+    "Vad du faktiskt får kvar — efter mäklararvode, annonsering, reparationer, inköpspris och vinstskatt.",
+
   // Mortgage editor modal.
   newMortgageTitle: "Nytt bolån",
   editMortgageTitle: "Redigera bolån",
