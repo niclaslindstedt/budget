@@ -9,7 +9,7 @@ import { DEFAULT_TAX_YEAR } from "../../data/tax/se/constants";
 import { useDesktopAutoFocus, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { FloatingPanel } from "../FloatingPanel";
-import { ClearableInput } from "../form";
+import { ClearableInput, LISTBOX_OPTION_CLASS } from "../form";
 
 // Searchable kommun picker. Modelled on EmployerPicker's FloatingPanel
 // pattern but with a filter input above the list, since ~290 entries
@@ -20,9 +20,6 @@ const PLACEMENT: FloatingPlacement = {
   anchor: "left",
   coordinateSpace: "viewport",
 };
-
-const ROW_CLASS =
-  "flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
 
 type Props = {
   value: string;
@@ -120,7 +117,7 @@ export function MunicipalityPicker({ value, onChange }: Props) {
                     onChange(m.id);
                     close();
                   }}
-                  className={ROW_CLASS}
+                  className={LISTBOX_OPTION_CLASS}
                 >
                   <span className="min-w-0 flex-1 truncate text-fg">
                     {m.name}

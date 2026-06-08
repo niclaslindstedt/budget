@@ -9,7 +9,12 @@ import {
 } from "../../hooks";
 import { useT } from "../../i18n";
 import { FloatingPanel } from "../FloatingPanel";
-import { Button, ClearableInput } from "../form";
+import {
+  Button,
+  ClearableInput,
+  LISTBOX_CREATE_OPTION_CLASS,
+  LISTBOX_OPTION_CLASS,
+} from "../form";
 import { Modal } from "../Modal";
 
 // Single-tier picker for `FileCategory` — the subfolder an uploaded property
@@ -157,7 +162,7 @@ export function FileCategoryPicker({
                 tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => handlePick(c.id)}
                 onKeyDown={onKeyDown}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                className={LISTBOX_OPTION_CLASS}
               >
                 <FolderClosed
                   size={14}
@@ -181,7 +186,7 @@ export function FileCategoryPicker({
             <button
               type="button"
               onClick={beginCreating}
-              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              className={LISTBOX_CREATE_OPTION_CLASS}
             >
               <Plus size={14} aria-hidden focusable={false} />
               {t("properties.newFileCategory")}

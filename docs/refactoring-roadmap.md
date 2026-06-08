@@ -91,31 +91,51 @@ _(none pending — the sheet-type registry coverage cluster landed
   reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
   `salary/MunicipalityPicker.tsx` (147), `salary/TaxProfilePicker.tsx`
   (151), and `properties/FileCategoryPicker.tsx` (278) each build their own
-  `FloatingPanel` + `<ul role="listbox">` + `role="option"` buttons with a
-  hardcoded row class (byte-identical in `EmployerPicker.tsx:39` and
-  `MunicipalityPicker.tsx:24`), duplicating the shell that
-  `form/SelectPicker.tsx` (262) already provides with full keyboard nav.
-  `FileCategoryPicker` (re-verified 2026-06: `FloatingPanel` at :123,
-  `role="listbox"` at :129, `role="option"` at :155, its own
-  `useRovingTabindex` at :89, plus a "create new category" footer) is the
-  fourth re-derivation — it confirms the multiplier: the pattern is now
+  `FloatingPanel` + `<ul role="listbox">` + `role="option"` buttons,
+  duplicating the shell that `form/SelectPicker.tsx` (262) already provides
+  with full keyboard nav. `FileCategoryPicker` (re-verified 2026-06:
+  `FloatingPanel` at :123, `role="listbox"` at :129, `role="option"` at :155,
+  its own `useRovingTabindex` at :89, plus a "create new category" footer) is
+  the fourth re-derivation — it confirms the multiplier: the pattern is now
   spreading to new pages, not just the original three salary sites.
-  - **Plan**: grow `SelectPicker` with the opt-in props the four pickers
-    actually need — a search-filter zone (MunicipalityPicker's ~290-entry
-    kommun list), a "create new" footer + "none" header (EmployerPicker,
-    FileCategoryPicker), and a custom option renderer (TaxProfilePicker's
-    two-line rows) — then route all four through it and lift the row-button
-    styling to a single shared class.
-  - **Risk**: medium — `EmployerPicker` / `FileCategoryPicker` add
-    roving-tabindex + a create-footer that `SelectPicker`'s flat list
-    doesn't model; fold those in as options rather than flattening them.
-    Smoke each picker's keyboard nav. (The narrower `useListboxKeyboard()`
-    extraction was skipped earlier at one site — this is the broader
-    shell-consolidation angle, not just the key handler.)
-  - **Severity: 5.** Multiplier — new sheet types (loans, savings) will each
-    add domain pickers; the properties page already re-derived the shell a
-    fourth time, so consolidating now stops the next batch from cloning
-    `FloatingPanel` + listbox + row styling a fifth/sixth time.
+  - **Row-button styling slice landed 2026-06** (see Landed: shared
+    listbox classes). The byte-identical row class
+    (`EmployerPicker`/`MunicipalityPicker` `ROW_CLASS` + `FileCategoryPicker`
+    option row) and the byte-identical "create new" footer class (Employer /
+    FileCategory / TaxProfile) are now the shared `LISTBOX_OPTION_CLASS` /
+    `LISTBOX_CREATE_OPTION_CLASS` constants in `form/listbox.ts`. That was the
+    mechanical, zero-risk part of the plan; what remains is the
+    component-level consolidation, which is the riskier piece.
+  - **Plan (remaining)**: route the four pickers through one shared shell.
+    **Re-verify caution — the original "grow `SelectPicker` into a
+    kitchen-sink" plan is questionable.** The four pickers genuinely diverge
+    on keyboard model — `SelectPicker` uses a listbox-level highlight
+    handler, `EmployerPicker`/`FileCategoryPicker` use `useRovingTabindex`,
+    and `MunicipalityPicker`/`TaxProfilePicker` have **no keyboard nav at
+    all** (plain `onClick` buttons). They also diverge on per-option render
+    (employer glyph+color, folder icon, receipt icon, municipality trailing
+    rate%), on a search-filter zone (Municipality's ~290-entry kommun list),
+    on a "none/no-X" sentinel header (`null`/`undefined`, which
+    `SelectPicker`'s `T extends string | number` value type can't express
+    without a sentinel-mapping boundary), and on bespoke creator modals
+    (`EmployerCreator`, `FileCategoryCreator`, `TaxProfileModal`). Bolting
+    all of that onto `SelectPicker` would turn its clean focused design into
+    a ~10-prop conditional. A better seam is probably a thin presentational
+    `PickerShell` (trigger + `FloatingPanel` + listbox structure + optional
+    header/footer/search slots) that each picker composes while keeping its
+    own keyboard model and creator — but that's a design pass, not a
+    mechanical merge. Don't force the merge; design it deliberately.
+  - **Risk**: medium — changing any picker's keyboard model is a behaviour
+    change and the keyboard nav isn't smoke-testable in the agent
+    environment (no real device). Smoke each picker's keyboard nav before
+    landing. (The narrower `useListboxKeyboard()` extraction was skipped
+    earlier at one site — this is the broader shell-consolidation angle, not
+    just the key handler.)
+  - **Severity: 4** (was 5; the byte-identical row/footer styling — the
+    cheapest multiplier — landed, leaving the divergent-shaped shell). New
+    sheet types (loans, savings) will each add domain pickers, so a shared
+    `PickerShell` still pays off, but only once the design is worked out
+    rather than mechanically merging into `SelectPicker`.
 
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
@@ -426,6 +446,27 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Custom-dropdown listbox row/footer classes duplicated across four
+  pickers → shared `LISTBOX_OPTION_CLASS` / `LISTBOX_CREATE_OPTION_CLASS`**
+  (2026-06): the roving-focus `role="option"` row class
+  (`flex w-full … px-3 py-1.5 … focus-visible:outline …`) was re-declared
+  byte-identically as a local `ROW_CLASS` in `salary/EmployerPicker.tsx` +
+  `salary/MunicipalityPicker.tsx` and inline in `properties/FileCategoryPicker.tsx`;
+  the accent "create new" footer button class (`… px-3 py-2 … text-accent …`)
+  was inline-duplicated across `EmployerPicker`, `FileCategoryPicker`, and
+  `salary/TaxProfilePicker`. Hoisted both into a new
+  `src/components/form/listbox.ts` (mirroring the `DATE_INPUT_CLASS`
+  precedent), re-exported from `form/index.ts`, and routed every
+  byte-identical site through them. Left inline the rows that genuinely
+  differ — `FileCategoryPicker`'s `text-muted` "none" button and
+  `TaxProfilePicker`'s `py-2` + Receipt-icon `ProfileOption` rows — so no
+  resolved class changed at any site. This is the mechanical, zero-risk
+  "lift the row-button styling to a single shared class" slice of the
+  four-pickers consolidation item (which stays Pending for the riskier
+  component-level merge). Pure refactor — identical render; fast loop +
+  build + icons-check green, all 1510 tests pass. **Was severity 5 (slice
+  landed; remainder re-rated to 4).**
 
 - **`properties/PropertiesPage.tsx` 17 modal selectors → one discriminated
   `modal` router + 3 kept-separate stacked sub-editors** (2026-06): the page

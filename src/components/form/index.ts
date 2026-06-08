@@ -3,6 +3,7 @@ export { Checkbox } from "./Checkbox";
 export { ClearableInput } from "./ClearableInput";
 export { ClearableTextarea } from "./ClearableTextarea";
 export { FormSection } from "./FormSection";
+export { LISTBOX_CREATE_OPTION_CLASS, LISTBOX_OPTION_CLASS } from "./listbox";
 export { Radio, RadioGroup } from "./Radio";
 export { RangeSlider } from "./RangeSlider";
 export { SelectPicker, type SelectOption } from "./SelectPicker";
