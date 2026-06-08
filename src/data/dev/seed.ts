@@ -767,8 +767,9 @@ export function buildSeedUserData(): UserData {
     purchaseAmount: 2950000,
     purchaseDate: "2021-09-01",
     size: 65,
+    // The purchase (2,950,000 on 2021-09-01) is the property's first value —
+    // synthesised from purchaseAmount/purchaseDate, so it isn't stored here.
     valueHistory: [
-      { id: mkId("pval"), date: "2021-09-01", value: 2950000 },
       { id: mkId("pval"), date: "2024-01-01", value: 3300000 },
       { id: mkId("pval"), date: "2026-05-01", value: 3180000 },
     ],
@@ -827,10 +828,8 @@ export function buildSeedUserData(): UserData {
     // A bostadsrätt, so it carries a monthly fee to the housing
     // association on top of the mortgage.
     fee: 2850,
-    valueHistory: [
-      { id: mkId("pval"), date: "2022-05-15", value: 3200000 },
-      { id: mkId("pval"), date: "2026-05-01", value: 3650000 },
-    ],
+    // Purchase (3,200,000 on 2022-05-15) is synthesised as the first value.
+    valueHistory: [{ id: mkId("pval"), date: "2026-05-01", value: 3650000 }],
     mortgages: [
       {
         id: mkId("mort"),
@@ -884,8 +883,8 @@ export function buildSeedUserData(): UserData {
     purchaseAmount: 14500000,
     purchaseDate: "2019-06-01",
     size: 285,
+    // Purchase (14,500,000 on 2019-06-01) is synthesised as the first value.
     valueHistory: [
-      { id: mkId("pval"), date: "2019-06-01", value: 14500000 },
       { id: mkId("pval"), date: "2023-01-01", value: 17800000 },
       { id: mkId("pval"), date: "2026-05-01", value: 19200000 },
     ],

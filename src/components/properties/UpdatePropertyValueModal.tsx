@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { TrendingUp } from "lucide-react";
 
+import {
+  isPurchaseValuePoint,
+  resolveValueHistory,
+} from "../../data/property-value/value";
 import { newId } from "../../data/sheet";
 import type { Property, PropertyValuePoint, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
@@ -13,7 +17,10 @@ import { DATE_INPUT_CLASS } from "./date-input";
 
 // Record a new market value for a property — appends one point to its
 // `valueHistory` (the current value is the latest point). Also lists the
-// recorded history so the user can see and delete past snapshots.
+// recorded history so the user can see and delete past snapshots. The
+// property's purchase (`purchaseAmount` at `purchaseDate`) shows as the first
+// value via `resolveValueHistory`; it's owned by the property's purchase
+// fields, so it has no delete affordance — change it by editing the property.
 //
 // Not `centered`: the value field opens the soft keyboard.
 
@@ -59,8 +66,9 @@ export function UpdatePropertyValueModal({
     onClose();
   }
 
-  // Newest snapshot first.
-  const history = [...property.valueHistory].sort((a, b) =>
+  // Newest snapshot first. Includes the synthesised purchase point (the
+  // property's first value) so the list is never empty for a dated purchase.
+  const history = resolveValueHistory(property).sort((a, b) =>
     a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
   );
 
@@ -120,31 +128,48 @@ export function UpdatePropertyValueModal({
               </p>
             ) : (
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {history.map((point) => (
-                  <li
-                    key={point.id}
-                    className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
-                  >
-                    <span className="text-muted">
-                      {formatDate(point.date, settings.dateFormat, lang)}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="tabular-nums text-fg-bright">
-                        {formatBalance(point.value, settings, {
-                          neverAbbreviate: true,
-                        })}
+                {history.map((point) => {
+                  const isPurchase = isPurchaseValuePoint(point);
+                  return (
+                    <li
+                      key={point.id}
+                      className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2 text-muted">
+                        {formatDate(point.date, settings.dateFormat, lang)}
+                        {isPurchase && (
+                          <span className="rounded-full border border-line px-1.5 text-[0.65rem] tracking-wider uppercase text-muted">
+                            {t("properties.purchaseValueTag")}
+                          </span>
+                        )}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteValue(property.id, point.id)}
-                        aria-label={t("properties.delete")}
-                        className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  </li>
-                ))}
+                      <span className="flex items-center gap-2">
+                        <span className="tabular-nums text-fg-bright">
+                          {formatBalance(point.value, settings, {
+                            neverAbbreviate: true,
+                          })}
+                        </span>
+                        {isPurchase ? (
+                          // The purchase value is owned by the property's
+                          // purchase fields — change it by editing the
+                          // property, not by deleting a snapshot here.
+                          <span aria-hidden className="px-1 text-xs opacity-0">
+                            ✕
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteValue(property.id, point.id)}
+                            aria-label={t("properties.delete")}
+                            className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

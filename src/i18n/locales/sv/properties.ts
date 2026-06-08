@@ -74,6 +74,7 @@ const properties: PropertiesCatalog = {
   asOfLabel: "Per datum",
   valueHistory: "Värdehistorik",
   noValueHistory: "Inga värden registrerade ännu.",
+  purchaseValueTag: "Köp",
   deleteValueTitle: "Ta bort värde?",
   deleteValueConfirm:
     "Värdet som registrerats för {date} tas bort. Det går inte att ångra.",

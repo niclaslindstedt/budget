@@ -83,6 +83,9 @@ const properties = {
   asOfLabel: "As of",
   valueHistory: "Value history",
   noValueHistory: "No values recorded yet.",
+  // Tag on the value-history row that comes from the property's purchase
+  // price — its first value, owned by the purchase fields (not deletable).
+  purchaseValueTag: "Purchase",
   deleteValueTitle: "Delete value?",
   deleteValueConfirm:
     "The value recorded for {date} will be removed. This cannot be undone.",

@@ -725,12 +725,22 @@ property files are filed under). Registered in `TAB_REGISTRY` with the
 ### Current value (property)
 
 `PropertyValuePoint` (`{ id, date, value }`) on `Property.valueHistory`.
-A property's current value is the latest point by date. The current-value
-figure in the card's stat grid is a button — pressing it opens the
-**Update value** modal (`UpdatePropertyValueModal.tsx`), which appends one
-point (`addPropertyValue`); the modal also lists and deletes past points
-(`deletePropertyValue` / `updatePropertyValue`). Manually entered — there
-is no automatic valuation.
+A property's purchase is its first value: `resolveValueHistory`
+(`src/data/property-value/value.ts`) folds a synthesised purchase point
+(`purchaseAmount` at `purchaseDate`, id `"purchase"`) into the history so a
+property with a dated purchase always shows at least one value, without
+storing a duplicate snapshot. The point is suppressed when a recorded
+snapshot already sits on the purchase date (older budgets, an imported
+property), so it never doubles up. A property's current value is the latest
+point by date with the purchase folded in (`currentPropertyValue`), used by
+the card stat grid and the Net sale profit prefill. The current-value figure
+in the card's stat grid is a button — pressing it opens the **Update value**
+modal (`UpdatePropertyValueModal.tsx`), which appends one point
+(`addPropertyValue`); the modal lists every value (including the synthesised
+purchase point, tagged "Purchase" and not deletable — change it by editing
+the property) and deletes past recorded points (`deletePropertyValue` /
+`updatePropertyValue`). Recorded values are manually entered — there is no
+automatic valuation.
 
 ### Mortgage
 
