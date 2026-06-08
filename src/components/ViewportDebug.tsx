@@ -134,7 +134,8 @@ export function ViewportDebug() {
         }}
       />
 
-      <div
+      <button
+        type="button"
         onClick={copy}
         style={{
           position: "fixed",
@@ -147,7 +148,10 @@ export function ViewportDebug() {
           padding: "4px 6px",
           maxWidth: "60vw",
           whiteSpace: "pre",
+          textAlign: "left",
+          border: "none",
           borderBottomRightRadius: 6,
+          cursor: "pointer",
         }}
       >
         {Object.entries(snap)
@@ -155,7 +159,7 @@ export function ViewportDebug() {
           .join("\n")}
         {"\n"}
         {copied ? "[copied ✓]" : "[tap to copy]"}
-      </div>
+      </button>
     </>,
     document.body,
   );
