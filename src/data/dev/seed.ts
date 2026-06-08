@@ -824,6 +824,9 @@ export function buildSeedUserData(): UserData {
     purchaseAmount: 3200000,
     purchaseDate: "2022-05-15",
     size: 42,
+    // A bostadsrätt, so it carries a monthly fee to the housing
+    // association on top of the mortgage.
+    fee: 2850,
     valueHistory: [
       { id: mkId("pval"), date: "2022-05-15", value: 3200000 },
       { id: mkId("pval"), date: "2026-05-01", value: 3650000 },

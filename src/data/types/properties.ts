@@ -320,6 +320,13 @@ export type Property = {
   // property — both labels mean the same square-metre quantity. Absent
   // when the user hasn't recorded a size.
   size?: number;
+  // A recurring monthly charge the user pays just to hold the property,
+  // separate from any mortgage — the Swedish bostadsrätt "avgift" to the
+  // housing association, or an equivalent HOA / service fee. A flat
+  // per-month sum in the user's currency, always >= 0. Absent when the
+  // user hasn't recorded one. Additive / optional, so old budgets simply
+  // lack it — no migration needed.
+  fee?: number;
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
   repairs: PropertyRepair[];

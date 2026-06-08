@@ -187,6 +187,13 @@ export function PropertyCard({
             </span>
           </Stat>
         )}
+        {property.fee !== undefined && (
+          <Stat label={t("properties.fee")}>
+            <span className="tabular-nums text-fg">
+              {formatBalance(property.fee, settings, { neverAbbreviate: true })}
+            </span>
+          </Stat>
+        )}
       </div>
 
       <div className="border-t border-line px-3 py-2">

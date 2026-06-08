@@ -12,6 +12,7 @@ const properties: PropertiesCatalog = {
   boughtFor: "Köpt för",
   purchased: "Köpt",
   size: "Storlek",
+  fee: "Månadsavgift",
   currentValue: "Nuvarande värde",
   noValue: "Inget värde registrerat",
   updateValue: "Uppdatera värde",
@@ -61,6 +62,10 @@ const properties: PropertiesCatalog = {
   purchaseDateLabel: "Köpdatum",
   sizeLabel: "Storlek",
   sizePlaceholder: "Boyta",
+  feeLabel: "Månadsavgift",
+  feePlaceholder: "Vad du betalar varje månad",
+  feeHint:
+    "Återkommande avgift för att äga bostaden, t.ex. en bostadsrättsavgift.",
 
   // Update-value modal.
   updateValueTitle: "Uppdatera värde",
