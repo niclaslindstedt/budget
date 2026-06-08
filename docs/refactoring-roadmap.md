@@ -87,29 +87,35 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
-- **Three salary pickers reinvent the custom-dropdown shell instead of
+- **Four custom pickers reinvent the custom-dropdown shell instead of
   reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
-  `salary/MunicipalityPicker.tsx` (147), and `salary/TaxProfilePicker.tsx`
-  (151) each build their own `FloatingPanel` + `<ul role="listbox">` +
-  `role="option"` buttons with a hardcoded `ROW_CLASS` (byte-identical in
-  `EmployerPicker.tsx:39` and `MunicipalityPicker.tsx:24`), duplicating the
-  shell that `form/SelectPicker.tsx` (262) already provides with full
-  keyboard nav.
-  - **Plan**: grow `SelectPicker` with the opt-in props the three pickers
+  `salary/MunicipalityPicker.tsx` (147), `salary/TaxProfilePicker.tsx`
+  (151), and `properties/FileCategoryPicker.tsx` (278) each build their own
+  `FloatingPanel` + `<ul role="listbox">` + `role="option"` buttons with a
+  hardcoded row class (byte-identical in `EmployerPicker.tsx:39` and
+  `MunicipalityPicker.tsx:24`), duplicating the shell that
+  `form/SelectPicker.tsx` (262) already provides with full keyboard nav.
+  `FileCategoryPicker` (re-verified 2026-06: `FloatingPanel` at :123,
+  `role="listbox"` at :129, `role="option"` at :155, its own
+  `useRovingTabindex` at :89, plus a "create new category" footer) is the
+  fourth re-derivation — it confirms the multiplier: the pattern is now
+  spreading to new pages, not just the original three salary sites.
+  - **Plan**: grow `SelectPicker` with the opt-in props the four pickers
     actually need — a search-filter zone (MunicipalityPicker's ~290-entry
-    kommun list), a "create new" footer + "none" header (EmployerPicker),
-    and a custom option renderer (TaxProfilePicker's two-line rows) — then
-    route all three through it and lift the row-button styling to a single
-    shared class.
-  - **Risk**: medium — `EmployerPicker` adds roving-tabindex + a
-    create-footer that `SelectPicker`'s flat list doesn't model; fold those
-    in as options rather than flattening them. Smoke each picker's keyboard
-    nav. (The narrower `useListboxKeyboard()` extraction was skipped earlier
-    at one site — this is the broader shell-consolidation angle, not just the
-    key handler.)
+    kommun list), a "create new" footer + "none" header (EmployerPicker,
+    FileCategoryPicker), and a custom option renderer (TaxProfilePicker's
+    two-line rows) — then route all four through it and lift the row-button
+    styling to a single shared class.
+  - **Risk**: medium — `EmployerPicker` / `FileCategoryPicker` add
+    roving-tabindex + a create-footer that `SelectPicker`'s flat list
+    doesn't model; fold those in as options rather than flattening them.
+    Smoke each picker's keyboard nav. (The narrower `useListboxKeyboard()`
+    extraction was skipped earlier at one site — this is the broader
+    shell-consolidation angle, not just the key handler.)
   - **Severity: 5.** Multiplier — new sheet types (loans, savings) will each
-    add domain pickers; consolidating the shell now stops the next batch from
-    re-deriving `FloatingPanel` + listbox + row styling a fourth/fifth time.
+    add domain pickers; the properties page already re-derived the shell a
+    fourth time, so consolidating now stops the next batch from cloning
+    `FloatingPanel` + listbox + row styling a fifth/sixth time.
 
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
@@ -305,7 +311,13 @@ _(none pending — the sheet-type registry coverage cluster landed
   `useReducer` to a modal only when it grows a 5+-field
   reset-together pyramid (see `BudgetComplexEntryModal` above, now
   tracked separately) or a mode discriminator the current setters let
-  drift through.
+  drift through. Concrete pyramid sites surfaced in the 2026-06
+  properties sweep, all reset together via one `useResetOnOpen`:
+  `properties/MortgageEditorModal.tsx` (9 `useState` at `:72`–`:81`),
+  `properties/RepairsEditModal.tsx` (9), `properties/ManualRepairModal.tsx`
+  (8), `properties/PropertyEditorModal.tsx` (8), and
+  `properties/NetSaleProfitModal.tsx` (8) — adopt `useReducer` opportunistically
+  when one of these modals is otherwise touched.
 
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains of
@@ -360,6 +372,92 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   `parseDecimal(text, lang)` would cover. Re-rate if
   thousands-separator support lands. **Severity: 3.**
 
+- **`usePropertyAttachments.ts` + `PropertyFileMeta` are page-specific but
+  live under `src/components/AppShell/hooks/`** —
+  `AppShell/hooks/usePropertyAttachments.ts` (752) is properties-only (its
+  exported `PropertyAttachments` / `PropertyFileMeta` types are consumed by
+  `properties/PropertyFilesModal.tsx`, which imports the type _upward_ from
+  `../AppShell/hooks/usePropertyAttachments`), the same placement smell that
+  the landed `useSalaryBulkSelection` relocation fixed. The `useReceiptManager` /
+  `data/receipts/target.ts` references are **comments only** (re-verified
+  2026-06 — no import), so there is no shared-hook entanglement and no
+  data→components violation.
+  - **Plan**: `git mv` the hook into `src/components/properties/`, move
+    `PropertyFileMeta` / `PropertyAttachments` there (or into a
+    `properties/` types file), and fix the relative imports + AppShell's
+    import path (AppShell already imports `PropertiesPage` from there as the
+    router, so the direction stays consistent).
+  - **Risk**: low, but **re-verify the standalone-vs-host-consumed question
+    first** — the landed `useSalaryBulkSelection` note drew the line between
+    "standalone misplacement" (move it) and "consumed by a modal host the
+    shell already owns" (leave it, like `useComplexEntry` / `useMatchRuleUi`).
+    `usePropertyAttachments` is called in `AppShell.tsx` and threaded to
+    `PropertiesPage`; confirm it's a standalone properties hook the shell
+    merely wires (move) rather than a host-owned collaborator (leave) before
+    committing. Pure module relocation, no behaviour change.
+  - **Severity: 4** (easy-win-flavoured). Multiplier-adjacent — every new
+    page type will grow its own attachment/plumbing hook, and "where do
+    page-specific hooks live" should have one answer.
+
+- **`properties/PropertiesPage.tsx` modal-state fragmentation** —
+  `PropertiesPage.tsx` (1007) declares **18 `useState`s** (`:90`–`:136`), of
+  which ~17 are independent modal open/close selectors
+  (`editingProperty` / `creatingProperty` / `valueProperty` /
+  `paymentsProperty` / `repairsProperty` / `filesProperty` / `saleProperty` /
+  `exportingProperty` / `importOpen` / `addingRepairsFor` / `repairEditor` /
+  `manualRepairEditor` / `editingMortgage` / `findOpen` / …), each opened and
+  closed by its own setter pair. The widest page-level open/close setter
+  surface in the codebase.
+  - **Plan**: collapse the mutually-exclusive modal selectors into a single
+    discriminated `ModalState` union behind one `useReducer` (or a small
+    `useModalRouter` helper), so only one modal kind is open at a time by
+    construction and transitions are explicit.
+  - **Risk**: medium — the payloads genuinely diverge (`Property | null`,
+    `MortgageRef | null`, the `repairEditor` / `manualRepairEditor` object
+    shapes), so the union must carry each kind's payload rather than
+    flattening to one id; a few selectors may be intentionally
+    co-openable (verify none are stacked) before forcing mutual exclusion.
+    No persisted-shape impact.
+  - **Severity: 4.** Multiplier — every new sheet-type page (savings, loans)
+    will grow the same page-level modal-selector pile; a `useModalRouter`
+    shape established here is the template the next page copies.
+
+- **`RepairsEditModal` + `ManualRepairModal` share the repair
+  company/tags/subtype field trio** — `properties/RepairsEditModal.tsx`
+  (552) and `properties/ManualRepairModal.tsx` (335) both carry the
+  `subtypeId` / `companyId` / `tagIds` `useState` triple (RepairsEditModal
+  `:161`–`:167`, ManualRepairModal `:105`–`:107`) and render the identical
+  `SubtypePicker` + `CompanyPicker` + tags-picker stack. The commit side
+  diverges — RepairsEditModal diffs against `seedCompanyId` / `seedTags` to
+  emit `userCompanyId` / `userTagIds` overrides on a transaction-backed
+  repair, ManualRepairModal writes the fields straight — so only the
+  **form-fields JSX + the three-field state** is shared, not the submit
+  logic.
+  - **Plan**: extract a `<RepairFields>` presentational component owning the
+    subtype/company/tags pickers + their value/onChange props; both modals
+    render it and keep their own divergent commit handlers.
+  - **Risk**: low — presentational-only extraction, two call sites; confirm
+    the tags-picker props (`selectedIds` vs `selectedId`) line up before
+    sharing.
+  - **Severity: 4.** Two sites today, but new repair-like flows (the feature
+    wave's loan-fee / HOA-charge editors) would re-clone the trio; pulling
+    it into one component now caps the spread.
+
+- **Date-input class string duplicated across six properties modals** — the
+  `field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm
+text-fg` class (the `w-full`-less `<input type="date">` variant) is
+  re-declared verbatim at `MortgagePaymentEditModal.tsx:153`,
+  `PropertyEditorModal.tsx:126`, `UpdatePropertyValueModal.tsx:69`,
+  `ManualRepairModal.tsx:77`, `MortgageEditorModal.tsx:211` (plus a
+  `py-1 text-xs` variant at `RepairReceiptsModal.tsx:28`).
+  - **Plan**: hoist a shared `DATE_INPUT_CLASS` const (or a tiny `DateInput`
+    wrapper) into `properties/` so the iOS date-input width workaround lives
+    in one place; the lone `text-xs` variant can take a size prop or stay
+    inline.
+  - **Risk**: trivial — string-constant extraction, no layout change.
+  - **Severity: 3** (easy-win-flavoured). Cheap, and the iOS date-input
+    workaround should not have to be re-fixed at six sites.
+
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
@@ -406,7 +504,10 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
   already wraps exactly that pattern. Adopt opportunistically when a
   modal is otherwise touched; not a batch PR (the `gap-1*` grep is
   noisy, so confirm the `text-muted` label span per-site before
-  swapping).
+  swapping). The 2026-06 properties sweep confirmed the whole
+  `src/components/properties/` layer (built after the helper) inlines this
+  label-stack at ~50 sites and never adopts `FormSection` — a rich seam for
+  drive-by adoption when those modals are next touched.
 
 ---
 
@@ -896,6 +997,29 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   earlier "~9 sites" claim collapsed once the unconditional-catch
   sites were consumed (see Landed). Left alone.
 
+- **`Property.accountId: ?: string | null` "inconsistency"** (2026-06,
+  Explore sweep rated it 4): flagged because `Property.accountId`
+  (`src/data/types/properties.ts:299`) uses `?: string | null` while the
+  sibling `accountId?: string` at `:192` doesn't. Rejected on re-read: the
+  two are **different fields with different semantics**, both correctly
+  encoded per the `AGENTS.md` "Optional fields" contract. Line 299 is the
+  documented `?: T | null` "explicitly cleared vs never set" case — its own
+  comment says "Nullable until the user picks one (mirrors
+  `SalaryView.accountId`); a dangling reference … is dropped to `null` on
+  load rather than rejecting the file." Line 192 is the repair-source
+  locator (paired with `sourceHistoryId`, "always set or cleared together",
+  best-effort across re-imports) where absent is the right "not set". The
+  agent misread the convention; there is nothing to fix.
+
+- **`property-mortgage/discovery.ts` "monolith"** (2026-06, Explore sweep
+  rated it 1–2): `discoverMortgagePayments()` is ~297 lines
+  (`discovery.ts:335`–`:632`) but is a linear funnel (setup → scan → filter
+  candidates → rank), each phase comment-delimited, with a self-contained
+  nested `nearestTargetKey()` helper — the opposite of the tangled
+  `migrateV24ToV25` state machine that warranted decomposition. Below the
+  fix threshold; left alone. Re-rate only if it crosses ~350 lines, at which
+  point the candidate-building phase (`:472`–`:586`) is the natural extract.
+
 - **Per-route `<noscript>` fallback drift** (2026-05, decayed to
   severity 2): the `resolveNoscriptBody` default-derivation landed
   (see Landed), so new routes can't inherit the home-page noscript.
@@ -978,3 +1102,34 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   dropped without a row (Tailwind `h-7 w-7` sizing and `duration-200` are
   not theming-token violations; splitting the modal hosts further inverts
   the in-progress host-colocation item).
+- 2026-06 sweep (Explore mode): single **properties-subsystem audit** angle
+  (two parallel Explore agents over `src/components/properties/` + the
+  root-level `AttachmentUploadModal.tsx`, and over
+  `src/data/property-mortgage/` + `usePropertyAttachments.ts` + the
+  properties registry/validator wiring) — the whole ~7.5k-line properties
+  page tree and ~1k-line property-mortgage data layer landed after the prior
+  sweeps and had never been catalogued. The data layer came back **clean**:
+  no data→components imports (the `usePropertyAttachments` mentions in
+  `useReceiptManager` / `data/receipts/target.ts` are comments, not
+  imports), the `PROPERTIES_SHEET_DESCRIPTOR` participates fully in the
+  sheet-type registry (validate / itemTypes / createDefaultItem; `reduceItem`
+  / `rowsForItem` correctly omitted since properties are global, not
+  row-shaped), financial primitives (interest / amortization / payment /
+  progress) are isolated and non-duplicated, and the type-safety /
+  native-`<select>` / hardcoded-string / hardcoded-hex greps were all clean.
+  Added four candidates: the `usePropertyAttachments` + `PropertyFileMeta`
+  placement (4, easy-win-flavoured), `PropertiesPage` modal-state
+  fragmentation (4, 18 `useState`), the `RepairsEditModal` / `ManualRepairModal`
+  field-trio duplication (4), and the six-site date-input class string (3).
+  Folded the rest into existing rows rather than inflating Pending:
+  `FileCategoryPicker` is a fourth site on the salary-pickers
+  shell-consolidation item (re-titled "four custom pickers"); the five
+  property editor-modal `useState` pyramids are named sites on the
+  opportunistic `useReducer` item; the un-adopted `FormSection` label-stack
+  is a rich seam noted on the existing easy-win. Filtered two Explore
+  over-ratings into Investigated-and-skipped: the `Property.accountId`
+  `?: string | null` "inconsistency" (rated 4 — actually the documented
+  `?: T | null` convention) and the `discovery.ts` "monolith" (rated 1–2 — a
+  well-decomposed linear funnel). `AttachmentUploadModal.tsx` confirmed
+  correctly placed at root (imported by salary / items / properties — genuinely
+  universal).
