@@ -957,7 +957,14 @@ AES-GCM envelope (key derived from the user's password via
 PBKDF2-SHA256, 600 000 iterations, 256-bit key, per-envelope 16-byte
 salt + 12-byte IV — see `crypto.ts`), and `cloud-mirror.ts` keeps an
 offline copy of cloud bytes in IndexedDB so a cold load survives a
-dead network. `save-chain.ts` coalesces overlapping saves;
+dead network. That mirror also powers a stale-while-revalidate load:
+a clean cache (no pending offline edits) paints instantly from
+IndexedDB while the network round-trip moves to a background
+revalidation that asks the cloud adapter for just the revision token
+(`getRevision` — Dropbox `get_metadata`, Drive metadata ETag) and only
+downloads the full body when the remote actually moved, delivering the
+re-paint through the mirror's synthesized `watch` channel.
+`save-chain.ts` coalesces overlapping saves;
 `backend-preference.ts` persists the per-user choice and cloud tokens;
 `backup-index.ts` / `backup-metadata.ts` back the timestamped-backup
 modal. The React hooks (`useUserDataStorage`, `useStorageBackend`,

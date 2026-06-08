@@ -81,6 +81,7 @@ const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
 const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
 const DELETE_ENDPOINT = "https://api.dropboxapi.com/2/files/delete_v2";
+const METADATA_ENDPOINT = "https://api.dropboxapi.com/2/files/get_metadata";
 
 // 1-second coalescing window so cloud sync matches local-storage
 // "save on every change" in feel — rapid keystrokes within a single
@@ -294,6 +295,38 @@ export function createDropboxAdapter(
     return { text, revision: meta?.rev };
   }
 
+  // Cheap revision probe used by the cloud-mirror to revalidate its
+  // cache without re-downloading the whole budget. `get_metadata`
+  // returns the file's `rev` in a small JSON body — the same token
+  // `loadFromDropbox` reads off the download response — so the wrapper
+  // can compare it against the mirror's last-known cloud revision and
+  // skip the multi-MB body fetch when nothing has changed.
+  async function getRevision(): Promise<string | null> {
+    log.info(`getRevision: metadata path=${DROPBOX_FILE_PATH}`);
+    const res = await authedFetch(METADATA_ENDPOINT, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ path: DROPBOX_FILE_PATH }),
+    }));
+    if (res.status === 409) {
+      // path/not_found — the app folder is empty (same shape as the
+      // download endpoint's 409). No revision to report.
+      log.info("getRevision: 409 path/not_found — empty app folder");
+      return null;
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      log.error(`getRevision: failed ${res.status}`, body);
+      throw new Error(`Dropbox get_metadata failed: ${res.status} ${body}`);
+    }
+    const meta = (await res.json()) as FileMetadata;
+    log.info(`getRevision: rev=${meta.rev}`);
+    return meta.rev;
+  }
+
   async function readBackupFile(path: string): Promise<string | null> {
     const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
       method: "POST",
@@ -454,6 +487,7 @@ export function createDropboxAdapter(
       "payslips",
       "propertyFiles",
       "exports",
+      "getRevision",
     ]),
     backups,
     receipts,
@@ -462,6 +496,7 @@ export function createDropboxAdapter(
     exports: exportsOps,
 
     load: () => loadFromDropbox(),
+    getRevision: () => getRevision(),
 
     async save(text: string, baseRevision?: string): Promise<Snapshot> {
       const args: { path: string; mute: boolean; mode: WriteMode } = {

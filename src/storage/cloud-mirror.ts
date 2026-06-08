@@ -24,11 +24,21 @@ const log = createLogger("cloud-mirror");
 //
 // State transitions the wrapper drives:
 //
-// 1. `load()` while online: fetch from cloud, write the result to
-//    the mirror, return the cloud snapshot.
-// 2. `load()` while offline: return the mirror snapshot with
-//    `offline: true`. The hook surfaces `kind: "offline"` and the
-//    user keeps editing.
+// 1. `load()` with a clean cache (no pending offline edits):
+//    stale-while-revalidate. Return the mirror snapshot immediately so
+//    the app paints from local IndexedDB without waiting on the
+//    network, and kick off a background `revalidate`. Revalidation
+//    first asks the inner adapter for just the revision token
+//    (`getRevision`, when supported) and skips the full body download
+//    when it matches the mirror; only a genuinely-moved remote is
+//    downloaded, persisted, and delivered through the `watch` channel
+//    as a re-paint. Auth / offline errors hit in the background don't
+//    yank the user off their cached data — the next `save` surfaces and
+//    queues them through transition 6.
+// 2. `load()` with no cache (first run): fetch from cloud, write the
+//    result to the mirror, return the cloud snapshot — and surface
+//    auth / conflict synchronously so the hook can react. A network
+//    failure here with no cache to fall back on bubbles up.
 // 3. `load()` with pending local edits and an unchanged remote: push
 //    the mirror to the cloud first, then return the post-push
 //    snapshot. Same baseRevision the offline `save()` would have
@@ -204,12 +214,112 @@ export function withCloudMirror(
     }
   }
 
+  // Stale-while-revalidate plumbing. A clean cache (no pending offline
+  // edits) is served from `load()` instantly; the network round-trip
+  // moves to `revalidate`, which only delivers a re-paint when the
+  // remote actually moved. Delivery rides the `watch` channel below
+  // (the hook turns a watch callback into `setData`), so the wrapper
+  // synthesizes a `watch` even when the inner cloud adapter has none.
+  // `revalidating` dedupes overlapping refreshes (mount load + an
+  // immediate pull-to-refresh); `bufferedDelivery` holds a fresh
+  // snapshot that resolved before the hook subscribed, flushed on
+  // subscribe so the re-paint isn't lost to a mount-order race.
+  let revalidateListener: ((snapshot: Snapshot) => void) | null = null;
+  let bufferedDelivery: Snapshot | null = null;
+  let revalidating = false;
+
+  function deliver(snapshot: Snapshot): void {
+    if (revalidateListener) {
+      revalidateListener(snapshot);
+    } else {
+      bufferedDelivery = snapshot;
+    }
+  }
+
+  async function revalidate(cached: CloudMirrorState): Promise<void> {
+    // Only one in-flight revalidation at a time — a mount load() and a
+    // near-simultaneous reload() would otherwise both hit the network.
+    if (revalidating) return;
+    revalidating = true;
+    try {
+      // Cheap probe first: when the backend can hand back just the
+      // revision token, compare it and skip the multi-MB body download
+      // entirely if the remote hasn't moved — the common refresh case.
+      if (inner.getRevision) {
+        try {
+          const rev = await inner.getRevision();
+          if (rev !== null && rev === cached.cloudRevision) {
+            log.info("revalidate: remote unchanged (probe) — cache stands");
+            return;
+          }
+        } catch (err) {
+          if (err instanceof AuthError) {
+            log.warn("revalidate: auth probe failed — deferring to next save");
+            return;
+          }
+          if (isOfflineError(err)) {
+            log.info("revalidate: offline probe — staying on cache");
+            return;
+          }
+          // Some other probe failure — fall through to a full load
+          // rather than leaving the cache unrevalidated.
+          log.warn("revalidate: getRevision failed — full load", err);
+        }
+      }
+      const fresh = await inner.load();
+      if (!fresh) {
+        // Remote was deleted out from under us. Clear the mirror so the
+        // next load seeds a fresh budget — but don't yank the bytes the
+        // user is currently looking at mid-session.
+        log.warn("revalidate: remote empty — clearing mirror");
+        await storage.clear();
+        return;
+      }
+      if (
+        fresh.revision !== undefined &&
+        fresh.revision === cached.cloudRevision
+      ) {
+        log.info("revalidate: remote unchanged (load) — cache stands");
+        return;
+      }
+      await persist({
+        text: fresh.text,
+        cloudRevision: fresh.revision ?? null,
+        localRevision: 0,
+        updatedAt: Date.now(),
+      });
+      log.info(
+        `revalidate: remote moved — delivering bytes=${fresh.text.length} rev=${fresh.revision ?? "<none>"}`,
+      );
+      deliver(fresh);
+    } catch (err) {
+      // Auth / offline discovered in the background don't yank the
+      // user off their cached data — the next save surfaces and queues
+      // the right way through the existing save path. Delivering them
+      // here would force a `setData` (and undo-history reset) over a
+      // possibly mid-edit session for no gain.
+      if (err instanceof AuthError) {
+        log.warn("revalidate: auth failed — deferring to next save");
+        return;
+      }
+      if (isOfflineError(err)) {
+        log.info("revalidate: offline — staying on cache");
+        return;
+      }
+      log.error("revalidate: failed — staying on cache", err);
+    } finally {
+      revalidating = false;
+    }
+  }
+
   // Forward inner capabilities, drop `loadSync` (mirror reads are an
-  // async IDB round-trip), and always advertise `markSynced` since
-  // this wrapper implements one of its own regardless of the inner.
+  // async IDB round-trip), and always advertise `markSynced` plus
+  // `watch` since this wrapper implements both regardless of the inner
+  // (`watch` doubles as the stale-while-revalidate delivery channel).
   const capabilities = new Set<AdapterCapability>(inner.capabilities);
   capabilities.delete("loadSync");
   capabilities.add("markSynced");
+  capabilities.add("watch");
 
   return {
     id: inner.id,
@@ -252,6 +362,21 @@ export function withCloudMirror(
       log.info(
         `load: start cached=${cached ? `bytes=${cached.text.length} localRev=${cached.localRevision} cloudRev=${cached.cloudRevision ?? "<none>"}` : "<none>"}`,
       );
+      // Stale-while-revalidate: a cache with no pending offline edits is
+      // authoritative-enough to paint immediately. Serve it now and move
+      // the network round-trip into a background `revalidate`, which only
+      // re-paints (via the `watch` channel) when the remote actually
+      // moved. The pending-edits and no-cache cases fall through to the
+      // blocking path below — they need the network result synchronously
+      // to detect conflicts or seed the first load.
+      if (cached && cached.localRevision === 0) {
+        log.info("load: serving cache, revalidating in background");
+        void revalidate(cached);
+        return {
+          text: cached.text,
+          revision: cached.cloudRevision ?? undefined,
+        };
+      }
       try {
         const fresh = await inner.load();
         if (cached && cached.localRevision > 0) {
@@ -382,9 +507,22 @@ export function withCloudMirror(
       }
     },
 
-    watch: inner.watch
-      ? (onRemoteChange) =>
-          inner.watch!((snap) => {
+    // Always present, even when the inner cloud adapter can't push:
+    // this is also the channel `revalidate` delivers stale-while-
+    // revalidate re-paints through. Registering the callback both wires
+    // the background revalidation and (when the inner supports it)
+    // subscribes to genuine out-of-band remote pushes.
+    watch(onRemoteChange: (snapshot: Snapshot) => void): () => void {
+      revalidateListener = onRemoteChange;
+      // A revalidation that resolved before the hook subscribed parked
+      // its snapshot here — flush it now so the re-paint isn't lost.
+      if (bufferedDelivery) {
+        const pending = bufferedDelivery;
+        bufferedDelivery = null;
+        onRemoteChange(pending);
+      }
+      const innerUnsub = inner.watch
+        ? inner.watch((snap) => {
             // A remote-push notification means another device wrote
             // a new revision. Drop any unsynced local edits and
             // mirror the new remote — the user already saw "offline"
@@ -408,6 +546,11 @@ export function withCloudMirror(
               onRemoteChange(snap);
             })();
           })
-      : undefined,
+        : undefined;
+      return () => {
+        revalidateListener = null;
+        innerUnsub?.();
+      };
+    },
   };
 }
