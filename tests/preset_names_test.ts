@@ -1,9 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { PRESET_CATEGORIES } from "../src/data/presets/categories";
 import { PRESET_ENTRY_TYPES } from "../src/data/presets/types";
-import { tFor, type TFunction } from "../src/i18n";
+import { ensureCatalog, tFor, type TFunction } from "../src/i18n";
 import { displayCategoryName, displayTypeName } from "../src/i18n/preset-names";
+
+// Swedish is code-split, so `tFor("sv", …)` falls back to English until
+// its catalog is loaded. Load it once before the suite so the assertions
+// below see real Swedish strings.
+beforeAll(async () => {
+  await ensureCatalog("sv");
+});
 
 function tEn(): TFunction {
   return (k, p) => tFor("en", k, p);

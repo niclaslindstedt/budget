@@ -1,8 +1,15 @@
 // Tiny custom i18n runtime. One React context carries the active
 // language, one typed `t()` function reads from per-language catalog
-// modules. No bundle-size cost from a third-party library, no async
-// loading, no namespaces — just a typed lookup with `{name}`-style
-// interpolation.
+// modules. No bundle-size cost from a third-party library, no namespaces
+// — just a typed lookup with `{name}`-style interpolation.
+//
+// English is bundled (the default + fallback + the `Catalog`/`MessageKey`
+// type source); every other language is code-split and loaded on demand
+// via `ensureCatalog`, so a language the user never selects costs nothing
+// at first paint. Lookups are still synchronous — `t()` / `tFor()` fall
+// back to English for any key whose language catalog isn't resident yet,
+// and `LanguageRoot` loads the active catalog before applying it so that
+// fallback is a safety net rather than a visible state.
 
 import {
   createContext,
@@ -13,10 +20,7 @@ import {
 } from "react";
 
 import { en, type Catalog } from "./locales/en";
-import { sv } from "./locales/sv";
 import type { Lang } from "./locale";
-
-const catalogs: Record<Lang, Catalog> = { en, sv };
 
 // Dotted-path type derived from the catalog shape. Lets `t("a.b.c")`
 // autocomplete to every leaf and rejects typos at the call site.
@@ -30,11 +34,11 @@ type Leaves<T, P extends string = ""> = {
 
 export type MessageKey = Leaves<Catalog>;
 
-// Flatten each catalog into a `dotted.path → string` map once at module
-// load. The runtime then resolves `t("a.b.c")` as a single `Map.get`
-// instead of splitting the path and walking the nested object on every
-// call. With 1000+ `t()` call sites and many landing in per-row render
-// paths, the per-call savings compound across the app.
+// Flatten a catalog into a `dotted.path → string` map. The runtime then
+// resolves `t("a.b.c")` as a single `Map.get` instead of splitting the
+// path and walking the nested object on every call. With 1000+ `t()`
+// call sites and many landing in per-row render paths, the per-call
+// savings compound across the app.
 function flattenCatalog(
   obj: unknown,
   prefix: string,
@@ -48,15 +52,68 @@ function flattenCatalog(
   }
 }
 
-const flatCatalogs: Record<Lang, Map<string, string>> = (() => {
-  const out = {} as Record<Lang, Map<string, string>>;
-  for (const [lang, catalog] of Object.entries(catalogs) as [Lang, Catalog][]) {
-    const m = new Map<string, string>();
-    flattenCatalog(catalog, "", m);
-    out[lang] = m;
-  }
-  return out;
-})();
+function flatten(catalog: Catalog): Map<string, string> {
+  const m = new Map<string, string>();
+  flattenCatalog(catalog, "", m);
+  return m;
+}
+
+// English is the default language and the fallback for every lookup, so
+// it stays statically imported and flattened eagerly — no async gate for
+// English users, and a guaranteed synchronous answer for any key in any
+// language (a not-yet-loaded catalog falls through to this map). It is
+// also the source of the compile-time `Catalog` / `MessageKey` types.
+const flatEn = flatten(en);
+
+// Every *other* language is code-split: its catalog (~50 kB gzip per
+// language) loads on demand via `ensureCatalog`, keyed by the loader
+// registry below, and is flattened into this map once it arrives. Seeded
+// with English so `flatCatalogs.en` is always present. Adding a language
+// is: extend `Lang`, add a `locales/<code>/` dir, and add one line here.
+const flatCatalogs: Partial<Record<Lang, Map<string, string>>> = {
+  en: flatEn,
+};
+
+// Dynamic-import thunks for the non-default languages. The `Record` is
+// keyed on `Exclude<Lang, "en">`, so adding a language to the `Lang`
+// union is a compile error until its loader is registered here too —
+// the lazy split can't be silently forgotten for a new language. Each
+// `import()` becomes its own rolldown chunk, kept out of the entry
+// bundle until the user actually runs in that language.
+const CATALOG_LOADERS: Record<Exclude<Lang, "en">, () => Promise<Catalog>> = {
+  sv: () => import("./locales/sv").then((m) => m.sv),
+};
+
+// De-dupe concurrent loads of the same language (e.g. StrictMode's
+// double-invoked effect, or a render firing before the first load
+// resolves) so a catalog is fetched and flattened at most once.
+const inFlight = new Map<Lang, Promise<void>>();
+
+// Whether `lang`'s catalog is resident — `true` immediately for English,
+// and for any language once `ensureCatalog` has resolved. Callers gate a
+// first paint on this to avoid a flash of English for a non-English user.
+export function isCatalogLoaded(lang: Lang): boolean {
+  return flatCatalogs[lang] !== undefined;
+}
+
+// Load (and flatten) `lang`'s catalog if it isn't resident yet. Resolves
+// immediately for English / already-loaded languages. Pure lookups
+// (`tFor`, `useT`) fall back to English until this resolves, so calling
+// it is about *completeness*, not correctness — the UI is never blocked
+// on it, only the optional first-paint gate is.
+export function ensureCatalog(lang: Lang): Promise<void> {
+  if (isCatalogLoaded(lang)) return Promise.resolve();
+  const existing = inFlight.get(lang);
+  if (existing) return existing;
+  const loader = CATALOG_LOADERS[lang as Exclude<Lang, "en">];
+  if (!loader) return Promise.resolve();
+  const p = loader().then((catalog) => {
+    flatCatalogs[lang] = flatten(catalog);
+    inFlight.delete(lang);
+  });
+  inFlight.set(lang, p);
+  return p;
+}
 
 function formatString(
   template: string,
@@ -94,7 +151,11 @@ export function useT(): TFunction {
   const lang = useContext(LanguageContext);
   return useCallback<TFunction>(
     (key, params) => {
-      const raw = flatCatalogs[lang].get(key) ?? key;
+      // Fall back to English when the active language's catalog hasn't
+      // loaded yet (a code-split language mid-fetch). `LanguageRoot`
+      // gates the first paint so this only ever surfaces briefly, if at
+      // all, during a runtime language switch.
+      const raw = (flatCatalogs[lang] ?? flatEn).get(key) ?? key;
       return formatString(raw, params);
     },
     [lang],
@@ -102,13 +163,17 @@ export function useT(): TFunction {
 }
 
 // Standalone lookup for non-React contexts (the format helpers, the
-// validator). Pass the language explicitly so this stays pure.
+// validator). Pass the language explicitly so this stays pure. Falls
+// back to English when `lang`'s catalog isn't resident yet — its only
+// non-test caller runs during render, long after `LanguageRoot` has
+// ensured the active catalog, so this fallback is a safety net rather
+// than a path the UI normally hits.
 export function tFor(
   lang: Lang,
   key: MessageKey,
   params?: Record<string, string | number>,
 ): string {
-  const raw = flatCatalogs[lang].get(key) ?? key;
+  const raw = (flatCatalogs[lang] ?? flatEn).get(key) ?? key;
   return formatString(raw, params);
 }
 
