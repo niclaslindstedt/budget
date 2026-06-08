@@ -721,7 +721,15 @@ property: `name`, optional loan terms (`loanAmount` — the sum borrowed,
 / `nextRateChangeDate`, `amortization` — monthly amortisation as either
 an annual percent of the initial loan or a fixed sum per month, resolved
 by `resolveMonthlyAmortization` in
-`src/data/property-mortgage/amortization.ts`), and `payments`. The
+`src/data/property-mortgage/amortization.ts`, `paymentCadenceMonths` —
+how often amortisation + interest is charged in months (1 = monthly, the
+default; 3 = quarterly, etc., picked in the editor's "Payment frequency"
+dropdown), `loanStartDate` — when the loan started being paid, falling
+back to the property's `purchaseDate`), and `payments`. The last two feed
+Find mortgage payments' "highly probable" check: it counts how many
+charges to expect since `loanStartDate` at the `paymentCadenceMonths`
+cadence, so a clean run that covers only part of that window isn't
+promoted. The
 lender and the bound account both live on the parent Property, not here
 (one bank / one account per home — every loan against it is paid to the
 same account as a single charge). A property can carry several. Created
@@ -883,13 +891,28 @@ sweeps the history for matching months, dropping any month before the
 property's `purchaseDate` outright (a payment can't predate ownership)
 and centring the amount band on the surviving on/after-purchase months.
 Series rank a highly probable charge first (`highlyProbable`) — one that
-recurs on a clean once-a-month cadence with no gaps (`monthlyCadence`:
-months.length === span, over ≥ `MORTGAGE_RECURRENCE_MIN_MONTHS` months)
-under one stable description (not amount-salvaged) whose typical amount
-lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure —
-so monthly recurrence + matching amount + stable text trumps the tag /
-company anchor and leads even over a tagged charge (marked "Highly
-probable" in the modal, standout `--success` styling). Below that they
+recurs on its loan's cadence with no gaps (`regularCadence`: consecutive
+months spaced by `paymentCadenceMonths`, over ≥
+`MORTGAGE_RECURRENCE_MIN_MONTHS` occurrences) under one stable
+description (not amount-salvaged), whose typical amount lands within
+`MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure, AND which
+covers the whole window the loan has been active (`windowCovered`:
+charges from the loan start — `loanStartDate`, or the purchase — to the
+latest outflow the account has seen, at that cadence, allowing one
+missing slot). The window leg is what keeps a charge that recurs cleanly
+for only the last five of eight expected months (started late, or
+stopped) out of the promotion — it stays an ordinary candidate. Only one
+charge is promoted per expected figure (combined, or per-loan): among the
+candidates matching a figure's amount and cadence the strongest by the
+usual strictness-then-closeness order wins, so a second clean-but-wrong
+charge near the same figure never also lights up, while a property paid
+as one draw per loan can light up each loan's charge. A complete
+recurrence + matching amount + stable text trumps the tag / company
+anchor and leads even over a tagged charge (marked "Highly probable" in
+the modal, standout `--success` styling). The modal threads
+`targetSchedules` (parallel to `targetAmounts`: each loan's start +
+cadence, index 0 the combined) into the walk; the per-target funnel logs
+each candidate's `regularCadence` / `coversExpectedWindow`. Below that they
 rank by strictness (tagged / payment-seeded above amount-only), then by
 closeness to the expected combined figure (Σ `resolveMonthlyPaymentAt`
 across the mortgages — `targetDelta`); any whose typical charge is more

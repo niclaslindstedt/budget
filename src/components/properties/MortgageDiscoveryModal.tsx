@@ -136,6 +136,31 @@ export function MortgageDiscoveryModal({
     return [combined, ...each];
   }, [mortgages]);
 
+  // Per-target schedules parallel to `targetAmounts`: when each loan started
+  // being charged and how often. The finder reads these to tell how many
+  // charges to expect since the loan began, so a clean run that covers only
+  // part of that window isn't flagged "highly probable". Index 0 is the
+  // combined charge — it recurs as often as the most frequent loan and starts
+  // when the earliest one did.
+  const targetSchedules = useMemo(() => {
+    const each = mortgages.map((m) => ({
+      startDate: m.loanStartDate ?? property?.purchaseDate,
+      cadenceMonths: m.paymentCadenceMonths ?? 1,
+    }));
+    const starts = each
+      .map((s) => s.startDate)
+      .filter((d): d is string => d !== undefined);
+    const combined = {
+      startDate:
+        starts.length > 0
+          ? starts.reduce((a, b) => (a < b ? a : b))
+          : property?.purchaseDate,
+      cadenceMonths:
+        each.length > 0 ? Math.min(...each.map((s) => s.cadenceMonths)) : 1,
+    };
+    return [combined, ...each];
+  }, [mortgages, property]);
+
   const companyIds = useMemo(
     () => (property?.companyId ? [property.companyId] : []),
     [property],
@@ -159,6 +184,7 @@ export function MortgageDiscoveryModal({
       seedEntryIds: [...addedSourceIds],
       fromDate: property.purchaseDate,
       targetAmounts,
+      targetSchedules,
     });
   }, [
     property,
@@ -171,6 +197,7 @@ export function MortgageDiscoveryModal({
     companyIds,
     addedSourceIds,
     targetAmounts,
+    targetSchedules,
   ]);
 
   // Mirror the scan funnel to the Logs tab whenever the inputs change while
@@ -197,7 +224,8 @@ export function MortgageDiscoveryModal({
         `  candidate "${c.label}": amount=${Math.round(c.suggestedAmount)} ` +
           `months=${c.monthCount} eligible=${c.eligibleMonthCount} ` +
           `delta=${c.targetDelta === undefined ? "n/a" : c.targetDelta.toFixed(3)} ` +
-          `${c.monthlyCadence ? "monthly " : ""}${c.highlyProbable ? "highly-probable " : ""}` +
+          `${c.regularCadence ? "cadence " : ""}${c.coversExpectedWindow ? "full-window " : "partial-window "}` +
+          `${c.highlyProbable ? "highly-probable " : ""}` +
           `${c.synthetic ? "amount-grouped " : ""}-> ${c.outcome}`,
       );
     }

@@ -26,15 +26,25 @@
 // appears. Only with no tag, no payment, AND no expected figure does the walk
 // report `seed: "none"` and nudge the user to tag a month first.
 //
-// On top of the strictness tiers sits one stronger signal: **monthly
-// recurrence**. A mortgage is paid once a month, every month, for the same
-// amount — so a charge that recurs on a clean once-a-month cadence (no gaps)
-// over a meaningful span, under one stable description, whose typical amount
-// lands within the tight band of an expected figure is flagged **highly
-// probable** and TRUMPS the tag / company anchor in the ranking. The recurrence
-// + matching amount + stable text is a surer signal that the charge IS the
-// mortgage than any single tag the user happened to apply, so it leads even
-// over a tagged charge — and the modal marks it so it stands out.
+// On top of the strictness tiers sits one stronger signal: **a complete
+// recurrence on the loan's cadence**. A mortgage is paid on a fixed cadence
+// (monthly by default, or whatever `Mortgage.paymentCadenceMonths` records),
+// every period, for the same amount — so a charge that recurs on that clean
+// cadence with no gaps, under one stable description, whose typical amount
+// lands within the tight band of an expected figure, AND which covers the
+// whole window the loan has been active (from its start date to the latest
+// charge the account has seen) is flagged **highly probable** and TRUMPS the
+// tag / company anchor in the ranking. The "covers the whole window" leg is
+// what stops a charge that happens to recur cleanly for only the last five of
+// eight months since the loan began (one that started late or has since
+// stopped) from masquerading as the mortgage — it stays an ordinary candidate.
+// Only ONE charge is promoted per expected figure: among the candidates that
+// match a given target's amount and cadence, the closest is marked, so a
+// second clean-but-wrong charge near the same figure doesn't also light up.
+// The recurrence + matching amount + stable text + complete window is a surer
+// signal that the charge IS the mortgage than any single tag the user happened
+// to apply, so it leads even over a tagged charge — and the modal marks it so
+// it stands out.
 //
 // Pure: fed an account's history plus the company / type / rule / hint
 // tables needed to resolve each entry's tags, it emits the matching charge
@@ -81,20 +91,22 @@ export type MortgagePaymentSeries = {
   // terms resolve them. Drives ordering so the charge whose amount lines
   // up with the maths leads. `undefined` when no expected figure is known.
   targetDelta?: number;
-  // True when the charge recurs on a clean monthly cadence — exactly one
-  // charge in every calendar month across its (post-purchase) span, no gaps —
-  // over a span long enough to establish the pattern
-  // (`MORTGAGE_RECURRENCE_MIN_MONTHS`). A mortgage is paid once a month, every
-  // month, so an unbroken monthly cadence is itself strong evidence the charge
+  // True when the charge recurs on its loan's cadence with no gaps — one
+  // charge every `paymentCadenceMonths` (monthly by default) across its
+  // (post-purchase) span — over enough occurrences to establish the pattern
+  // (`MORTGAGE_RECURRENCE_MIN_MONTHS`). A mortgage is paid on a fixed cadence,
+  // every period, so an unbroken cadence is itself strong evidence the charge
   // IS the mortgage, independent of any tag.
-  monthlyCadence: boolean;
-  // The standout candidate: a charge that recurs every month
-  // (`monthlyCadence`) under one stable description (not an amount-salvaged
-  // group) whose typical amount lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE`
-  // of an expected figure. Monthly recurrence + matching amount + stable text
-  // is the surest signal a charge is the mortgage, so it TRUMPS the tag /
-  // company anchor in the ranking and is marked "highly probable" in the modal.
-  // `false` for any series missing a leg.
+  regularCadence: boolean;
+  // The standout candidate: the closest charge, per expected figure, that
+  // recurs on its cadence (`regularCadence`) under one stable description (not
+  // an amount-salvaged group), whose typical amount lands within
+  // `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of that figure, AND which covers the
+  // whole window the loan has been active (see `windowCovered`). A complete
+  // recurrence + matching amount + stable text is the surest signal a charge
+  // is the mortgage, so it TRUMPS the tag / company anchor in the ranking and
+  // is marked "highly probable" in the modal. `false` for any series missing a
+  // leg, and for the runner-up when two charges match the same figure.
   highlyProbable: boolean;
 };
 
@@ -145,8 +157,9 @@ export type MortgageCandidateDiagnostic = {
   eligibleMonthCount: number; // months surviving the purchase-date cut
   targetDelta?: number; // distance to the closest expected figure
   synthetic: boolean; // grouped by amount (meaningless description) vs by text
-  monthlyCadence: boolean; // one charge in every month across the span, no gaps
-  highlyProbable: boolean; // monthly + stable text + amount in band — leads
+  regularCadence: boolean; // one charge per cadence across the span, no gaps
+  coversExpectedWindow: boolean; // spans the whole window since the loan started
+  highlyProbable: boolean; // cadence + full window + amount in band — leads its figure
   outcome: MortgageCandidateOutcome;
 };
 
@@ -219,6 +232,16 @@ export type MortgageDiscoveryInput = {
   // the loan terms actually resolve an expected figure — with no terms recorded
   // and nothing tagged the walk reports `seed: "none"`, as before.
   targetAmounts?: readonly number[];
+  // Per-target expected schedules, parallel to `targetAmounts` (index 0 the
+  // combined figure, then one per mortgage). Each says when the loan(s) backing
+  // that figure started being charged (`startDate`) and how often
+  // (`cadenceMonths`, 1 = monthly), so the finder can tell how many charges
+  // SHOULD exist by now and withhold the "highly probable" promotion from a
+  // clean run that covers only part of that window (5 of 8 months). Absent, or
+  // a missing entry, ⇒ that target is treated as a monthly charge dated from
+  // `fromDate`, so the promotion falls back to its prior "no internal gaps"
+  // behaviour.
+  targetSchedules?: readonly { startDate?: string; cadenceMonths: number }[];
   // Relative half-width of the match band, as a fraction (0.1 ⇒ ±10%).
   // Applied by `monthsWithinBand` at preview time; defaults to
   // `DEFAULT_MORTGAGE_TOLERANCE`.
@@ -253,11 +276,12 @@ export const MORTGAGE_PLAUSIBILITY_FACTOR = 5;
 // the metadata and ignore this band.
 export const MORTGAGE_AMOUNT_ANCHOR_TOLERANCE = 0.2;
 
-// The minimum number of months a charge must recur over before a clean
-// once-a-month cadence counts as evidence in its own right. Two consecutive
-// months can line up by chance; a quarter or more of unbroken monthly draws is
-// the signature of a standing payment like a mortgage. Below this the
-// `highlyProbable` promotion stays off — a too-short run isn't a pattern yet.
+// The minimum number of occurrences a charge must recur over before a clean
+// cadence counts as evidence in its own right. Two consecutive draws can line
+// up by chance; three or more unbroken on-cadence draws are the signature of a
+// standing payment like a mortgage. Below this the `highlyProbable` promotion
+// stays off — a too-short run isn't a pattern yet. Counted in occurrences, not
+// calendar months, so it applies the same to a quarterly loan.
 export const MORTGAGE_RECURRENCE_MIN_MONTHS = 3;
 
 // Relative distance between an amount and a reference (0 = exact match).
@@ -278,6 +302,51 @@ function spanOfMonths(monthKeys: readonly string[]): number {
   const ly = Number(last.slice(0, 4));
   const lm = Number(last.slice(5, 7));
   return (ly - fy) * 12 + (lm - fm) + 1;
+}
+
+// Whole months from `a` to `b` ("YYYY-MM" keys); negative when b precedes a.
+function monthDiff(a: string, b: string): number {
+  const ay = Number(a.slice(0, 4));
+  const am = Number(a.slice(5, 7));
+  const by = Number(b.slice(0, 4));
+  const bm = Number(b.slice(5, 7));
+  return (by - ay) * 12 + (bm - am);
+}
+
+// True when a chronological list of "YYYY-MM" keys recurs on a fixed cadence
+// (a charge every `cadence` months) with no gaps, over at least
+// `MORTGAGE_RECURRENCE_MIN_MONTHS` occurrences. For the default monthly cadence
+// this means one charge in every calendar month; a quarterly loan (cadence 3)
+// wants a charge every third month.
+function cadenceRegular(
+  monthKeys: readonly string[],
+  cadence: number,
+): boolean {
+  if (monthKeys.length < MORTGAGE_RECURRENCE_MIN_MONTHS) return false;
+  for (let i = 1; i < monthKeys.length; i += 1) {
+    if (monthDiff(monthKeys[i - 1], monthKeys[i]) !== cadence) return false;
+  }
+  return true;
+}
+
+// True when a series' charge count reaches the number expected since the loan
+// started — the cadence slots from `startMonth` to `latestMonth` inclusive,
+// allowing one missing slot for a charge that hasn't posted yet. `latestMonth`
+// is the most recent outflow the account has seen (ordinary spending recurs
+// every month, so it tracks how current the data is, independent of any one
+// charge). When the start or the data window is unknown there is nothing to
+// measure against, so it can't demote — returns true, and the promotion falls
+// back to the cadence check alone.
+function windowCovered(
+  observedCount: number,
+  startMonth: string | undefined,
+  latestMonth: string | undefined,
+  cadence: number,
+): boolean {
+  if (!startMonth || !latestMonth) return true;
+  const windowMonths = Math.max(0, monthDiff(startMonth, latestMonth));
+  const expectedCount = Math.floor(windowMonths / cadence) + 1;
+  return observedCount >= expectedCount - 1;
 }
 
 // The grouping key the finder buckets a charge's months under. The shared
@@ -384,6 +453,12 @@ export function discoverMortgagePayments(
   diag.totalEntries = entries.length;
   diag.targetAmounts = targetAmounts;
 
+  // The most recent month any outflow lands in — how current the account's
+  // data is. Ordinary spending recurs every month, so a mortgage that stopped
+  // a few months ago shows up as a series whose last month falls short of this,
+  // which `windowCovered` reads to demote it from "highly probable".
+  let latestOutflowMonth: string | undefined;
+
   for (const entry of entries) {
     if (entry.hidden) {
       diag.skippedHidden++;
@@ -398,6 +473,10 @@ export function discoverMortgagePayments(
       continue;
     }
     diag.outflowEntries++;
+
+    const outflowMonth = entry.date.slice(0, 7);
+    if (!latestOutflowMonth || outflowMonth > latestOutflowMonth)
+      latestOutflowMonth = outflowMonth;
 
     const textKey = financeGroupKey(entry.description);
     let key: string;
@@ -459,6 +538,9 @@ export function discoverMortgagePayments(
     (MORTGAGE_PLAUSIBILITY_FACTOR - 1) / MORTGAGE_PLAUSIBILITY_FACTOR;
 
   const candidateByKey = new Map<string, MortgageCandidateDiagnostic>();
+  // The expected-figure index each kept series sits closest to — the bucket the
+  // "highly probable" promotion picks one winner from (best per figure).
+  const targetIndexByKey = new Map<string, number>();
 
   // The candidate pool. Every tagged / payment-seeded group is a candidate;
   // and whenever the loan terms resolve an expected figure, so is every other
@@ -505,27 +587,43 @@ export function discoverMortgagePayments(
       amountsFor(eligibleMonths.length > 0 ? eligibleMonths : sortedMonths),
     );
     let targetDelta: number | undefined;
-    for (const target of targetAmounts) {
+    let targetIndex: number | undefined;
+    targetAmounts.forEach((target, i) => {
       const delta = relativeDelta(suggestedAmount, target);
-      if (targetDelta === undefined || delta < targetDelta) targetDelta = delta;
-    }
+      if (targetDelta === undefined || delta < targetDelta) {
+        targetDelta = delta;
+        targetIndex = i;
+      }
+    });
 
-    // Monthly recurrence: one charge in every calendar month across the
-    // (post-purchase) span with no gaps — months.length === span — over a span
-    // long enough to be a pattern, not a coincidence. The standout "highly
-    // probable" candidate adds a stable description (not an amount-salvaged
-    // group) and a typical amount inside the tight selection band of an
-    // expected figure: a mortgage paid once a month for the same sum.
+    // The cadence + window this series is judged against: the schedule of the
+    // expected figure it sits closest to (`targetIndex`), falling back to a
+    // monthly charge dated from the purchase when the caller passes no
+    // per-target schedule. `cadenceMonths` lets a quarterly loan count its
+    // charges every third month instead of every month.
+    const schedule =
+      targetIndex !== undefined
+        ? input.targetSchedules?.[targetIndex]
+        : undefined;
+    const cadence = Math.max(1, Math.round(schedule?.cadenceMonths ?? 1));
+    const startMonth = (schedule?.startDate ?? fromDate)?.slice(0, 7);
+
+    // Recurs on its cadence with no gaps, over enough occurrences to be a
+    // pattern (`MORTGAGE_RECURRENCE_MIN_MONTHS`).
     const spanMonths = spanOfMonths(eligibleMonths);
-    const monthlyCadence =
-      eligibleMonths.length >= MORTGAGE_RECURRENCE_MIN_MONTHS &&
-      spanMonths === eligibleMonths.length;
+    const regularCadence = cadenceRegular(eligibleMonths, cadence);
+    // Spans the whole window the loan has been active — from its start (the
+    // loan-start date, or the purchase) to the latest charge the account has
+    // seen — at that cadence. A charge that recurs cleanly but covers only, say,
+    // 5 of the 8 months expected since the loan began (started late, or has
+    // since stopped) is regular but NOT complete, so it isn't promoted.
+    const coversExpectedWindow = windowCovered(
+      eligibleMonths.length,
+      startMonth,
+      latestOutflowMonth,
+      cadence,
+    );
     const synthetic = syntheticKeys.has(key);
-    const highlyProbable =
-      monthlyCadence &&
-      !synthetic &&
-      targetDelta !== undefined &&
-      targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE;
 
     // Amount-only groups are EVERY outflow in the account; keep only the ones
     // whose typical charge lands near an expected figure, and don't even record
@@ -540,19 +638,23 @@ export function discoverMortgagePayments(
     )
       continue;
 
+    // `highlyProbable` is decided in a second pass below — at most one charge
+    // per expected figure earns it — so it starts false here.
     const cand: MortgageCandidateDiagnostic = {
       label: labelByKey.get(key) ?? key,
       suggestedAmount,
       monthCount: sortedMonths.length,
       eligibleMonthCount: eligibleMonths.length,
       synthetic,
-      monthlyCadence,
-      highlyProbable,
+      regularCadence,
+      coversExpectedWindow,
+      highlyProbable: false,
       outcome: "kept",
       ...(targetDelta !== undefined ? { targetDelta } : {}),
     };
     candidateByKey.set(key, cand);
     diag.candidates.push(cand);
+    if (targetIndex !== undefined) targetIndexByKey.set(key, targetIndex);
 
     if (eligibleMonths.length === 0) {
       cand.outcome = "no-eligible-month";
@@ -579,15 +681,60 @@ export function discoverMortgagePayments(
         };
       }),
       anchor: keyAnchor,
-      monthlyCadence,
-      highlyProbable,
+      regularCadence,
+      // Promoted in the second pass below.
+      highlyProbable: false,
       ...(targetDelta !== undefined ? { targetDelta } : {}),
     });
   }
 
-  // Rank a HIGHLY PROBABLE charge first — monthly recurrence + a matching
-  // amount + stable text is a surer signal that a charge is the mortgage than
-  // any single tag, so it trumps the tag / company anchor and leads the list.
+  const anchorRank = (a: MortgagePaymentSeries["anchor"]) =>
+    a === "tag" ? 0 : a === "payment" ? 1 : 2;
+
+  // Promote the standout candidate per expected figure to "highly probable":
+  // among the kept series whose amount, cadence, and full-window coverage all
+  // match a given target, the strongest one earns it — chosen by the same
+  // strictness-then-closeness order the final ranking uses, so a charge the
+  // user tagged still wins over a marginally-closer untagged one. Going
+  // best-per-figure (not a single global winner) lets a property paid as one
+  // draw PER loan light up each loan's charge, while a property paid as one
+  // combined charge lights up only that — and a second clean-but-wrong charge
+  // sitting near the same figure (the screenshot's incomplete 5-of-8-months
+  // run) never also lights up, because it either loses to the stronger charge
+  // or fails the window check outright.
+  const bestByTarget = new Map<number, MortgagePaymentSeries>();
+  for (const s of series) {
+    const cand = candidateByKey.get(s.key);
+    const eligible =
+      cand !== undefined &&
+      !cand.synthetic &&
+      s.regularCadence &&
+      cand.coversExpectedWindow &&
+      s.targetDelta !== undefined &&
+      s.targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE;
+    if (!eligible) continue;
+    const ti = targetIndexByKey.get(s.key);
+    if (ti === undefined) continue;
+    const best = bestByTarget.get(ti);
+    const stronger =
+      !best ||
+      anchorRank(s.anchor) < anchorRank(best.anchor) ||
+      (anchorRank(s.anchor) === anchorRank(best.anchor) &&
+        (s.targetDelta! < best.targetDelta! ||
+          (s.targetDelta === best.targetDelta &&
+            s.suggestedAmount > best.suggestedAmount)));
+    if (stronger) bestByTarget.set(ti, s);
+  }
+  for (const s of bestByTarget.values()) {
+    s.highlyProbable = true;
+    const cand = candidateByKey.get(s.key);
+    if (cand) cand.highlyProbable = true;
+  }
+
+  // Rank a HIGHLY PROBABLE charge first — a complete on-cadence recurrence + a
+  // matching amount + stable text is a surer signal that a charge is the
+  // mortgage than any single tag, so it trumps the tag / company anchor and
+  // leads the list.
   // Below that, rank by STRICTNESS — a charge the user tagged (or already
   // recorded a payment for) is a surer bet than one matched only by its amount,
   // so it leads even when an amount-only charge sits a hair closer to the
@@ -595,8 +742,6 @@ export function discoverMortgagePayments(
   // with the maths leads (closest `targetDelta` first); with no expected figure
   // at all, the largest typical charge leads so the amortisation draw beats the
   // interest draw when a loan is paid in two.
-  const anchorRank = (a: MortgagePaymentSeries["anchor"]) =>
-    a === "tag" ? 0 : a === "payment" ? 1 : 2;
   series.sort((a, b) => {
     if (a.highlyProbable !== b.highlyProbable) return a.highlyProbable ? -1 : 1;
     const byStrictness = anchorRank(a.anchor) - anchorRank(b.anchor);

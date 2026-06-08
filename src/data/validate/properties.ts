@@ -318,6 +318,11 @@ function validateMortgage(raw: unknown): Mortgage | null {
     mortgage.nextRateChangeDate = raw.nextRateChangeDate;
   const amortization = validateAmortization(raw.amortization);
   if (amortization) mortgage.amortization = amortization;
+  // Payment cadence in months (1 = monthly). A malformed / below-1 value is
+  // dropped, leaving the finder to assume monthly.
+  if (isFiniteNumber(raw.paymentCadenceMonths) && raw.paymentCadenceMonths >= 1)
+    mortgage.paymentCadenceMonths = raw.paymentCadenceMonths;
+  if (isIsoDate(raw.loanStartDate)) mortgage.loanStartDate = raw.loanStartDate;
   if (Array.isArray(raw.payments)) {
     const seen = new Set<string>();
     for (const rawPayment of raw.payments) {

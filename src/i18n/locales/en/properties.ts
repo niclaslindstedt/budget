@@ -101,6 +101,17 @@ const properties = {
     "Annual amortisation as a percent of the original loan amount. Add a loan amount to see the monthly figure.",
   amortFixedHint: "A flat amount paid down every month.",
   amortPreview: "≈ {amount} per month",
+  cadenceLabel: "Payment frequency",
+  cadenceHint:
+    "How often the amortisation and interest are charged. Most loans are paid monthly — “Find mortgage payments” expects a charge this often since the loan started.",
+  cadenceMonthly: "Monthly",
+  cadenceQuarterly: "Quarterly",
+  cadenceSemiAnnual: "Every 6 months",
+  cadenceAnnual: "Yearly",
+  cadenceEveryN: "Every {n} months",
+  loanStartLabel: "Loan start date",
+  loanStartHint:
+    "When this loan started being paid. “Find mortgage payments” counts how many charges to expect since then, so a charge missing some of those months isn't flagged highly probable. Defaults to the property's purchase date.",
   accountLabel: "Account",
   accountHint:
     "The account this property's mortgages are paid from. “Find mortgage payments” scans this account's bank history for the charges.",
