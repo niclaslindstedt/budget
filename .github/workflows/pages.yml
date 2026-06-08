@@ -190,13 +190,17 @@ jobs:
           # Drop CNAME from the per-slot copy; only the root artifact
           # may carry it. (Vite copies public/CNAME into every build.)
           rm -f "$STAGE/CNAME"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           # Build an orphan tree containing just the build output and
           # force-push it to BRANCH_DEPLOY_REF. Force-push is safe: the
           # branch is auto-managed and only ever written by this step.
+          # The identity must be configured INSIDE the staging repo —
+          # `git init` below creates a fresh repo with no inherited
+          # config, so a workspace-level `git config` would not reach
+          # the commit here ("empty ident name" otherwise).
           cd "$STAGE"
           git init -q -b "$BRANCH_DEPLOY_REF"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "branch deploy: ${{ steps.dispatch.outputs.ref }} (${{ github.run_id }})"
           REMOTE_URL=$(git -C "$GITHUB_WORKSPACE" remote get-url origin)
