@@ -395,27 +395,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
     will grow the same page-level modal-selector pile; a `useModalRouter`
     shape established here is the template the next page copies.
 
-- **`RepairsEditModal` + `ManualRepairModal` share the repair
-  company/tags/subtype field trio** — `properties/RepairsEditModal.tsx`
-  (552) and `properties/ManualRepairModal.tsx` (335) both carry the
-  `subtypeId` / `companyId` / `tagIds` `useState` triple (RepairsEditModal
-  `:161`–`:167`, ManualRepairModal `:105`–`:107`) and render the identical
-  `SubtypePicker` + `CompanyPicker` + tags-picker stack. The commit side
-  diverges — RepairsEditModal diffs against `seedCompanyId` / `seedTags` to
-  emit `userCompanyId` / `userTagIds` overrides on a transaction-backed
-  repair, ManualRepairModal writes the fields straight — so only the
-  **form-fields JSX + the three-field state** is shared, not the submit
-  logic.
-  - **Plan**: extract a `<RepairFields>` presentational component owning the
-    subtype/company/tags pickers + their value/onChange props; both modals
-    render it and keep their own divergent commit handlers.
-  - **Risk**: low — presentational-only extraction, two call sites; confirm
-    the tags-picker props (`selectedIds` vs `selectedId`) line up before
-    sharing.
-  - **Severity: 4.** Two sites today, but new repair-like flows (the feature
-    wave's loan-fee / HOA-charge editors) would re-clone the trio; pulling
-    it into one component now caps the spread.
-
 - **Date-input class string duplicated across six properties modals** — the
   `field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm
 text-fg` class (the `w-full`-less `<input type="date">` variant) is
@@ -485,6 +464,29 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`RepairsEditModal` + `ManualRepairModal` shared subtype/company/tags
+  field trio → `<RepairFields>` presentational component** (2026-06): both
+  repair editors rendered a byte-identical `SubtypePicker` + `CompanyPicker`
+  (`variant="field"`) + `TagsPicker` stack — same labels
+  (`repairSubtypeLabel` / `repairCompanyLabel` / `repairTagsLabel`), same
+  `repairSubtypePlaceholder` — while their commit sides genuinely diverge
+  (`RepairsEditModal` diffs against `seedCompanyId` / `seedTagIds` to emit
+  `userCompanyId` / `userTagIds` overrides on the primary transaction;
+  `ManualRepairModal` writes the fields straight onto the repair). Extracted
+  `src/components/properties/RepairFields.tsx` owning the three pickers + all
+  their i18n (labels, placeholder, and the company / tags hints), keyed off
+  value/onChange props. Two divergences became props: `fixedParentTypeId`
+  (`typeId ?? undefined` in the transaction editor where the primary may be
+  unresolved, the always-set `typeId` in the manual editor) and
+  `showEntryHints` (the `repairCompanyHint` / `repairTagsHint` spans render
+  only for the transaction-backed editor, where company / tags live on the
+  underlying charge). Both modals keep their own `subtypeId` / `companyId` /
+  `tagIds` state, reset logic, and commit handlers; only the field JSX moved.
+  Dropped the now-unused `SubtypePicker` / `CompanyPicker` / `TagsPicker`
+  imports from both. Pure presentational refactor — identical render at both
+  sites; fast loop + build + icons-check green, all 1504 tests pass. **Was
+  severity 4.**
 
 - **Page-specific `usePropertyAttachments.ts` relocated to
   `src/components/properties/`** (2026-06): the properties-only
