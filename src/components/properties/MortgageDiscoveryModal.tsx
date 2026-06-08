@@ -231,6 +231,18 @@ export function MortgageDiscoveryModal({
     }
   }, [open, property, hasAccount, result]);
 
+  // The pre-checked set when the user hasn't toggled anything yet
+  // (`selectedKeys === null`). When the scan surfaces any "highly probable"
+  // charge, pre-check only those — the steady, complete rhythm is the surest
+  // sign they're the mortgage, so weaker candidates are opt-in rather than
+  // opt-out. With no highly-probable hit, fall back to pre-checking every
+  // charge found.
+  const defaultSelectedKeys = useMemo(() => {
+    const probable = result.series.filter((s) => s.highlyProbable);
+    const source = probable.length > 0 ? probable : result.series;
+    return new Set(source.map((s) => s.key));
+  }, [result.series]);
+
   // Build the per-mortgage payments: each selected charge's months within
   // the band become a combined transaction, split across the property's
   // mortgages by their expected share at that month's rate.
@@ -238,8 +250,9 @@ export function MortgageDiscoveryModal({
     const byMortgage: Record<string, MortgagePayment[]> = {};
     const freshMonthKeys: string[] = [];
     let alreadyAdded = 0;
+    const effectiveKeys = selectedKeys ?? defaultSelectedKeys;
     for (const series of result.series) {
-      if (selectedKeys !== null && !selectedKeys.has(series.key)) continue;
+      if (!effectiveKeys.has(series.key)) continue;
       for (const month of monthsWithinBand(
         series,
         series.suggestedAmount,
@@ -278,7 +291,14 @@ export function MortgageDiscoveryModal({
       firstMonth: sortedKeys[0],
       lastMonth: sortedKeys[sortedKeys.length - 1],
     };
-  }, [result, selectedKeys, addedSourceIds, tolerance, mortgages]);
+  }, [
+    result,
+    selectedKeys,
+    defaultSelectedKeys,
+    addedSourceIds,
+    tolerance,
+    mortgages,
+  ]);
 
   if (!open) return null;
 
@@ -377,12 +397,13 @@ export function MortgageDiscoveryModal({
                         series={s}
                         settings={settings}
                         checked={
-                          selectedKeys === null || selectedKeys.has(s.key)
+                          selectedKeys === null
+                            ? defaultSelectedKeys.has(s.key)
+                            : selectedKeys.has(s.key)
                         }
                         onToggle={() =>
                           setSelectedKeys((prev) => {
-                            const base =
-                              prev ?? new Set(result.series.map((x) => x.key));
+                            const base = prev ?? defaultSelectedKeys;
                             const next = new Set(base);
                             if (next.has(s.key)) next.delete(s.key);
                             else next.add(s.key);
