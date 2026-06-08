@@ -15,11 +15,23 @@
 // and so the seam is ready if alignment ever does become settings-driven
 // — only this file would change, not the dozen cell / header call sites.
 
+import type { CSSProperties } from "react";
+
 export type AmountAlignment = "left" | "right";
 
 export const ALIGNMENT: AmountAlignment = "right";
 
 const RIGHT = ALIGNMENT === "right";
+
+// Horizontal breathing room inside a money column, expressed in character
+// widths. The app's face is monospaced, so a `ch` gutter scales with the
+// user's chosen font size and keeps right-aligned figures in adjacent
+// columns from crowding each other. Like `ALIGNMENT`, this is a single
+// code-level knob (not a user setting): bump this one number and every
+// money column that spreads `padStyle` loosens together. Tailwind can't
+// JIT a class built from a runtime value, so the gutter is exposed as a
+// ready-to-spread inline style rather than a `px-[…]` class.
+export const PAD_CHARS = 1.25;
 
 // Frozen so a component can hold the reference across renders without it
 // ever counting as a changed dependency.
@@ -36,6 +48,11 @@ const AMOUNT_COLUMNS = Object.freeze({
   // Tailwind `justify-*` for a money `<th>`'s glyph (+ label) flex row,
   // so the header glyph sits over the figure it labels on mobile.
   headerJustifyClass: RIGHT ? "justify-end" : "justify-start",
+  // The gutter from `PAD_CHARS`, as a number (for callers that want to
+  // size a track from it) and as an inline style ready to spread onto a
+  // money `<th>` / `<td>` in place of a `px-*` class.
+  padChars: PAD_CHARS,
+  padStyle: { paddingInline: `${PAD_CHARS}ch` } as CSSProperties,
 });
 
 export type AmountColumns = typeof AMOUNT_COLUMNS;

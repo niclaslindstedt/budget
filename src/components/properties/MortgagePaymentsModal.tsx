@@ -91,7 +91,7 @@ export function MortgagePaymentsModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
-  const { headerClass, headerJustifyClass } = useAmountColumns();
+  const { headerClass, headerJustifyClass, padStyle } = useAmountColumns();
 
   const groups = useMemo(
     () => (property ? groupPaymentsByCharge(property) : []),
@@ -188,7 +188,8 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className={`px-1 py-1 font-normal ${headerClass}`}
+                          className={`py-1 font-normal ${headerClass}`}
+                          style={padStyle}
                           title={t("properties.amortShort")}
                         >
                           <span
@@ -203,7 +204,8 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className={`px-1 py-1 font-normal ${headerClass}`}
+                          className={`py-1 font-normal ${headerClass}`}
+                          style={padStyle}
                           title={t("properties.interestShort")}
                         >
                           <span
@@ -218,7 +220,8 @@ export function MortgagePaymentsModal({
                           </span>
                         </th>
                         <th
-                          className={`px-1 py-1 font-normal ${headerClass}`}
+                          className={`py-1 font-normal ${headerClass}`}
+                          style={padStyle}
                           title={t("properties.paymentAmount")}
                         >
                           <span
@@ -537,7 +540,7 @@ function MortgagePaymentRowImpl({
   onDelete,
 }: RowProps) {
   const t = useT();
-  const { cellClass } = useAmountColumns();
+  const { cellClass, padStyle } = useAmountColumns();
   const { swiped, setSwiped, touchHandlers } = useRowSwipe();
   // A swiped row exposes edit / delete; claim the active-row slot so a tap
   // elsewhere only retracts the swipe instead of also firing the control
@@ -556,21 +559,24 @@ function MortgagePaymentRowImpl({
         <span className="block truncate">{item.mortgage.name}</span>
       </td>
       <td
-        className={`px-1 py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+        className={`py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+        style={padStyle}
       >
         {formatBalance(split.amortization, settings, {
           neverAbbreviate: true,
         })}
       </td>
       <td
-        className={`px-1 py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+        className={`py-1.5 text-xs whitespace-nowrap tabular-nums text-muted ${cellClass}`}
+        style={padStyle}
       >
         {formatBalance(split.interest, settings, {
           neverAbbreviate: true,
         })}
       </td>
       <td
-        className={`px-1 py-1.5 whitespace-nowrap tabular-nums text-fg-bright ${cellClass}`}
+        className={`py-1.5 whitespace-nowrap tabular-nums text-fg-bright ${cellClass}`}
+        style={padStyle}
       >
         {formatBalance(item.payment.amount, settings, {
           neverAbbreviate: true,
