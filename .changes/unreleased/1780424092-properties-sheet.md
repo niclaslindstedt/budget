@@ -15,7 +15,7 @@ loan is paid (monthly by default, or quarterly / every 6 months / yearly),
 when the loan started, and a history of interest-rate changes so older
 payments are valued at the rate that was in effect then. Give the property a bank account and open "Find mortgage
 payments" from
-the sheet's "…" menu: pick a property and it scans that account's history
+the button in its mortgage section: it scans that account's history
 for the single monthly charge that pays its loans — homing in on the
 charges you tagged with a lender or the Mortgage type, learning their bank
 description, and sweeping the rest of the history for every matching month,
@@ -51,8 +51,9 @@ you paid for the property is tied up in loans — the loan-to-value the bank
 reads (e.g. 6 028 400 with an 82% pill beside it), and a
 two-glyph toggle in the mortgage section header to switch to a split view
 and see each loan on its own — the active mode slides between the glyphs as
-you press it. "Add mortgage" and "View payments" live in the "…" menu
-beside it.
+you press it. "View payments" and "Find mortgage payments" are buttons in
+that header beside the toggle, while "Add mortgage" lives in the property's
+"…" menu.
 Open a property's payments to
 review every recorded charge and how it split across the loans — tap a
 charge to see the original bank transaction it came from — and edit or
@@ -69,10 +70,10 @@ Record a new value any time by tapping the property's current value on
 its card. What you paid is the property's first value automatically — the
 purchase price shows in the value history (tagged "Purchase") at the
 purchase date, so a new property already has a value without recording
-one, and editing the purchase amount moves it. Every other per-property
-action — estimate a sale, view
-repairs, edit, delete — lives behind a single "…" menu on the property
-card, so the header stays tidy as the feature grows.
+one, and editing the purchase amount moves it. Visualize value and view
+repairs are their own buttons on the property card's header; every other
+per-property action — estimate a sale, edit, delete — lives behind a single
+"…" menu beside them, so the header stays tidy as the feature grows.
 
 Estimate what a sale would net you with the new **Net sale profit**
 calculator (in a property's "…" menu): drag a slider to try different
@@ -86,8 +87,8 @@ that decides which country's tax rules apply (to property sales and your
 salary); only Sweden is built in today, with a link to request more.
 
 Each property also tracks its **repairs and renovations** — open the
-wrench view from a property's "…" menu to add any bank charge you tagged
-Repairs or Renovations, across all your accounts. Add one at a time with a
+wrench view from its button on the property card to add any bank charge you
+tagged Repairs or Renovations, across all your accounts. Add one at a time with a
 description of the work ("repainted the kitchen"), a subtype that
 classifies it, and the company and tags it was with — or quick-add
 several charges in one go and fill in the details later. Company and
