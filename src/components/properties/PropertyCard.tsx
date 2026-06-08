@@ -292,7 +292,7 @@ export function PropertyCard({
         ) : showUnified ? (
           <UnifiedMortgageView
             mortgages={property.mortgages}
-            propertyValue={value}
+            purchaseAmount={property.purchaseAmount}
             settings={settings}
           />
         ) : (
@@ -627,24 +627,24 @@ function PayoffSection({
 // to "split" shows the individual `MortgageRow`s (where each loan is edited).
 function UnifiedMortgageView({
   mortgages,
-  propertyValue,
+  purchaseAmount,
   settings,
 }: {
   mortgages: Mortgage[];
-  propertyValue: number | undefined;
+  purchaseAmount: number | undefined;
   settings: Settings;
 }) {
   const t = useT();
   const agg: MortgageAggregate = aggregateMortgages(mortgages);
-  // Share of the property's current value tied up in loans (combined balance ÷
-  // current value), shown after the balance. Only when both figures resolve
-  // and the value is positive, so a missing or zero value hides it rather than
-  // dividing by nothing.
+  // Loan-to-value the way the bank reads it: combined current balance ÷ the
+  // price the property was bought for, shown after the balance. Only when both
+  // figures resolve and the purchase amount is positive, so a missing or zero
+  // value hides it rather than dividing by nothing.
   const loanShare =
     agg.totalBalance !== undefined &&
-    propertyValue !== undefined &&
-    propertyValue > 0
-      ? Math.round((agg.totalBalance / propertyValue) * 100)
+    purchaseAmount !== undefined &&
+    purchaseAmount > 0
+      ? Math.round((agg.totalBalance / purchaseAmount) * 100)
       : undefined;
 
   return (

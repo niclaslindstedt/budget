@@ -23,7 +23,7 @@ const properties = {
   // title and the pill's trailing unit both read "per year".
   feePerAreaTitle: "Yearly fee per {unit}",
   perYearUnit: "yr",
-  loanToValueTitle: "Share of current value",
+  loanToValueTitle: "Share of purchase value",
   updateValue: "Update value",
   uploadFile: "Upload file",
   netSaleProfit: "Net sale profit",
