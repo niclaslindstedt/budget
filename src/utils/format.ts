@@ -84,6 +84,12 @@ export type FormatNumberOpts = {
   // list and the line-items allocation modal, where a "-13K" stand-in
   // would hide which transaction the user is reconciling.
   neverAbbreviate?: boolean;
+  // Force abbreviation regardless of the `abbreviateNumbers` setting and
+  // the `ABBREVIATE_THRESHOLD`, so the value always renders compact
+  // ("99K"). Set by space-constrained pills where the exact figure would
+  // overflow and the magnitude is what matters — the property card's
+  // per-area value pill ("99K/kvm"). `neverAbbreviate` still wins.
+  forceAbbreviate?: boolean;
 };
 
 // Threshold at which `abbreviateNumbers` kicks in. Below this the
@@ -127,9 +133,10 @@ export function formatNumber(
   // `alwaysAbbreviate` opt bypasses the threshold so the balance
   // column can keep every row compact when its dedicated setting is on.
   if (
-    settings.abbreviateNumbers &&
     !opts.neverAbbreviate &&
-    (opts.alwaysAbbreviate || Math.abs(n) >= ABBREVIATE_THRESHOLD)
+    (opts.forceAbbreviate ||
+      (settings.abbreviateNumbers &&
+        (opts.alwaysAbbreviate || Math.abs(n) >= ABBREVIATE_THRESHOLD)))
   ) {
     return abbreviateValue(n, settings);
   }
