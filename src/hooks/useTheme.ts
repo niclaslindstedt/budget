@@ -9,9 +9,10 @@
 // 1. `data-theme` attribute on `<html>` from `settings.theme`. CSS owns
 //    the dark / light / system palette rules; `custom` is a no-op at
 //    the CSS layer — effect (3) writes inline overrides instead.
-// 2. `--app-font-family` from the selected webfont stack. The font is
-//    preloaded as a side-effect `@fontsource/*` import in main.tsx so
-//    there's no FOUT swap once it lands.
+// 2. `--app-font-family` from the selected webfont stack. The default
+//    `mono` family is bundled statically in main.tsx; any non-default
+//    family is fetched on demand via `loadFontFamily` before the stack
+//    var is written, so it swaps in (font-display: swap) once it lands.
 // 3. Custom-theme overrides: 18 colour vars + radius / density /
 //    border-width / reduce-motion. Only written when `theme === "custom"`
 //    so flipping back to a preset cleans every inline value out of the
@@ -30,6 +31,7 @@ import type {
   RadiusPreset,
   Settings,
 } from "../data/types";
+import { loadFontFamily } from "../utils/fonts";
 
 // `radius-sm/md/lg` triples per preset. Numbers chosen so that "md" sits
 // at the historical defaults (`.field-input` rounded to 6px, the
@@ -72,10 +74,14 @@ export function useTheme(settings: Settings): void {
     };
   }, [theme]);
 
-  // (2) Font family stack.
+  // (2) Font family stack. Non-default families are fetched lazily
+  // (the default `mono` is bundled statically); the stack var is set
+  // immediately either way so the fallback paints at once and the
+  // webfont swaps in when it lands.
   useEffect(() => {
     const family = FONT_FAMILIES.find((f) => f.id === fontFamily);
     if (!family) return;
+    void loadFontFamily(fontFamily);
     document.documentElement.style.setProperty(
       "--app-font-family",
       family.stack,

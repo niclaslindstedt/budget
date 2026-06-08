@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { FONT_SCALE_PRESETS } from "../../../data/constants/format";
 import {
   BORDER_WIDTH_PRESETS,
@@ -22,6 +24,7 @@ import type {
   ThemePreset,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
+import { loadAllFontFamilies } from "../../../utils/fonts";
 import { SelectPicker } from "../../form";
 import {
   DeviceScopeHint,
@@ -44,6 +47,14 @@ export function AppearanceTab({
 }) {
   const t = useT();
   const isCustom = draft.theme === "custom";
+
+  // The non-default font families load on demand (see
+  // `src/utils/fonts.ts`); pull them all in when this tab opens so the
+  // font picker's per-option previews render in their real face rather
+  // than the fallback stack.
+  useEffect(() => {
+    loadAllFontFamilies();
+  }, []);
 
   function handleThemeChange(next: ThemePreset) {
     if (next === "custom" && draft.theme !== "custom") {
