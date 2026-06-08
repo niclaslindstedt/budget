@@ -19,10 +19,12 @@ import { LineChart, type ChartSeries } from "../charts/LineChart";
 // toggles transform in place: "Include repairs" adds the cumulative repair
 // spend onto the value (the money invested shows in the curve), and "Show net
 // value" turns the curve into the full net sale profit per snapshot (after
-// broker, advertising, repairs, purchase price, and capital-gains tax). The
-// heavy lifting lives in the reusable `LineChart` primitive and the pure
-// `buildPropertyValueSeries` builder; this modal only maps data to a themed,
-// translated series.
+// broker, advertising, repairs, purchase price, and capital-gains tax). In the
+// two market-value views a dotted purchase-value baseline is drawn underneath,
+// so the gap above the line reads as profit; the net-value view drops it since
+// that curve already nets out the purchase price. The heavy lifting lives in
+// the reusable `LineChart` primitive and the pure `buildPropertyValueSeries`
+// builder; this modal only maps data to a themed, translated series.
 //
 // `centered`: the only controls are toggle checkboxes, so nothing opens the
 // soft keyboard.
@@ -71,6 +73,23 @@ export function PropertyValueChartModal({
   const series: ChartSeries[] = [
     { id: "value", label: seriesLabel, colorVar: seriesColor, points },
   ];
+
+  // A dotted purchase-value baseline so the gap above the line reads as profit.
+  // Only meaningful for the market-value views (default and "Include repairs");
+  // the net-value curve already nets out the purchase price, so a second
+  // purchase line there would be redundant. Spans the same x-range as the data
+  // line, flat at the purchase amount, and joins the y-domain so it stays on
+  // screen even when every recorded value sits above it.
+  const purchaseAmount = property.purchaseAmount;
+  if (!showNetValue && purchaseAmount !== undefined && hasChart) {
+    series.push({
+      id: "purchase",
+      label: t("properties.valueChartPurchaseValue"),
+      colorVar: "--muted",
+      dashed: true,
+      points: points.map((p) => ({ x: p.x, y: purchaseAmount })),
+    });
+  }
 
   const formatX = (x: number) =>
     formatMonthYearShort(new Date(x).toISOString().slice(0, 10), lang);

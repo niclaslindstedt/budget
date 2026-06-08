@@ -32,6 +32,9 @@ export type ChartSeries = {
   colorVar: string;
   // Ascending-x points. Fewer than two points draws no visible line.
   points: ChartPoint[];
+  // Draw the line dashed rather than solid — for reference lines (e.g. a
+  // purchase-value baseline) that read as secondary to the data series.
+  dashed?: boolean;
 };
 
 type Props = {
@@ -308,6 +311,7 @@ function Chart({
               curve={curveMonotoneX}
               stroke={colorFor(s.colorVar)}
               strokeWidth={2}
+              strokeDasharray={s.dashed ? "4,4" : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
             />

@@ -110,6 +110,7 @@ const properties = {
     "Record at least two values over time to chart how this property has changed.",
   valueChartMarketValue: "Market value",
   valueChartNetValue: "Net value",
+  valueChartPurchaseValue: "Purchase value",
   valueChartIncludeRepairs: "Include repairs",
   valueChartIncludeRepairsHint:
     "Add the money spent on repairs to the value, as each was made.",
