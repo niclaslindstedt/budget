@@ -5,7 +5,9 @@ type: Added
 New **Properties** sheet — track the homes and apartments you own: what
 each was bought for, its size, its monthly fee (the recurring charge to
 hold it, like a bostadsrätt avgift), its value over time (record a new
-value any time to add a point to its history), the lender (the bank its
+value any time to add a point to its history) — both the current value
+and the fee also show a per-area figure (e.g. 102k/kvm, 587 kr/kvm) when
+a size is recorded — the lender (the bank its
 mortgages are held with), and the mortgages themselves. For each mortgage
 you can record the sum you borrowed, the current balance, the amortisation
 (a percentage of the initial loan or a fixed sum per month), how often the
@@ -45,7 +47,8 @@ When a property carries more than one mortgage the card opens in a unified
 view that sums every loan into one picture — combined balance and debt, a
 blended effective rate, and the total monthly interest and amortisation —
 with the combined balance also showing, as a percentage, how much of the
-property's current value is tied up in loans (e.g. 6 028 400 (82%)), and a
+property's current value is tied up in loans (e.g. 6 028 400 with an 82%
+pill beside it), and a
 two-glyph toggle in the mortgage section header to switch to a split view
 and see each loan on its own — the active mode slides between the glyphs as
 you press it. "Add mortgage" and "View payments" live in the "…" menu
