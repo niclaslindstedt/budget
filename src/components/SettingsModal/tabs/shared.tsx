@@ -38,6 +38,7 @@ export function Section({
   const t = useT();
   const contentRef = useRef<HTMLDivElement>(null);
   const contentId = useId();
+  const titleId = useId();
   const [collapsible, setCollapsible] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -65,61 +66,65 @@ export function Section({
   }, [measure]);
 
   return (
-    <fieldset
+    <div
+      role="group"
+      aria-labelledby={titleId}
       className={
         collapsed
           ? "mt-3 rounded border border-dashed border-line bg-surface-3 px-3 py-1.5 first:mt-0"
           : "mt-3 rounded border border-line bg-surface-3 p-3 first:mt-0"
       }
     >
-      <legend className="px-1">
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={() =>
-              setCollapsed((c) => {
-                if (!c) unlock("tidyMind");
-                return !c;
-              })
-            }
-            aria-expanded={!collapsed}
-            aria-controls={contentId}
-            aria-label={t(
-              collapsed
-                ? "settings.section.expand"
-                : "settings.section.collapse",
-              { title },
-            )}
-            className="group -mx-1 flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-xs font-bold tracking-wide text-muted uppercase transition-colors hover:text-fg-bright"
-          >
-            {collapsed ? (
-              <ChevronRight
-                size={13}
-                aria-hidden
-                focusable={false}
-                className="shrink-0 text-muted transition-colors group-hover:text-accent"
-              />
-            ) : (
-              <ChevronDown
-                size={13}
-                aria-hidden
-                focusable={false}
-                className="shrink-0 text-accent"
-              />
-            )}
-            <span>{title}</span>
-            {collapsed && (
-              <span className="ml-1 text-[10px] font-normal tracking-normal text-muted normal-case opacity-70 transition-opacity group-hover:opacity-100">
-                {t("settings.section.collapsedHint")}
-              </span>
-            )}
-          </button>
-        ) : (
-          <span className="text-xs font-bold tracking-wide text-muted uppercase">
-            {title}
-          </span>
-        )}
-      </legend>
+      {collapsible ? (
+        <button
+          type="button"
+          id={titleId}
+          onClick={() =>
+            setCollapsed((c) => {
+              if (!c) unlock("tidyMind");
+              return !c;
+            })
+          }
+          aria-expanded={!collapsed}
+          aria-controls={contentId}
+          aria-label={t(
+            collapsed ? "settings.section.expand" : "settings.section.collapse",
+            { title },
+          )}
+          className={`group -mx-1 flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-xs font-bold tracking-wide text-muted uppercase transition-colors hover:text-fg-bright ${
+            collapsed ? "" : "mb-2"
+          }`}
+        >
+          {collapsed ? (
+            <ChevronRight
+              size={13}
+              aria-hidden
+              focusable={false}
+              className="shrink-0 text-muted transition-colors group-hover:text-accent"
+            />
+          ) : (
+            <ChevronDown
+              size={13}
+              aria-hidden
+              focusable={false}
+              className="shrink-0 text-accent"
+            />
+          )}
+          <span>{title}</span>
+          {collapsed && (
+            <span className="ml-1 text-[10px] font-normal tracking-normal text-muted normal-case opacity-70 transition-opacity group-hover:opacity-100">
+              {t("settings.section.collapsedHint")}
+            </span>
+          )}
+        </button>
+      ) : (
+        <div
+          id={titleId}
+          className="mb-2 text-xs font-bold tracking-wide text-muted uppercase"
+        >
+          {title}
+        </div>
+      )}
       <div
         id={contentId}
         ref={contentRef}
@@ -130,7 +135,7 @@ export function Section({
       >
         {children}
       </div>
-    </fieldset>
+    </div>
   );
 }
 
