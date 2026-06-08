@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TrendingUp } from "lucide-react";
 
 import {
@@ -21,6 +21,10 @@ import { DATE_INPUT_CLASS } from "./date-input";
 // property's purchase (`purchaseAmount` at `purchaseDate`) shows as the first
 // value via `resolveValueHistory`; it's owned by the property's purchase
 // fields, so it has no delete affordance — change it by editing the property.
+//
+// The inline "Add" button (and Enter in either field) appends a point without
+// closing the modal — every add persists immediately, so the user can record a
+// run of snapshots back-to-back. The footer just dismisses.
 //
 // Not `centered`: the value field opens the soft keyboard.
 
@@ -45,6 +49,7 @@ export function UpdatePropertyValueModal({
   const lang = useLang();
   const [value, setValue] = useState("");
   const [date, setDate] = useState("");
+  const valueInputRef = useRef<HTMLInputElement | null>(null);
 
   useResetOnOpen(open, property?.id, () => {
     setValue("");
@@ -56,6 +61,9 @@ export function UpdatePropertyValueModal({
   const parsed = parseAmount(value);
   const canSubmit = parsed !== null && date !== "";
 
+  // Append the snapshot but keep the modal open so the user can record a run
+  // of values. Clear the amount (the date stays so consecutive snapshots can
+  // share it) and refocus it for the next entry.
   function handleAdd() {
     if (parsed === null || date === "" || !property) return;
     onAddValue(property.id, {
@@ -63,7 +71,8 @@ export function UpdatePropertyValueModal({
       date,
       value: Math.abs(parsed),
     });
-    onClose();
+    setValue("");
+    valueInputRef.current?.focus();
   }
 
   // Newest snapshot first. Includes the synthesised purchase point (the
@@ -93,30 +102,43 @@ export function UpdatePropertyValueModal({
             {property.name}
           </p>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.valueLabel")}
-            </span>
-            <ClearableInput
-              value={value}
-              onValueChange={setValue}
-              inputMode="decimal"
-              placeholder={t("properties.valuePlaceholder")}
-              className={amountInputClass}
-            />
-          </label>
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAdd();
+            }}
+          >
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.valueLabel")}
+              </span>
+              <ClearableInput
+                ref={valueInputRef}
+                value={value}
+                onValueChange={setValue}
+                inputMode="decimal"
+                placeholder={t("properties.valuePlaceholder")}
+                className={amountInputClass}
+              />
+            </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t("properties.asOfLabel")}
-            </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
-          </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.asOfLabel")}
+              </span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={DATE_INPUT_CLASS}
+              />
+            </label>
+
+            <Button type="submit" variant="primary" disabled={!canSubmit}>
+              {t("common.add")}
+            </Button>
+          </form>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-bold tracking-wider uppercase text-muted">
@@ -177,10 +199,7 @@ export function UpdatePropertyValueModal({
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onClose}>
-          {t("common.cancel")}
-        </Button>
-        <Button variant="primary" onClick={handleAdd} disabled={!canSubmit}>
-          {t("properties.save")}
+          {t("common.done")}
         </Button>
       </Modal.Footer>
     </Modal>
