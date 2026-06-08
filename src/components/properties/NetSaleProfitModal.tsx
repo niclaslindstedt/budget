@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calculator } from "lucide-react";
 
+import { currentPropertyValue } from "../../data/property-value/value";
 import { computePropertySale } from "../../data/tax/engine";
 import type {
   BrokerCost,
@@ -36,15 +37,6 @@ type Props = {
 };
 
 type BrokerMode = BrokerCost["mode"];
-
-// The most recent recorded value, or undefined when none recorded.
-function currentValue(property: Property): number | undefined {
-  let latest: { date: string; value: number } | undefined;
-  for (const point of property.valueHistory) {
-    if (!latest || point.date > latest.date) latest = point;
-  }
-  return latest?.value;
-}
 
 // A round slider step that yields ~200 stops across the range, so a drag
 // feels smooth at every property scale.
@@ -83,7 +75,10 @@ export function NetSaleProfitModal({
     const repairsTotal = property.repairs.reduce((sum, r) => sum + r.amount, 0);
 
     setSellPrice(
-      est?.sellPrice ?? currentValue(property) ?? property.purchaseAmount ?? 0,
+      est?.sellPrice ??
+        currentPropertyValue(property) ??
+        property.purchaseAmount ??
+        0,
     );
     setAdvertisement(
       est?.advertisementCost !== undefined ? String(est.advertisementCost) : "",
@@ -142,7 +137,7 @@ export function NetSaleProfitModal({
   });
 
   const baseValue =
-    currentValue(property) ?? property.purchaseAmount ?? sellPrice ?? 0;
+    currentPropertyValue(property) ?? property.purchaseAmount ?? sellPrice ?? 0;
   const sliderMax = baseValue > 0 ? Math.ceil(baseValue * 2) : 5_000_000;
   const step = sliderStep(sliderMax);
 

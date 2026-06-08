@@ -61,7 +61,11 @@ mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
 settings tab.
 
 Record a new value any time by tapping the property's current value on
-its card. Every other per-property action — estimate a sale, view
+its card. What you paid is the property's first value automatically — the
+purchase price shows in the value history (tagged "Purchase") at the
+purchase date, so a new property already has a value without recording
+one, and editing the purchase amount moves it. Every other per-property
+action — estimate a sale, view
 repairs, edit, delete — lives behind a single "…" menu on the property
 card, so the header stays tidy as the feature grows.
 

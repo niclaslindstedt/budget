@@ -269,6 +269,12 @@ src/
 │   │   └── sources.ts          # repairSources / repairSourceCount / repairSourceKey
 │   │                           #   — flatten a repair's primary + additionalSources
 │   │                           #   into one uniform transaction list
+│   ├── property-value/     # properties page — value-history helpers
+│   │   └── value.ts            # resolveValueHistory / currentPropertyValue /
+│   │                           #   purchaseValuePoint — fold a property's
+│   │                           #   purchase (purchaseAmount at purchaseDate) in
+│   │                           #   as its first value; current value = latest by
+│   │                           #   date, purchase included
 │   ├── property-transfer/  # properties page — sale-handover export / import
 │   │   ├── manifest.ts         # PropertyExportManifest shape + format / version
 │   │   │                       #   constants (the archive's manifest.json)

@@ -17,6 +17,7 @@ import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortiz
 import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
 import { splitRecordedPayment } from "../../data/property-mortgage/payment";
 import { mortgagePayoffProgress } from "../../data/property-mortgage/progress";
+import { currentPropertyValue } from "../../data/property-value/value";
 import type {
   Account,
   Company,
@@ -77,15 +78,6 @@ function rateResetPillLabel(t: TFunction, months: number): string {
     : t("properties.rateResetPillOther", { count: months });
 }
 
-// The most recent recorded value, or undefined when none recorded.
-function currentValue(property: Property): number | undefined {
-  let latest: { date: string; value: number } | undefined;
-  for (const point of property.valueHistory) {
-    if (!latest || point.date > latest.date) latest = point;
-  }
-  return latest?.value;
-}
-
 export function PropertyCard({
   property,
   accountsById,
@@ -105,7 +97,7 @@ export function PropertyCard({
   onDeleteMortgage,
 }: Props) {
   const t = useT();
-  const value = currentValue(property);
+  const value = currentPropertyValue(property);
   const hasPayments = property.mortgages.some((m) => m.payments.length > 0);
   // The unified view collapses every mortgage into one summed card; it's only
   // meaningful (and only offered) when there are two or more loans to combine.
