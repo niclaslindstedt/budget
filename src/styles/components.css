@@ -688,20 +688,37 @@
     }
     .salary-table > thead > tr,
     .salary-table > tbody > tr {
-      /* month · flex employer · gross · net. The money columns use a
-         floor wide enough to hold a typical amount (including the "≈ "
-         estimate prefix the gross column can carry) so the track
-         resolves to the same width in the header row (icon only) and the
-         body rows (the number) — `max-content` alone sizes the icon-only
-         header narrower than the numbers, drifting the header out of
-         line with the data it labels. The title / tax / days columns
-         drop on mobile so only four tracks are needed; the action cell
-         sits outside the grid as an absolute overlay so it reserves no
-         track. */
+      /* month · flex employer · gross · net. The money columns mirror the
+         budget sheet's amount track: a narrow 64px floor that grows with
+         the widest formatted value in the sheet, driven by
+         --salary-gross-col-ch / --salary-net-col-ch (set per-sheet from
+         the longest gross / net string, including the "≈ " estimate
+         prefix the gross column can carry). The floor keeps the
+         icon-only header in lockstep with the number rows beneath it —
+         `max-content` alone sizes the icon-only header narrower than the
+         numbers, drifting the header out of line with the data it
+         labels. The gross buffer widens when the sheet has any payslip
+         pill so the document glyph + amount fit without clipping. The
+         title / tax / days columns drop on mobile so only four tracks
+         are needed; the action cell sits outside the grid as an absolute
+         overlay so it reserves no track. */
       display: grid;
       grid-template-columns:
         minmax(64px, max-content) minmax(0, 1fr)
-        minmax(112px, max-content) minmax(112px, max-content);
+        minmax(
+          64px,
+          calc(
+            var(--salary-gross-col-ch, 7) * 1ch +
+              var(--salary-gross-col-buffer, 1.5rem)
+          )
+        )
+        minmax(
+          64px,
+          calc(
+            var(--salary-net-col-ch, 7) * 1ch +
+              var(--salary-net-col-buffer, 1.5rem)
+          )
+        );
       position: relative;
       overflow: hidden;
     }
@@ -711,7 +728,20 @@
     .salary-table.is-selecting > tbody > tr {
       grid-template-columns:
         40px minmax(64px, max-content) minmax(0, 1fr)
-        minmax(112px, max-content) minmax(112px, max-content);
+        minmax(
+          64px,
+          calc(
+            var(--salary-gross-col-ch, 7) * 1ch +
+              var(--salary-gross-col-buffer, 1.5rem)
+          )
+        )
+        minmax(
+          64px,
+          calc(
+            var(--salary-net-col-ch, 7) * 1ch +
+              var(--salary-net-col-buffer, 1.5rem)
+          )
+        );
     }
     .salary-table > tfoot > tr {
       display: block;

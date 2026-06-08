@@ -2,4 +2,4 @@
 type: Added
 ---
 
-Salary rows now show a payslip icon next to the gross amount when a payslip is attached — tap it to open the payslip without going through the row's "…" menu.
+When a payslip is attached, the salary row's gross amount becomes a tappable pill marked with a document icon — tap it to open the payslip without going through the row's "…" menu.
