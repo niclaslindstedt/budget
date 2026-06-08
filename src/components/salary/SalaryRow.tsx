@@ -173,7 +173,7 @@ function SalaryRowImpl({
         className={`px-2.5 py-2 text-left align-middle font-mono whitespace-nowrap tabular-nums ${estClass}`}
         title={estTitle}
       >
-        <span className="inline-flex items-center justify-end gap-1.5">
+        <span className="inline-flex items-center justify-start gap-1.5">
           {showPayslipIcon && (
             <button
               type="button"
