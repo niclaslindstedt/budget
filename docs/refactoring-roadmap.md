@@ -395,21 +395,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
     will grow the same page-level modal-selector pile; a `useModalRouter`
     shape established here is the template the next page copies.
 
-- **Date-input class string duplicated across six properties modals** — the
-  `field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm
-text-fg` class (the `w-full`-less `<input type="date">` variant) is
-  re-declared verbatim at `MortgagePaymentEditModal.tsx:153`,
-  `PropertyEditorModal.tsx:126`, `UpdatePropertyValueModal.tsx:69`,
-  `ManualRepairModal.tsx:77`, `MortgageEditorModal.tsx:211` (plus a
-  `py-1 text-xs` variant at `RepairReceiptsModal.tsx:28`).
-  - **Plan**: hoist a shared `DATE_INPUT_CLASS` const (or a tiny `DateInput`
-    wrapper) into `properties/` so the iOS date-input width workaround lives
-    in one place; the lone `text-xs` variant can take a size prop or stay
-    inline.
-  - **Risk**: trivial — string-constant extraction, no layout change.
-  - **Severity: 3** (easy-win-flavoured). Cheap, and the iOS date-input
-    workaround should not have to be re-fixed at six sites.
-
 ### Easy wins (mechanical, land regardless of rating)
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
@@ -464,6 +449,22 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Date-input class string duplicated across five properties modals →
+  shared `DATE_INPUT_CLASS`** (2026-06): the `w-full`-less
+  `<input type="date">` Tailwind string (`field-input rounded border
+border-line bg-surface-2 px-2 py-1.5 text-sm text-fg`) was re-declared
+  verbatim at five sites — a local `const` in `MortgageEditorModal`
+  (with the iOS-workaround comment), `ManualRepairModal`,
+  `UpdatePropertyValueModal`, `PropertyEditorModal`, and inline at
+  `MortgagePaymentEditModal`. Hoisted to a single exported
+  `DATE_INPUT_CLASS` in a new `src/components/properties/date-input.ts`,
+  carrying the iOS WebKit width-workaround comment, and routed all five
+  sites through it. The lone `py-1 text-xs` variant in
+  `RepairReceiptsModal` (a deliberately different size) stays inline per
+  the plan. Pure constant extraction — the resolved class is
+  byte-identical at every site; fast loop + build + icons-check green,
+  all 1504 tests pass. **Was severity 3 (easy-win-flavoured).**
 
 - **`RepairsEditModal` + `ManualRepairModal` shared subtype/company/tags
   field trio → `<RepairFields>` presentational component** (2026-06): both
