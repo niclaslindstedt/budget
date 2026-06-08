@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useReducer, useState } from "react";
 import { Search } from "lucide-react";
 
 import {
+  confirmedSalarySignal,
   discoverSalaries,
   summariseSalaryClusters,
   type DiscoveredSalary,
@@ -121,9 +122,13 @@ export function SalaryDiscoveryModal({
 
   const discovery = useMemo(() => {
     if (!accountId) return null;
+    const entries = history[accountId] ?? [];
     return discoverSalaries({
-      entries: history[accountId] ?? [],
+      entries,
       excludeHistoryIds,
+      // When the already-added paychecks all share one bank description,
+      // surface every other deposit under it within the payout window.
+      confirmedSalary: confirmedSalarySignal(entries, excludeHistoryIds),
     });
   }, [accountId, history, excludeHistoryIds]);
 

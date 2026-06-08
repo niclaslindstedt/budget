@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  confirmedSalarySignal,
   discoverSalaries,
   summariseSalaryClusters,
 } from "../src/data/salary/discovery";
+import { normaliseDescription } from "../src/data/description-normaliser";
 import { SALARY_TYPE_ID } from "../src/data/salary/salary";
 import type { HistoryEntry } from "../src/data/types";
 
@@ -196,6 +198,94 @@ describe("salary discovery (bank-history scan)", () => {
     ];
     const { candidates } = discoverSalaries({ entries });
     expect(candidates).toHaveLength(0);
+  });
+});
+
+describe("confirmed salary signal (added paychecks agree on a description)", () => {
+  it("returns the shared description key and the payout-day span", () => {
+    const entries = [
+      entry("a", "2024-01-24", 30000, "ACME LÖN"),
+      entry("b", "2024-02-27", 30000, "ACME LÖN"),
+      entry("c", "2024-03-25", 30000, "ACME LÖN"),
+    ];
+    const signal = confirmedSalarySignal(entries, new Set(["a", "b", "c"]));
+    expect(signal).toEqual({
+      descriptionKey: normaliseDescription("ACME LÖN"),
+      payoutDays: { min: 24, max: 27 },
+    });
+  });
+
+  it("returns undefined when the backing descriptions disagree", () => {
+    const entries = [
+      entry("a", "2024-01-25", 30000, "ACME LÖN"),
+      entry("b", "2024-02-25", 30000, "OTHER CORP PAYROLL"),
+    ];
+    expect(confirmedSalarySignal(entries, new Set(["a", "b"]))).toBeUndefined();
+  });
+
+  it("returns undefined when nothing is backed", () => {
+    const entries = [entry("a", "2024-01-25", 30000, "ACME LÖN")];
+    expect(confirmedSalarySignal(entries, new Set())).toBeUndefined();
+  });
+});
+
+describe("salary discovery (confirmed-description augmentation)", () => {
+  it("surfaces a same-description deposit even when no recurring series formed", () => {
+    // Only two paychecks — below the recurring detector's minimum, so the
+    // cadence scan never fires. One is already added (excluded); the other
+    // is the matching deposit the confirmed description should recover.
+    const entries = [
+      entry("added", "2024-01-25", 30000, "ACME LÖN"),
+      entry("rest", "2024-02-25", 30000, "ACME LÖN"),
+    ];
+    const excludeHistoryIds = new Set(["added"]);
+
+    // Baseline: without the confirmed signal there is nothing to suggest.
+    expect(
+      discoverSalaries({ entries, excludeHistoryIds }).candidates,
+    ).toHaveLength(0);
+
+    // With it, the unexcluded matching month is offered.
+    const { candidates } = discoverSalaries({
+      entries,
+      excludeHistoryIds,
+      confirmedSalary: confirmedSalarySignal(entries, excludeHistoryIds),
+    });
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].monthKey).toBe("2024-02");
+    expect(candidates[0].net).toBe(30000);
+  });
+
+  it("ignores a same-description deposit that landed outside the payout window", () => {
+    // The payroll line is also used for a mid-month expense reimbursement;
+    // it shares the description but lands on the 10th, well outside the
+    // 25th payout window, so it must not masquerade as a paycheck.
+    const entries = [
+      entry("added", "2024-01-25", 30000, "ACME LÖN"),
+      entry("reimb", "2024-02-10", 4000, "ACME LÖN"),
+    ];
+    const excludeHistoryIds = new Set(["added"]);
+    const { candidates } = discoverSalaries({
+      entries,
+      excludeHistoryIds,
+      confirmedSalary: confirmedSalarySignal(entries, excludeHistoryIds),
+    });
+    expect(candidates).toHaveLength(0);
+  });
+
+  it("does not double-count a confirmed description that is also a recurring series", () => {
+    // The confirmed description IS the recurring family — the augmentation
+    // must dedupe by month, not offer every paycheck twice.
+    const dates = monthlyDates(2024, 1, 12);
+    const entries = dates.map((d, i) => entry(`s${i}`, d, 30000, "ACME LÖN"));
+    const excludeHistoryIds = new Set(["s5"]);
+    const { candidates } = discoverSalaries({
+      entries,
+      excludeHistoryIds,
+      confirmedSalary: confirmedSalarySignal(entries, excludeHistoryIds),
+    });
+    expect(candidates).toHaveLength(11);
+    expect(candidates.some((c) => c.monthKey === "2024-06")).toBe(false);
   });
 });
 
