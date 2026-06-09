@@ -6,6 +6,7 @@ import {
 } from "../fiscal-month";
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
+import { attachImportedLoanPayments } from "../loans/auto-attach";
 import { applyImportedSavingBalances } from "../savings/value";
 import {
   computeOpeningBalanceFromHistory,
@@ -284,6 +285,18 @@ export function reduceAccounts(
             });
             return touched ? { ...sheet, items } : sheet;
           });
+    // Auto-attach loan payments: any genuinely-new entry matching a loan's
+    // learned payment patterns is recorded on that loan in the same pass —
+    // no modal, deduped by source entry id. A no-op for imports that touch
+    // no loan — `attachImportedLoanPayments` returns `state.loans`
+    // referentially when nothing matched.
+    const loans = state.loans
+      ? attachImportedLoanPayments(
+          state.loans,
+          newlyAdded,
+          state.properties ?? [],
+        )
+      : state.loans;
     return {
       ...state,
       accounts: state.accounts.map((a) => {
@@ -294,6 +307,7 @@ export function reduceAccounts(
       }),
       sheets,
       savings,
+      loans,
       history: { ...state.history, [action.accountId]: merged },
       historyImports: {
         ...state.historyImports,

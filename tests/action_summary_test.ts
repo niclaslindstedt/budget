@@ -133,6 +133,58 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Apartment" });
   });
 
+  it("names a loan across its CRUD and payment actions", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      loans: [
+        {
+          id: "loan-1",
+          name: "Volvo loan",
+          kind: "car",
+          payments: [{ id: "pay-1", date: "2026-05-27", amount: 2500 }],
+        },
+      ],
+    };
+    expect(
+      describe2(
+        {
+          type: "addLoan",
+          loan: { id: "l2", name: "CSN", kind: "student", payments: [] },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "CSN" });
+    expect(
+      describe2(
+        { type: "updateLoan", loanId: "loan-1", patch: { rate: 4.5 } },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+    expect(describe2({ type: "deleteLoan", loanId: "loan-1" }, prev)).toEqual({
+      kind: "name",
+      value: "Volvo loan",
+    });
+    expect(
+      describe2(
+        {
+          type: "addLoanPayments",
+          loanId: "loan-1",
+          payments: [{ id: "pay-2", date: "2026-06-27", amount: 2500 }],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+    expect(
+      describe2(
+        { type: "deleteLoanPayment", loanId: "loan-1", paymentId: "pay-1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+    expect(
+      describe2({ type: "deleteAllLoanPayments", loanId: "loan-1" }, prev),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+  });
+
   it("names the mortgage and counts added payments", () => {
     const prev: UserData = {
       ...freshUserData(),

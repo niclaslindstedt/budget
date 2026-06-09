@@ -92,6 +92,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "När kopplat speglar bladets löpande saldo det riktiga saldot och bankimporter hamnar på rätt ställe.",
   },
+  borrower: {
+    name: "Låntagare",
+    condition: "Lägg till ditt första lån på Lån-sidan.",
+    learnMore:
+      "Lån-sidan håller koll på pengarna du är skyldig — studielån, billån, bolån, pengar lånade av en person — med startdatum, startbelopp, månadsbetalning samt valfri ränta och uppläggningsavgift. Med en ränta satt simuleras det återstående saldot månad för månad. Ett bolån kan istället länka ett bolån från fastighetsbladet, så att villkor och betalningar bara finns på ett ställe.",
+  },
   payDay: {
     name: "Lönedag",
     condition: "Ändra Månadens start från standardvärdet.",
@@ -269,6 +275,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Dubblettjägare",
     condition:
       "Importera ett kontoutdrag igen; importören hoppar över dubbletterna.",
+  },
+  debtCollector: {
+    name: "Inkasseraren",
+    condition: "Importera banktransaktioner som betalningar på ett lån.",
+    learnMore:
+      "Märk banktransaktioner med lånets typ (Studielån, Billån, Privatlån, …) så dyker de upp i Importera betalningar i lånets radmeny. Importen kommer också ihåg bankbeskrivningen, så nästa kontoutdrag du importerar kopplar matchande dragningar till lånet automatiskt — ingen dialog, inga klick.",
   },
   loanRanger: {
     name: "Lånjägaren",

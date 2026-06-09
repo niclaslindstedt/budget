@@ -9,6 +9,7 @@ const presetCategories = {
   subscriptions: "Subscriptions",
   entertainment: "Entertainment",
   savings: "Savings",
+  loans: "Loans",
   income: "Income",
   family: "Family",
   personal: "Personal",

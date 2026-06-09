@@ -97,6 +97,12 @@ const catalog = {
     learnMore:
       "Once linked, the sheet's running balance mirrors the real balance and bank imports land in the right place.",
   },
+  borrower: {
+    name: "Borrower",
+    condition: "Add your first loan on the Loans sheet.",
+    learnMore:
+      "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, money borrowed from a person — with a start date, start sum, monthly payment, and optional rate and setup fee. With a rate set, the remaining balance is simulated month by month. A mortgage can instead link a mortgage from the Properties sheet, so its terms and payments stay in one place.",
+  },
   payDay: {
     name: "Pay Day",
     condition: "Change Start of month from the default.",
@@ -272,6 +278,12 @@ const catalog = {
   dedupe: {
     name: "Dedupe",
     condition: "Re-import a statement; the importer skips the duplicates.",
+  },
+  debtCollector: {
+    name: "Debt Collector",
+    condition: "Import bank transactions as payments on a loan.",
+    learnMore:
+      "Mark bank transactions with the loan's type (Student loan, Car loan, Private loan, …) and they show up in Import payments on the loan's row menu. Importing also remembers the bank description, so the next statement you import attaches matching charges to the loan automatically — no modal, no clicks.",
   },
   loanRanger: {
     name: "Loan Ranger",

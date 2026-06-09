@@ -13,6 +13,7 @@ import { buildSeedUserData } from "../src/data/dev/seed";
 import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
 import { detectRecurringCandidates } from "../src/data/budget/recurring-detection";
 import { findItemPurchaseCandidates } from "../src/data/items/find";
+import { findLoanPaymentCandidates } from "../src/data/loans/candidates";
 import { LATEST_VERSION } from "../src/data/migrations";
 import { PRESET_TYPE_MORTGAGE_ID } from "../src/data/presets/types";
 import { discoverMortgagePayments } from "../src/data/property-mortgage/discovery";
@@ -95,10 +96,25 @@ describe("buildSeedUserData", () => {
       "accounts",
       "budget",
       "items",
+      "loans",
       "properties",
       "salary",
       "savings",
     ]);
+  });
+
+  it("leaves loan-payment candidates for the Import payments walk", () => {
+    const seed = buildSeedUserData();
+    // Every seeded loan flavour: the CSN loan (patterns + recorded
+    // payments) and the car loan (typed charges, nothing recorded) must
+    // both surface unconsumed candidates; the linked mortgage loan reads
+    // the property's mortgage so it isn't asserted here.
+    for (const kind of ["student", "car"] as const) {
+      const loan = seed.loans.find((l) => l.kind === kind);
+      expect(loan).toBeDefined();
+      const candidates = findLoanPaymentCandidates(loan!, seed);
+      expect(candidates.length).toBeGreaterThan(0);
+    }
   });
 
   it("leaves a salary candidate for the Find salaries walk", () => {

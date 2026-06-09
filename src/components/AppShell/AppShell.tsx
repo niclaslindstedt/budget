@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useSavingDialog } from "./hooks/useSavingDialog";
+import { useLoanDialog } from "./hooks/useLoanDialog";
 import { useBulkSelection } from "./hooks/useBulkSelection";
 import { useSalaryBulkSelection } from "../salary/useSalaryBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
@@ -107,6 +108,9 @@ const SalaryPage = lazy(() =>
 const SavingsPage = lazy(() =>
   import("../savings/SavingsPage").then((m) => ({ default: m.SavingsPage })),
 );
+const LoansPage = lazy(() =>
+  import("../loans/LoansPage").then((m) => ({ default: m.LoansPage })),
+);
 const UniversalModalHost = lazy(() =>
   import("./UniversalModalHost").then((m) => ({
     default: m.UniversalModalHost,
@@ -117,6 +121,9 @@ const AccountsModalHost = lazy(() =>
 );
 const SavingsModalHost = lazy(() =>
   import("./SavingsModalHost").then((m) => ({ default: m.SavingsModalHost })),
+);
+const LoansModalHost = lazy(() =>
+  import("./LoansModalHost").then((m) => ({ default: m.LoansModalHost })),
 );
 const BudgetModalHost = lazy(() =>
   import("./BudgetModalHost").then((m) => ({ default: m.BudgetModalHost })),
@@ -568,6 +575,18 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onRequestDeleteSaving,
     onOpenUpdateBalance: onOpenUpdateSavingBalance,
   } = savingDialog;
+
+  // Loan modal handlers (CRUD + payment import). Kept on the AppShell
+  // alongside the saving dialog for the same reason — loans render on
+  // their own sheet but live in the same workspace data.
+  const loanDialog = useLoanDialog({ data, dispatch, toast });
+  const {
+    onOpenCreateLoan,
+    onOpenEditLoan,
+    onRequestDeleteLoan,
+    onOpenPayments: onOpenLoanPayments,
+    onOpenImportPayments: onOpenLoanImportPayments,
+  } = loanDialog;
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
@@ -1043,6 +1062,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onViewHistory={onOpenViewHistory}
                     onCutHistory={onOpenCutHistory}
                   />
+                ) : activeSheet.type === "loans" ? (
+                  <LoansPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    onCreateLoan={onOpenCreateLoan}
+                    onEditLoan={onOpenEditLoan}
+                    onRequestDeleteLoan={onRequestDeleteLoan}
+                    onImportPayments={onOpenLoanImportPayments}
+                    onViewPayments={onOpenLoanPayments}
+                  />
                 ) : (
                   <>
                     <BudgetRecurringCandidatesPanel
@@ -1220,6 +1250,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
           <SavingsModalHost
             effectiveSettings={effectiveSettings}
             savingDialog={savingDialog}
+          />
+          <LoansModalHost
+            data={data}
+            effectiveSettings={effectiveSettings}
+            loanDialog={loanDialog}
           />
           <BudgetModalHost
             data={data}

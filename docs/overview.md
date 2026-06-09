@@ -1593,6 +1593,109 @@ reusable `LineChart` primitive (`src/components/charts/`) does the drawing, so
 the chart follows the active theme like the property one. Opening it unlocks
 the **Nest Egg** achievement (`savingsValueChart`, a manual trigger).
 
+## Loans page
+
+### Loans page
+
+The Loans sheet (`SheetType "loans"`, `LoansView`) renders the
+workspace-wide `UserData.loans` collection — the money the user owes
+(student loans, car loans, mortgages, money borrowed from a person). It
+is a data-light singleton flavour like Savings / Properties: the page
+(`src/components/loans/LoansPage.tsx`) lists every `Loan` as a table row
+(glyph · name + kind / lender sub-line · monthly payment · rate · paid
+so far · remaining balance) with a footer total of remaining debt, and
+loan CRUD goes through `reduceLoans` (`src/data/reducers/loans.ts`), not
+the per-item reducer tail. Files live in `src/components/loans/`;
+helpers in `src/data/loans/`. Rows carry the standard left-swipe
+Edit / Delete strip plus a "…" menu (`LoanActionsMenu.tsx`) with Import
+payments and View payments. Adding the first loan unlocks the
+**Borrower** achievement.
+
+### Loan
+
+A `Loan` (`src/data/types/loans.ts`) is one debt: a `kind` (`student` /
+`mortgage` / `car` / `private` / `personal`), a start date, a start sum,
+a monthly payment, an optional annual interest `rate`, and an optional
+`startFee` (uppläggningsavgift) the balance simulation treats as
+financed into the principal. The lender field depends on the kind: a
+**personal** loan stores the person's name as free text (`lenderName`),
+a **private** or **car** loan references a `Company` (`companyId`), and
+a **mortgage** loan can instead link a property's mortgage (see Linked
+mortgage below). The create / edit modal is `LoanModal.tsx` — the kind
+picker drives which lender field shows, and the term fields hide while
+a mortgage link is active. Each kind maps to a preset entry type via
+`LOAN_PRESET_TYPE_BY_KIND` (`src/data/loans/presets.ts`); the **Loans**
+preset category groups all five (the Mortgage and Student-loan presets
+moved in from Housing / Bills, ids unchanged).
+
+### Loan remaining balance
+
+`loanRemainingBalance` (`src/data/loans/balance.ts`) computes the
+"Remaining" column. With a `rate` set (plus start date / sum / monthly
+payment), the balance is simulated month by month from the start date:
+each month accrues interest on the outstanding balance (annual rate / 12) and the monthly payment net of that interest amortises the
+principal, clamped at zero — so the figure honestly reflects that early
+payments are mostly interest. Without a rate it falls back to start sum
+(+ start fee) − payments recorded (`loanPaidSoFar`); with neither, the
+row shows "—". A linked mortgage loan bypasses the simulation entirely:
+`linkedMortgageFigures` resolves monthly payment / rate / remaining
+live from the mortgage's own terms (`resolveMonthlyPaymentAt`,
+`resolveRateAt`, `balanceAt` in `src/data/property-mortgage/`).
+
+### Linked mortgage (loan)
+
+A `kind: "mortgage"` loan can carry a `propertyId` + `mortgageId` pair
+linking a mortgage from the Properties sheet — **linked, never
+copied**: terms, payments, and balance all resolve live through
+`resolveLinkedMortgage` (`src/data/loans/balance.ts`), so the two
+sheets can never disagree. The link picker in `LoanModal.tsx` lists
+every property mortgage not already linked by another loan; linking
+hides the loan's own term fields. Payment flows fork on the link:
+Import payments on a linked loan dispatches `addMortgagePayments` to
+the property, and the payments view deletes via `deleteMortgagePayment`
+— the loan's own `payments[]` stays empty. The validator drops a
+half-dangling pair (deleted property or mortgage) so the loan degrades
+to an unlinked mortgage rather than rejecting the file.
+
+### Import payments (loan)
+
+`LoanImportPaymentsModal.tsx`, opened from the loan row's "…" menu. The
+candidate scan (`findLoanPaymentCandidates`,
+`src/data/loans/candidates.ts`) walks every history bucket (accounts
+and savings share the id-space) for outflows whose resolved type
+(`resolveEntryLabels` — user override, match rule, or merchant hint)
+matches the loan kind's preset type, or whose description matches a
+learned payment pattern; entries already recorded (by
+`sourceHistoryId`, on the loan or its linked mortgage) are excluded. So
+tagging transactions with the Car loan type makes them surface when
+importing payments on a car loan. Candidates arrive default-ticked;
+importing dispatches `addLoanPayments` (one undo entry) with the
+payments and the patterns learned from the ticked entries' bank text.
+The first imported payment unlocks the **Debt Collector** achievement.
+
+### Loan payment pattern (auto-attach)
+
+`Loan.paymentPatterns` is learned bank-description memory — normalised
+keys (`normaliseDescription`, the same key-space as merchant hints)
+recorded by `learnPaymentPatterns` (`src/data/loans/patterns.ts`) when
+the user imports payments. On every subsequent bank-statement import,
+the `importBankHistory` reducer branch runs `attachImportedLoanPayments`
+(`src/data/loans/auto-attach.ts`) over the genuinely-new entries: any
+outflow matching a loan's patterns is recorded as a payment in the same
+pass — no modal, deduped against existing `sourceHistoryId`s, linked
+mortgage loans skipped (the mortgage discovery flow owns those). A
+re-import can't double-attach because duplicate entries never reach the
+"newly added" set.
+
+### Loan payments view
+
+`LoanPaymentsModal.tsx` — the dated list behind "Paid so far", opened
+from the loan row's "…" menu (View payments). Lists payments newest
+first with per-row delete (`deleteLoanPayment`) and a Delete all
+(`deleteAllLoanPayments`). For a linked mortgage loan it renders the
+linked mortgage's payments instead — shared with the Properties sheet's
+Mortgage payments view — and deletes route to `deleteMortgagePayment`.
+
 ## Data and storage
 
 ### User data

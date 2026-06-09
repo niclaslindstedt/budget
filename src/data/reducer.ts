@@ -12,6 +12,8 @@ import type {
   HistoryEntrySplit,
   Item,
   LineItemLink,
+  Loan,
+  LoanPayment,
   MatchRule,
   Mortgage,
   MortgagePayment,
@@ -44,6 +46,7 @@ import { reduceCategoriesAndTypes } from "./reducers/categories-and-types";
 import { reduceItems } from "./reducers/items";
 import { reduceProperties } from "./reducers/properties";
 import { reduceSavings } from "./reducers/savings";
+import { reduceLoans } from "./reducers/loans";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
@@ -405,6 +408,27 @@ export type Action =
       patch: Partial<Omit<SavingBalancePoint, "id">>;
     }
   | { type: "deleteSavingBalance"; savingId: string; pointId: string }
+  // Loans — the money the user owes, rendered by the Loans sheet. Each
+  // mutates `UserData.loans`. A mortgage loan links a property's mortgage
+  // by carrying `propertyId` + `mortgageId` in the loan itself, so there
+  // is no separate link action — linking / unlinking rides `addLoan` /
+  // `updateLoan` (an explicit `undefined` in the patch deletes the key).
+  | { type: "addLoan"; loan: Loan }
+  | { type: "updateLoan"; loanId: string; patch: Partial<Omit<Loan, "id">> }
+  | { type: "deleteLoan"; loanId: string }
+  | {
+      // Bulk-add from the Import payments modal — one undo entry.
+      // `patterns` carries the normalised description keys learned from
+      // the imported entries' bank text; the reducer unions them into
+      // `loan.paymentPatterns` so future `importBankHistory` runs
+      // auto-attach matching charges silently.
+      type: "addLoanPayments";
+      loanId: string;
+      payments: LoanPayment[];
+      patterns?: string[];
+    }
+  | { type: "deleteLoanPayment"; loanId: string; paymentId: string }
+  | { type: "deleteAllLoanPayments"; loanId: string }
   | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
   | {
       type: "updateMortgage";
@@ -958,6 +982,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceItems(state, action) ??
     reduceProperties(state, action) ??
     reduceSavings(state, action) ??
+    reduceLoans(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??

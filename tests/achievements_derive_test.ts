@@ -184,6 +184,47 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("homeOwner");
   });
 
+  it("fires borrower when the first loan is added", () => {
+    const prev = withItem([]);
+    prev.loans = [];
+    const next = withItem([]);
+    next.loans = [{ id: "l1", name: "Car loan", kind: "car", payments: [] }];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("borrower");
+  });
+
+  it("fires debtCollector only for bank-imported loan payments", () => {
+    const prev = withItem([]);
+    prev.loans = [{ id: "l1", name: "Car loan", kind: "car", payments: [] }];
+    const handEntered = withItem([]);
+    handEntered.loans = [
+      {
+        id: "l1",
+        name: "Car loan",
+        kind: "car",
+        payments: [{ id: "p1", date: "2026-05-27", amount: 2500 }],
+      },
+    ];
+    expect(deriveUnlocks(prev, handEntered, {})).not.toContain("debtCollector");
+    const imported = withItem([]);
+    imported.loans = [
+      {
+        id: "l1",
+        name: "Car loan",
+        kind: "car",
+        payments: [
+          {
+            id: "p1",
+            date: "2026-05-27",
+            amount: 2500,
+            sourceHistoryId: "h1",
+          },
+        ],
+      },
+    ];
+    expect(deriveUnlocks(prev, imported, {})).toContain("debtCollector");
+  });
+
   it("fires loanRanger when a mortgage records its first payment", () => {
     const prev = withItem([]);
     prev.properties = [

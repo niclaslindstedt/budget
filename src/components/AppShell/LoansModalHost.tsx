@@ -1,0 +1,82 @@
+import type { Settings, UserData } from "../../data/types";
+import { useT } from "../../i18n";
+import { ConfirmDialog } from "../ConfirmDialog";
+import { LoanImportPaymentsModal } from "../loans/LoanImportPaymentsModal";
+import { LoanModal } from "../loans/LoanModal";
+import { LoanPaymentsModal } from "../loans/LoanPaymentsModal";
+import type { useLoanDialog } from "./hooks/useLoanDialog";
+
+type Props = {
+  data: UserData;
+  effectiveSettings: Settings;
+  loanDialog: ReturnType<typeof useLoanDialog>;
+};
+
+// Renders the Loans sheet's CRUD + payment modals, fed the state the
+// `useLoanDialog` hook owns. Mirrors `SavingsModalHost`.
+export function LoansModalHost({ data, effectiveSettings, loanDialog }: Props) {
+  const t = useT();
+  const {
+    loanModal,
+    setLoanModal,
+    linkedMortgageIds,
+    deleteLoanPrompt,
+    setDeleteLoanPrompt,
+    deleteLoanActions,
+    onSaveLoan,
+    onDeleteLoanFromModal,
+    onCreateCompany,
+    paymentsLoan,
+    setPaymentsForId,
+    onDeleteLoanPayment,
+    onDeleteAllLoanPayments,
+    importLoan,
+    setImportForId,
+    onImportPayments,
+  } = loanDialog;
+
+  return (
+    <>
+      <LoanModal
+        open={loanModal !== null}
+        loan={loanModal?.loan ?? null}
+        settings={effectiveSettings}
+        properties={data.properties}
+        companies={data.companies}
+        linkedMortgageIds={linkedMortgageIds}
+        onClose={() => setLoanModal(null)}
+        onSave={onSaveLoan}
+        onDelete={onDeleteLoanFromModal}
+        onCreateCompany={onCreateCompany}
+      />
+      <LoanPaymentsModal
+        open={paymentsLoan !== null}
+        loan={paymentsLoan}
+        properties={data.properties}
+        settings={effectiveSettings}
+        onClose={() => setPaymentsForId(null)}
+        onDeletePayment={onDeleteLoanPayment}
+        onDeleteAllPayments={onDeleteAllLoanPayments}
+      />
+      <LoanImportPaymentsModal
+        open={importLoan !== null}
+        loan={importLoan}
+        data={data}
+        settings={effectiveSettings}
+        onClose={() => setImportForId(null)}
+        onImport={onImportPayments}
+      />
+      <ConfirmDialog
+        open={deleteLoanPrompt !== null}
+        title={t("loansSheet.deleteTitle")}
+        description={
+          deleteLoanPrompt
+            ? t("loansSheet.deleteConfirm", { name: deleteLoanPrompt.name })
+            : null
+        }
+        actions={deleteLoanActions}
+        onCancel={() => setDeleteLoanPrompt(null)}
+      />
+    </>
+  );
+}

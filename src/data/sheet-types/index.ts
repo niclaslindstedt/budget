@@ -20,6 +20,7 @@ import {
   PROPERTIES_SHEET_DESCRIPTOR,
   createDefaultPropertiesView,
 } from "./properties";
+import { LOANS_SHEET_DESCRIPTOR, createDefaultLoansView } from "./loans";
 import { SALARY_SHEET_DESCRIPTOR, createDefaultSalaryView } from "./salary";
 import { SAVINGS_SHEET_DESCRIPTOR, createDefaultSavingsView } from "./savings";
 
@@ -98,6 +99,7 @@ export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
   SALARY_SHEET_DESCRIPTOR,
   PROPERTIES_SHEET_DESCRIPTOR,
   SAVINGS_SHEET_DESCRIPTOR,
+  LOANS_SHEET_DESCRIPTOR,
 ];
 
 // Set-shaped view for validators and any other consumer that needs an
@@ -175,6 +177,7 @@ export {
   createDefaultAccountBudget,
   createDefaultAccountsView,
   createDefaultItemsView,
+  createDefaultLoansView,
   createDefaultPropertiesView,
   createDefaultSalaryView,
   createDefaultSavingsView,

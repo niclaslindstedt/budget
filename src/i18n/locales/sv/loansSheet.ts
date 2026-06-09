@@ -1,0 +1,71 @@
+import type { LoansSheetCatalog } from "../en/loansSheet";
+
+const loansSheet: LoansSheetCatalog = {
+  title: "Lån",
+  name: "Namn",
+  monthly: "Månadsvis",
+  rate: "Ränta",
+  paid: "Betalat",
+  remaining: "Kvar",
+  actions: "Åtgärder",
+  total: "Totalt",
+  addLoan: "Lägg till lån",
+  noLoans: "Inga lån ännu. Lägg till ett med knappen nedan.",
+  editAria: "Redigera {name}",
+  editTitle: "Redigera lån",
+  deleteAria: "Ta bort {name}",
+  deleteTitle: "Ta bort lån",
+  deleteConfirm:
+    "Ta bort {name}? Dess registrerade betalningar tas bort. Ett länkat bolån påverkas inte — bara länken försvinner.",
+
+  kindStudent: "Studielån",
+  kindMortgage: "Bolån",
+  kindCar: "Billån",
+  kindPrivate: "Privatlån",
+  kindPersonal: "Personligt lån",
+
+  linkedTo: "Länkat till {name}",
+
+  importPayments: "Importera betalningar",
+  viewPayments: "Visa betalningar",
+  noPayments: "Inga betalningar registrerade ännu",
+
+  newTitle: "Nytt lån",
+  namePlaceholder: "t.ex. Billån",
+  description: "Beskrivning",
+  kind: "Typ av lån",
+  startDate: "Startdatum",
+  startSum: "Startbelopp",
+  monthlyPayment: "Månadsbetalning",
+  rateLabel: "Ränta (%/år)",
+  startFee: "Uppläggningsavgift",
+  optionalHint: "Valfritt",
+  lenderName: "Långivare (person)",
+  lenderNamePlaceholder: "t.ex. Alex",
+  company: "Långivare",
+  linkMortgage: "Länka ett bolån från fastighet",
+  linkNone: "Inte länkat — ange villkor nedan",
+  linkedHint:
+    "Villkor, betalningar och saldo kommer från det länkade bolånet på fastighetsbladet. Redigera dem där.",
+  noMortgagesToLink:
+    "Inga olänkade bolån på fastighetsbladet. Lägg till bolånet på en fastighet först, eller ange villkoren nedan.",
+  create: "Skapa",
+
+  paymentsTitle: "Betalningar",
+  noPaymentsList: "Inga betalningar registrerade ännu.",
+  deletePaymentAria: "Ta bort betalning",
+  deleteAllPayments: "Ta bort alla",
+  linkedPaymentsHint:
+    "De här betalningarna är registrerade på det länkade bolånet och delas med fastighetsbladet.",
+
+  importTitle: "Importera betalningar",
+  importHint:
+    "Bocka i banktransaktionerna som ska registreras som betalningar på {name}. Importen kommer ihåg bankbeskrivningen, så matchande dragningar på framtida importer kopplas automatiskt.",
+  importEmpty:
+    "Inga matchande transaktioner hittades. Märk banktransaktioner med typen {type} (eller importera ett kontoutdrag som innehåller lånets dragningar) och försök igen.",
+  selectAll: "Markera alla",
+  importCountOne: "Importera {n} betalning",
+  importCountOther: "Importera {n} betalningar",
+};
+
+export default loansSheet;

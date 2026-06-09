@@ -1064,6 +1064,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // validator fills it from the canonical default when absent, so older
   // buckets upgrade cleanly without touching the blob here.
   71: (v71) => ({ ...v71, version: 72 }),
+
+  // v72 → v73: introduces `UserData.loans`, the loans rendered by the new
+  // Loans sheet (terms, recorded payments, learned payment patterns).
+  // Seeds empty; old exports simply lack it and the v73 validator fills
+  // `loans: []` regardless, so this is a bare additive bump.
+  72: (v72) => ({ ...v72, version: 73, loans: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

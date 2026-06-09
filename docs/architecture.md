@@ -133,17 +133,29 @@ src/
 │       ├── UpdateSavingBalanceModal.tsx  # append a dated balance point
 │       └── SavingsValueChartModal.tsx    # combined value-over-time chart
 │                                      #   ("Visualize value", account chooser)
+│   └── loans/                # loans page — the money the user owes
+│       ├── LoansPage.tsx         # page root — loans table + remaining total
+│       ├── LoanRow.tsx           # one loan row (swipe edit/delete, "…" menu)
+│       ├── LoanActionsMenu.tsx   # "…" swipe-strip menu (import/view payments)
+│       ├── LoanModal.tsx         # add/edit loan (kind picker, per-kind lender
+│       │                         #   fields, property-mortgage link picker)
+│       ├── LoanPaymentsModal.tsx # recorded payments list (+ delete)
+│       ├── LoanImportPaymentsModal.tsx # candidate tick-list → addLoanPayments
+│       └── loan-kind.ts          # kind → i18n label key + fallback glyph
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 70, incl. taxProfiles +
-│   │   │                       #   properties + savings), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 73, incl. taxProfiles +
+│   │   │                       #   properties + savings + loans), StoredUser,
+│   │   │                       #   UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
-│   │   │                       #   SavingsView, SheetType, SheetGlyph
+│   │   │                       #   SavingsView, LoansView, SheetType, SheetGlyph
 │   │   ├── savings.ts          # Saving (savings account), SavingBalancePoint —
 │   │   │                       #   transactions live in UserData.history keyed by
 │   │   │                       #   the saving id; a first-class transfer endpoint
+│   │   ├── loans.ts            # Loan (kind, terms, lender fields, optional
+│   │   │                       #   property-mortgage link), LoanPayment, LoanKind
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
@@ -185,6 +197,7 @@ src/
 │   │   ├── items.ts            # ITEMS_SHEET_DESCRIPTOR + createDefaultItemsView
 │   │   ├── salary.ts           # SALARY_SHEET_DESCRIPTOR + createDefaultSalaryView
 │   │   ├── savings.ts          # SAVINGS_SHEET_DESCRIPTOR + createDefaultSavingsView
+│   │   ├── loans.ts            # LOANS_SHEET_DESCRIPTOR + createDefaultLoansView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -307,6 +320,18 @@ src/
 │   │   │                       #   Saving as an Account for the transfer surfaces)
 │   │   └── series.ts           # buildSavingsTotalSeries — the combined
 │   │                           #   value-over-time line behind "Visualize value"
+│   ├── loans/              # loans page — balance math + payment import
+│   │   ├── presets.ts          # LOAN_PRESET_TYPE_BY_KIND (kind → preset type
+│   │   │                       #   id the candidate scan anchors on), LOAN_KINDS
+│   │   ├── balance.ts          # loanPaidSoFar, loanRemainingBalance (rate →
+│   │   │                       #   month-by-month simulation; else subtraction),
+│   │   │                       #   resolveLinkedMortgage + linkedMortgageFigures
+│   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
+│   │   │                       #   matched outflows minus already-recorded ids
+│   │   ├── patterns.ts         # learnPaymentPatterns / matchesPaymentPattern —
+│   │   │                       #   normalised-description memory on the loan
+│   │   └── auto-attach.ts      # attachImportedLoanPayments — silent payment
+│   │                           #   recording inside importBankHistory
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /
@@ -339,8 +364,8 @@ src/
 │   │   ├── item/               # AccountBudget item reducer (updateCell, bulk
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
-│   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, sheets.ts,
-│   │   │   transfers.ts, history.ts, history-primary-income.ts,
+│   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, loans.ts,
+│   │   │   sheets.ts, transfers.ts, history.ts, history-primary-income.ts,
 │   │   │   categories-and-types.ts, items.ts, match-rules.ts, recurring.ts,
 │   │   │   series-metadata.ts, settings.ts, achievements.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
@@ -348,10 +373,13 @@ src/
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
 │   │   │                       #   accountsView/itemsView/salaryView/
-│   │   │                       #   propertiesView/savingsView) — cycle-free so the
-│   │   │                       #   sheet-type descriptors can import them
+│   │   │                       #   propertiesView/savingsView/loansView) —
+│   │   │                       #   cycle-free so the sheet-type descriptors can
+│   │   │                       #   import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
 │   │   ├── savings.ts          # validateSaving (+ balance points)
+│   │   ├── loans.ts            # validateLoan (+ payments; sweeps dangling
+│   │   │                       #   companyId and half-dangling mortgage links)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
 │   │   │                       #   payments / repairs; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
@@ -456,7 +484,7 @@ staging slots never appear in either discovery surface.
 ## Planned shape
 
 The module boundaries assume the vision in `AGENTS.md` lands later:
-more sheet types (savings, loan, parental-leave planners), per-account
+more sheet types (parental-leave and similar planners), per-account
 roll-up views, and richer forecasting. Those slot in without a
 re-layout:
 
@@ -892,6 +920,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   from the canonical default when absent, so old exports upgrade without
   touching the blob. Drives the `--table-cell-px` / `--table-cell-py`
   CSS vars the budget ledger cells read for their per-cell padding.
+- **v72 → v73** — adds `UserData.loans`, the loans rendered by the new
+  Loans sheet (each a `Loan` with kind / terms / lender fields, recorded
+  `payments`, learned `paymentPatterns`, and — for a mortgage — an
+  optional live link to a property's mortgage). Seeds empty; old exports
+  simply lack it and the v73 validator fills `loans: []` regardless.
 
 ## State management
 
