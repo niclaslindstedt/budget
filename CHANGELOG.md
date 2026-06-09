@@ -14,6 +14,237 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-09
+
+### Added
+
+- When a payslip is attached, the salary row's gross amount becomes a tappable pill marked with a document icon — tap it to open the payslip without going through the row's "…" menu.
+- New **Properties** sheet — track the homes and apartments you own: what
+  each was bought for, its size, its number of rooms, its monthly fee (the recurring charge to
+  hold it, like a bostadsrätt avgift), its value over time (record a new
+  value any time to add a point to its history) — the current value shows a
+  per-area figure (e.g. 102k/kvm) and the fee a yearly per-area figure
+  (e.g. 587 kr/kvm/yr) when a size is recorded — the lender (the bank its
+  mortgages are held with), and the mortgages themselves. For each mortgage
+  you can record the sum you borrowed, the current balance, the amortisation
+  (a percentage of the initial loan or a fixed sum per month), how often the
+  loan is paid (monthly by default, or quarterly / every 6 months / yearly),
+  when the loan started, and a history of interest-rate changes so older
+  payments are valued at the rate that was in effect then. Give the property a bank account and open "Find mortgage
+  payments" from
+  the button in its mortgage section: it scans that account's history
+  for the single monthly charge that pays its loans — homing in on the
+  charges you tagged with a lender or the Mortgage type, learning their bank
+  description, and sweeping the rest of the history for every matching month,
+  ranking the likeliest first, leaving a previous home's loan out by its
+  different amount, and ignoring charges that are nowhere near what the loan's
+  amortisation and interest add up to. A charge that recurs on the loan's
+  cadence under the same description, for an amount that matches the expected
+  payment, AND that has been charged for every period since the loan started
+  is flagged "Highly probable" and stands out at the top of the list — that
+  steady, complete rhythm is the surest sign it's the mortgage, so it outranks
+  even a charge you tagged. When any charge is flagged this way, only those are
+  ticked for you to begin with — the weaker candidates are left for you to add
+  deliberately — and when nothing is flagged, every charge found is ticked as
+  before. A charge that recurs cleanly but only covers part
+  of that span — say five of the eight months since you took the loan out —
+  stays an ordinary candidate instead, and when two charges match the same
+  expected amount only the strongest is flagged, so look-alikes don't all
+  light up. Haven't tagged anything yet? As long
+  as the loan's terms are filled in, the finder still picks out the charges
+  whose amount matches the expected monthly payment, so a freshly imported
+  account turns up its mortgage straight from the maths. Each found transaction is split across the property's
+  mortgages by their amortisation and interest, recording one payment per
+  loan that adds up to exactly what was paid. Both the mortgage card and the
+  payments view break each total down into interest and amortisation, so a
+  loan carrying all the principal is obvious instead of hidden in a single
+  number; the card also shows the interest the loan is accruing right now —
+  its rate applied to what's still owed — alongside the monthly amortisation.
+  When a property carries more than one mortgage the card opens in a unified
+  view that sums every loan into one picture — combined balance and debt, a
+  blended effective rate, and the total monthly interest and amortisation —
+  with the combined balance also showing, as a percentage, how much of what
+  you paid for the property is tied up in loans — the loan-to-value the bank
+  reads (e.g. 6 028 400 with an 82% pill beside it), and a
+  two-glyph toggle in the mortgage section header to switch to a split view
+  and see each loan on its own — the active mode slides between the glyphs as
+  you press it. "View payments" and "Find mortgage payments" are buttons in
+  that header beside the toggle, while "Add mortgage" lives in the property's
+  "…" menu.
+  Open a property's payments to
+  review every recorded charge and how it split across the loans — tap a
+  charge to see the original bank transaction it came from — and edit or
+  remove individual payments — change one loan's share and the others
+  re-balance so the total still matches the bank — or clear every recorded
+  payment in one go to re-run the finder from scratch. The payments view also
+  flags anything left unaccounted for when the amortisation you've recorded
+  doesn't add up to the drop from the original loan to the current balance —
+  a hint that a payment is missing or a figure is off. A property can carry several
+  mortgages. Choose whether sizes read as "kvm" or "sqm" in the Property
+  settings tab.
+  
+  Record a new value any time by tapping the property's current value on
+  its card. What you paid is the property's first value automatically — the
+  purchase price shows in the value history (tagged "Purchase") at the
+  purchase date, so a new property already has a value without recording
+  one, and editing the purchase amount moves it. Visualize value and view
+  repairs are their own buttons on the property card's header; every other
+  per-property action — estimate a sale, edit, delete — lives behind a single
+  "…" menu beside them, so the header stays tidy as the feature grows.
+  
+  Estimate what a sale would net you with the new **Net sale profit**
+  calculator (in a property's "…" menu): drag a slider to try different
+  sale prices and watch a live breakdown — broker fee, advertising,
+  repairs and renovations, and the original purchase price all come off,
+  then capital-gains tax, ending in a net profit or loss that stands out in
+  green or red. The broker fee can be a flat amount, a percentage of the
+  sale, or a base fee plus a percentage above a threshold — or skipped
+  entirely. The tax follows your **Location**, a new setting under General
+  that decides which country's tax rules apply (to property sales and your
+  salary); only Sweden is built in today, with a link to request more.
+  
+  Each property also tracks its **repairs and renovations** — open the
+  wrench view from its button on the property card to add any bank charge you
+  tagged Repairs or Renovations, across all your accounts. Add one at a time with a
+  description of the work ("repainted the kitchen"), a subtype that
+  classifies it, and the company and tags it was with — or quick-add
+  several charges in one go and fill in the details later. Company and
+  tags are saved on the underlying transaction, so they also enrich your
+  budget, and tagging lets you group repairs together across properties.
+  The wrench view lists each repair with its full date, company, and tags.
+  Attach the receipts to the repair and the cost is ready for a future tax
+  deduction; a repair with no receipt is flagged "missing receipt" so the
+  paperwork doesn't slip. A big job is rarely one invoice — a deposit at the
+  start, a balance at the end, staged payments over a year — so open **Manage
+  receipts** to attach several, each with its own date (it defaults to the
+  repair's date). When one invoice was paid across several bank charges, tick
+  every transaction in the repair editor to group them under a single repair:
+  their amounts add up. The same transaction can't back two repairs. Older
+  work that predates the bank history you imported needn't be left out —
+  choose **Add manually** in the wrench view to record a repair with no
+  transaction behind it: enter the type, date, amount, description,
+  contractor, and tags directly (stored on the repair itself), and attach
+  receipts just the same. Swipe a repair left to edit its transactions,
+  description, subtype, company, and tags, manage its receipts, or delete it.
+  Repair receipts are saved into the property's own receipts folder, each
+  named for its date, company, and the work done, so the folder reads like a
+  dated log of everything done to the home; change a receipt's date, a
+  repair's company or description, or rename the property, and the receipt
+  files are renamed to match.
+  
+  Beyond receipts, **upload any file to a property** — choose **Upload
+  file** from a property's "…" menu to attach a photo or PDF: before and
+  after pictures, an inspection report, an insurance document, anything
+  that isn't a receipt. Give each file a description and tags, and sort it
+  into a **category** you name (insurance, manuals, …) that becomes its own
+  subfolder. Files open in the same viewer as receipts, and you can edit
+  their details, replace, or delete them. Mark a file **private** to keep
+  it out of an export. Manage your file categories in the Property settings
+  tab. Each property keeps its receipts and files together under a
+  per-property folder on your storage.
+  
+  Selling a home? **Export a property** from its "…" menu to bundle
+  everything about it — its details, repairs, receipts, and uploaded
+  documents — into a single file to hand to the new owner, who brings it
+  into their own Properties sheet with **Import property** from the sheet's
+  "…" menu (it lands as a brand-new property). Choose what goes in the
+  bundle: receipts are included by default, files you marked private are
+  left out unless you opt in, and your own financial records — the
+  mortgages, their payment history, the purchase price, and value
+  estimates — stay out unless you choose to include them. Choose where it
+  goes, too: download the file to your device, or — when you've connected a
+  folder or cloud storage — save it straight into an exports/ folder there.
+- The account history viewer now has a filter button next to its search
+  bar: narrow the imported entries to a recent time range (this year, the
+  last few years, or all time), to a band of amounts, or to a span of
+  months. The filters apply alongside the search and sort, and reset when
+  you close the viewer.
+- Reorder your sheets by dragging them in Settings → General. The order you set drives the tab strip in the bottom bar.
+- Favorite up to five sheets from a sheet's "…" menu to pin them as
+  quick-switch glyph icons in the bottom bar — one tap to jump between the
+  sheets you use most. The full sheet list still lives in the header
+  switcher dropdown.
+- Mortgage cards on the Properties sheet now show a payoff "power bar" —
+  how much of the original loan you've amortised away, filling to a green
+  100% when the balance reaches zero and the loan is fully paid off.
+  Press the bar to expand the interest-and-amortisation breakdown of what
+  you've paid, tucked away below it. Paying one off all the way unlocks the
+  new "Mortgage Free" achievement.
+- New **Repairs** type under Housing, for tracking what you spend
+  fixing what's broken — separate from routine Home maintenance and
+  larger Renovations.
+- Manage your subtypes from settings. A Subtypes section lists every
+  subtype grouped under its parent type, where you can rename or delete
+  each one — item subtypes in the Items tab, and repair / renovation
+  subtypes in the Properties tab.
+- Add a payslip to the **Salary** sheet by hand — no bank transaction
+  required. Bank history only reaches back so far, so the new **Add payslip**
+  action (in the sheet's "…" menu and on the empty sheet) lets you record
+  paychecks older than your imported history: pick the pay month, type the
+  net (and the gross, or let your tax profile estimate it), note the
+  employer and any absence days, and it joins the per-year tables alongside
+  the ones "Find salaries" discovered.
+- Settings sections that grow taller than half the screen — like the
+  Categories and types list — can now be folded away. Tap the section
+  title to collapse it into a slim bar and tap again to expand it.
+- A new **Excel** light theme under Settings → Appearance, for
+  spreadsheet users who want the app to feel like home: a pure-white
+  cell grid on a soft Office-grey workspace, the classic Excel gridline
+  grey, near-black text, and the Office accent set — Excel green,
+  hyperlink blue, chart orange, gold, teal, and purple.
+- Visualize a property's value over time. A new **Visualize value** entry in a property's "…" menu charts its recorded values as a line graph, with toggles to fold in the money spent on repairs and to overlay the net value you'd actually take home after broker, advertising, repairs, purchase price, and capital-gains tax. A dotted purchase-value line sits underneath the value and "with repairs" views, so the gap above it reads as your profit at a glance. The chart follows your theme — colours, font, corners, and spacing all match.
+
+### Changed
+
+- The Items sheet now labels its money columns "Price" and "Value"
+  (previously "Bought for" and "Worth now") and shows an icon next to the
+  Price column on every screen size.
+- The items sheet's "…" title menu now lists Edit sheet first, matching
+  the menu order on every other sheet type.
+- Merged the **Mortgage principal** and **Mortgage interest** budget types
+  into a single **Mortgage** type. Entries you'd already tagged with either
+  are moved to the merged type automatically, so tracking a mortgage payment
+  no longer means splitting it across two types.
+- Sheet switching moved to a dropdown in the page header that lists every
+  sheet (the active one checked, with a "New sheet" entry), replacing the
+  bottom-bar tab strip. The bottom bar now holds just the row actions —
+  search, undo/redo, history, and select.
+- The amount filter in transaction search now stays visible even when every
+  result shares one amount — it shows a short hint ("All results are X")
+  instead of disappearing, so you can always see the amount range your
+  search spans.
+- Switching to the **Custom** theme now starts you off from the theme
+  that's currently on screen — the colours, corner radius, density,
+  border width, and reduce-motion toggle all copy the look you were just
+  using, so you can tweak from there instead of from a blank slate.
+  System resolves to whichever light or dark scheme your device is showing.
+- The Custom theme's colour pickers now line up in a tidy grid — every
+  swatch shares the same size and sits in an aligned column, instead of
+  drifting to wherever its caption happened to push it.
+- Find salaries now recognises the bank description behind the paychecks
+  you have already added: when they all share one, it suggests every other
+  deposit under that description that landed within your usual payout-day
+  window — catching reduced or off-cadence months the recurring scan would
+  otherwise miss.
+- Money columns across the sheets now sit tighter and line up more cleanly: each amount column hugs its widest value, so it stays narrow on phones and grows only when the numbers get large, and the column-header icon sits directly over the figures it labels.
+- Budgets stored on Dropbox or Google Drive now open instantly from a
+  local copy instead of waiting for the whole file to download on every
+  refresh. The app checks the cloud in the background and only re-fetches
+  when something actually changed, so pull-to-refresh and reloads feel
+  immediate even on a large budget over a slow connection.
+
+### Fixed
+
+- Fixed a flicker on the budget page where the screen could jitter up and
+  down a few millimetres when a month sat right at the edge of where its
+  rows load in. Scrolling past it used to be the only way to settle it.
+- Viewing and removing a payslip now works on Dropbox and Google Drive
+  when offline mode is enabled — previously the salary row menu showed
+  the payslip controls but they did nothing.
+- Settings section titles ("Theme", "Font", …) no longer have a faint
+  line running through them on high-contrast themes like GitHub Light
+  and Excel.
+
 ## [1.0.0] - 2026-06-02
 
 ### Added
