@@ -24,8 +24,32 @@
 // resolves on a microtask anyway, so there is no visible spinner.
 
 import { buildSeedUserData } from "../data/dev/seed";
-import type { Snapshot, StorageAdapter } from "./adapter";
+import type { ReceiptOps, Snapshot, StorageAdapter } from "./adapter";
 import { serializeUserData } from "./file";
+
+// One throwaway in-memory blob folder, one per file capability. The
+// real backends keep receipts / payslips / property files / exports in
+// separate sibling folders, so each capability gets its own map rather
+// than a single shared one — a receipt and a property file that happen
+// to share a relative path must not collide. Bytes live only for the
+// lifetime of the adapter instance (the fake-data session) and are
+// never persisted, encrypted, or mirrored.
+function inMemoryFileOps(): ReceiptOps {
+  const blobs = new Map<string, Blob>();
+  return {
+    upload(path, blob) {
+      blobs.set(path, blob);
+      return Promise.resolve();
+    },
+    download(path) {
+      return Promise.resolve(blobs.get(path) ?? null);
+    },
+    remove(path) {
+      blobs.delete(path);
+      return Promise.resolve();
+    },
+  };
+}
 
 export function createDevSeedAdapter(): StorageAdapter {
   // Seed once on creation. A fresh adapter (fresh seed) is built each
@@ -36,10 +60,24 @@ export function createDevSeedAdapter(): StorageAdapter {
     id: "dev",
     label: "Developer (fake data)",
     saveDebounceMs: 0,
-    // No backups / receipts / payslips: those gate cloud / folder UI we
-    // don't want for a throwaway in-memory store. No `loadSync` either
-    // — see the file header.
-    capabilities: new Set(),
+    // Advertise the blob-file capabilities so the attachment flows the
+    // seed preloads data for — property files, repair receipts, item
+    // receipts, payslips, saved exports — are fully reachable in
+    // fake-data mode. Without these, the Files manager (and friends)
+    // would list seeded rows but hide the upload button, since the UI
+    // gates the upload / manage affordance on the capability. The seed
+    // preloads file *records* whose bytes were never written to these
+    // maps, so opening a seeded file still shows the viewer's "can't
+    // load" state — but uploading, replacing, and removing round-trip
+    // through the in-memory store. No `backups` (a different,
+    // manifest-shaped contract unrelated to the attachment flows) and
+    // no `loadSync` — see the file header for why the sync path stays
+    // off.
+    capabilities: new Set(["receipts", "payslips", "propertyFiles", "exports"]),
+    receipts: inMemoryFileOps(),
+    payslips: inMemoryFileOps(),
+    propertyFiles: inMemoryFileOps(),
+    exports: inMemoryFileOps(),
 
     load(): Promise<Snapshot | null> {
       return Promise.resolve({ text });
