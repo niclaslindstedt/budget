@@ -15,6 +15,7 @@ import { stageHistoryImport } from "../../../data/import-staging";
 import { findOrphans } from "../../../data/reconciliation";
 import type { Action } from "../../../data/reducer";
 import { predictRenames } from "../../../data/rename-patterns";
+import { savingAsTransferEndpoint } from "../../../data/savings/value";
 import { findColumnByType } from "../../../data/sheet";
 import type { Account, AccountBudget, UserData } from "../../../data/types";
 import type { ParsedBankFile } from "../../../storage/banks";
@@ -154,12 +155,26 @@ export function useImportFlow({
   const onOpenCutHistory = useCallback((accountId: string) => {
     dispatchFlow({ kind: "setCutHistoryForId", id: accountId });
   }, []);
+  // Import / view / cut all key off `history[id]`, which is shared by regular
+  // accounts and savings accounts (both are transfer endpoints). Resolve an id
+  // against either collection so the same modals serve a savings account —
+  // a saving is presented as an `Account` for the modal chrome. The import
+  // reducer's account / budget branches simply find no match for a saving id
+  // and no-op, merging the entries into `history[savingId]` for transfer
+  // detection.
+  const resolveLedger = useCallback(
+    (id: string | null): Account | null => {
+      if (!id) return null;
+      const account = data.accounts.find((a) => a.id === id);
+      if (account) return account;
+      const saving = data.savings.find((s) => s.id === id);
+      return saving ? savingAsTransferEndpoint(saving) : null;
+    },
+    [data.accounts, data.savings],
+  );
   const cutHistoryAccount = useMemo(
-    () =>
-      cutHistoryForId
-        ? (data.accounts.find((a) => a.id === cutHistoryForId) ?? null)
-        : null,
-    [cutHistoryForId, data.accounts],
+    () => resolveLedger(cutHistoryForId),
+    [resolveLedger, cutHistoryForId],
   );
   const onConfirmCutHistory = useCallback(
     (cutoffDate: string) => {
@@ -174,18 +189,12 @@ export function useImportFlow({
     [cutHistoryAccount, dispatch],
   );
   const importHistoryAccount = useMemo(
-    () =>
-      importHistoryForId
-        ? (data.accounts.find((a) => a.id === importHistoryForId) ?? null)
-        : null,
-    [importHistoryForId, data.accounts],
+    () => resolveLedger(importHistoryForId),
+    [resolveLedger, importHistoryForId],
   );
   const viewHistoryAccount = useMemo(
-    () =>
-      viewHistoryForId
-        ? (data.accounts.find((a) => a.id === viewHistoryForId) ?? null)
-        : null,
-    [viewHistoryForId, data.accounts],
+    () => resolveLedger(viewHistoryForId),
+    [resolveLedger, viewHistoryForId],
   );
 
   const onConfirmImportHistory = useCallback(

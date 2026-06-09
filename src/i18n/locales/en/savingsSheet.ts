@@ -17,6 +17,11 @@ const savingsSheet = {
   deleteConfirm:
     "Delete {name}? Its recorded balance history is removed, along with any transactions and transfers tied to it.",
   updateBalance: "Update balance",
+  importHistory: "Import history",
+  viewHistory: "View history",
+  cutHistory: "Cut history",
+  noHistory: "No transactions imported yet",
+  nothingToCut: "No history or transactions to cut",
 
   // Create / edit modal.
   newTitle: "New savings account",

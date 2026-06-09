@@ -14,17 +14,29 @@ import { SavingActionsMenu } from "./SavingActionsMenu";
 type Props = {
   saving: Saving;
   settings: Settings;
+  // Whether this savings account carries imported transactions / has anything
+  // to cut — gates the View / Cut history entries in the "…" menu.
+  hasHistory: boolean;
+  canCut: boolean;
   onEditSaving: (savingId: string) => void;
   onDeleteSaving: (savingId: string, name: string) => void;
   onUpdateBalance: (savingId: string) => void;
+  onImportHistory: (savingId: string) => void;
+  onViewHistory: (savingId: string) => void;
+  onCutHistory: (savingId: string) => void;
 };
 
 function SavingsRowImpl({
   saving,
   settings,
+  hasHistory,
+  canCut,
   onEditSaving,
   onDeleteSaving,
   onUpdateBalance,
+  onImportHistory,
+  onViewHistory,
+  onCutHistory,
 }: Props) {
   const t = useT();
   const { cellClass } = useAmountColumns();
@@ -117,7 +129,12 @@ function SavingsRowImpl({
           </button>
           <SavingActionsMenu
             saving={saving}
+            hasHistory={hasHistory}
+            canCut={canCut}
             onUpdateBalance={onUpdateBalance}
+            onImportHistory={onImportHistory}
+            onViewHistory={onViewHistory}
+            onCutHistory={onCutHistory}
             onAction={() => setSwiped(false)}
           />
         </div>

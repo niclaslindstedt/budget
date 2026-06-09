@@ -1514,7 +1514,11 @@ Its transactions live in `UserData.history` keyed by the saving's id
 (stored, but never surfaced on the Savings page), so
 `detectTransferCandidates` pairs a savings deposit with the matching
 withdrawal on a regular account automatically, and a `Transfer` may name
-a saving on either side. The transfer log and collapse / create modals
+a saving on either side. Those transactions are imported through the
+savings row's "…" menu — Import / View / Cut history reuse the accounts
+import pipeline (`useImportFlow` resolves a saving id the same as an
+account id, and `importBankHistory` merges into `history[savingId]` with
+its account- / budget-specific branches harmlessly skipped for a saving). The transfer log and collapse / create modals
 resolve a saving endpoint to its name via `savingAsTransferEndpoint`
 (`src/data/savings/value.ts`). Savings are deliberately kept out of the
 Accounts table and `computeAccountBalances`. Deleting a saving cascades
