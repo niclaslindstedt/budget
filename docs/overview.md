@@ -1557,7 +1557,7 @@ transactions collapse to that single point). It runs inside the
 re-importing the same statement is idempotent (an existing point on a covered
 date keeps its id, its value re-anchored to the bank's figure) and importing
 an older statement backfills earlier days. Manual points on dates the import
-doesn't cover survive untouched; a date the import *does* cover becomes
+doesn't cover survive untouched; a date the import _does_ cover becomes
 authoritative. Entries without a running balance (credit-card-style exports)
 contribute nothing, leaving the history unchanged.
 
