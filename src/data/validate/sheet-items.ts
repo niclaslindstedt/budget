@@ -6,6 +6,7 @@ import type {
   ColumnType,
   CorrectionRow,
   ItemsView,
+  LoansView,
   PropertiesView,
   Row,
   SalaryView,
@@ -317,6 +318,18 @@ export function validateSavingsView(
   if (type !== "savingsView")
     return fail(`${path}.type`, `expected "savingsView"`);
   return { ok: true, value: { id, type: "savingsView" } };
+}
+
+export function validateLoansView(
+  raw: unknown,
+  path: string,
+): Result<LoansView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "loansView") return fail(`${path}.type`, `expected "loansView"`);
+  return { ok: true, value: { id, type: "loansView" } };
 }
 
 export function validateSalaryView(

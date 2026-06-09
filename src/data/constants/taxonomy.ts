@@ -261,6 +261,25 @@ export const PROPERTIES_GLYPH_NAMES: readonly CategoryIcon[] = [
   "star",
 ] as const;
 
+// Loans sheets stand for borrowed money — mortgages, student loans, car
+// loans, money owed to a person — so the palette leans toward lenders and
+// the things loans buy. The SheetModal picks this set when the selected
+// sheet type is "loans" via the descriptor's `glyphNames`.
+export const LOANS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "hand-coins",
+  "landmark",
+  "banknote",
+  "credit-card",
+  "vault",
+  "coins",
+  "wallet",
+  "car",
+  "home",
+  "building-2",
+  "graduation-cap",
+  "receipt",
+] as const;
+
 // Accounts are real-world money stores — bank accounts, cards, cash,
 // brokerage, crypto, loans. The palette covers the spectrum so users
 // can express checking vs. mortgage vs. mobile-pay app at a glance.

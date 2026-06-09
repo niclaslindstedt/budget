@@ -44,6 +44,7 @@ function sampleData(): UserData {
     employers: [],
     properties: [],
     savings: [],
+    loans: [],
     fileCategories: [],
     companies: [],
     tags: [],
@@ -133,6 +134,7 @@ describe("serializeUserData", () => {
       employers: b.employers,
       properties: b.properties,
       savings: b.savings,
+      loans: b.loans,
       fileCategories: b.fileCategories,
       companies: b.companies,
       tags: b.tags,
@@ -171,7 +173,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 35)).toEqual([
+    expect(topKeys.slice(0, 36)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -187,6 +189,7 @@ describe("serializeUserData", () => {
       "ignoredItemEntryIds",
       "itemFindExclusionPatterns",
       "items",
+      "loans",
       "matchRules",
       "merchantHints",
       "presetTypeKindOverrides",

@@ -263,6 +263,19 @@ export function describeActionSubject(
     case "deleteSaving":
       return name(byId(prev.savings, action.savingId)?.name);
 
+    // Loans — single-target actions name the loan. Edits / payments read
+    // off `next` (the loan still exists); the delete reads the name off
+    // `prev` since the loan is gone in `next`.
+    case "addLoan":
+      return name(action.loan.name);
+    case "updateLoan":
+    case "addLoanPayments":
+    case "deleteLoanPayment":
+    case "deleteAllLoanPayments":
+      return name(byId(next.loans, action.loanId)?.name);
+    case "deleteLoan":
+      return name(byId(prev.loans, action.loanId)?.name);
+
     // Salary / employers / tax profiles.
     case "addSalaries":
       return action.salaries.length === 1

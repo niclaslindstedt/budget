@@ -13,6 +13,7 @@ import type {
   HistoryEntry,
   HistoryImport,
   Item,
+  Loan,
   MatchRule,
   MerchantHint,
   PrimaryIncomeMerchant,
@@ -49,6 +50,7 @@ import {
 import { validateEmployer, validateSalary } from "./salary";
 import { validateProperty } from "./properties";
 import { validateSaving } from "./savings";
+import { validateLoan } from "./loans";
 import {
   validateMatchRule,
   validateMerchantHint,
@@ -174,6 +176,28 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`savings[${i}].id`, `duplicate id "${r.value.id}"`);
     seenSavingIds.add(r.value.id);
     savings.push(r.value);
+  }
+
+  // Loans. Validated after companies and properties so a loan's lender
+  // `companyId` and its `propertyId` / `mortgageId` link pair can be
+  // checked against the resolvable sets (dangling references are dropped
+  // rather than rejecting the file). Duplicate ids fail the load like the
+  // other top-level arrays.
+  const rawLoans = Array.isArray(raw.loans) ? raw.loans : [];
+  const loans: Loan[] = [];
+  const seenLoanIds = new Set<string>();
+  for (let i = 0; i < rawLoans.length; i++) {
+    const r = validateLoan(
+      rawLoans[i],
+      `loans[${i}]`,
+      knownCompanyIds,
+      properties,
+    );
+    if (!r.ok) return r;
+    if (seenLoanIds.has(r.value.id))
+      return fail(`loans[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenLoanIds.add(r.value.id);
+    loans.push(r.value);
   }
 
   // The combined id-space of transfer endpoints and history-bucket keys.
@@ -610,6 +634,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       employers,
       properties,
       savings,
+      loans,
       fileCategories,
       companies,
       tags,

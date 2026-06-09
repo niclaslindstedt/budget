@@ -1208,6 +1208,7 @@ export function buildSeedUserData(): UserData {
     employers,
     properties,
     savings: savingsAccounts,
+    loans: [],
     fileCategories,
     companies,
     tags,

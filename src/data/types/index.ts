@@ -50,6 +50,7 @@ export type {
   AccountBudget,
   AccountsView,
   ItemsView,
+  LoansView,
   PropertiesView,
   SalaryView,
   SavingsView,
@@ -60,6 +61,8 @@ export type {
 } from "./sheets";
 
 export type { Saving, SavingBalancePoint } from "./savings";
+
+export type { Loan, LoanKind, LoanPayment } from "./loans";
 
 export type { Employer, Role, Salary } from "./salary";
 

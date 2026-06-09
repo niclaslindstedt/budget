@@ -9,6 +9,7 @@ const presetCategories: PresetCategoriesCatalog = {
   subscriptions: "Prenumerationer",
   entertainment: "Underhållning",
   savings: "Sparande",
+  loans: "Lån",
   income: "Inkomst",
   family: "Familj",
   personal: "Personligt",

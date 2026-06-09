@@ -14,6 +14,8 @@ const sheetModal = {
     "The Items sheet lists everything you own, with what each thing cost and what it's worth now. Add items from there — no per-sheet account binding needed.",
   propertiesHint:
     "The Properties sheet tracks the homes and apartments you own — what each cost, what it's worth now, and the mortgages against it. Add properties from there; each mortgage binds its own account for finding payments.",
+  loansHint:
+    "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, borrowed money — and the payments made on each. Add loans from there; a mortgage can link a property's mortgage so the two sheets always agree.",
   salaryAccountHint:
     "The account your salary is paid into. “Find salaries” scans this account’s bank history for paychecks. Use one salary sheet per person, each bound to that person’s pay account.",
   color: "Color",

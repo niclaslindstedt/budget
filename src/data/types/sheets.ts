@@ -88,6 +88,18 @@ export type SavingsView = {
   type: "savingsView";
 };
 
+// Workspace-wide loans sheet item. The Loans sheet renders the global
+// `UserData.loans` collection (the money the user owes — student loans,
+// car loans, mortgages, borrowed money — with the payments made against
+// each) rather than a per-account ledger. Like `SavingsView` the item
+// carries no data of its own — it reads the shared collection — so the
+// shape exists only so future per-sheet config (sort order, hide-paid-off
+// toggle, …) lands here without another migration.
+export type LoansView = {
+  id: string;
+  type: "loansView";
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
@@ -102,7 +114,8 @@ export type SheetItem =
   | ItemsView
   | SalaryView
   | PropertiesView
-  | SavingsView;
+  | SavingsView
+  | LoansView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -117,7 +130,8 @@ export type SheetType =
   | "items"
   | "salary"
   | "properties"
-  | "savings";
+  | "savings"
+  | "loans";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

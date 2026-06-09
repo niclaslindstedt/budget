@@ -23,6 +23,7 @@ import type {
   SeriesMetadata,
 } from "./rules";
 import type { FileCategory, Property } from "./properties";
+import type { Loan } from "./loans";
 import type { Saving } from "./savings";
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
@@ -36,7 +37,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 72;
+  version: 73;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -70,6 +71,16 @@ export type UserData = {
   // saving's id, exactly like a regular account. Entirely user-curated — no
   // presets ship. Empty on a fresh budget.
   savings: Saving[];
+  // Loans the user owes money on (student loans, car loans, mortgages,
+  // money borrowed from a person), rendered by the Loans sheet. Each
+  // carries its terms (start date / sum, monthly payment, optional rate
+  // and setup fee), the payments recorded against it, and the learned
+  // bank-description patterns that auto-attach future imported
+  // transactions as payments. A mortgage loan can instead link a
+  // `Property`'s mortgage by id — terms and payments then resolve live
+  // from `properties`. Entirely user-curated — no presets ship. Empty on
+  // a fresh budget.
+  loans: Loan[];
   // User-defined categories for property file uploads (see `FileCategory`).
   // Each becomes a subfolder under a property's `files/` folder; a file with
   // no category lands in the `files/` root. Referenced from

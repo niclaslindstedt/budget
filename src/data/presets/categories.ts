@@ -38,6 +38,7 @@ export const PRESET_CATEGORIES: ReadonlyArray<Category> = (() => {
       icon: "film",
     },
     { slug: "savings", name: "Savings", color: C[5], icon: "piggy-bank" },
+    { slug: "loans", name: "Loans", color: C[0], icon: "hand-coins" },
     { slug: "income", name: "Income", color: C[3], icon: "banknote" },
     { slug: "family", name: "Family", color: C[6], icon: "baby" },
     { slug: "personal", name: "Personal", color: C[2], icon: "shirt" },

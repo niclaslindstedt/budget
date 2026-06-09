@@ -236,6 +236,12 @@ export function SheetModal({
             </p>
           )}
 
+          {type === "loans" && (
+            <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+              {t("sheetModal.loansHint")}
+            </p>
+          )}
+
           {(type === "budget" || type === "salary") && (
             <FormSection label={t("sheetModal.account")}>
               {creatingAccount ? (

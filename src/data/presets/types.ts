@@ -103,14 +103,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
-      slug: "mortgage",
-      name: "Mortgage",
-      color: C[0],
-      glyph: "landmark",
-      category: "housing",
-      kind: "expense",
-    },
-    {
       slug: "home-insurance",
       name: "Home insurance",
       color: C[7],
@@ -556,12 +548,47 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "bills",
       kind: "expense",
     },
+    // Loans — repayments on borrowed money. `mortgage` and `csn` kept
+    // their original ids when this category was carved out (mortgage was
+    // under housing, csn under bills) per the id-immutability rule above.
+    {
+      slug: "mortgage",
+      name: "Mortgage",
+      color: C[0],
+      glyph: "landmark",
+      category: "loans",
+      kind: "expense",
+    },
     {
       slug: "csn",
       name: "Student loan",
       color: C[6],
       glyph: "graduation-cap",
-      category: "bills",
+      category: "loans",
+      kind: "expense",
+    },
+    {
+      slug: "car-loan",
+      name: "Car loan",
+      color: C[4],
+      glyph: "car",
+      category: "loans",
+      kind: "expense",
+    },
+    {
+      slug: "private-loan",
+      name: "Private loan",
+      color: C[0],
+      glyph: "landmark",
+      category: "loans",
+      kind: "expense",
+    },
+    {
+      slug: "personal-loan",
+      name: "Personal loan",
+      color: C[2],
+      glyph: "hand-coins",
+      category: "loans",
       kind: "expense",
     },
     // Subscriptions
@@ -1048,6 +1075,9 @@ export const NEVER_ITEM_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-union-fee",
   "preset-type-a-kassa",
   "preset-type-csn",
+  "preset-type-car-loan",
+  "preset-type-private-loan",
+  "preset-type-personal-loan",
   "preset-type-housing-queue",
   // Subscriptions
   "preset-type-music-streaming",
