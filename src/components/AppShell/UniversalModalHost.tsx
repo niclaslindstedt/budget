@@ -628,6 +628,7 @@ export function UniversalModalHost(props: Props) {
         open={changelogOpen}
         onClose={onCloseChangelog}
         since={changelogSince}
+        onOpenFeatureDoc={() => unlockAchievement("bookworm")}
       />
       <ActionHistoryModal
         open={actionHistoryOpen}

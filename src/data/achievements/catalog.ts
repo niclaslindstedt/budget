@@ -446,6 +446,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "bookworm",
+    tier: "beginner",
+    glyph: BookOpen,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "shortcut",
     tier: "beginner",
     glyph: MousePointerClick,

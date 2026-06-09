@@ -24,6 +24,7 @@ import {
   absoluteUrl,
 } from "./src/seo/siteConfig";
 import { emitChangelogData } from "./vite/changelog-plugin";
+import { emitFeatureDocs } from "./vite/feature-docs-plugin";
 
 // Multi-build deploy: production goes at "/", a preview of `main` goes
 // at "/preview/", and an optional **stable** branch slot lives at
@@ -559,6 +560,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     emitChangelogData(),
+    emitFeatureDocs(),
     stripWoffFallback(),
     patchAppleTitle(),
     injectGoatcounter(),
