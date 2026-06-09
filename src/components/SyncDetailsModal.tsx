@@ -243,7 +243,12 @@ export function SyncDetailsModal({
     !showReconnect &&
     (status.kind === "error" ||
       status.kind === "offline" ||
-      (dirty && status.kind !== "conflict"));
+      // A shrink-warning has its own confirm / discard buttons below;
+      // `saveNow` refuses to run while that paused state owns the
+      // screen, so a second "Save now" here would be a dead button.
+      (dirty &&
+        status.kind !== "conflict" &&
+        status.kind !== "shrink-warning"));
   const saveLabel =
     status.kind === "error" || status.kind === "offline"
       ? t("sync.tryAgain")
