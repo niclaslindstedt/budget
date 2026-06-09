@@ -14,6 +14,23 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-09
+
+### Added
+
+- **Feature docs in What's new** — Large features in the "What's new" changelog now show a "Learn more" link that opens the full write-up inside the same window, with a back button to return.
+- **Savings sheet** — Add a Savings sheet for tracking money you set aside: create savings accounts, record their balance over time — by hand or seeded automatically from an imported bank statement — let transfers from your everyday accounts into savings get matched automatically, and visualize the total set aside across the accounts you choose over time.
+- **Table spacing** — Add a **Table spacing** control to the Custom theme (Settings → Appearance) — pick Compact, Comfortable, or Spacious to tighten or open up the padding in your budget ledger tables.
+
+### Changed
+
+- **Account details from imported statements** — Importing a bank statement now fills in the account's bank name alongside its clearing and account number when those fields are empty, and does so for savings accounts too — never overwriting details you set by hand.
+
+### Fixed
+
+- **Import history date range** — The import preview's date range now always shows the year on both bounds, so a statement that spans the turn of a year is no longer displayed as if it covered a single year.
+- **Cutting history no longer strands collapsed transfers** — Cutting an account's history now brings back the other side of any collapsed transfer it removes, so re-importing the same statement detects the pair again instead of finding nothing.
+
 ## [1.1.0] - 2026-06-09
 
 ### Added
