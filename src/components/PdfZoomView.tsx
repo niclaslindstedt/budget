@@ -49,7 +49,7 @@ export function PdfZoomView({
   // Render the PDF to canvases once, on mount / when the blob changes.
   useEffect(() => {
     let cancelled = false;
-    let doc: import("pdfjs-dist").PDFDocumentProxy | null = null;
+    let loadingTask: import("pdfjs-dist").PDFDocumentLoadingTask | null = null;
     setStatus("loading");
 
     async function run() {
@@ -61,7 +61,8 @@ export function PdfZoomView({
 
         const data = await blob.arrayBuffer();
         if (cancelled) return;
-        doc = await pdfjs.getDocument({ data }).promise;
+        loadingTask = pdfjs.getDocument({ data });
+        const doc = await loadingTask.promise;
         if (cancelled) return;
 
         const container = scrollRef.current;
@@ -88,9 +89,7 @@ export function PdfZoomView({
           canvas.style.width = "100%";
           canvas.style.height = "auto";
           canvas.style.display = "block";
-          const ctx = canvas.getContext("2d");
-          if (!ctx) continue;
-          await page.render({ canvasContext: ctx, viewport }).promise;
+          await page.render({ canvas, viewport }).promise;
           if (cancelled) return;
           wrapper.appendChild(canvas);
         }
@@ -109,7 +108,10 @@ export function PdfZoomView({
     return () => {
       cancelled = true;
       // Release the worker / parsed document so reopening doesn't leak.
-      if (doc) doc.destroy?.();
+      // pdf.js v6 moved destroy() off the document proxy onto the
+      // loading task — destroying the task aborts work and tears down
+      // the worker.
+      loadingTask?.destroy();
     };
   }, [blob]);
 
