@@ -9,4 +9,4 @@ export const CELL_BASE =
   "border-r border-b border-line bg-surface last:border-r-0";
 
 export const INPUT_BASE =
-  "field-input w-full border-0 bg-transparent px-2.5 py-2 font-mono text-inherit outline-none";
+  "field-input w-full border-0 bg-transparent px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono text-inherit outline-none";

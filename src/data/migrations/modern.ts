@@ -1060,6 +1060,10 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v70.history;
     return { ...v70, version: 71, history };
   },
+  // Bare bump: adds the `customTheme.tableSpacing` preset. The settings
+  // validator fills it from the canonical default when absent, so older
+  // buckets upgrade cleanly without touching the blob here.
+  71: (v71) => ({ ...v71, version: 72 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

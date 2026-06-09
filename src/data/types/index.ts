@@ -73,6 +73,7 @@ export type {
   FontFamilyId,
   RadiusPreset,
   ShortDateFormat,
+  TableSpacingPreset,
   ThemeFamily,
   ThemePreset,
   ThousandsSeparator,

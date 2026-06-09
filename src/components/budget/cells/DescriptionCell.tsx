@@ -285,7 +285,7 @@ export function DescriptionCell({
               onPointerCancel={longPress.onPointerUp}
               onPointerLeave={longPress.onPointerUp}
               onContextMenu={longPress.onContextMenu}
-              className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-2.5 py-2 font-mono outline-none focus-visible:bg-surface-2 ${
+              className={`flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono outline-none focus-visible:bg-surface-2 ${
                 hasContent
                   ? "justify-start text-left"
                   : "justify-center text-center md:justify-start md:text-left"
@@ -704,13 +704,13 @@ export function TransferDescriptionCell({
   );
   return (
     <td className={`${CELL_BASE} text-flag align-middle md:w-full`}>
-      <div className="hidden md:flex md:items-center md:gap-1.5 md:px-2.5 md:py-2">
+      <div className="hidden md:flex md:items-center md:gap-1.5 md:px-[var(--table-cell-px)] md:py-[var(--table-cell-py)]">
         {arrow}
         <span className="text-muted">{peerName || "—"}</span>
         {value && <span className="text-muted">·</span>}
         <span className="truncate text-fg">{value}</span>
       </div>
-      <div className="flex h-full min-h-9 w-full items-center justify-center gap-1.5 px-2.5 py-2 font-mono text-flag md:hidden">
+      <div className="flex h-full min-h-9 w-full items-center justify-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono text-flag md:hidden">
         {arrow}
         <span className="truncate text-fg">{value || peerName || "—"}</span>
       </div>
