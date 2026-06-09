@@ -35,10 +35,7 @@ function validatePayment(raw: unknown): LoanPayment | null {
   if (!isIsoDate(date)) return null;
   if (!isNonNegativeNumber(amount)) return null;
   const payment: LoanPayment = { id, date, amount };
-  if (
-    typeof raw.sourceHistoryId === "string" &&
-    raw.sourceHistoryId !== ""
-  ) {
+  if (typeof raw.sourceHistoryId === "string" && raw.sourceHistoryId !== "") {
     payment.sourceHistoryId = raw.sourceHistoryId;
   }
   return payment;
@@ -83,10 +80,7 @@ export function validateLoan(
   if (isNonNegativeNumber(raw.startFee)) loan.startFee = raw.startFee;
   if (typeof raw.lenderName === "string" && raw.lenderName !== "")
     loan.lenderName = raw.lenderName;
-  if (
-    typeof raw.companyId === "string" &&
-    knownCompanyIds.has(raw.companyId)
-  ) {
+  if (typeof raw.companyId === "string" && knownCompanyIds.has(raw.companyId)) {
     loan.companyId = raw.companyId;
   }
   if (

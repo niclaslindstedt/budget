@@ -36,6 +36,8 @@ import type {
   FileCategory,
   HistoryEntry,
   Item,
+  Loan,
+  LoanPayment,
   MatchRule,
   MerchantHint,
   MortgagePayment,
@@ -237,6 +239,13 @@ export function buildSeedUserData(): UserData {
     name: "Fastighetslån AB",
     companyCategoryId: "preset-company-cat-bank",
   };
+  // The car-loan lender for the Loans sheet below — distinct from the
+  // mortgage lenders so the loan row's company sub-line shows its own name.
+  const companyCarLender: Company = {
+    id: mkId("co"),
+    name: "Fordonskredit AB",
+    companyCategoryId: "preset-company-cat-bank",
+  };
 
   // A third-tier subtype (category → type → subtype) so the seeded
   // laptop below has a taxonomy anchor and the item editor's subtype
@@ -256,6 +265,7 @@ export function buildSeedUserData(): UserData {
     companyHypotek,
     companyCityLender,
     companyVillaLender,
+    companyCarLender,
   ];
   const categories: Category[] = [vacationCategory];
   const types: EntryType[] = [boatFuelType];
@@ -362,6 +372,15 @@ export function buildSeedUserData(): UserData {
   const mortgageRecordedMonths = MONTHS.slice(0, 2); // Dec 2025, Jan 2026
   const mortgageTypedKeys = monthKeySet(MONTHS.slice(0, 3)); // + Feb 2026
   const mortgageCompanyKeys = monthKeySet(MONTHS.slice(0, 4)); // + Mar 2026
+  // The CSN and car-loan charges feeding the Loans sheet below. The CSN
+  // loan records the two earliest months as payments (linked to the bank
+  // rows) and carries the learned description pattern; the car-loan
+  // months are merely typed. Both therefore leave unconsumed candidates
+  // for the loan rows' "Import payments" walk.
+  const csnChargeByMonth = new Map<string, { date: string; amount: number }>();
+  const carChargeByMonth = new Map<string, { date: string; amount: number }>();
+  const csnRecordedMonths = MONTHS.slice(0, 2); // Dec 2025, Jan 2026
+  const carTypedKeys = monthKeySet(MONTHS.slice(0, 4)); // Dec – Mar
 
   for (const { year, month } of MONTHS) {
     // Salary in, rent + utilities out on Checking.
@@ -405,6 +424,32 @@ export function buildSeedUserData(): UserData {
     if (mortgageCompanyKeys.has(mortgageKey))
       mortgageCharge.companyId = companyHypotek.id;
     checkingRaw.push(mortgageCharge);
+    // CSN repayment and car-loan draw on Checking — the loan records on
+    // the Loans sheet below reconcile against these rows (see the key
+    // sets above for which months are typed / recorded).
+    const csnDate = iso(year, month, 26);
+    const csnAmount = -1180;
+    const csnKey = `${year}-${month}`;
+    csnChargeByMonth.set(csnKey, { date: csnDate, amount: csnAmount });
+    checkingRaw.push({
+      date: csnDate,
+      description: "CSN återbetalning",
+      amount: csnAmount,
+      typeId: "preset-type-csn",
+    });
+    const carDate = iso(year, month, 12);
+    const carAmount = -2450;
+    carChargeByMonth.set(csnKey, { date: carDate, amount: carAmount });
+    const carCharge: RawEntry = {
+      date: carDate,
+      description: "Fordonskredit AB autogiro 88231",
+      amount: carAmount,
+    };
+    if (carTypedKeys.has(csnKey)) {
+      carCharge.typeId = "preset-type-car-loan";
+      carCharge.companyId = companyCarLender.id;
+    }
+    checkingRaw.push(carCharge);
     checkingRaw.push({
       date: iso(year, month, 4),
       description: "Elnät Kraftbolaget",
@@ -1007,6 +1052,59 @@ export function buildSeedUserData(): UserData {
   };
   const properties: Property[] = [cabin, apartment, villa];
 
+  // ---- Loans (rendered by the Loans sheet) --------------------------
+  // One loan per flavour worth exercising: a CSN student loan with
+  // recorded payments and a learned payment pattern (so the auto-attach
+  // path and the Import payments dedupe both have data), a car loan whose
+  // typed bank charges are all still unconsumed candidates, and a
+  // mortgage loan LINKED to the city flat's mortgage (terms and payments
+  // resolve live from the property — nothing is copied here).
+  const csnLoan: Loan = {
+    id: mkId("loan"),
+    name: "CSN",
+    kind: "student",
+    startDate: "2019-01-25",
+    startSum: 188000,
+    monthlyPayment: 1180,
+    payments: csnRecordedMonths.map(({ year, month }) => {
+      const charge = csnChargeByMonth.get(`${year}-${month}`);
+      const sourceHist = charge
+        ? cabinHistory.find(
+            (e) => e.date === charge.date && e.amount === charge.amount,
+          )
+        : undefined;
+      const payment: LoanPayment = {
+        id: mkId("lpay"),
+        date: charge ? charge.date : iso(year, month, 26),
+        amount: charge ? Math.abs(charge.amount) : 1180,
+      };
+      if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+      return payment;
+    }),
+    paymentPatterns: [normaliseDescription("CSN återbetalning")],
+  };
+  const carLoan: Loan = {
+    id: mkId("loan"),
+    name: "Billån Kombin",
+    kind: "car",
+    companyId: companyCarLender.id,
+    startDate: "2024-08-12",
+    startSum: 145000,
+    monthlyPayment: 2450,
+    rate: 5.95,
+    startFee: 595,
+    payments: [],
+  };
+  const linkedMortgageLoan: Loan = {
+    id: mkId("loan"),
+    name: "Bolån lägenheten",
+    kind: "mortgage",
+    propertyId: apartment.id,
+    mortgageId: apartment.mortgages[0].id,
+    payments: [],
+  };
+  const loans: Loan[] = [csnLoan, carLoan, linkedMortgageLoan];
+
   // ---- Transfers (cross-account log) -------------------------------
   const transfers: Transfer[] = MONTHS.map(({ year, month }) => ({
     id: mkId("xfer"),
@@ -1187,6 +1285,16 @@ export function buildSeedUserData(): UserData {
     items: [{ id: mkId("item"), type: "savingsView" }],
   };
 
+  const loansSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Loans",
+    type: "loans",
+    glyph: "hand-coins",
+    color: CATEGORY_COLORS[0],
+    description: "",
+    items: [{ id: mkId("item"), type: "loansView" }],
+  };
+
   // ---- Assemble the full UserData ----------------------------------
   // Every collection is listed explicitly; the closed `UserData` type
   // makes omitting a required field a compile error, so this stays in
@@ -1200,6 +1308,7 @@ export function buildSeedUserData(): UserData {
       itemsSheet,
       propertiesSheet,
       savingsSheet,
+      loansSheet,
     ],
     activeSheetId: budgetSheet.id,
     accounts,
@@ -1208,7 +1317,7 @@ export function buildSeedUserData(): UserData {
     employers,
     properties,
     savings: savingsAccounts,
-    loans: [],
+    loans,
     fileCategories,
     companies,
     tags,

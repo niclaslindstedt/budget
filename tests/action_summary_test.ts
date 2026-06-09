@@ -141,15 +141,16 @@ describe("describeActionSubject", () => {
           id: "loan-1",
           name: "Volvo loan",
           kind: "car",
-          payments: [
-            { id: "pay-1", date: "2026-05-27", amount: 2500 },
-          ],
+          payments: [{ id: "pay-1", date: "2026-05-27", amount: 2500 }],
         },
       ],
     };
     expect(
       describe2(
-        { type: "addLoan", loan: { id: "l2", name: "CSN", kind: "student", payments: [] } },
+        {
+          type: "addLoan",
+          loan: { id: "l2", name: "CSN", kind: "student", payments: [] },
+        },
         prev,
       ),
     ).toEqual({ kind: "name", value: "CSN" });

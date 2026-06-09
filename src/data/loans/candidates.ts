@@ -17,10 +17,7 @@ export type LoanPaymentCandidate = {
 
 // Ids of the bank entries already consumed as payments — the loan's own
 // records, or the linked mortgage's when the loan is a live link.
-export function consumedHistoryIds(
-  loan: Loan,
-  state: UserData,
-): Set<string> {
+export function consumedHistoryIds(loan: Loan, state: UserData): Set<string> {
   const linked = resolveLinkedMortgage(loan, state.properties);
   const payments = linked ? linked.mortgage.payments : loan.payments;
   const ids = new Set<string>();

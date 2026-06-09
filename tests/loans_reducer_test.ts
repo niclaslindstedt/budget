@@ -63,7 +63,10 @@ describe("addLoanPayments", () => {
       patterns: ["santander"],
     });
     expect(next.loans[0].payments).toHaveLength(1);
-    expect(next.loans[0].paymentPatterns).toEqual(["existing key", "santander"]);
+    expect(next.loans[0].paymentPatterns).toEqual([
+      "existing key",
+      "santander",
+    ]);
   });
 
   it("skips payments whose source entry is already recorded", () => {
@@ -71,7 +74,12 @@ describe("addLoanPayments", () => {
       loans: [
         loan({
           payments: [
-            { id: "p1", date: "2026-04-27", amount: 2500, sourceHistoryId: "h1" },
+            {
+              id: "p1",
+              date: "2026-04-27",
+              amount: 2500,
+              sourceHistoryId: "h1",
+            },
           ],
         }),
       ],

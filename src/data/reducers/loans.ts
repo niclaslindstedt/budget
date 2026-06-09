@@ -63,11 +63,15 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
           consumed.add(payment.sourceHistoryId);
       }
       const added = action.payments.filter(
-        (p) => p.sourceHistoryId === undefined || !consumed.has(p.sourceHistoryId),
+        (p) =>
+          p.sourceHistoryId === undefined || !consumed.has(p.sourceHistoryId),
       );
       const next: Loan = { ...l, payments: [...l.payments, ...added] };
       if (action.patterns !== undefined && action.patterns.length > 0) {
-        const union = new Set([...(l.paymentPatterns ?? []), ...action.patterns]);
+        const union = new Set([
+          ...(l.paymentPatterns ?? []),
+          ...action.patterns,
+        ]);
         next.paymentPatterns = [...union];
       }
       return next;

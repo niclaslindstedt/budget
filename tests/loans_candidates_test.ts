@@ -55,7 +55,7 @@ describe("findLoanPaymentCandidates", () => {
   it("resolves the type through merchant hints", () => {
     const s = state({
       merchantHints: {
-        "santander": {
+        santander: {
           typeId: "preset-type-car-loan",
           hitCount: 3,
           lastUsedAt: 0,
@@ -74,7 +74,10 @@ describe("findLoanPaymentCandidates", () => {
       },
     });
     const patterns = learnPaymentPatterns(undefined, ["SANTANDER 12345"]);
-    const out = findLoanPaymentCandidates(loan({ paymentPatterns: patterns }), s);
+    const out = findLoanPaymentCandidates(
+      loan({ paymentPatterns: patterns }),
+      s,
+    );
     expect(out.map((c) => c.entry.id)).toEqual(["h1"]);
   });
 

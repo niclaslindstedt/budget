@@ -216,12 +216,29 @@ balance recorded over time. Sheet type `"savings"`. Files live in
 | **Savings balance** / **update balance**  | `SavingBalancePoint` (`Saving.balanceHistory`); `UpdateSavingBalanceModal.tsx`; `currentSavingBalance` / `applyImportedSavingBalances` (`src/data/savings/value.ts`); `addSavingBalance` / `updateSavingBalance` / `deleteSavingBalance`. [→](overview.md#savings-balance) |
 | **Visualize value** (savings)             | `SavingsValueChartModal.tsx`; `buildSavingsTotalSeries` (`src/data/savings/series.ts`); `LineChart` (`src/components/charts/LineChart.tsx`). Opened from the Savings sheet's title "…" menu. [→](overview.md#visualize-value-savings)                                      |
 
+## Loans page
+
+Loans — the money the user owes (student / mortgage / car / private /
+personal), with payments imported from bank transactions. Sheet type
+`"loans"`. Files live in `src/components/loans/`; data helpers in
+`src/data/loans/`.
+
+| Term                                         | Refers to                                                                                                                                                                                                                        |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Loans page** / **Loans sheet**             | `src/components/loans/LoansPage.tsx`; `LoansView`, `UserData.loans`. [→](overview.md#loans-page)                                                                                                                                 |
+| **Loan** (object) / **loan kind**            | `Loan`, `LoanKind` (`src/data/types/loans.ts`); `LoanModal.tsx`; `addLoan` / `updateLoan` / `deleteLoan` (`src/data/reducers/loans.ts`); `LOAN_PRESET_TYPE_BY_KIND` (`src/data/loans/presets.ts`). [→](overview.md#loan)         |
+| **Remaining balance** (loan)                 | `loanRemainingBalance` / `loanPaidSoFar` (`src/data/loans/balance.ts`). [→](overview.md#loan-remaining-balance)                                                                                                                  |
+| **Linked mortgage** (loan)                   | `Loan.propertyId` + `Loan.mortgageId`; `resolveLinkedMortgage` / `linkedMortgageFigures` (`src/data/loans/balance.ts`). [→](overview.md#linked-mortgage-loan)                                                                    |
+| **Import payments** (loan)                   | `LoanImportPaymentsModal.tsx`; `findLoanPaymentCandidates` (`src/data/loans/candidates.ts`); `addLoanPayments`. Opened from the loan row's "…" menu. [→](overview.md#import-payments-loan)                                       |
+| **Payment pattern** / **auto-attach** (loan) | `Loan.paymentPatterns`; `learnPaymentPatterns` (`src/data/loans/patterns.ts`); `attachImportedLoanPayments` (`src/data/loans/auto-attach.ts`), run inside `importBankHistory`. [→](overview.md#loan-payment-pattern-auto-attach) |
+| **Loan payments view**                       | `LoanPaymentsModal.tsx`; `deleteLoanPayment` / `deleteAllLoanPayments`. [→](overview.md#loan-payments-view)                                                                                                                      |
+
 ## Data and storage
 
 | Term                                                          | Refers to                                                                                                                                                                                          |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **User data** / **state** / **the budget**                    | `UserData` (`src/data/types.ts`). [→](overview.md#user-data)                                                                                                                                       |
-| **Sheet item**                                                | `Sheet.items` union: `AccountBudget`, `AccountsView`, `ItemsView`, `SalaryView`, `PropertiesView`. [→](overview.md#sheet-item)                                                                     |
+| **Sheet item**                                                | `Sheet.items` union: `AccountBudget`, `AccountsView`, `ItemsView`, `SalaryView`, `PropertiesView`, `SavingsView`, `LoansView`. [→](overview.md#sheet-item)                                         |
 | **Account budget**                                            | `AccountBudget` (`src/data/types.ts`). [→](overview.md#account-budget)                                                                                                                             |
 | **Row**                                                       | `Row` (`src/data/types.ts`). [→](overview.md#row)                                                                                                                                                  |
 | **Column**                                                    | `Column` (`src/data/types.ts`). [→](overview.md#column)                                                                                                                                            |

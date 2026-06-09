@@ -130,6 +130,15 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .savings-table .hidden.md\:inline {
     display: none;
   }
+  /* Loans table: drop the monthly / rate / paid columns on landscape
+     phones so the three-column mobile grid (icon · name · remaining)
+     stays intact, the same reason as the accounts bank cell. */
+  .loans-table .loans-secondary-cell {
+    display: none;
+  }
+  .loans-table .hidden.md\:inline {
+    display: none;
+  }
 }
 
 /* Salary header glyph alignment now follows the shared amount-column

@@ -164,7 +164,11 @@ describe("linked mortgages", () => {
   };
 
   it("resolves the linked mortgage behind a loan", () => {
-    const l = loan({ kind: "mortgage", propertyId: "prop-1", mortgageId: "m-1" });
+    const l = loan({
+      kind: "mortgage",
+      propertyId: "prop-1",
+      mortgageId: "m-1",
+    });
     const linked = resolveLinkedMortgage(l, [property]);
     expect(linked?.property.name).toBe("Villa");
     expect(linked?.mortgage.name).toBe("Loan 1");

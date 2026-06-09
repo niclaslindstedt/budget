@@ -36,6 +36,7 @@ import {
   FunctionSquare,
   GitMerge,
   Hammer,
+  HandCoins,
   Hash,
   History,
   Home,
@@ -246,6 +247,12 @@ const hasMultipartItem = (s: UserData) =>
 // property's loan.
 const hasMortgagePayment = (s: UserData) =>
   s.properties.some((p) => p.mortgages.some((m) => m.payments.length > 0));
+// A loan carries a payment imported from a bank transaction — the
+// payoff of the Loans sheet's "Import payments" walk or the silent
+// auto-attach on a bank-statement import. Hand-entered payments don't
+// count; the achievement is about the bank connection.
+const hasImportedLoanPayment = (s: UserData) =>
+  s.loans.some((l) => l.payments.some((p) => p.sourceHistoryId !== undefined));
 // A mortgage is fully paid off — its payoff "power bar" hit 100%, i.e.
 // the balance reached zero against a known loan amount.
 const hasFullyPaidMortgage = (s: UserData) =>
@@ -507,6 +514,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.savings],
       predicate: (prev, next) =>
         prev.savings.length === 0 && next.savings.length > 0,
+    },
+  },
+  {
+    id: "borrower",
+    tier: "intermediate",
+    glyph: HandCoins,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.loans],
+      predicate: (prev, next) =>
+        prev.loans.length === 0 && next.loans.length > 0,
     },
   },
   {
@@ -843,6 +862,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "pro",
     glyph: CopyCheck,
     trigger: { kind: "manual" },
+  },
+  {
+    id: "debtCollector",
+    tier: "pro",
+    glyph: HandCoins,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.loans],
+      predicate: (prev, next) =>
+        !hasImportedLoanPayment(prev) && hasImportedLoanPayment(next),
+    },
   },
   {
     id: "loanRanger",

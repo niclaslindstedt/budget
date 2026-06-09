@@ -564,6 +564,48 @@
       width: 100%;
     }
 
+    /* Loans table — same swipe affordance and mobile block/grid conversion
+       as the savings table. The secondary columns (monthly / rate / paid)
+       drop on mobile (Tailwind `hidden md:table-cell`), leaving icon ·
+       name · remaining; the action cell overlays absolutely like the
+       other sheet tables. */
+    .loans-table,
+    .loans-table > thead,
+    .loans-table > tbody,
+    .loans-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .loans-table > thead > tr,
+    .loans-table > tbody > tr:not(.loans-fullspan) {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(64px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .loans-table > tbody > tr.loans-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .loans-table > tbody > tr.loans-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+    .loans-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .loans-table th,
+    .loans-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .loans-table th > *,
+    .loans-table td > * {
+      width: 100%;
+    }
+
     /* Transfers table — single-button swipe strip (edit only) using the
        same overlay pattern as the accounts and budget tables, but at
        half the width since there's only one action. The desktop
