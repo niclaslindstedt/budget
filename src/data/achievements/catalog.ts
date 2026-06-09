@@ -953,6 +953,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    // The user opened the savings value-over-time chart to see the combined
+    // balance set aside across their chosen accounts. A manual unlock —
+    // opening a read-only modal can't be spotted from a derived state slice.
+    id: "savingsValueChart",
+    tier: "pro",
+    glyph: PiggyBank,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "archaeologist",
     tier: "pro",
     glyph: History,

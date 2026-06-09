@@ -326,6 +326,12 @@ const catalog = {
     learnMore:
       "From a property's … menu, pick Visualize value to chart its recorded values over time — the app's first visualization. Toggle Include repairs to fold the money you've put in onto the line, and Show net value to overlay what you'd actually take home after broker, advertising, repairs, purchase price, and capital-gains tax. The chart follows your theme: colours, font, corners, and spacing all match.",
   },
+  savingsValueChart: {
+    name: "Nest Egg",
+    condition: "Visualize your savings over time.",
+    learnMore:
+      "From the Savings sheet's … menu, pick Visualize value to chart how much you've set aside over time. Tick the accounts you want to include — all of them by default — and the line shows their combined balance at each recorded date, climbing as accounts come online and as each is topped up. The chart follows your theme: colours, font, corners, and spacing all match.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

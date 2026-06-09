@@ -130,7 +130,9 @@ src/
 │       ├── SavingsRow.tsx        # one savings row (swipe edit/delete, "…" menu)
 │       ├── SavingsModal.tsx      # add/edit savings account
 │       ├── SavingActionsMenu.tsx # "…" swipe-strip menu (update balance)
-│       └── UpdateSavingBalanceModal.tsx  # append a dated balance point
+│       ├── UpdateSavingBalanceModal.tsx  # append a dated balance point
+│       └── SavingsValueChartModal.tsx    # combined value-over-time chart
+│                                      #   ("Visualize value", account chooser)
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
@@ -300,9 +302,11 @@ src/
 │   │                           #   Property + the companies / tags / categories /
 │   │                           #   subtypes it needs
 │   ├── savings/            # savings page — balance + transfer-endpoint helpers
-│   │   └── value.ts            # currentSavingBalance (latest balance point by
-│   │                           #   date) + savingAsTransferEndpoint (present a
-│   │                           #   Saving as an Account for the transfer surfaces)
+│   │   ├── value.ts            # currentSavingBalance (latest balance point by
+│   │   │                       #   date) + savingAsTransferEndpoint (present a
+│   │   │                       #   Saving as an Account for the transfer surfaces)
+│   │   └── series.ts           # buildSavingsTotalSeries — the combined
+│   │                           #   value-over-time line behind "Visualize value"
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /
