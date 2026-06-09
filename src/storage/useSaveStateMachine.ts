@@ -580,7 +580,16 @@ export function useSaveStateMachine(params: Params): SaveStateMachine {
     // reference. Passing it as the saved-data ref keeps `dirty` accurate
     // after the confirm — the user is opting in to "what's in memory is
     // what's on disk".
-    void performSave(pendingText, data, () => false, { skipShrinkCheck: true });
+    //
+    // `ignoreBailStatus` because the current status IS "shrink-warning",
+    // which `isBailStatus` lists — without it `performSave` skips the
+    // save before it can dispatch `save-start`, leaving the modal stuck
+    // open with the button doing nothing. Mirrors `resolveKeepLocal`,
+    // which acts on the conflict bail state for the same reason.
+    void performSave(pendingText, data, () => false, {
+      skipShrinkCheck: true,
+      ignoreBailStatus: true,
+    });
   }, [adapter, data, performSave, status]);
 
   const discardShrinkSave = useCallback(() => {
