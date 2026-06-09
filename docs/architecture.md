@@ -50,7 +50,9 @@ src/
 │   ├── ImportExportControls.tsx, DownloadModal.tsx   # file download + import
 │   ├── BulkActionBar.tsx        # multi-row selection toolbar
 │   ├── ActionHistoryModal.tsx   # undo/redo history viewer
-│   ├── ChangelogModal.tsx       # "What's new" + full history
+│   ├── ChangelogModal.tsx       # "What's new" + full history; renders
+│   │                            #   markdown bullets, opens feature docs inline
+│   ├── markdown.ts, Markdown.tsx  # tiny markdown parser + theme-aware renderer
 │   ├── AchievementsModal.tsx, AchievementUnlockModal.tsx  # achievements UI
 │   ├── InstallPrompt.tsx, UpdateToast.tsx  # PWA install + new-build prompts
 │   ├── PullToRefreshIndicator.tsx, Toast.tsx, ModalSearchBar.tsx

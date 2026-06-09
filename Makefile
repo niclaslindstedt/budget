@@ -11,14 +11,16 @@ install:
 dev:
 	$(if $(SEED),VITE_DEV_SEED=1 )npm run dev
 
-# Codegen step that emits src/generated/changelog.ts from CHANGELOG.md.
-# Needed before tsc -b runs (typecheck / lint / build) because the
-# generated module is gitignored. The Vite dev server / `vite build`
-# also re-emit via vite/changelog-plugin.ts, but the standalone script
-# means a fresh CI checkout can run `make lint` without first
-# running `make build`.
+# Codegen step that emits src/generated/*.ts from their markdown
+# sources (changelog.ts from CHANGELOG.md, feature-docs.ts from
+# docs/features/*.md). Needed before tsc -b runs (typecheck / lint /
+# build) because the generated modules are gitignored. The Vite dev
+# server / `vite build` also re-emit via the matching vite/*-plugin.ts,
+# but the standalone scripts mean a fresh CI checkout can run `make lint`
+# without first running `make build`.
 codegen:
 	node scripts/codegen/changelog.mjs
+	node scripts/codegen/feature-docs.mjs
 
 build: codegen
 	npm run build

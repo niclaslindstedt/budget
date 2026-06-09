@@ -8,10 +8,23 @@
 // Fragment format:
 //
 //   ---
-//   type: Added   # one of Added | Changed | Fixed | Removed | Security | Deprecated
+//   type: Added       # one of Added | Changed | Fixed | Removed | Security | Deprecated
+//   title: Short title # optional — bolded at the head of the bullet
+//   doc: properties    # optional — links to docs/features/<doc>.md
 //   ---
 //
-//   One-line user-facing description.
+//   One-sentence user-facing summary.
+//
+// Each fragment renders as a single CHANGELOG bullet:
+//
+//   - **<title>** — <summary> [Learn more](feature:<doc>)
+//
+// `title` and `doc` are optional. Without a title the summary is the
+// whole bullet (the pre-1.2 format); with a `doc` slug the bullet gains a
+// "Learn more" link the in-app changelog modal opens as an inline
+// feature-doc view (rendered from docs/features/<doc>.md). Keep the
+// summary to one sentence — the long-form explanation belongs in the
+// feature doc, not the changelog.
 //
 // Filename convention: <unix-ts>-<slug>.md. The timestamp gives a
 // deterministic lexical sort that loosely tracks commit order; the
@@ -56,15 +69,28 @@ if (files.length === 0) {
 const grouped = Object.fromEntries(TYPES.map((t) => [t, []]));
 for (const file of files) {
   const raw = readFileSync(join(FRAG_DIR, file), "utf8");
-  const m = /^---\s*\ntype:\s*([A-Za-z]+)\s*\n---\s*\n([\s\S]*)$/.exec(raw);
+  const m = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/.exec(raw);
   if (!m) {
     console.error(
       `bad fragment ${file}: missing front-matter. ` +
-        `Expected:\n---\ntype: Added\n---\n\n<description>`,
+        `Expected:\n---\ntype: Added\ntitle: Short title\n---\n\n<summary>`,
     );
     process.exit(1);
   }
-  const type = m[1].trim();
+  // Parse the front-matter block as simple `key: value` lines.
+  const front = {};
+  for (const line of m[1].split("\n")) {
+    if (line.trim() === "") continue;
+    const kv = /^([A-Za-z]+):\s*(.*)$/.exec(line);
+    if (!kv) {
+      console.error(
+        `bad fragment ${file}: malformed front-matter line "${line}"`,
+      );
+      process.exit(1);
+    }
+    front[kv[1].trim()] = kv[2].trim();
+  }
+  const type = (front.type ?? "").trim();
   if (!TYPES.includes(type)) {
     console.error(
       `bad fragment ${file}: type "${type}" not in ${TYPES.join(", ")}`,
@@ -76,13 +102,15 @@ for (const file of files) {
     console.error(`bad fragment ${file}: empty body`);
     process.exit(1);
   }
-  // Each fragment becomes one bullet. Multi-line bodies are indented
-  // under the bullet so the rendered markdown stays well-formed.
+  // Compose the bullet: an optional bold title, the summary, and an
+  // optional "Learn more" link to the feature doc. Multi-line bodies are
+  // indented under the bullet so the rendered markdown stays well-formed.
   const lines = body.split("\n");
-  const bullet =
-    `- ${lines[0]}` +
-    (lines.length > 1 ? "\n  " + lines.slice(1).join("\n  ") : "");
-  grouped[type].push(bullet);
+  const titlePrefix = front.title ? `**${front.title}** — ` : "";
+  const docSuffix = front.doc ? ` [Learn more](feature:${front.doc})` : "";
+  const firstLine = `- ${titlePrefix}${lines[0]}`;
+  const rest = lines.length > 1 ? "\n  " + lines.slice(1).join("\n  ") : "";
+  grouped[type].push(`${firstLine}${rest}${docSuffix}`);
 }
 
 const sectionLines = [`## [${VERSION}] - ${DATE}`, ""];

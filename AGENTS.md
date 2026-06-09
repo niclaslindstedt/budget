@@ -721,7 +721,9 @@ that aren't in the template comments:
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                                                                                                                                                                     |
 | Adding or moving a file under `src/data/`                                                  | The data-layer inventory in `docs/architecture.md` (`## Today` tree + per-file descriptions)                                                                                                                                                                                                                                                                               |
 | Adding (or renaming the subject of) a reducer action                                       | The `actionHistory.action.<type>` label in `src/i18n/locales/{en,sv}/actionHistory.ts` **and** a `describeActionSubject` case in `src/data/action-summary.ts`. See the "Action history labels" section below.                                                                                                                                                              |
-| CHANGELOG fragment format                                                                  | `scripts/release/collate-changelog.mjs`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                                                                                                                                                                      |
+| CHANGELOG fragment format (`type:` / `title:` / `doc:`)                                    | `scripts/release/collate-changelog.mjs`, `.agent/skills/write-changeset/SKILL.md`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                                                                                                                            |
+| Feature docs (`docs/features/*.md`) bundling                                               | `vite/feature-docs-plugin.ts`, `scripts/codegen/feature-docs.mjs`, `src/components/ChangelogModal.tsx`, the "Changeset fragments → Feature docs" section below                                                                                                                                                                                                             |
+| Markdown grammar the changelog modal renders                                               | `src/components/markdown.ts` (parser) + `Markdown.tsx` (renderer), `tests/markdown_test.ts`                                                                                                                                                                                                                                                                                |
 | `nsKey` / `nsCloudPath` / `nsIdbName` semantics                                            | This file (the "Releases and changelog" section), the inline comments on the helpers in `src/data/constants/storage.ts`                                                                                                                                                                                                                                                    |
 | Vite `base` handling                                                                       | `vite.config.ts`, `pages.yml`, the "Cross-cutting rules" section below                                                                                                                                                                                                                                                                                                     |
 | `pwaPlugin()` manifest / scope / `cacheId` semantics                                       | This file (the "Service-worker rollout invariants" section), the inline comments on `pwaPlugin()` in `vite.config.ts`                                                                                                                                                                                                                                                      |
@@ -820,8 +822,12 @@ typecheck` surfaces the missing key right at the namespace file
   is reviewed as a whole.
 - The rendered `CHANGELOG.md` body inside `ChangelogModal` —
   driven by `src/generated/changelog.ts` which mirrors the markdown
-  source-of-truth. Only the chrome (modal title, "Got it" button,
-  "Show all" toggle) translates.
+  source-of-truth. Only the chrome (modal title, "Got it" / "Back"
+  buttons, "Show all" toggle) translates.
+- The feature docs under `docs/features/*.md` — long-form markdown
+  bundled into `src/generated/feature-docs.ts` and rendered inside
+  `ChangelogModal` when a "Learn more" link is followed. English-only,
+  same rationale as the CHANGELOG body.
 - `Column.label` — stored per-sheet user data, not a translatable
   string. New sheets get default column labels in the language
   active at creation time.
@@ -1003,16 +1009,58 @@ file in `.changes/unreleased/<unix-ts>-<slug>.md`:
 ```
 ---
 type: Added
+title: Properties sheet
+doc: properties
 ---
 
-One-line description users will read in the "What's new" popup.
+One sentence users will read in the "What's new" popup.
 ```
 
 `type:` is one of `Added | Changed | Fixed | Removed | Security |
-Deprecated` (Keep a Changelog). The body is markdown; one line is
-usually plenty, multi-line bodies are fine and render under one
-bullet. The timestamp prefix on the filename keeps the lexical sort
-deterministic so concatenation roughly mirrors commit order.
+Deprecated` (Keep a Changelog). **Keep the entry short**: a `title:`
+(a few words, bolded at the head of the bullet) and a **one-sentence**
+body summary. The long-form explanation does not belong in the
+changelog — see "Feature docs" below for where it goes.
+
+- `title:` (optional but expected for `Added` / `Changed`) — a short
+  noun phrase. The collator renders the bullet as
+  `- **<title>** — <summary>`.
+- `doc:` (optional) — the slug of a feature doc at
+  `docs/features/<doc>.md`. The collator appends a
+  `[Learn more](feature:<doc>)` link to the bullet; the in-app
+  changelog modal opens that doc inline (with a back button) instead
+  of navigating away. **Only large features warrant a doc** — most
+  fragments are just title + one sentence with no `doc:`.
+
+Both keys are optional: a fragment with no `title:` renders as a bare
+one-line bullet (the pre-1.2 format the collator still accepts). The
+timestamp prefix on the filename keeps the lexical sort deterministic
+so concatenation roughly mirrors commit order. The collator
+(`scripts/release/collate-changelog.mjs`) validates the front-matter
+at release time — an unknown `type:`, a malformed front-matter line,
+or an empty body fails the run loudly; there is no separate per-PR
+lint of `title:` / `doc:`, so keep the summary to one sentence by
+hand.
+
+The changelog modal renders bullets as **markdown** (via
+`src/components/markdown.ts` + `Markdown.tsx`), so `**bold**`,
+`_italic_`, `` `code` ``, links, and lists in a fragment body all
+render — don't author a wall of literal text expecting it to wrap as
+prose.
+
+#### Feature docs
+
+A feature doc is a long-form markdown file at `docs/features/<slug>.md`
+that the build bundles into the app (`vite/feature-docs-plugin.ts` →
+`src/generated/feature-docs.ts`, mirrored by the standalone
+`scripts/codegen/feature-docs.mjs` for `make codegen` so a fresh
+checkout typechecks). Its first `# ` heading becomes the doc title;
+everything after it is the body the changelog modal renders. Link to
+it from a changelog fragment with `doc: <slug>`. This is where the
+detailed, multi-paragraph explanation of a big feature lives — keep
+the changelog bullet to one sentence and push the depth into the doc.
+Feature docs are **English-only**, like the rendered CHANGELOG body
+(see "What's intentionally not translated").
 
 **Only add a fragment when the change affects users.** Skip a
 fragment for: pure refactors, build / CI / test tweaks, dependency

@@ -7,7 +7,7 @@ import {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 
 import {
   useEscapeKey,
@@ -431,10 +431,16 @@ type HeaderProps = {
   // it in an `inline-flex items-center gap-2` span with the `text-flag`
   // accent so every modal title has the same hairline of identity.
   icon?: React.ReactNode;
+  // When set, a back button renders at the leading edge of the header
+  // (before the title) and calls this instead of dismissing the modal.
+  // Used for in-modal drill-downs that stay in the same dialog — e.g. the
+  // changelog modal swapping to a feature-doc view and back. The back
+  // button stops click propagation so it never doubles as scroll-to-top.
+  onBack?: () => void;
   onClose: () => void;
 };
 
-function Header({ title, icon, onClose }: HeaderProps) {
+function Header({ title, icon, onBack, onClose }: HeaderProps) {
   const ctx = useContext(ModalLabelContext);
   const bodyScrollRef = useContext(ModalBodyScrollContext);
   const t = useT();
@@ -471,15 +477,28 @@ function Header({ title, icon, onClose }: HeaderProps) {
     >
       <h2
         id={ctx?.id}
-        className="text-sm font-bold tracking-wide text-fg-bright"
+        className="flex min-w-0 items-center gap-2 text-sm font-bold tracking-wide text-fg-bright"
       >
+        {onBack ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBack();
+            }}
+            aria-label={t("common.back")}
+            className="-ml-1 inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <ChevronLeft size={20} aria-hidden focusable={false} />
+          </button>
+        ) : null}
         {icon ? (
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex min-w-0 items-center gap-2">
             <span className="inline-flex shrink-0 text-flag">{icon}</span>
-            <span className="min-w-0">{title}</span>
+            <span className="min-w-0 truncate">{title}</span>
           </span>
         ) : (
-          title
+          <span className="min-w-0 truncate">{title}</span>
         )}
       </h2>
       <button

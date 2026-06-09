@@ -74,6 +74,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Genväg",
     condition: "Ändra vad rubriken gör när du trycker på den.",
   },
+  bookworm: {
+    name: "Bokmal",
+    condition: 'Öppna en funktionsbeskrivning via en "Läs mer"-länk i Nyheter.',
+    learnMore:
+      'Större funktioner får en "Läs mer"-länk i ändringsloggen som öppnar hela beskrivningen direkt i Nyheter-fönstret. En bakåtpil tar dig tillbaka till listan.',
+  },
   bookKeeper: {
     name: "Bokhållare",
     condition: "Skapa ditt första riktiga konto.",

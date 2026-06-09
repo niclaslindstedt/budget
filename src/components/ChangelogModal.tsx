@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { BookOpen, Sparkles } from "lucide-react";
 
 import {
   CHANGELOG,
   type ChangelogEntryType,
   type ChangelogRelease,
 } from "../generated/changelog";
+import { FEATURE_DOCS } from "../generated/feature-docs";
 import { useT } from "../i18n";
 import { APP_VERSION } from "../utils/build-env";
 import { cmpSemver } from "../utils/semver";
+import { Markdown } from "./Markdown";
 import { Modal } from "./Modal";
 
 // One Dark / One Light section accent per Keep-a-Changelog kind.
@@ -29,6 +31,9 @@ type Props = {
   // in "full history" mode (no filter) — the manual open path from
   // the header menu uses this.
   since: string | null;
+  // Called the first time a feature doc is opened in a given modal
+  // session. The host wires this to the "read a feature doc" achievement.
+  onOpenFeatureDoc?: (slug: string) => void;
 };
 
 function allShippedReleases(): ChangelogRelease[] {
@@ -43,16 +48,70 @@ function newerThan(since: string): ChangelogRelease[] {
   return allShippedReleases().filter((r) => cmpSemver(r.version, since) > 0);
 }
 
-export function ChangelogModal({ open, onClose, since }: Props) {
+export function ChangelogModal({
+  open,
+  onClose,
+  since,
+  onOpenFeatureDoc,
+}: Props) {
   const t = useT();
   const [showAll, setShowAll] = useState(since == null);
+  // When set, the modal shows that feature doc in place of the changelog
+  // list; the header grows a back button that clears it. A slug with no
+  // matching bundled doc falls through to the changelog view.
+  const [docSlug, setDocSlug] = useState<string | null>(null);
 
-  // Reset the expand state whenever the modal reopens so a later
-  // auto-open after an upgrade starts in compact "what's new" mode
+  // Reset the expand + drill-down state whenever the modal reopens so a
+  // later auto-open after an upgrade starts in compact "what's new" mode
   // again instead of inheriting the previous manual session.
   useEffect(() => {
-    if (open) setShowAll(since == null);
+    if (open) {
+      setShowAll(since == null);
+      setDocSlug(null);
+    }
   }, [open, since]);
+
+  const openFeature = (slug: string) => {
+    if (!FEATURE_DOCS[slug]) return;
+    onOpenFeatureDoc?.(slug);
+    setDocSlug(slug);
+  };
+
+  // App.tsx avoids triggering the auto-open in the empty case, but
+  // the header-menu path always opens — render the empty state then
+  // instead of nothing.
+  if (!open) return null;
+
+  const activeDoc = docSlug ? FEATURE_DOCS[docSlug] : undefined;
+  if (activeDoc) {
+    return (
+      <Modal
+        open={open}
+        onClose={onClose}
+        labelledBy="changelog-modal-title"
+        size="max-w-2xl"
+      >
+        <Modal.Header
+          icon={<BookOpen size={14} aria-hidden focusable={false} />}
+          title={activeDoc.title}
+          onBack={() => setDocSlug(null)}
+          onClose={onClose}
+        />
+        <Modal.Body className="text-sm">
+          <Markdown source={activeDoc.body} onOpenFeature={openFeature} />
+        </Modal.Body>
+        <Modal.Footer>
+          <button
+            type="button"
+            onClick={() => setDocSlug(null)}
+            className="cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-medium text-page-bg hover:opacity-90"
+          >
+            {t("common.back")}
+          </button>
+        </Modal.Footer>
+      </Modal>
+    );
+  }
 
   const compactMode = since != null && !showAll;
   const releases = compactMode ? newerThan(since) : allShippedReleases();
@@ -60,10 +119,6 @@ export function ChangelogModal({ open, onClose, since }: Props) {
     ? t("changelog.title")
     : t("changelog.pageTitleHeading");
 
-  // App.tsx avoids triggering the auto-open in the empty case, but
-  // the header-menu path always opens — render the empty state then
-  // instead of nothing.
-  if (!open) return null;
   return (
     <Modal
       open={open}
@@ -101,7 +156,13 @@ export function ChangelogModal({ open, onClose, since }: Props) {
                   </h4>
                   <ul className="ml-5 list-disc space-y-1">
                     {section.items.map((item, i) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>
+                        <Markdown
+                          source={item}
+                          onOpenFeature={openFeature}
+                          className="gap-1"
+                        />
+                      </li>
                     ))}
                   </ul>
                 </div>

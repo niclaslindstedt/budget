@@ -79,6 +79,12 @@ const catalog = {
     name: "Shortcut",
     condition: "Change what the header title does when tapped.",
   },
+  bookworm: {
+    name: "Bookworm",
+    condition: 'Open a feature doc from a "Learn more" link in What\'s new.',
+    learnMore:
+      'Big features get a "Learn more" link in the changelog that opens the full write-up right inside the What\'s new window. A back arrow returns you to the list.',
+  },
   bookKeeper: {
     name: "Book Keeper",
     condition: "Create your first real account.",

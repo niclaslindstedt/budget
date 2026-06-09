@@ -148,12 +148,45 @@ Body:
 ```
 ---
 type: Added
+title: Properties sheet
+doc: properties
 ---
 
-One-line description users will read in the "What's new" popup.
-Multi-line bodies are fine; every line becomes part of the same
-bullet under the chosen type heading.
+One sentence users will read in the "What's new" popup.
 ```
+
+Front-matter keys:
+
+- `type:` (required) — exactly one of `Added | Changed | Fixed |
+Removed | Security | Deprecated` (Keep a Changelog). See the list
+  below for which to pick.
+- `title:` (optional, but expected for `Added` / `Changed`) — a short
+  noun phrase (a few words) naming the feature. The collator renders
+  the bullet as `- **<title>** — <summary>`. A fragment with no
+  `title:` renders as a bare one-line bullet (still accepted, but
+  prefer a title for new features).
+- `doc:` (optional) — the slug of a feature doc at
+  `docs/features/<slug>.md`. The collator appends
+  `[Learn more](feature:<slug>)` to the bullet; the in-app changelog
+  modal opens that doc inline (with a back button). **Only reach for
+  `doc:` on a genuinely large feature** — one whose explanation runs
+  to several paragraphs. Most fragments are title + one sentence, no
+  `doc:`.
+
+**Keep the body to one sentence.** The whole point of the
+title + summary + optional doc shape is that the "What's new" modal
+stays scannable — the long-form explanation lives in the feature doc
+(`docs/features/<slug>.md`), not in the fragment. If you find yourself
+writing a third clause, either cut it or move the depth into a doc and
+link it with `doc:`. The body is markdown (the modal renders
+`**bold**`, `` `code` ``, links), so a key UI noun can be bolded, but
+resist turning the bullet into a paragraph.
+
+If a fragment needs a `doc:`, **create `docs/features/<slug>.md` in
+the same PR** — a leading `# Title` heading, then the long-form
+markdown. `make codegen` (and the dev server / build) bundle it into
+`src/generated/feature-docs.ts`; a `doc:` slug with no matching file
+renders the bullet's link as a dead end.
 
 `type:` is exactly one of `Added | Changed | Fixed | Removed |
 Security | Deprecated` (Keep a Changelog). Pick the one that matches

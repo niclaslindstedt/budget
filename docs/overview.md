@@ -125,6 +125,34 @@ privacy, changelog, achievements, sign-out, …).
 `src/components/HeaderStar.tsx` — the achievements star next to the
 header menu. Outline when there are no unread unlocks.
 
+### Changelog
+
+`src/components/ChangelogModal.tsx` — the "What's new" / full-history
+modal, opened automatically on first mount after an upgrade (gated by
+`Settings.lastSeenChangelogVersion`) and manually from the header menu.
+Its content comes from `CHANGELOG.md` via the build-time parser
+(`vite/changelog-plugin.ts` → `src/generated/changelog.ts`).
+
+Each changelog bullet is **markdown**, rendered by the small in-house
+parser + renderer in `src/components/markdown.ts` and `Markdown.tsx`
+(bold, italic, code, links, lists, headings, blockquotes, fenced code —
+no `react-markdown` dependency; every colour reads through a theme
+token). A bullet for a large feature ends with a **"Learn more" link**
+whose href uses the `feature:<slug>` scheme. Following it doesn't
+navigate — the modal swaps to an inline **feature-doc** view (a back
+button in the header returns to the list), rendering the markdown of
+`docs/features/<slug>.md`. Opening a feature doc unlocks the
+**Bookworm** achievement.
+
+**Feature docs** live at `docs/features/*.md` (English-only, like the
+CHANGELOG body) and are bundled into the app at build time by
+`vite/feature-docs-plugin.ts` (mirrored by `scripts/codegen/feature-docs.mjs`
+for `make codegen`) → `src/generated/feature-docs.ts`. They are the home
+for the long-form explanation of a big feature; the changelog bullet
+stays one sentence and links here. Authoring flow: a changeset fragment
+sets `doc: <slug>` (see `AGENTS.md` → "Changeset fragments"), and the
+matching `docs/features/<slug>.md` ships in the same PR.
+
 ## Budget page
 
 The per-account ledger. Sheet type `"budget"`. Files live in
