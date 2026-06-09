@@ -57,7 +57,7 @@ export function BalanceCell({
           )}
         </span>
         <span
-          className={`flex w-full items-center justify-end px-2.5 py-2 font-mono tabular-nums whitespace-pre md:pl-6 ${
+          className={`flex w-full items-center justify-end px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono tabular-nums whitespace-pre md:pl-6 ${
             settings.showCurrency && settings.currencyPosition === "after"
               ? "pr-8"
               : ""

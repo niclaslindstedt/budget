@@ -8,6 +8,7 @@ import {
   BORDER_WIDTH_SET,
   DENSITY_SET,
   RADIUS_SET,
+  TABLE_SPACING_SET,
   isHexColor,
   isObject,
   validateEnum,
@@ -39,6 +40,11 @@ export function validateCustomTheme(raw: unknown): CustomTheme {
     DENSITY_SET,
     DEFAULT_CUSTOM_THEME.density,
   );
+  const tableSpacing = validateEnum(
+    raw.tableSpacing,
+    TABLE_SPACING_SET,
+    DEFAULT_CUSTOM_THEME.tableSpacing,
+  );
   const borderWidth = validateEnum(
     raw.borderWidth,
     BORDER_WIDTH_SET,
@@ -52,6 +58,7 @@ export function validateCustomTheme(raw: unknown): CustomTheme {
     colors: validateCustomThemeColors(raw.colors),
     radius,
     density,
+    tableSpacing,
     borderWidth,
     reduceMotion,
   };

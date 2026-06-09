@@ -98,6 +98,14 @@
   --density-row-py: 0.375rem;
   --density-row-px: 0.5rem;
 
+  /* Per-cell padding for the budget ledger tables, driven by the
+     table-spacing preset on Custom themes. Every budget cell renderer
+     (editable and read-only) reads these so the whole row scales
+     together. Defaults match the historical `py-2` / `px-2.5` literals
+     so non-Custom themes render pixel-identically. */
+  --table-cell-py: 0.5rem;
+  --table-cell-px: 0.625rem;
+
   /* Border thickness. The bare Tailwind `.border` / `.border-{t,r,b,l}`
      utilities are remapped to this var by the unlayered overrides at
      the bottom of this file, so chrome that combines `border

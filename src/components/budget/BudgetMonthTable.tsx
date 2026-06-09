@@ -361,7 +361,7 @@ function MonthTableImpl({
                 className="swipe-action-cell action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
                 aria-label={t("budget.rowActions")}
               >
-                <span className="column-header-cell flex items-center justify-center gap-1.5 px-2.5 py-2 md:gap-2">
+                <span className="column-header-cell flex items-center justify-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] md:gap-2">
                   <Wrench
                     size={16}
                     className="shrink-0 text-accent"

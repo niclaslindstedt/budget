@@ -14,9 +14,9 @@
 //    family is fetched on demand via `loadFontFamily` before the stack
 //    var is written, so it swaps in (font-display: swap) once it lands.
 // 3. Custom-theme overrides: 18 colour vars + radius / density /
-//    border-width / reduce-motion. Only written when `theme === "custom"`
-//    so flipping back to a preset cleans every inline value out of the
-//    style attribute.
+//    table-spacing / border-width / reduce-motion. Only written when
+//    `theme === "custom"` so flipping back to a preset cleans every
+//    inline value out of the style attribute.
 
 import { useEffect } from "react";
 
@@ -30,6 +30,7 @@ import type {
   DensityPreset,
   RadiusPreset,
   Settings,
+  TableSpacingPreset,
 } from "../data/types";
 import { loadFontFamily } from "../utils/fonts";
 
@@ -53,6 +54,18 @@ const DENSITY: Record<DensityPreset, { py: string; px: string }> = {
   compact: { py: "0.25rem", px: "0.375rem" },
   comfortable: { py: "0.375rem", px: "0.5rem" },
   spacious: { py: "0.5rem", px: "0.75rem" },
+};
+
+// Per-cell padding for the budget ledger tables, consumed via the
+// `--table-cell-*` vars by every cell renderer (editable and read-only
+// alike) so the whole row scales together. `comfortable` matches the
+// historical literals (`py-2` / `px-2.5` = 0.5rem / 0.625rem) so the
+// default look is unchanged; `spacious` opens the spreadsheet up and
+// `compact` packs more rows on screen.
+const TABLE_SPACING: Record<TableSpacingPreset, { py: string; px: string }> = {
+  compact: { py: "0.25rem", px: "0.5rem" },
+  comfortable: { py: "0.5rem", px: "0.625rem" },
+  spacious: { py: "0.875rem", px: "1rem" },
 };
 
 const BORDER_WIDTH_PX: Record<BorderWidthPreset, string> = {
@@ -106,6 +119,8 @@ export function useTheme(settings: Settings): void {
       html.style.removeProperty("--radius-lg");
       html.style.removeProperty("--density-row-py");
       html.style.removeProperty("--density-row-px");
+      html.style.removeProperty("--table-cell-py");
+      html.style.removeProperty("--table-cell-px");
       html.style.removeProperty("--border-width");
       html.removeAttribute("data-reduce-motion");
       return;
@@ -123,6 +138,9 @@ export function useTheme(settings: Settings): void {
     const d = DENSITY[customTheme.density];
     html.style.setProperty("--density-row-py", d.py);
     html.style.setProperty("--density-row-px", d.px);
+    const ts = TABLE_SPACING[customTheme.tableSpacing];
+    html.style.setProperty("--table-cell-py", ts.py);
+    html.style.setProperty("--table-cell-px", ts.px);
     html.style.setProperty(
       "--border-width",
       BORDER_WIDTH_PX[customTheme.borderWidth],

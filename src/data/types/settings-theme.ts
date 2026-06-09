@@ -68,6 +68,14 @@ export type RadiusPreset = "none" | "sm" | "md" | "lg";
 // expose to the chrome that opts in.
 export type DensityPreset = "compact" | "comfortable" | "spacious";
 
+// Table-spacing preset. Scales the per-cell padding of the budget
+// ledger tables through the `--table-cell-*` vars so the whole row
+// (editable and read-only cells alike) grows or tightens together —
+// distinct from `DensityPreset`, which governs form / modal field
+// chrome. `spacious` makes the spreadsheet roomier; `compact` packs
+// more rows on screen.
+export type TableSpacingPreset = "compact" | "comfortable" | "spacious";
+
 // Border thickness preset consumed by chrome that reads
 // `var(--border-width)`. `thin` is sub-pixel friendly on hi-DPI
 // screens; `bold` makes the dividers more emphatic.
@@ -110,6 +118,7 @@ export type CustomTheme = {
   colors: CustomThemeColors;
   radius: RadiusPreset;
   density: DensityPreset;
+  tableSpacing: TableSpacingPreset;
   borderWidth: BorderWidthPreset;
   // Globally short-circuits `transition-duration` and
   // `animation-duration` via a high-specificity rule keyed off

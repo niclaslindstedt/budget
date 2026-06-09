@@ -6,6 +6,7 @@ import {
   DENSITY_PRESETS,
   FONT_FAMILIES,
   RADIUS_PRESETS,
+  TABLE_SPACING_PRESETS,
   THEMES,
 } from "../themes";
 import type {
@@ -20,6 +21,7 @@ import type {
   RadiusPreset,
   ReceiptNamePattern,
   ShortDateFormat,
+  TableSpacingPreset,
   TaxLocation,
   ThemePreset,
   ThousandsSeparator,
@@ -49,6 +51,9 @@ export const LOCATION_SET: ReadonlySet<TaxLocation> = new Set<TaxLocation>([
 ]);
 export const RADIUS_SET: ReadonlySet<RadiusPreset> = new Set(RADIUS_PRESETS);
 export const DENSITY_SET: ReadonlySet<DensityPreset> = new Set(DENSITY_PRESETS);
+export const TABLE_SPACING_SET: ReadonlySet<TableSpacingPreset> = new Set(
+  TABLE_SPACING_PRESETS,
+);
 export const BORDER_WIDTH_SET: ReadonlySet<BorderWidthPreset> = new Set(
   BORDER_WIDTH_PRESETS,
 );

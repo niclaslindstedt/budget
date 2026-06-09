@@ -13,6 +13,7 @@ import {
   LIGHT_THEMES,
   PRESET_PALETTES,
   RADIUS_PRESETS,
+  TABLE_SPACING_PRESETS,
   themeFamily,
 } from "../../../data/themes";
 import type {
@@ -209,6 +210,20 @@ export function AppearanceTab({
                   ),
                 }))}
                 onChange={(v) => updateCustom("density", v)}
+              />
+            </Field>
+            <Field label={t("settings.appearance.tableSpacing")}>
+              <SegmentedRow
+                value={draft.customTheme.tableSpacing}
+                options={TABLE_SPACING_PRESETS.map((p) => ({
+                  value: p,
+                  label: t(
+                    `settings.appearance.tableSpacing${capitalise(p)}` as Parameters<
+                      typeof t
+                    >[0],
+                  ),
+                }))}
+                onChange={(v) => updateCustom("tableSpacing", v)}
               />
             </Field>
             <Field label={t("settings.appearance.borderWidth")}>

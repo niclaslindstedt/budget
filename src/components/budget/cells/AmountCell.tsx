@@ -149,7 +149,7 @@ export function AmountCell({
            jitter as focus moves. */}
         <span
           aria-hidden
-          className="invisible px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre"
+          className="invisible px-[var(--table-cell-px)] py-[var(--table-cell-py)] pl-6 font-mono tabular-nums whitespace-pre"
         >
           {withCurrency(inputValue || "0", settings)}
         </span>

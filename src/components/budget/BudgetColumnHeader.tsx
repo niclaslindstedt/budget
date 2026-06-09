@@ -54,7 +54,7 @@ export function BudgetColumnHeader({ column, onReorder }: Props) {
       }}
     >
       <span
-        className={`column-header-cell flex items-center gap-1.5 px-2.5 py-2 md:gap-2 ${glyphJustify}`}
+        className={`column-header-cell flex items-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] md:gap-2 ${glyphJustify}`}
       >
         <ColumnIcon
           type={column.type}

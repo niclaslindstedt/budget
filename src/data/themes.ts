@@ -15,6 +15,7 @@ import type {
   DensityPreset,
   FontFamilyId,
   RadiusPreset,
+  TableSpacingPreset,
   ThemeFamily,
   ThemePreset,
 } from "./types";
@@ -125,6 +126,12 @@ export const RADIUS_PRESETS: readonly RadiusPreset[] = [
 ];
 
 export const DENSITY_PRESETS: readonly DensityPreset[] = [
+  "compact",
+  "comfortable",
+  "spacious",
+];
+
+export const TABLE_SPACING_PRESETS: readonly TableSpacingPreset[] = [
   "compact",
   "comfortable",
   "spacious",
@@ -383,6 +390,7 @@ export const DEFAULT_CUSTOM_THEME: CustomTheme = {
   colors: DEFAULT_CUSTOM_THEME_COLORS_DARK,
   radius: "md",
   density: "comfortable",
+  tableSpacing: "comfortable",
   borderWidth: "normal",
   reduceMotion: false,
 };
@@ -413,6 +421,7 @@ export function customThemeSeed(
     colors,
     radius: DEFAULT_CUSTOM_THEME.radius,
     density: DEFAULT_CUSTOM_THEME.density,
+    tableSpacing: DEFAULT_CUSTOM_THEME.tableSpacing,
     borderWidth: DEFAULT_CUSTOM_THEME.borderWidth,
     reduceMotion: DEFAULT_CUSTOM_THEME.reduceMotion,
   };

@@ -84,7 +84,7 @@ export function DateCellDisplay({
       <td className={`${CELL_BASE} relative p-0`}>
         <button
           type="button"
-          className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-2.5 md:font-normal md:text-right ${mutedClass}`}
+          className={`block w-full cursor-pointer border-0 bg-transparent px-1 py-[var(--table-cell-py)] text-center font-mono font-bold tabular-nums whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:px-[var(--table-cell-px)] md:font-normal md:text-right ${mutedClass}`}
           style={style}
           aria-label={iso ? `Change date (${formatted})` : "Pick a date"}
           title={shiftLabel ?? undefined}
@@ -98,7 +98,7 @@ export function DateCellDisplay({
 
   return (
     <td
-      className={`${CELL_BASE} relative px-1 py-2 text-center font-mono font-bold tabular-nums whitespace-nowrap md:px-2.5 md:font-normal md:text-right ${mutedClass}`}
+      className={`${CELL_BASE} relative px-1 py-[var(--table-cell-py)] text-center font-mono font-bold tabular-nums whitespace-nowrap md:px-[var(--table-cell-px)] md:font-normal md:text-right ${mutedClass}`}
       style={style}
       title={shiftLabel ?? undefined}
       aria-readonly="true"

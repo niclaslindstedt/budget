@@ -52,7 +52,7 @@ export function AmountCellDisplay({ value, settings, formula }: Props) {
           </span>
         )}
         <span
-          className={`block w-full px-2.5 py-2 pl-6 font-mono tabular-nums whitespace-pre text-right ${
+          className={`block w-full px-[var(--table-cell-px)] py-[var(--table-cell-py)] pl-6 font-mono tabular-nums whitespace-pre text-right ${
             settings.showCurrency && settings.currencyPosition === "after"
               ? "pr-8"
               : ""

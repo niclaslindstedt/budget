@@ -130,12 +130,13 @@ describe("validateSettings — customTheme soft fallbacks", () => {
     expect(colors.pageBg).toBe("#abc");
   });
 
-  it("falls back to defaults for bad radius / density / borderWidth values", () => {
+  it("falls back to defaults for bad radius / density / tableSpacing / borderWidth values", () => {
     const v30 = v30Bucket({
       customTheme: {
         ...DEFAULT_CUSTOM_THEME,
         radius: "huge",
         density: "extra-spacious",
+        tableSpacing: "extra-roomy",
         borderWidth: "thick",
         reduceMotion: "yes" as unknown as boolean,
       },
@@ -147,6 +148,7 @@ describe("validateSettings — customTheme soft fallbacks", () => {
     const ct = result.value.settings.customTheme;
     expect(ct.radius).toBe(DEFAULT_CUSTOM_THEME.radius);
     expect(ct.density).toBe(DEFAULT_CUSTOM_THEME.density);
+    expect(ct.tableSpacing).toBe(DEFAULT_CUSTOM_THEME.tableSpacing);
     expect(ct.borderWidth).toBe(DEFAULT_CUSTOM_THEME.borderWidth);
     expect(ct.reduceMotion).toBe(DEFAULT_CUSTOM_THEME.reduceMotion);
   });
@@ -198,6 +200,7 @@ describe("customThemeSeed — snapshot the active theme into Custom", () => {
     const seed = customThemeSeed("excel", true);
     expect(seed.radius).toBe(DEFAULT_CUSTOM_THEME.radius);
     expect(seed.density).toBe(DEFAULT_CUSTOM_THEME.density);
+    expect(seed.tableSpacing).toBe(DEFAULT_CUSTOM_THEME.tableSpacing);
     expect(seed.borderWidth).toBe(DEFAULT_CUSTOM_THEME.borderWidth);
     expect(seed.reduceMotion).toBe(DEFAULT_CUSTOM_THEME.reduceMotion);
   });

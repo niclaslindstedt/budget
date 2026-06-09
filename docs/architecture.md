@@ -887,6 +887,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   saving is a first-class transfer endpoint, so the history / transfer
   validators widen their known-id checks to accept saving ids alongside
   account ids.
+- **v71 → v72** — bare bump adding the `customTheme.tableSpacing` preset
+  (`compact | comfortable | spacious`). The settings validator fills it
+  from the canonical default when absent, so old exports upgrade without
+  touching the blob. Drives the `--table-cell-px` / `--table-cell-py`
+  CSS vars the budget ledger cells read for their per-cell padding.
 
 ## State management
 
