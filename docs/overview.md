@@ -1543,7 +1543,7 @@ The current balance is the latest point by date (`currentSavingBalance`,
 the first point, dated today. Update balance (`UpdateSavingBalanceModal.tsx`)
 appends a new dated point (`addSavingBalance`) and lists prior points for
 deletion (`deleteSavingBalance`) — the foundation for the savings-over-time
-charts planned next.
+chart (see Visualize value below).
 
 Points are recorded two ways. A user records them by hand through Update
 balance, and an **import** seeds them automatically: when a bank statement
@@ -1560,6 +1560,27 @@ an older statement backfills earlier days. Manual points on dates the import
 doesn't cover survive untouched; a date the import _does_ cover becomes
 authoritative. Entries without a running balance (credit-card-style exports)
 contribute nothing, leaving the history unchanged.
+
+### Visualize value (savings)
+
+`SavingsValueChartModal.tsx` (`src/components/savings/`) — the Savings-sheet
+analogue of the property value chart, opened from the sheet title's "…" menu
+("Visualize value"). Where the property chart plots one property, this is a
+sheet-level view across the collection: a checkbox chooser lets the user pick
+which savings accounts to include (all by default), and the chart draws a
+**single combined line** — the total set aside across the selected accounts
+over time.
+
+The line is built by the pure `buildSavingsTotalSeries`
+(`src/data/savings/series.ts`): it samples the union of every snapshot date
+across the selected accounts and, at each date, sums each account's most
+recent balance on or before it (the last known value carried forward; an
+account contributes 0 before its first snapshot). So the total climbs as
+accounts come online and as each is topped up. Fewer than two points shows an
+empty-state hint; clearing the selection shows a "pick an account" hint. The
+reusable `LineChart` primitive (`src/components/charts/`) does the drawing, so
+the chart follows the active theme like the property one. Opening it unlocks
+the **Nest Egg** achievement (`savingsValueChart`, a manual trigger).
 
 ## Data and storage
 

@@ -324,6 +324,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Visualisera värde i en fastighets …-meny för att rita upp dess registrerade värden över tid — appens första visualisering. Slå på Inkludera reparationer för att lägga pengarna du investerat på linjen, och Visa nettovärde för att lägga till vad du faktiskt får kvar efter mäklararvode, annonsering, reparationer, inköpspris och vinstskatt. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
   },
+  savingsValueChart: {
+    name: "Sparbössa",
+    condition: "Visualisera ditt sparande över tid.",
+    learnMore:
+      "Välj Visualisera värde i Sparande-sheetets …-meny för att rita upp hur mycket du har lagt undan över tid. Markera kontona du vill inkludera — alla som standard — så visar linjen deras sammanlagda saldo vid varje registrerat datum, stigande allt eftersom konton tillkommer och fylls på. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

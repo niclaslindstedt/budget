@@ -214,6 +214,7 @@ balance recorded over time. Sheet type `"savings"`. Files live in
 | **Savings page** / **Savings sheet**      | `src/components/savings/SavingsPage.tsx`; `SavingsView`, `UserData.savings`. [→](overview.md#savings-page)                                                                                                                                                                 |
 | **Savings account** / **saving** (object) | `Saving` (`src/data/types/savings.ts`); `SavingsModal.tsx`; `createSaving` / `updateSaving` / `deleteSaving` (`src/data/reducers/savings.ts`). [→](overview.md#savings-account)                                                                                            |
 | **Savings balance** / **update balance**  | `SavingBalancePoint` (`Saving.balanceHistory`); `UpdateSavingBalanceModal.tsx`; `currentSavingBalance` / `applyImportedSavingBalances` (`src/data/savings/value.ts`); `addSavingBalance` / `updateSavingBalance` / `deleteSavingBalance`. [→](overview.md#savings-balance) |
+| **Visualize value** (savings)             | `SavingsValueChartModal.tsx`; `buildSavingsTotalSeries` (`src/data/savings/series.ts`); `LineChart` (`src/components/charts/LineChart.tsx`). Opened from the Savings sheet's title "…" menu. [→](overview.md#visualize-value-savings)                                      |
 
 ## Data and storage
 

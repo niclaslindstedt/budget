@@ -41,6 +41,15 @@ const savingsSheet: SavingsSheetCatalog = {
   balanceHistory: "Saldohistorik",
   noBalanceHistory: "Inga saldon registrerade än.",
   deleteBalanceAria: "Ta bort registrerat saldo",
+
+  // Visualisera värde-diagram.
+  visualizeValue: "Visualisera värde",
+  valueChartTotal: "Totalt",
+  valueChartAccounts: "Konton",
+  valueChartSelectAll: "Markera alla",
+  valueChartEmpty:
+    "Registrera minst två daterade saldon för de valda kontona för att se hur ditt sparande har förändrats.",
+  valueChartNoSelection: "Välj minst ett konto att visa.",
 };
 
 export default savingsSheet;

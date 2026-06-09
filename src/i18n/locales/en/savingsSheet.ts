@@ -41,6 +41,15 @@ const savingsSheet = {
   balanceHistory: "Balance history",
   noBalanceHistory: "No balances recorded yet.",
   deleteBalanceAria: "Delete recorded balance",
+
+  // Visualize value chart.
+  visualizeValue: "Visualize value",
+  valueChartTotal: "Total",
+  valueChartAccounts: "Accounts",
+  valueChartSelectAll: "Select all",
+  valueChartEmpty:
+    "Record at least two dated balances across the selected accounts to chart how your savings have changed.",
+  valueChartNoSelection: "Select at least one account to chart.",
 } as const;
 
 export type SavingsSheetCatalog = Widen<typeof savingsSheet>;

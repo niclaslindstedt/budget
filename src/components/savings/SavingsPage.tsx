@@ -1,6 +1,15 @@
-import { useEffect, useMemo } from "react";
-import { Coins, Landmark, Pencil, Plus, Tag, Wrench } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Coins,
+  Landmark,
+  LineChart,
+  Pencil,
+  Plus,
+  Tag,
+  Wrench,
+} from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { currentSavingBalance } from "../../data/savings/value";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
@@ -14,6 +23,7 @@ import {
   type SheetTitleMenuItem,
 } from "../SheetTitleMenu";
 import { SavingsRow } from "./SavingsRow";
+import { SavingsValueChartModal } from "./SavingsValueChartModal";
 
 type Props = {
   sheet: Sheet;
@@ -48,6 +58,11 @@ export function SavingsPage({
   const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
   const dispatchModal = useModalDispatch();
 
+  // The sheet-level value-over-time chart. Self-contained: it reads
+  // `data.savings` directly and needs no dispatch, so it's hosted here with a
+  // single open flag rather than threaded through the savings modal host.
+  const [chartOpen, setChartOpen] = useState(false);
+
   // Stable, scannable order by name.
   const savings = useMemo(
     () => data.savings.slice().sort((a, b) => a.name.localeCompare(b.name)),
@@ -76,8 +91,21 @@ export function SavingsPage({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [sheet.id]);
 
+  // Open the value-over-time chart, recording the achievement the first time
+  // the user visualizes their savings.
+  function handleVisualizeValue() {
+    setChartOpen(true);
+    unlock("savingsValueChart");
+  }
+
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
+    {
+      key: "visualize",
+      icon: <LineChart size={16} aria-hidden focusable={false} />,
+      label: t("savingsSheet.visualizeValue"),
+      onClick: handleVisualizeValue,
+    },
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
@@ -242,6 +270,13 @@ export function SavingsPage({
             </table>
           </div>
         </section>
+
+        <SavingsValueChartModal
+          open={chartOpen}
+          savings={savings}
+          settings={settings}
+          onClose={() => setChartOpen(false)}
+        />
       </section>
     </ActiveRowProvider>
   );
