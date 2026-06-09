@@ -45,9 +45,10 @@ function validatePayment(raw: unknown): LoanPayment | null {
 // they're load-bearing identity; everything else is dropped-if-malformed so
 // a single bad optional field can't trap an otherwise-valid budget. A
 // dangling `companyId` is swept to absent, and the `propertyId` /
-// `mortgageId` link pair survives only when BOTH resolve against the
-// already-validated properties — a half-dangling link drops both ids so the
-// loan degrades to an unlinked mortgage rather than rejecting the load.
+// `mortgageIds` link survives only as the subset of ids that resolve
+// against the already-validated property — a deleted mortgage falls out of
+// the list, and a link with no surviving ids drops entirely so the loan
+// degrades to an unlinked mortgage rather than rejecting the load.
 export function validateLoan(
   raw: unknown,
   path: string,
@@ -83,14 +84,22 @@ export function validateLoan(
   if (typeof raw.companyId === "string" && knownCompanyIds.has(raw.companyId)) {
     loan.companyId = raw.companyId;
   }
-  if (
-    typeof raw.propertyId === "string" &&
-    typeof raw.mortgageId === "string"
-  ) {
+  if (typeof raw.propertyId === "string" && Array.isArray(raw.mortgageIds)) {
     const property = properties.find((p) => p.id === raw.propertyId);
-    if (property?.mortgages.some((m) => m.id === raw.mortgageId)) {
-      loan.propertyId = raw.propertyId;
-      loan.mortgageId = raw.mortgageId;
+    if (property) {
+      const known = new Set(property.mortgages.map((m) => m.id));
+      const seen = new Set<string>();
+      const kept: string[] = [];
+      for (const mortgageId of raw.mortgageIds) {
+        if (typeof mortgageId !== "string" || !known.has(mortgageId)) continue;
+        if (seen.has(mortgageId)) continue;
+        seen.add(mortgageId);
+        kept.push(mortgageId);
+      }
+      if (kept.length > 0) {
+        loan.propertyId = raw.propertyId;
+        loan.mortgageIds = kept;
+      }
     }
   }
   if (Array.isArray(raw.payments)) {

@@ -1100,10 +1100,26 @@ export function buildSeedUserData(): UserData {
     name: "Bolån lägenheten",
     kind: "mortgage",
     propertyId: apartment.id,
-    mortgageId: apartment.mortgages[0].id,
+    mortgageIds: [apartment.mortgages[0].id],
     payments: [],
   };
-  const loans: Loan[] = [csnLoan, carLoan, linkedMortgageLoan];
+  // The villa carries three mortgages drawn as ONE combined charge, so
+  // this loan links all three and the Loans sheet lists them as a single
+  // row with aggregated figures — the multi-link case.
+  const villaMortgageLoan: Loan = {
+    id: mkId("loan"),
+    name: "Bolån villan",
+    kind: "mortgage",
+    propertyId: villa.id,
+    mortgageIds: villa.mortgages.map((m) => m.id),
+    payments: [],
+  };
+  const loans: Loan[] = [
+    csnLoan,
+    carLoan,
+    linkedMortgageLoan,
+    villaMortgageLoan,
+  ];
 
   // ---- Transfers (cross-account log) -------------------------------
   const transfers: Transfer[] = MONTHS.map(({ year, month }) => ({

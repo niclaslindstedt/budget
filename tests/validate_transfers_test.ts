@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
+import { LATEST_VERSION } from "../src/data/migrations";
 import { createDefaultSheet } from "../src/data/sheet";
 import type { EntryType, Transfer, UserData } from "../src/data/types";
 import { validateUserData } from "../src/data/validate";
@@ -21,7 +22,7 @@ const knownType: EntryType = {
 function workspaceWithTransfers(transfers: unknown[]): unknown {
   const sheet = createDefaultSheet("Checking", "a1");
   const base: UserData = {
-    version: 73,
+    version: LATEST_VERSION,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [
@@ -145,7 +146,7 @@ describe("validateUserData — accounts metadata", () => {
   it("accepts an account with full bank details", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data: UserData = {
-      version: 73,
+      version: LATEST_VERSION,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [
@@ -202,7 +203,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops an unknown glyph silently rather than failing", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 73,
+      version: LATEST_VERSION,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking", glyph: "not-a-real-glyph" }],
@@ -242,7 +243,7 @@ describe("validateUserData — accounts metadata", () => {
   it("drops merchant hints whose typeId no longer exists, and dedups dismissal arrays", () => {
     const sheet = createDefaultSheet("Checking", "a1");
     const data = {
-      version: 73,
+      version: LATEST_VERSION,
       sheets: [sheet],
       activeSheetId: sheet.id,
       accounts: [{ id: "a1", name: "Checking" }],

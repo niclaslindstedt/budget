@@ -30,14 +30,22 @@ honestly reflects that early payments are mostly interest. Without a
 rate, the balance is simply the start sum (plus fee) minus the payments
 recorded.
 
-## Linking a mortgage from the Properties sheet
+## Linking mortgages from the Properties sheet
 
-A mortgage you already track on the Properties sheet doesn't need to be
+Mortgages you already track on the Properties sheet don't need to be
 entered twice. Pick **Link a property mortgage** when creating the
-loan: terms, payments, and balance then resolve live from the property's
-mortgage — linked, never copied — so the two sheets always agree.
-Importing or deleting payments on a linked loan reads and writes the
-mortgage's own payment list.
+loan, choose the property, and tick the mortgages the loan covers —
+one, or all of them. A property often carries several mortgages that
+the bank draws as a single monthly transaction, so they list as **one
+loan row**: the monthly payment and remaining balance sum across the
+linked mortgages, and the rate shown is the balance-weighted blend.
+
+Terms, payments, and balance resolve live from the property's
+mortgages — linked, never copied — so the two sheets always agree.
+Importing payments on a linked loan splits each bank charge across the
+mortgages (amortisation settled first, like Find mortgage payments on
+the Properties sheet), and the payments view lists each combined
+charge as one row.
 
 ## Importing payments
 

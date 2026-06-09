@@ -6,7 +6,7 @@
 
 import type { HistoryEntry, Loan, LoanPayment, Property } from "../types";
 import { newId } from "../sheet";
-import { resolveLinkedMortgage } from "./balance";
+import { resolveLinkedMortgages } from "./balance";
 import { matchesPaymentPattern } from "./patterns";
 
 // Attach matching `newEntries` (the genuinely-new rows of an import) to
@@ -24,7 +24,7 @@ export function attachImportedLoanPayments(
   const next = loans.map((loan) => {
     if (loan.paymentPatterns === undefined || loan.paymentPatterns.length === 0)
       return loan;
-    if (resolveLinkedMortgage(loan, properties) !== null) return loan;
+    if (resolveLinkedMortgages(loan, properties) !== null) return loan;
     const consumed = new Set<string>();
     for (const payment of loan.payments) {
       if (payment.sourceHistoryId !== undefined)

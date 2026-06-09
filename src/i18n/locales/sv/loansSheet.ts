@@ -25,6 +25,7 @@ const loansSheet: LoansSheetCatalog = {
   kindPersonal: "Personligt lån",
 
   linkedTo: "Länkat till {name}",
+  linkedToMany: "Länkat till {name} ({n} bolån)",
 
   importPayments: "Importera betalningar",
   viewPayments: "Visa betalningar",

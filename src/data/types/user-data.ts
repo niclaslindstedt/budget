@@ -37,7 +37,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 73;
+  version: 74;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -76,10 +76,10 @@ export type UserData = {
   // carries its terms (start date / sum, monthly payment, optional rate
   // and setup fee), the payments recorded against it, and the learned
   // bank-description patterns that auto-attach future imported
-  // transactions as payments. A mortgage loan can instead link a
-  // `Property`'s mortgage by id — terms and payments then resolve live
-  // from `properties`. Entirely user-curated — no presets ship. Empty on
-  // a fresh budget.
+  // transactions as payments. A mortgage loan can instead link one or
+  // several of a `Property`'s mortgages by id — terms and payments then
+  // resolve live from `properties`. Entirely user-curated — no presets
+  // ship. Empty on a fresh budget.
   loans: Loan[];
   // User-defined categories for property file uploads (see `FileCategory`).
   // Each becomes a subfolder under a property's `files/` folder; a file with

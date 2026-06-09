@@ -15,19 +15,29 @@ export function loanPaidSoFar(loan: Loan): number {
   return sum;
 }
 
-// The linked mortgage behind a `kind: "mortgage"` loan, or null when the
-// loan is unlinked / the link no longer resolves (the validator sweeps
-// dangling pairs, so a miss here only happens mid-session after a delete).
-export function resolveLinkedMortgage(
+// The linked mortgages behind a `kind: "mortgage"` loan, or null when the
+// loan is unlinked / no linked id resolves (the validator sweeps dangling
+// ids, so a miss here only happens mid-session after a delete). A loan can
+// link several of one property's mortgages — the bank draws their combined
+// monthly cost as a single transaction, so the Loans sheet lists them as
+// one row.
+export function resolveLinkedMortgages(
   loan: Loan,
   properties: readonly Property[],
-): { property: Property; mortgage: Mortgage } | null {
-  if (loan.propertyId === undefined || loan.mortgageId === undefined)
+): { property: Property; mortgages: Mortgage[] } | null {
+  if (
+    loan.propertyId === undefined ||
+    loan.mortgageIds === undefined ||
+    loan.mortgageIds.length === 0
+  ) {
     return null;
+  }
   const property = properties.find((p) => p.id === loan.propertyId);
-  const mortgage = property?.mortgages.find((m) => m.id === loan.mortgageId);
-  if (!property || !mortgage) return null;
-  return { property, mortgage };
+  if (!property) return null;
+  const linked = new Set(loan.mortgageIds);
+  const mortgages = property.mortgages.filter((m) => linked.has(m.id));
+  if (mortgages.length === 0) return null;
+  return { property, mortgages };
 }
 
 // Remaining balance of a simple (unlinked) loan as of `todayIso`.
@@ -69,11 +79,16 @@ export function loanRemainingBalance(
   return Math.max(0, principal - loanPaidSoFar(loan));
 }
 
-// Display figures for a linked mortgage loan, resolved live from the
-// mortgage's own terms. Mirrors what the Properties sheet shows so the two
-// pages can never disagree.
+// Display figures for a linked mortgage loan, aggregated live across the
+// linked mortgages' own terms. Mirrors what the Properties sheet shows so
+// the two pages can never disagree: monthly payment and remaining balance
+// sum across the loans, paid-so-far sums every recorded payment (a
+// combined charge's per-mortgage splits add back up to the bank figure),
+// and the rate is the balance-weighted blend of the mortgages that
+// resolve both a rate and a balance — so an unknown rate doesn't drag the
+// blend toward zero.
 export function linkedMortgageFigures(
-  mortgage: Mortgage,
+  mortgages: readonly Mortgage[],
   todayIso: string,
 ): {
   monthlyPayment: number | null;
@@ -81,13 +96,28 @@ export function linkedMortgageFigures(
   paidSoFar: number;
   remaining: number | null;
 } {
-  const monthly = resolveMonthlyPaymentAt(mortgage, todayIso);
+  let monthly = 0;
   let paid = 0;
-  for (const payment of mortgage.payments) paid += payment.amount;
+  let remaining: number | null = null;
+  let ratedInterest = 0;
+  let ratedBalance = 0;
+  for (const mortgage of mortgages) {
+    monthly += resolveMonthlyPaymentAt(mortgage, todayIso);
+    for (const payment of mortgage.payments) paid += payment.amount;
+    const balance = balanceAt(mortgage, todayIso);
+    if (balance !== undefined) {
+      remaining = (remaining ?? 0) + balance;
+      const rate = resolveRateAt(mortgage, todayIso);
+      if (rate !== null) {
+        ratedInterest += balance * rate;
+        ratedBalance += balance;
+      }
+    }
+  }
   return {
     monthlyPayment: monthly > 0 ? monthly : null,
-    rate: resolveRateAt(mortgage, todayIso),
+    rate: ratedBalance > 0 ? ratedInterest / ratedBalance : null,
     paidSoFar: paid,
-    remaining: balanceAt(mortgage, todayIso) ?? null,
+    remaining,
   };
 }

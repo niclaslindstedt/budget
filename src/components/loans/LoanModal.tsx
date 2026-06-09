@@ -9,6 +9,7 @@ import type {
   Company,
   Loan,
   LoanKind,
+  Mortgage,
   Property,
   Settings,
 } from "../../data/types";
@@ -20,6 +21,7 @@ import { ColorPalette } from "../ColorPalette";
 import { CompanyPicker } from "../CompanyPicker";
 import {
   Button,
+  Checkbox,
   ClearableInput,
   ClearableTextarea,
   FormSection,
@@ -49,9 +51,10 @@ export type LoanDraft = {
   lenderName: string;
   // kind === "private" | "car": the lending company. Null = unset.
   companyId: string | null;
-  // kind === "mortgage": the linked property mortgage, or null for a
-  // simple (unlinked) mortgage loan.
-  link: { propertyId: string; mortgageId: string } | null;
+  // kind === "mortgage": the linked property mortgages (one property,
+  // any subset of its mortgages — the bank draws them as one combined
+  // charge), or null for a simple (unlinked) mortgage loan.
+  link: { propertyId: string; mortgageIds: string[] } | null;
 };
 
 type Props = {
@@ -73,8 +76,7 @@ type Props = {
 };
 
 const DEFAULT_COLOR = SHEET_COLORS[0];
-// Encodes a property/mortgage pair into one SelectPicker value. Ids are
-// base-36 `newId()` strings, so "|" can't collide.
+// SelectPicker value for the "not linked" option of the property picker.
 const LINK_NONE = "";
 
 // Not `centered`: the name / amount fields open the soft keyboard.
@@ -104,7 +106,13 @@ export function LoanModal({
   const [startFee, setStartFee] = useState("");
   const [lenderName, setLenderName] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [linkValue, setLinkValue] = useState<string>(LINK_NONE);
+  // The mortgage link: a property (LINK_NONE = unlinked) plus the subset
+  // of its mortgages this loan covers. One property only — its combined
+  // monthly charge is a single bank transaction.
+  const [linkPropertyId, setLinkPropertyId] = useState<string>(LINK_NONE);
+  const [linkMortgageIds, setLinkMortgageIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
 
   const nameRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(nameRef, open);
@@ -134,11 +142,12 @@ export function LoanModal({
     );
     setLenderName(loan?.lenderName ?? "");
     setCompanyId(loan?.companyId ?? null);
-    setLinkValue(
-      loan?.propertyId !== undefined && loan?.mortgageId !== undefined
-        ? `${loan.propertyId}|${loan.mortgageId}`
-        : LINK_NONE,
-    );
+    const hasLink =
+      loan?.propertyId !== undefined &&
+      loan.mortgageIds !== undefined &&
+      loan.mortgageIds.length > 0;
+    setLinkPropertyId(hasLink ? loan.propertyId! : LINK_NONE);
+    setLinkMortgageIds(new Set(hasLink ? loan.mortgageIds : []));
   });
 
   const kindOptions: SelectOption<string>[] = LOAN_KINDS.map((k) => ({
@@ -146,39 +155,65 @@ export function LoanModal({
     label: t(LOAN_KIND_LABEL_KEY[k]),
   }));
 
-  // Every mortgage across every property not already linked by another
-  // loan (the one this loan links stays offered so edit round-trips).
-  const linkOptions: SelectOption<string>[] = [
-    { value: LINK_NONE, label: t("loansSheet.linkNone") },
-  ];
+  // A mortgage is linkable when no OTHER loan already links it (the ones
+  // this loan links stay offered so edit round-trips).
+  const ownIds = new Set(loan?.mortgageIds ?? []);
+  const linkableByProperty = new Map<string, Mortgage[]>();
   for (const property of properties) {
-    for (const mortgage of property.mortgages) {
-      const value = `${property.id}|${mortgage.id}`;
-      if (
-        linkedMortgageIds.has(mortgage.id) &&
-        !(loan?.mortgageId === mortgage.id)
-      ) {
-        continue;
-      }
-      linkOptions.push({
-        value,
-        label: `${property.name} — ${mortgage.name}`,
-      });
-    }
+    const linkable = property.mortgages.filter(
+      (m) => !linkedMortgageIds.has(m.id) || ownIds.has(m.id),
+    );
+    if (linkable.length > 0) linkableByProperty.set(property.id, linkable);
   }
-  const hasLinkableMortgages = linkOptions.length > 1;
-  const isLinked = kind === "mortgage" && linkValue !== LINK_NONE;
+  const propertyOptions: SelectOption<string>[] = [
+    { value: LINK_NONE, label: t("loansSheet.linkNone") },
+    ...properties
+      .filter((p) => linkableByProperty.has(p.id))
+      .map((p) => ({ value: p.id, label: p.name })),
+  ];
+  const hasLinkableMortgages = propertyOptions.length > 1;
+  const linkableMortgages =
+    linkPropertyId === LINK_NONE
+      ? []
+      : (linkableByProperty.get(linkPropertyId) ?? []);
+  const checkedMortgageIds = linkableMortgages
+    .map((m) => m.id)
+    .filter((id) => linkMortgageIds.has(id));
+  const isLinked =
+    kind === "mortgage" &&
+    linkPropertyId !== LINK_NONE &&
+    checkedMortgageIds.length > 0;
+
+  // Picking a property starts with every linkable mortgage ticked — a
+  // property's charge usually covers all of them; untick to narrow.
+  function handlePickProperty(propertyId: string) {
+    setLinkPropertyId(propertyId);
+    setLinkMortgageIds(
+      new Set(
+        propertyId === LINK_NONE
+          ? []
+          : (linkableByProperty.get(propertyId) ?? []).map((m) => m.id),
+      ),
+    );
+  }
+
+  function toggleLinkMortgage(mortgageId: string) {
+    setLinkMortgageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(mortgageId)) next.delete(mortgageId);
+      else next.add(mortgageId);
+      return next;
+    });
+  }
 
   const trimmedName = normalizeName(name);
   const canSave = trimmedName !== null;
 
   function handleSave() {
     if (trimmedName === null) return;
-    let link: LoanDraft["link"] = null;
-    if (isLinked) {
-      const [propertyId, mortgageId] = linkValue.split("|");
-      link = { propertyId, mortgageId };
-    }
+    const link: LoanDraft["link"] = isLinked
+      ? { propertyId: linkPropertyId, mortgageIds: checkedMortgageIds }
+      : null;
     onSave({
       name: trimmedName,
       kind,
@@ -261,15 +296,27 @@ export function LoanModal({
             <FormSection label={t("loansSheet.linkMortgage")}>
               {hasLinkableMortgages ? (
                 <SelectPicker
-                  value={linkValue}
-                  options={linkOptions}
-                  onChange={setLinkValue}
+                  value={linkPropertyId}
+                  options={propertyOptions}
+                  onChange={handlePickProperty}
                   ariaLabel={t("loansSheet.linkMortgage")}
                 />
               ) : (
                 <p className="m-0 rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
                   {t("loansSheet.noMortgagesToLink")}
                 </p>
+              )}
+              {linkPropertyId !== LINK_NONE && linkableMortgages.length > 0 && (
+                <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
+                  {linkableMortgages.map((mortgage) => (
+                    <Checkbox
+                      key={mortgage.id}
+                      checked={linkMortgageIds.has(mortgage.id)}
+                      onChange={() => toggleLinkMortgage(mortgage.id)}
+                      label={mortgage.name}
+                    />
+                  ))}
+                </div>
               )}
               {isLinked && (
                 <p className="m-0 text-xs text-muted">

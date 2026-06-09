@@ -27,6 +27,7 @@ const loansSheet = {
 
   // Row sub-line for a linked mortgage loan.
   linkedTo: "Linked to {name}",
+  linkedToMany: "Linked to {name} ({n} mortgages)",
 
   // Row "…" menu.
   importPayments: "Import payments",

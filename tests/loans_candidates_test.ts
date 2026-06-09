@@ -167,7 +167,7 @@ describe("findLoanPaymentCandidates", () => {
     const l = loan({
       kind: "mortgage",
       propertyId: "prop-1",
-      mortgageId: "m-1",
+      mortgageIds: ["m-1"],
     });
     expect(findLoanPaymentCandidates(l, s).map((c) => c.entry.id)).toEqual([
       "h1",
