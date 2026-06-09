@@ -107,6 +107,7 @@ describe("stageHistoryImport", () => {
     expect(staged.newEntries).toHaveLength(1);
     expect(staged.pendingImport).toEqual({
       bankParserId: "test-parser",
+      bankName: undefined,
       bankClearing: undefined,
       bankAccountNumber: undefined,
       filename: "march.csv",
@@ -205,15 +206,17 @@ describe("stageHistoryImport", () => {
     expect(staged.outcome.kind).toBe("reconciliation");
   });
 
-  it("carries the bank-extracted clearing / account number into pendingImport", () => {
+  it("carries the bank-extracted name / clearing / account number into pendingImport", () => {
     const data = makeData();
     const file: ParsedBankFile = {
       bankParserId: "skandia-xlsx",
+      bankName: "Skandiabanken",
       bankClearing: "9169",
       bankAccountNumber: "1234567",
       entries: [{ date: "2026-03-30", description: "SIMPLEKO", amount: -5252 }],
     };
     const staged = stageHistoryImport(data, ACCOUNT_ID, file, "x.xlsx", 9);
+    expect(staged.pendingImport.bankName).toBe("Skandiabanken");
     expect(staged.pendingImport.bankClearing).toBe("9169");
     expect(staged.pendingImport.bankAccountNumber).toBe("1234567");
     expect(staged.pendingImport.now).toBe(9);

@@ -37,6 +37,7 @@ describe("bank-skandia", () => {
   it("parses the sample statement", async () => {
     const parsed = await parseBankFile(sampleFile());
     expect(parsed.bankParserId).toBe("skandia-xlsx");
+    expect(parsed.bankName).toBe("Skandiabanken");
     expect(parsed.bankClearing).toBe("9169");
     expect(parsed.bankAccountNumber).toBe("123.456-7");
     expect(parsed.entries.length).toBe(4);

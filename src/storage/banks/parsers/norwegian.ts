@@ -34,6 +34,7 @@ import { excelDateSerialToISO, numericCell, stringCell } from "../helpers";
 defineXlsxParser({
   id: "bank-norwegian-xlsx",
   name: "Bank Norwegian (xlsx)",
+  bankName: "Bank Norwegian",
   headers: [
     "TransactionDate",
     "Text",

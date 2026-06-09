@@ -33,6 +33,7 @@ import {
 // Apply or Skip all; dropped on cancel.
 export type PendingImport = {
   bankParserId: string;
+  bankName?: string;
   bankClearing?: string;
   bankAccountNumber?: string;
   filename: string;
@@ -170,6 +171,7 @@ export function stageHistoryImport(
 
   const pendingImport: PendingImport = {
     bankParserId: parsed.bankParserId,
+    bankName: parsed.bankName,
     bankClearing: parsed.bankClearing,
     bankAccountNumber: parsed.bankAccountNumber,
     filename,

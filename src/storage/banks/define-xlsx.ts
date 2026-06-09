@@ -40,6 +40,12 @@ export type XlsxColumnSpec<T> = {
 export type XlsxParserSpec = {
   id: string;
   name: string;
+  // Human-readable bank name without the format suffix carried by
+  // `name` (e.g. "Skandiabanken" vs "Skandiabanken (xlsx)"). Surfaced
+  // on `ParsedBankFile.bankName` so the import flow can back-fill an
+  // account's `bank` field. Omit when the statement doesn't identify a
+  // bank cleanly.
+  bankName?: string;
   // Default ".xlsx". Banks that export uncompressed sheets under a
   // different extension can override this.
   fileExtension?: string;
@@ -139,6 +145,7 @@ export function defineXlsxParser(spec: XlsxParserSpec): void {
       }
 
       const result: ParsedBankFile = { bankParserId: spec.id, entries };
+      if (spec.bankName !== undefined) result.bankName = spec.bankName;
       if (accountIds.clearing !== undefined)
         result.bankClearing = accountIds.clearing;
       if (accountIds.accountNumber !== undefined)

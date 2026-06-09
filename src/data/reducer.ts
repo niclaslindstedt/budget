@@ -592,15 +592,17 @@ export type Action =
       // reducer dedups entries against existing history (by content
       // hash), records a `HistoryImport` audit row, re-anchors the
       // account's `openingBalance` to the earliest entry's pre-row
-      // balance, back-fills `clearing` / `accountNumber` on the
-      // account when those fields are empty, and drops any balance
-      // corrections whose date falls inside the imported range (the
-      // bank is now authoritative there). Pure: every payload field
-      // is data, so the action can be replayed for tests.
+      // balance, back-fills `bank` / `clearing` / `accountNumber` on
+      // the target account (or savings account) when those fields are
+      // empty, and drops any balance corrections whose date falls
+      // inside the imported range (the bank is now authoritative
+      // there). Pure: every payload field is data, so the action can
+      // be replayed for tests.
       type: "importBankHistory";
       accountId: string;
       bankParserId: string;
       filename: string;
+      bankName?: string;
       bankClearing?: string;
       bankAccountNumber?: string;
       entries: ParsedBankEntry[];

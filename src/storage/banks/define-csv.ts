@@ -34,6 +34,12 @@ export type CsvColumnSpec<T> = {
 export type CsvParserSpec = {
   id: string;
   name: string;
+  // Human-readable bank name without the format suffix carried by
+  // `name` (e.g. "ICA Banken" vs "ICA Banken (csv)"). Surfaced on
+  // `ParsedBankFile.bankName` so the import flow can back-fill an
+  // account's `bank` field. Omit when the statement doesn't identify a
+  // bank cleanly.
+  bankName?: string;
   fileExtension?: string; // default ".csv"
   delimiter?: string; // default ";"
   headers: readonly string[];
@@ -114,6 +120,7 @@ export function defineCsvParser(spec: CsvParserSpec): void {
       }
 
       const result: ParsedBankFile = { bankParserId: spec.id, entries };
+      if (spec.bankName !== undefined) result.bankName = spec.bankName;
       if (accountIds.clearing !== undefined)
         result.bankClearing = accountIds.clearing;
       if (accountIds.accountNumber !== undefined)
