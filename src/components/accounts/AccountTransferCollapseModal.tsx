@@ -67,9 +67,23 @@ export function AccountTransferCollapseModal({
   // for this dialog without persisting a dismissal. The set is keyed
   // by pairKey and resets on every open.
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
+  // Whether the user collapsed at least one pair while this dialog was
+  // open. Distinguishes the empty state "you just collapsed them all"
+  // (a success) from "nothing was ever detected" — without it, a
+  // successful collapse re-runs detection, finds the now-hidden pairs,
+  // and shows the scary "No matching pairs found" copy as if it failed.
+  const [collapsedAny, setCollapsedAny] = useState(false);
   useEffect(() => {
-    if (open) setSkipped(new Set());
+    if (open) {
+      setSkipped(new Set());
+      setCollapsedAny(false);
+    }
   }, [open]);
+
+  const handleCollapse = (candidate: TransferCandidate) => {
+    setCollapsedAny(true);
+    onCollapse(candidate);
+  };
 
   const remaining = candidates.filter((c) => !skipped.has(c.pairKey));
   const hasAny = remaining.length > 0;
@@ -90,9 +104,11 @@ export function AccountTransferCollapseModal({
       <Modal.Body>
         {!hasAny ? (
           <p className="text-sm text-muted">
-            {candidates.length === 0
-              ? t("transferCollapse.noMatches")
-              : t("transferCollapse.allSkipped")}
+            {collapsedAny && candidates.length === 0
+              ? t("transferCollapse.collapsedDone")
+              : candidates.length === 0
+                ? t("transferCollapse.noMatches")
+                : t("transferCollapse.allSkipped")}
           </p>
         ) : (
           <>
@@ -113,7 +129,7 @@ export function AccountTransferCollapseModal({
                     t("transferCollapse.unknownAccount")
                   }
                   settings={settings}
-                  onCollapse={() => onCollapse(c)}
+                  onCollapse={() => handleCollapse(c)}
                   onSkip={() =>
                     setSkipped((prev) => {
                       const next = new Set(prev);
@@ -146,7 +162,7 @@ export function AccountTransferCollapseModal({
             <Button
               variant="primary"
               onClick={() => {
-                for (const c of remaining) onCollapse(c);
+                for (const c of remaining) handleCollapse(c);
               }}
             >
               {t("transferCollapse.collapseAll")}

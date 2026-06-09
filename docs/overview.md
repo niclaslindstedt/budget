@@ -448,7 +448,12 @@ type.
 ### Cut history modal
 
 `AccountCutHistoryModal.tsx` — drops imported entries and cross-account
-transfers dated before a cutoff.
+transfers dated before a cutoff. When a dropped transfer was a collapsed
+pair, the `cutAccountHistory` reducer also restores (un-hides + clears
+the `collapsedIntoTransferId` backref on) its partner bank entry on the
+other account — the same restoration `deleteTransfer` does — so the leg
+reappears and can re-pair on a later import instead of being stranded
+hidden.
 
 ### Reconciliation modal
 
@@ -459,7 +464,12 @@ history entries with existing budget rows.
 
 `AccountTransferCollapseModal.tsx` — folds a detected pair of mirrored
 bank entries (one outgoing, one incoming on the other account) into one
-Transfer.
+Transfer. Re-runs detection on every render, so once every pair is
+collapsed the list is empty. The empty state distinguishes "you just
+collapsed them all" (a success message) from "nothing was ever detected"
+(the `noMatches` copy) via a `collapsedAny` session flag — without it a
+successful collapse re-detects the now-hidden pairs as absent and reads
+as a failure.
 
 ### Rename predictor
 
@@ -2074,7 +2084,8 @@ Detected automatically; the user accepts via
 ### Cut history
 
 `AccountActionsMenu` → "Cut history" → `AccountCutHistoryModal`. Drops
-old entries + transfers.
+old entries + transfers, restoring the partner leg of any collapsed
+transfer it removes (see Cut history modal).
 
 ### Update balance
 

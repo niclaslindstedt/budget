@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { reducer } from "../src/data/reducer";
 import { currentSavingBalance } from "../src/data/savings/value";
 import { newId } from "../src/data/sheet";
@@ -95,6 +95,75 @@ describe("savings reducer", () => {
     expect(removed.savings[0].balanceHistory).toHaveLength(0);
   });
 
+  it("cutting history restores the partner leg of a removed collapsed transfer", () => {
+    // A collapsed transfer ties a leg on the everyday account to a leg
+    // on the savings account, both hidden + backref'd to the transfer.
+    // Cutting the savings account's history drops the transfer (it
+    // predates the cutoff) — the partner leg on the everyday account
+    // must come back, not be stranded hidden with a dangling backref.
+    let state: UserData = reducer(freshUserData(), {
+      type: "createSaving",
+      saving: makeSaving({ id: "sav-1" }),
+    });
+    state = {
+      ...state,
+      accounts: [{ id: "acc-1", name: "Checking" }],
+      history: {
+        "acc-1": [
+          entry({
+            id: "h-acc",
+            amount: -100,
+            hidden: true,
+            collapsedIntoTransferId: "t1",
+          }),
+        ],
+        "sav-1": [
+          entry({
+            id: "h-sav",
+            amount: 100,
+            hidden: true,
+            collapsedIntoTransferId: "t1",
+          }),
+        ],
+      },
+      transfers: [
+        {
+          id: "t1",
+          date: "2026-05-01",
+          description: "to buffer",
+          amount: 100,
+          fromAccountId: "acc-1",
+          toAccountId: "sav-1",
+        },
+      ],
+    };
+
+    const after = reducer(state, {
+      type: "cutAccountHistory",
+      accountId: "sav-1",
+      cutoffDate: "2026-06-01",
+    });
+
+    // The transfer is gone and the savings-side leg trimmed.
+    expect(after.transfers).toHaveLength(0);
+    expect(after.history["sav-1"]).toHaveLength(0);
+    // The everyday-account partner leg is back — visible and detectable.
+    const partner = after.history["acc-1"][0];
+    expect(partner.id).toBe("h-acc");
+    expect(partner.hidden).toBeUndefined();
+    expect(partner.collapsedIntoTransferId).toBeUndefined();
+
+    // And it now re-pairs: a fresh savings-side import would surface a
+    // candidate again rather than finding nothing.
+    const candidates = detectTransferCandidates({
+      history: {
+        ...after.history,
+        "sav-1": [entry({ id: "h-sav2", amount: 100 })],
+      },
+    });
+    expect(candidates).toHaveLength(1);
+  });
+
   it("deleting a savings account cascades its history and transfers", () => {
     let state: UserData = reducer(freshUserData(), {
       type: "createSaving",
@@ -178,6 +247,6 @@ describe("migration v69 → v70", () => {
     const v69 = { version: 69 } as { version: number };
     const { data } = migrate(v69);
     expect((data as { savings: unknown[] }).savings).toEqual([]);
-    expect(data.version).toBe(70);
+    expect(data.version).toBe(LATEST_VERSION);
   });
 });

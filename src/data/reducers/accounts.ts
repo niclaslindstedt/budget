@@ -11,7 +11,7 @@ import {
   mergeHistory,
 } from "../../storage/banks";
 import type { Action } from "../reducer";
-import type { CorrectionRow, UserData } from "../types";
+import type { CorrectionRow, HistoryEntry, UserData } from "../types";
 
 export function reduceAccounts(
   state: UserData,
@@ -63,9 +63,47 @@ export function reduceAccounts(
   if (action.type === "cutAccountHistory") {
     const accountId = action.accountId;
     const cutoff = action.cutoffDate;
-    const nextHistory = { ...state.history };
-    const existing = nextHistory[accountId] ?? [];
-    nextHistory[accountId] = existing.filter((entry) => entry.date >= cutoff);
+    // Drop the transfers that touch this account and predate the
+    // cutoff, capturing their ids first. A removed transfer must not
+    // strand the two bank entries it collapsed: its partner leg lives
+    // on the *other* account and would otherwise stay `hidden` with a
+    // `collapsedIntoTransferId` pointing at a transfer that no longer
+    // exists — invisible in its account and excluded from transfer
+    // detection forever. We restore those entries below, mirroring the
+    // un-hide that `deleteTransfer` does.
+    const removedTransferIds = new Set<string>();
+    const transfers = state.transfers.filter((tx) => {
+      const drop =
+        (tx.fromAccountId === accountId || tx.toAccountId === accountId) &&
+        tx.date < cutoff;
+      if (drop) removedTransferIds.add(tx.id);
+      return !drop;
+    });
+    // Rebuild history: trim the cut account's pre-cutoff entries, and
+    // across every account un-hide + clear the backref on any entry
+    // that was collapsed into one of the now-removed transfers.
+    const nextHistory: Record<string, HistoryEntry[]> = {};
+    for (const [id, entries] of Object.entries(state.history)) {
+      const trimmed =
+        id === accountId
+          ? entries.filter((entry) => entry.date >= cutoff)
+          : entries;
+      let touched = trimmed.length !== entries.length;
+      const restored = trimmed.map((entry) => {
+        if (
+          entry.collapsedIntoTransferId === undefined ||
+          !removedTransferIds.has(entry.collapsedIntoTransferId)
+        ) {
+          return entry;
+        }
+        touched = true;
+        const next: HistoryEntry = { ...entry };
+        delete next.collapsedIntoTransferId;
+        delete next.hidden;
+        return next;
+      });
+      nextHistory[id] = touched ? restored : entries;
+    }
     const nextHistoryImports = { ...state.historyImports };
     const existingImports = nextHistoryImports[accountId] ?? [];
     nextHistoryImports[accountId] = existingImports.filter(
@@ -75,13 +113,7 @@ export function reduceAccounts(
       ...state,
       history: nextHistory,
       historyImports: nextHistoryImports,
-      transfers: state.transfers.filter(
-        (tx) =>
-          !(
-            (tx.fromAccountId === accountId || tx.toAccountId === accountId) &&
-            tx.date < cutoff
-          ),
-      ),
+      transfers,
     };
   }
   if (action.type === "importBankHistory") {
