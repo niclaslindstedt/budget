@@ -6,6 +6,7 @@ import {
 } from "../fiscal-month";
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
+import { applyImportedSavingBalances } from "../savings/value";
 import {
   computeOpeningBalanceFromHistory,
   mergeHistory,
@@ -205,6 +206,27 @@ export function reduceAccounts(
       addedCount,
       duplicateCount,
     };
+    // When the import target is a savings account (savings share the
+    // `history` id-space with accounts), fold the imported transactions'
+    // daily closing balances into its `balanceHistory` so the
+    // balance-over-time series is seeded automatically. A no-op for
+    // regular accounts — `find` returns undefined and `savings` stays
+    // referentially identical to `state.savings`.
+    const targetSaving = state.savings?.find((s) => s.id === action.accountId);
+    const savings = targetSaving
+      ? state.savings.map((s) =>
+          s.id === action.accountId
+            ? {
+                ...s,
+                balanceHistory: applyImportedSavingBalances(
+                  s.balanceHistory,
+                  merged,
+                  newId,
+                ),
+              }
+            : s,
+        )
+      : state.savings;
     const priorImports = state.historyImports[action.accountId] ?? [];
     // Sweep balance corrections out of the imported date range: once the
     // bank has authoritative entries for those dates, a manual delta
@@ -249,6 +271,7 @@ export function reduceAccounts(
         return { ...a, ...patch };
       }),
       sheets,
+      savings,
       history: { ...state.history, [action.accountId]: merged },
       historyImports: {
         ...state.historyImports,

@@ -1537,14 +1537,29 @@ its history, import audit, and any touching transfers.
 ### Savings balance
 
 A `SavingBalancePoint` (`{ id, date, value }`, same shape as a property's
-`PropertyValuePoint`) is one manually-recorded balance snapshot in
-`Saving.balanceHistory`. The current balance is the latest point by date
-(`currentSavingBalance`, `src/data/savings/value.ts`); the create modal
-seeds the opening balance as the first point, dated today. Update balance
-(`UpdateSavingBalanceModal.tsx`) appends a new dated point
-(`addSavingBalance`) and lists prior points for deletion
-(`deleteSavingBalance`) — the foundation for the savings-over-time charts
-planned next.
+`PropertyValuePoint`) is one balance snapshot in `Saving.balanceHistory`.
+The current balance is the latest point by date (`currentSavingBalance`,
+`src/data/savings/value.ts`); the create modal seeds the opening balance as
+the first point, dated today. Update balance (`UpdateSavingBalanceModal.tsx`)
+appends a new dated point (`addSavingBalance`) and lists prior points for
+deletion (`deleteSavingBalance`) — the foundation for the savings-over-time
+charts planned next.
+
+Points are recorded two ways. A user records them by hand through Update
+balance, and an **import** seeds them automatically: when a bank statement
+is imported into a savings account (the savings row's "…" → Import history,
+which reuses the accounts import pipeline), `applyImportedSavingBalances`
+(`src/data/savings/value.ts`) folds the imported transactions' daily
+**closing** balances into `balanceHistory` — one point per date, the running
+balance carried by the **last transaction of that day** (same-day
+transactions collapse to that single point). It runs inside the
+`importBankHistory` branch of `reduceAccounts` against the merged history, so
+re-importing the same statement is idempotent (an existing point on a covered
+date keeps its id, its value re-anchored to the bank's figure) and importing
+an older statement backfills earlier days. Manual points on dates the import
+doesn't cover survive untouched; a date the import *does* cover becomes
+authoritative. Entries without a running balance (credit-card-style exports)
+contribute nothing, leaving the history unchanged.
 
 ## Data and storage
 
