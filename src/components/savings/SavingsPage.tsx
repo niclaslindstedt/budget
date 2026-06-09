@@ -25,6 +25,11 @@ type Props = {
   // Arms the delete confirmation (owned by the savings modal host, so the
   // edit modal's Delete button shares it). Fires from a row's trash button.
   onRequestDeleteSaving: (savingId: string, name: string) => void;
+  // Bank-history flows (reused from the accounts import pipeline) — a savings
+  // account stores transactions for transfer detection, not surfaced here.
+  onImportHistory: (savingId: string) => void;
+  onViewHistory: (savingId: string) => void;
+  onCutHistory: (savingId: string) => void;
 };
 
 export function SavingsPage({
@@ -35,6 +40,9 @@ export function SavingsPage({
   onEditSaving,
   onUpdateBalance,
   onRequestDeleteSaving,
+  onImportHistory,
+  onViewHistory,
+  onCutHistory,
 }: Props) {
   const t = useT();
   const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
@@ -45,6 +53,17 @@ export function SavingsPage({
     () => data.savings.slice().sort((a, b) => a.name.localeCompare(b.name)),
     [data.savings],
   );
+
+  // Per-saving "…" menu gating: View needs imported transactions; Cut needs
+  // transactions or transfers in range. One pass over transfers.
+  const cutBySaving = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const tx of data.transfers) {
+      m.set(tx.fromAccountId, true);
+      m.set(tx.toAccountId, true);
+    }
+    return m;
+  }, [data.transfers]);
 
   // Footer roll-up across the visible accounts — an at-a-glance "total set
   // aside" figure, mirroring the accounts / items page totals.
@@ -172,16 +191,24 @@ export function SavingsPage({
                     </td>
                   </tr>
                 )}
-                {savings.map((saving) => (
-                  <SavingsRow
-                    key={saving.id}
-                    saving={saving}
-                    settings={settings}
-                    onEditSaving={onEditSaving}
-                    onDeleteSaving={onRequestDeleteSaving}
-                    onUpdateBalance={onUpdateBalance}
-                  />
-                ))}
+                {savings.map((saving) => {
+                  const hasHistory = (data.history[saving.id]?.length ?? 0) > 0;
+                  return (
+                    <SavingsRow
+                      key={saving.id}
+                      saving={saving}
+                      settings={settings}
+                      hasHistory={hasHistory}
+                      canCut={hasHistory || cutBySaving.has(saving.id)}
+                      onEditSaving={onEditSaving}
+                      onDeleteSaving={onRequestDeleteSaving}
+                      onUpdateBalance={onUpdateBalance}
+                      onImportHistory={onImportHistory}
+                      onViewHistory={onViewHistory}
+                      onCutHistory={onCutHistory}
+                    />
+                  );
+                })}
                 {savings.length > 0 && (
                   <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
                     <td className="px-2.5 py-2" />

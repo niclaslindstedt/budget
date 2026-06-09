@@ -1039,6 +1039,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onEditSaving={onOpenEditSaving}
                     onUpdateBalance={onOpenUpdateSavingBalance}
                     onRequestDeleteSaving={onRequestDeleteSaving}
+                    onImportHistory={onOpenImportHistory}
+                    onViewHistory={onOpenViewHistory}
+                    onCutHistory={onOpenCutHistory}
                   />
                 ) : (
                   <>
