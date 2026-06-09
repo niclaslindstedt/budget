@@ -20,6 +20,7 @@ import { numericCell, stringCell } from "../helpers";
 defineXlsxParser({
   id: "skandia-xlsx",
   name: "Skandiabanken (xlsx)",
+  bankName: "Skandiabanken",
   headers: ["Bokf. datum", "Beskrivning", "Belopp", "Saldo"],
   headerMode: "startsWith",
   headerRow: 3,

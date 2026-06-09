@@ -32,6 +32,7 @@ describe("bank-ica", () => {
   it("parses the sample statement and skips pending rows", async () => {
     const parsed = await parseBankFile(makeCsvFile("ica-sample.csv", SAMPLE));
     expect(parsed.bankParserId).toBe("ica-banken-csv");
+    expect(parsed.bankName).toBe("ICA Banken");
     expect(parsed.entries.length).toBe(2);
 
     const [first, second] = parsed.entries;

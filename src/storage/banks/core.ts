@@ -36,6 +36,11 @@ export type ParsedBankFile = {
   // "skandia-xlsx". Persisted on `HistoryImport` so a future re-parse
   // / migration can see which bank a file came from.
   bankParserId: string;
+  // Human-readable bank name for the parser that matched, e.g.
+  // "Skandiabanken" (no format suffix — distinct from `BankParser.name`,
+  // which carries "(xlsx)" / "(csv)" for the picker). The import flow
+  // back-fills an account's `bank` field with this when it's empty.
+  bankName?: string;
   // Bank-extracted account identifiers, if present in the file
   // header. The import flow uses these to pre-fill an account's
   // `clearing` and `accountNumber` when the existing record is

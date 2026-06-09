@@ -299,6 +299,69 @@ describe("importing into a savings account seeds balanceHistory", () => {
     expect(after.history["sav-1"]).toHaveLength(3);
   });
 
+  it("back-fills bank / clearing / account number on the savings account", () => {
+    const base = reducer(freshUserData(), {
+      type: "createSaving",
+      saving: makeSaving({ id: "sav-1" }),
+    });
+    const after = reducer(base, {
+      type: "importBankHistory",
+      accountId: "sav-1",
+      bankParserId: "skandia-xlsx",
+      bankName: "Skandiabanken",
+      bankClearing: "9169",
+      bankAccountNumber: "1234567",
+      filename: "buffer.xlsx",
+      entries: [
+        {
+          date: "2026-05-01",
+          description: "deposit",
+          amount: 100,
+          balance: 1100,
+        },
+      ],
+      now: 1,
+    });
+    const saving = after.savings.find((s) => s.id === "sav-1");
+    expect(saving?.bank).toBe("Skandiabanken");
+    expect(saving?.clearing).toBe("9169");
+    expect(saving?.accountNumber).toBe("1234567");
+  });
+
+  it("does not clobber a savings account's existing bank details", () => {
+    const base = reducer(freshUserData(), {
+      type: "createSaving",
+      saving: makeSaving({
+        id: "sav-1",
+        bank: "My Bank",
+        clearing: "0000",
+      }),
+    });
+    const after = reducer(base, {
+      type: "importBankHistory",
+      accountId: "sav-1",
+      bankParserId: "skandia-xlsx",
+      bankName: "Skandiabanken",
+      bankClearing: "9169",
+      bankAccountNumber: "1234567",
+      filename: "buffer.xlsx",
+      entries: [
+        {
+          date: "2026-05-01",
+          description: "deposit",
+          amount: 100,
+          balance: 1100,
+        },
+      ],
+      now: 1,
+    });
+    const saving = after.savings.find((s) => s.id === "sav-1");
+    // Manually-set fields stay put; only the empty one is filled.
+    expect(saving?.bank).toBe("My Bank");
+    expect(saving?.clearing).toBe("0000");
+    expect(saving?.accountNumber).toBe("1234567");
+  });
+
   it("leaves a regular account's savings untouched on import", () => {
     let state: UserData = reducer(freshUserData(), {
       type: "createSaving",
@@ -316,6 +379,33 @@ describe("importing into a savings account seeds balanceHistory", () => {
       now: 1,
     });
     expect(after.savings[0].balanceHistory).toEqual([]);
+  });
+});
+
+describe("importing into a regular account back-fills bank details", () => {
+  it("fills empty bank / clearing / account number from the statement", () => {
+    const state: UserData = {
+      ...freshUserData(),
+      accounts: [{ id: "acc-1", name: "Checking", bank: "My Bank" }],
+    };
+    const after = reducer(state, {
+      type: "importBankHistory",
+      accountId: "acc-1",
+      bankParserId: "skandia-xlsx",
+      bankName: "Skandiabanken",
+      bankClearing: "9169",
+      bankAccountNumber: "1234567",
+      filename: "checking.xlsx",
+      entries: [
+        { date: "2026-05-01", description: "x", amount: 100, balance: 1100 },
+      ],
+      now: 1,
+    });
+    const account = after.accounts.find((a) => a.id === "acc-1");
+    // `bank` was already set manually, so the statement's name is ignored.
+    expect(account?.bank).toBe("My Bank");
+    expect(account?.clearing).toBe("9169");
+    expect(account?.accountNumber).toBe("1234567");
   });
 });
 

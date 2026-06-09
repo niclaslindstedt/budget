@@ -49,6 +49,7 @@ const ACCOUNT_PREFIX = "Kontonummer:";
 defineXlsxParser({
   id: "swedbank-xlsx",
   name: "Swedbank (xlsx)",
+  bankName: "Swedbank",
   headers: HEADERS,
   columns: {
     date: { index: 1, decode: stringCell }, // Bokföringsdag

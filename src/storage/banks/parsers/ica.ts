@@ -27,6 +27,7 @@ const PENDING_TYPE = "Reserverat belopp";
 defineCsvParser({
   id: "ica-banken-csv",
   name: "ICA Banken (csv)",
+  bankName: "ICA Banken",
   headers: ["Datum", "Text", "Typ", "Belopp", "Saldo"],
   columns: {
     date: { index: 0, decode: (s) => (s ?? "").trim() || null },

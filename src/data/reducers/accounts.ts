@@ -14,6 +14,33 @@ import {
 import type { Action } from "../reducer";
 import type { CorrectionRow, HistoryEntry, UserData } from "../types";
 
+// Bank-detail back-fill shared by the account and savings branches of
+// an import. Fill `bank` / `clearing` / `accountNumber` from what the
+// statement carried, but only when the record's field is empty so a
+// manual override (or a value set by an earlier import) isn't
+// clobbered by a re-import. Both `Account` and `Saving` carry the same
+// three optional fields, so the structural `current` type serves both.
+function bankDetailPatch(
+  current: { bank?: string; clearing?: string; accountNumber?: string },
+  source: {
+    bankName?: string;
+    bankClearing?: string;
+    bankAccountNumber?: string;
+  },
+): { bank?: string; clearing?: string; accountNumber?: string } {
+  const patch: {
+    bank?: string;
+    clearing?: string;
+    accountNumber?: string;
+  } = {};
+  if (!current.bank && source.bankName) patch.bank = source.bankName;
+  if (!current.clearing && source.bankClearing)
+    patch.clearing = source.bankClearing;
+  if (!current.accountNumber && source.bankAccountNumber)
+    patch.accountNumber = source.bankAccountNumber;
+  return patch;
+}
+
 export function reduceAccounts(
   state: UserData,
   action: Action,
@@ -218,6 +245,7 @@ export function reduceAccounts(
           s.id === action.accountId
             ? {
                 ...s,
+                ...bankDetailPatch(s, action),
                 balanceHistory: applyImportedSavingBalances(
                   s.balanceHistory,
                   merged,
@@ -260,14 +288,8 @@ export function reduceAccounts(
       ...state,
       accounts: state.accounts.map((a) => {
         if (a.id !== action.accountId) return a;
-        const patch: Partial<typeof a> = {};
+        const patch: Partial<typeof a> = bankDetailPatch(a, action);
         if (opening !== null) patch.openingBalance = opening;
-        // Back-fill clearing / accountNumber only when they're empty,
-        // so a manual override isn't clobbered by a re-import.
-        if (!a.clearing && action.bankClearing)
-          patch.clearing = action.bankClearing;
-        if (!a.accountNumber && action.bankAccountNumber)
-          patch.accountNumber = action.bankAccountNumber;
         return { ...a, ...patch };
       }),
       sheets,

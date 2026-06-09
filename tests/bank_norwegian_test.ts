@@ -107,6 +107,7 @@ describe("bank-norwegian", () => {
   it("parses the sample statement", async () => {
     const parsed = await parseBankFile(sampleFile());
     expect(parsed.bankParserId).toBe("bank-norwegian-xlsx");
+    expect(parsed.bankName).toBe("Bank Norwegian");
     // Credit-card files carry no clearing / account number pair, so
     // the import flow leaves Account.{clearing, accountNumber} alone.
     expect(parsed.bankClearing).toBeUndefined();

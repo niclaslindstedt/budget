@@ -162,7 +162,9 @@ export function ImportHistoryModal({
             </div>
             <div className="flex justify-between text-muted">
               <span>{t("importHistory.bank")}</span>
-              <span className="text-fg">{ready.parsed.bankParserId}</span>
+              <span className="text-fg">
+                {ready.parsed.bankName ?? ready.parsed.bankParserId}
+              </span>
             </div>
             {(ready.parsed.bankClearing || ready.parsed.bankAccountNumber) && (
               <div className="flex justify-between text-muted">

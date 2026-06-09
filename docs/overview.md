@@ -438,7 +438,18 @@ fields.
 
 ### Import history modal
 
-`ImportHistoryModal.tsx` — the file picker + bank-parser selector.
+`ImportHistoryModal.tsx` — the file picker + bank-parser selector. The
+preview also surfaces the matched bank (human name, falling back to the
+parser id), the date range, and the clearing / account number extracted
+from the statement header. On commit, the `importBankHistory` reducer
+back-fills `bank` / `clearing` / `accountNumber` on the target record
+from the statement — only when each field is empty, so a manual override
+isn't clobbered by a re-import. The bank name comes from the parser
+(`ParsedBankFile.bankName`, set per parser via `bankName` on the
+xlsx / csv spec); clearing and account number come from the parser's
+`accountIds` header extractor. This applies whether the import target is
+a regular `Account` or a `Saving` (savings share the `history` id-space
+and the same three bank-detail fields).
 
 ### History entry edit modal
 
