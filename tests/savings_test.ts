@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
 import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { reducer } from "../src/data/reducer";
-import { currentSavingBalance } from "../src/data/savings/value";
+import {
+  applyImportedSavingBalances,
+  currentSavingBalance,
+} from "../src/data/savings/value";
 import { newId } from "../src/data/sheet";
 import type {
   HistoryEntry,
@@ -186,6 +189,133 @@ describe("savings reducer", () => {
     const after = reducer(state, { type: "deleteSaving", savingId: "sav-1" });
     expect(after.history["sav-1"]).toBeUndefined();
     expect(after.transfers).toHaveLength(0);
+  });
+});
+
+describe("applyImportedSavingBalances", () => {
+  let counter = 0;
+  const mint = () => `gen-${counter++}`;
+
+  it("records one closing-balance point per date (last of day)", () => {
+    counter = 0;
+    const points = applyImportedSavingBalances(
+      [],
+      [
+        entry({ date: "2026-05-01", amount: 100, balance: 1100 }),
+        entry({ date: "2026-05-02", amount: 50, balance: 1150 }),
+        entry({ date: "2026-05-02", amount: -30, balance: 1120 }),
+      ],
+      mint,
+    );
+    expect(points).toEqual([
+      { id: "gen-0", date: "2026-05-01", value: 1100 },
+      { id: "gen-1", date: "2026-05-02", value: 1120 },
+    ]);
+  });
+
+  it("collapses same-day entries regardless of input order", () => {
+    counter = 0;
+    const points = applyImportedSavingBalances(
+      [],
+      [
+        entry({ date: "2026-05-02", amount: -30, balance: 1120 }),
+        entry({ date: "2026-05-02", amount: 50, balance: 1150 }),
+        entry({ date: "2026-05-01", amount: 100, balance: 1100 }),
+      ],
+      mint,
+    );
+    // Stable sort keeps intra-day input order, so the day's closing
+    // balance is the last entry on that date as it appears in the file.
+    // Ids are minted while walking the date-sorted map, so the earliest
+    // date gets the first minted id.
+    expect(points).toEqual([
+      { id: "gen-0", date: "2026-05-01", value: 1100 },
+      { id: "gen-1", date: "2026-05-02", value: 1150 },
+    ]);
+  });
+
+  it("ignores entries without a running balance", () => {
+    const points = applyImportedSavingBalances(
+      [{ id: "m1", date: "2026-04-01", value: 999 }],
+      [entry({ date: "2026-05-01", amount: 100 })],
+      mint,
+    );
+    expect(points).toEqual([{ id: "m1", date: "2026-04-01", value: 999 }]);
+  });
+
+  it("preserves manual points on uncovered dates and reuses ids on covered ones", () => {
+    counter = 0;
+    const points = applyImportedSavingBalances(
+      [
+        { id: "manual-keep", date: "2026-04-01", value: 500 },
+        { id: "manual-override", date: "2026-05-01", value: 1 },
+      ],
+      [entry({ date: "2026-05-01", amount: 100, balance: 1100 })],
+      mint,
+    );
+    expect(points).toEqual([
+      { id: "manual-keep", date: "2026-04-01", value: 500 },
+      // Covered date: id reused, value replaced by the bank's closing balance.
+      { id: "manual-override", date: "2026-05-01", value: 1100 },
+    ]);
+  });
+});
+
+describe("importing into a savings account seeds balanceHistory", () => {
+  it("derives daily closing balances from the imported statement", () => {
+    const base = reducer(freshUserData(), {
+      type: "createSaving",
+      saving: makeSaving({ id: "sav-1" }),
+    });
+    const after = reducer(base, {
+      type: "importBankHistory",
+      accountId: "sav-1",
+      bankParserId: "test",
+      filename: "buffer.csv",
+      entries: [
+        {
+          date: "2026-05-01",
+          description: "deposit",
+          amount: 100,
+          balance: 1100,
+        },
+        {
+          date: "2026-05-02",
+          description: "deposit",
+          amount: 50,
+          balance: 1150,
+        },
+        { date: "2026-05-02", description: "fee", amount: -30, balance: 1120 },
+      ],
+      now: 1,
+    });
+    const saving = after.savings.find((s) => s.id === "sav-1");
+    expect(saving?.balanceHistory).toEqual([
+      { id: expect.any(String), date: "2026-05-01", value: 1100 },
+      { id: expect.any(String), date: "2026-05-02", value: 1120 },
+    ]);
+    expect(currentSavingBalance(saving!)).toBe(1120);
+    // The transactions still land in the shared history id-space.
+    expect(after.history["sav-1"]).toHaveLength(3);
+  });
+
+  it("leaves a regular account's savings untouched on import", () => {
+    let state: UserData = reducer(freshUserData(), {
+      type: "createSaving",
+      saving: makeSaving({ id: "sav-1" }),
+    });
+    state = { ...state, accounts: [{ id: "acc-1", name: "Checking" }] };
+    const after = reducer(state, {
+      type: "importBankHistory",
+      accountId: "acc-1",
+      bankParserId: "test",
+      filename: "checking.csv",
+      entries: [
+        { date: "2026-05-01", description: "x", amount: 100, balance: 1100 },
+      ],
+      now: 1,
+    });
+    expect(after.savings[0].balanceHistory).toEqual([]);
   });
 });
 
