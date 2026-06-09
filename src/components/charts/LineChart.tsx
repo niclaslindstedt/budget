@@ -35,6 +35,10 @@ export type ChartSeries = {
   // Draw the line dashed rather than solid — for reference lines (e.g. a
   // purchase-value baseline) that read as secondary to the data series.
   dashed?: boolean;
+  // Keep the series out of the hover tooltip (and its marker dot). For flat
+  // reference lines (e.g. the purchase-value baseline) whose value is constant
+  // and already labelled on the chart, so the tooltip names only the data.
+  omitFromTooltip?: boolean;
 };
 
 type Props = {
@@ -241,6 +245,7 @@ function Chart({
       }
       const rows: Tooltip["rows"] = [];
       for (const s of series) {
+        if (s.omitFromTooltip) continue;
         const match = s.points.find((p) => p.x === nearest);
         if (match) rows.push({ id: s.id, label: s.label, y: match.y });
       }
