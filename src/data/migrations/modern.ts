@@ -1011,6 +1011,55 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // balance history). Seeds empty; old exports simply lack it and the v70
   // validator fills `savings: []` regardless, so this is a bare additive bump.
   69: (v69) => ({ ...v69, version: 70, savings: [] }),
+
+  // v70 → v71: repair history entries stranded by a pre-fix
+  // `cutAccountHistory`. Cutting an account's history dropped the
+  // transfers that predated the cutoff but never restored the bank
+  // entries those transfers had collapsed, leaving the partner leg on
+  // the *other* account `hidden` with a `collapsedIntoTransferId`
+  // pointing at a transfer that no longer exists — invisible in its
+  // account and permanently excluded from transfer detection. Un-hide
+  // and clear the backref on every entry whose `collapsedIntoTransferId`
+  // matches no surviving transfer, so those legs reappear and can
+  // re-pair on a future import. Entries pointing at a live transfer are
+  // untouched. Additive in spirit — no shape change beyond removing two
+  // optional fields from the affected entries.
+  70: (v70) => {
+    const transferIds = new Set<string>();
+    if (Array.isArray(v70.transfers)) {
+      for (const tx of v70.transfers) {
+        if (isObj(tx) && typeof tx.id === "string") transferIds.add(tx.id);
+      }
+    }
+    const history = isObj(v70.history)
+      ? Object.fromEntries(
+          Object.entries(v70.history).map(([accountId, entries]) => {
+            if (!Array.isArray(entries)) return [accountId, entries];
+            return [
+              accountId,
+              entries.map((entry) => {
+                if (
+                  !isObj(entry) ||
+                  typeof entry.collapsedIntoTransferId !== "string" ||
+                  transferIds.has(entry.collapsedIntoTransferId)
+                ) {
+                  return entry;
+                }
+                const {
+                  collapsedIntoTransferId: _drop,
+                  hidden: _hidden,
+                  ...rest
+                } = entry;
+                void _drop;
+                void _hidden;
+                return rest;
+              }),
+            ];
+          }),
+        )
+      : v70.history;
+    return { ...v70, version: 71, history };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

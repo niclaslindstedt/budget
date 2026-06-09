@@ -7,6 +7,8 @@ const transferCollapse = {
     "No matching pairs found in your imported history. A pair must have the same magnitude, opposite signs, and dates within three days.",
   allSkipped:
     "Every detected pair has been skipped in this session. Close the dialog to dismiss it.",
+  collapsedDone:
+    "Done — the matching pairs were collapsed into transfers. The two bank entries behind each one are now hidden under a single transfer.",
   pairsPending: "{n} pair pending",
   pairsPendingPlural: "{n} pairs pending",
   confident: "{n}% confident",

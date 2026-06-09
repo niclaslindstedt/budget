@@ -7,6 +7,8 @@ const transferCollapse: TransferCollapseCatalog = {
     "Inga matchande par hittades i din importerade historik. Ett par måste ha samma belopp, motsatta tecken och datum inom tre dagar.",
   allSkipped:
     "Alla upptäckta par har hoppats över i denna session. Stäng dialogen för att avvisa den.",
+  collapsedDone:
+    "Klart — de matchande paren slogs ihop till överföringar. De två bankposterna bakom varje par döljs nu under en enda överföring.",
   pairsPending: "{n} par väntar",
   pairsPendingPlural: "{n} par väntar",
   confident: "{n}% säker",
