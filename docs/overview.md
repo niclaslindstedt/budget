@@ -1482,6 +1482,56 @@ General settings tab (`tabs/general.tsx`, a `SelectPicker` listing every
 repo's new-issue page). Drives the calculator bundle in `LOCATIONS`
 (`src/data/tax/engine.ts`); `computePropertySale(location, …)` reads it.
 
+## Savings page
+
+### Savings page
+
+The Savings sheet (`SheetType "savings"`, `SavingsView`) renders the
+workspace-wide `UserData.savings` collection — savings accounts the user
+sets money aside in (a buffer, a vacation fund). It is a data-light
+singleton flavour like Accounts / Properties: the page
+(`src/components/savings/SavingsPage.tsx`) lists every `Saving` with its
+current balance, and savings CRUD goes through `reduceSavings`
+(`src/data/reducers/savings.ts`), not the per-item reducer tail. Files
+live in `src/components/savings/`; helpers in `src/data/savings/`.
+
+### Savings account
+
+A `Saving` (`src/data/types/savings.ts`) is one savings account:
+`name`, optional bank details (`bank`, `clearing`, `accountNumber`),
+a `glyph` / `color`, and a `kind: "savings"` discriminator that leaves
+room for a future `"investments"` flavour (savings differ from
+investments in that they're not expected to grow). The create / edit
+modal is `SavingsModal.tsx`; rows carry a left-swipe Edit / Delete strip
+and a "…" menu (`SavingActionsMenu.tsx`) whose single entry opens
+Update balance. Unlike a transactional `Account`, a savings account's
+displayed balance is not derived from transactions — it is the latest
+recorded `SavingBalancePoint`.
+
+A savings account is a **first-class transfer endpoint**: it shares the
+`UserData.history` / `UserData.transfers` id-space with regular accounts.
+Its transactions live in `UserData.history` keyed by the saving's id
+(stored, but never surfaced on the Savings page), so
+`detectTransferCandidates` pairs a savings deposit with the matching
+withdrawal on a regular account automatically, and a `Transfer` may name
+a saving on either side. The transfer log and collapse / create modals
+resolve a saving endpoint to its name via `savingAsTransferEndpoint`
+(`src/data/savings/value.ts`). Savings are deliberately kept out of the
+Accounts table and `computeAccountBalances`. Deleting a saving cascades
+its history, import audit, and any touching transfers.
+
+### Savings balance
+
+A `SavingBalancePoint` (`{ id, date, value }`, same shape as a property's
+`PropertyValuePoint`) is one manually-recorded balance snapshot in
+`Saving.balanceHistory`. The current balance is the latest point by date
+(`currentSavingBalance`, `src/data/savings/value.ts`); the create modal
+seeds the opening balance as the first point, dated today. Update balance
+(`UpdateSavingBalanceModal.tsx`) appends a new dated point
+(`addSavingBalance`) and lists prior points for deletion
+(`deleteSavingBalance`) — the foundation for the savings-over-time charts
+planned next.
+
 ## Data and storage
 
 ### User data

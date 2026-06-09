@@ -250,6 +250,19 @@ export function describeActionSubject(
     case "correctAccountBalance":
       return name(byId(next.accounts, action.accountId)?.name);
 
+    // Savings — single-target actions name the savings account. Edits /
+    // balance points read off `next` (the account still exists); the delete
+    // reads the name off `prev` since the account is gone in `next`.
+    case "createSaving":
+      return name(action.saving.name);
+    case "updateSaving":
+    case "addSavingBalance":
+    case "updateSavingBalance":
+    case "deleteSavingBalance":
+      return name(byId(next.savings, action.savingId)?.name);
+    case "deleteSaving":
+      return name(byId(prev.savings, action.savingId)?.name);
+
     // Salary / employers / tax profiles.
     case "addSalaries":
       return action.salaries.length === 1

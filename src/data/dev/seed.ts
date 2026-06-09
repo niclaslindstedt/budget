@@ -45,6 +45,7 @@ import type {
   PropertyRepair,
   RenamePattern,
   Salary,
+  Saving,
   SeriesMetadata,
   Sheet,
   Subtype,
@@ -318,6 +319,11 @@ export function buildSeedUserData(): UserData {
   const creditRaw: RawEntry[] = [];
   const cityRaw: RawEntry[] = [];
   const villaRaw: RawEntry[] = [];
+  // Transactions for the Savings-SHEET buffer account (a `Saving`, distinct
+  // from the regular `savings` Account above). Stored but never surfaced on
+  // the Savings page — they exist so the buffer participates in cross-account
+  // transfer detection.
+  const bufferRaw: RawEntry[] = [];
 
   // The net salary deposit per fiscal month, captured here so the Salary
   // sheet's records (below) reconcile exactly with the bank rows the
@@ -575,12 +581,65 @@ export function buildSeedUserData(): UserData {
     typeId: "preset-type-renovations",
   });
 
+  // ---- Savings accounts (Savings sheet) ----------------------------
+  // Distinct `Saving` entities — money set aside, with a manually-recorded
+  // balance history (the current balance is the latest point by date). The
+  // buffer also carries imported transactions (`bufferRaw`) so it exercises
+  // the fully-wired account↔savings transfer detection: a one-off "Överföring
+  // buffert" pair below (a unique 4 250 magnitude so it forms its own
+  // candidate) leaves an unconsumed account↔saving transfer to discover.
+  const buffer: Saving = {
+    id: mkId("sav"),
+    kind: "savings",
+    name: "Buffertkonto",
+    bank: "Fjällbanken",
+    clearing: "8327",
+    accountNumber: "923 456 222-3",
+    description: "Tre månadslöner för oförutsedda utgifter",
+    glyph: "umbrella",
+    color: CATEGORY_COLORS[9],
+    balanceHistory: [
+      { id: mkId("svpt"), date: "2026-01-01", value: 90000 },
+      { id: mkId("svpt"), date: "2026-05-26", value: 98500 },
+    ],
+  };
+  const vacation: Saving = {
+    id: mkId("sav"),
+    kind: "savings",
+    name: "Resekassa",
+    bank: "Fjällbanken",
+    clearing: "8327",
+    accountNumber: "923 456 333-4",
+    description: "Sommarresan",
+    glyph: "plane",
+    color: CATEGORY_COLORS[6],
+    balanceHistory: [
+      { id: mkId("svpt"), date: "2026-03-01", value: 12000 },
+      { id: mkId("svpt"), date: "2026-05-01", value: 18000 },
+    ],
+  };
+  const savingsAccounts: Saving[] = [buffer, vacation];
+
+  // The mirror pair: money leaves Checking and lands in the buffer on the
+  // same day, a unique magnitude so the detector pairs exactly these two.
+  checkingRaw.push({
+    date: "2026-05-26",
+    description: "Överföring buffertkonto",
+    amount: -4250,
+  });
+  bufferRaw.push({
+    date: "2026-05-26",
+    description: "Insättning buffert från lönekonto",
+    amount: 4250,
+  });
+
   const history: Record<string, HistoryEntry[]> = {
     [checking.id]: finalizeHistory(checkingRaw, 18500, true),
     [savings.id]: finalizeHistory(savingsRaw, 64000, true),
     [credit.id]: finalizeHistory(creditRaw, 0, false),
     [cityAccount.id]: finalizeHistory(cityRaw, 85000, true),
     [villaAccount.id]: finalizeHistory(villaRaw, 920000, true),
+    [buffer.id]: finalizeHistory(bufferRaw, 94250, true),
   };
 
   // Anchor opening balances so the running totals reconcile (mirrors
@@ -1118,6 +1177,16 @@ export function buildSeedUserData(): UserData {
     items: [{ id: mkId("item"), type: "propertiesView" }],
   };
 
+  const savingsSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Savings",
+    type: "savings",
+    glyph: "coins",
+    color: CATEGORY_COLORS[9],
+    description: "",
+    items: [{ id: mkId("item"), type: "savingsView" }],
+  };
+
   // ---- Assemble the full UserData ----------------------------------
   // Every collection is listed explicitly; the closed `UserData` type
   // makes omitting a required field a compile error, so this stays in
@@ -1130,6 +1199,7 @@ export function buildSeedUserData(): UserData {
       salarySheet,
       itemsSheet,
       propertiesSheet,
+      savingsSheet,
     ],
     activeSheetId: budgetSheet.id,
     accounts,
@@ -1137,6 +1207,7 @@ export function buildSeedUserData(): UserData {
     salaries,
     employers,
     properties,
+    savings: savingsAccounts,
     fileCategories,
     companies,
     tags,

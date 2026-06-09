@@ -113,7 +113,7 @@ src/
 │   ├── items/                # items page — owned-items catalog
 │   │   ├── ItemsPage.tsx         # page root — items table + totals + add button
 │   │   └── ItemRow.tsx           # one item row (swipe edit/delete, note popover)
-│   └── properties/           # properties page — homes/apartments + mortgages
+│   ├── properties/           # properties page — homes/apartments + mortgages
 │       ├── PropertiesPage.tsx    # page root — property cards + add button
 │       ├── PropertyCard.tsx      # one property (value, mortgages, repairs, actions)
 │       ├── PropertyEditorModal.tsx, UpdatePropertyValueModal.tsx
@@ -125,14 +125,23 @@ src/
 │       ├── RepairsAddModal.tsx        # bulk quick-add candidate picker
 │       └── ManualRepairModal.tsx      # manual repair add/edit (no backing
 │                                      #   transaction; company/tags on the repair)
+│   └── savings/              # savings page — savings accounts + dated balance
+│       ├── SavingsPage.tsx       # page root — savings table + total + add button
+│       ├── SavingsRow.tsx        # one savings row (swipe edit/delete, "…" menu)
+│       ├── SavingsModal.tsx      # add/edit savings account
+│       ├── SavingActionsMenu.tsx # "…" swipe-strip menu (update balance)
+│       └── UpdateSavingBalanceModal.tsx  # append a dated balance point
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 67, incl. taxProfiles +
-│   │   │                       #   properties), StoredUser, UsersFile
+│   │   ├── user-data.ts        # UserData (version 70, incl. taxProfiles +
+│   │   │                       #   properties + savings), StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
-│   │   │                       #   SheetType, SheetGlyph
+│   │   │                       #   SavingsView, SheetType, SheetGlyph
+│   │   ├── savings.ts          # Saving (savings account), SavingBalancePoint —
+│   │   │                       #   transactions live in UserData.history keyed by
+│   │   │                       #   the saving id; a first-class transfer endpoint
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
@@ -173,6 +182,7 @@ src/
 │   │   ├── accounts.ts         # ACCOUNTS_SHEET_DESCRIPTOR + createDefaultAccountsView
 │   │   ├── items.ts            # ITEMS_SHEET_DESCRIPTOR + createDefaultItemsView
 │   │   ├── salary.ts           # SALARY_SHEET_DESCRIPTOR + createDefaultSalaryView
+│   │   ├── savings.ts          # SAVINGS_SHEET_DESCRIPTOR + createDefaultSavingsView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -289,6 +299,10 @@ src/
 │   │                           #   planPropertyImport — re-link names, mint a fresh
 │   │                           #   Property + the companies / tags / categories /
 │   │                           #   subtypes it needs
+│   ├── savings/            # savings page — balance + transfer-endpoint helpers
+│   │   └── value.ts            # currentSavingBalance (latest balance point by
+│   │                           #   date) + savingAsTransferEndpoint (present a
+│   │                           #   Saving as an Account for the transfer surfaces)
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /
@@ -321,18 +335,19 @@ src/
 │   │   ├── item/               # AccountBudget item reducer (updateCell, bulk
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
-│   │   ├── accounts.ts, salary.ts, properties.ts, sheets.ts, transfers.ts,
-│   │   │   history.ts, history-primary-income.ts, categories-and-types.ts,
-│   │   │   items.ts, match-rules.ts, recurring.ts, series-metadata.ts,
-│   │   │   settings.ts, achievements.ts
+│   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, sheets.ts,
+│   │   │   transfers.ts, history.ts, history-primary-income.ts,
+│   │   │   categories-and-types.ts, items.ts, match-rules.ts, recurring.ts,
+│   │   │   series-metadata.ts, settings.ts, achievements.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
 │   │   │                       #   accountsView/itemsView/salaryView/
-│   │   │                       #   propertiesView) — cycle-free so the sheet-type
-│   │   │                       #   descriptors can import them
+│   │   │                       #   propertiesView/savingsView) — cycle-free so the
+│   │   │                       #   sheet-type descriptors can import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
+│   │   ├── savings.ts          # validateSaving (+ balance points)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
 │   │   │                       #   payments / repairs; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
@@ -860,6 +875,14 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   `<name>/receipts/` store named from the **receipt's** date, and are managed
   through `addRepairReceipt` / `updateRepairReceipt` / `removeRepairReceipt`
   and the `usePropertyAttachments` callbacks.
+- **v69 → v70** — adds `UserData.savings`, the savings accounts rendered by
+  the new Savings sheet (each a `Saving` with bank details and a
+  manually-recorded `balanceHistory`). Seeds empty; old exports simply lack
+  it and the v70 validator fills `savings: []` regardless. Savings
+  transactions live in `UserData.history` keyed by the saving's id and a
+  saving is a first-class transfer endpoint, so the history / transfer
+  validators widen their known-id checks to accept saving ids alongside
+  account ids.
 
 ## State management
 

@@ -9,6 +9,7 @@ import type {
   PropertiesView,
   Row,
   SalaryView,
+  SavingsView,
   UserRow,
 } from "../types";
 import { validateLineItemLinks } from "./account";
@@ -303,6 +304,19 @@ export function validatePropertiesView(
   if (type !== "propertiesView")
     return fail(`${path}.type`, `expected "propertiesView"`);
   return { ok: true, value: { id, type: "propertiesView" } };
+}
+
+export function validateSavingsView(
+  raw: unknown,
+  path: string,
+): Result<SavingsView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "savingsView")
+    return fail(`${path}.type`, `expected "savingsView"`);
+  return { ok: true, value: { id, type: "savingsView" } };
 }
 
 export function validateSalaryView(

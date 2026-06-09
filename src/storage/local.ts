@@ -32,6 +32,7 @@ export function freshUserData(): UserData {
     salaries: [],
     employers: [],
     properties: [],
+    savings: [],
     fileCategories: [],
     companies: [],
     tags: [],

@@ -57,6 +57,7 @@ import {
   Palette,
   Paperclip,
   Pencil,
+  PiggyBank,
   Plus,
   Receipt,
   RefreshCw,
@@ -494,6 +495,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasLinkedSheet(prev) && hasLinkedSheet(next),
+    },
+  },
+  {
+    id: "saver",
+    tier: "intermediate",
+    glyph: PiggyBank,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.savings],
+      predicate: (prev, next) =>
+        prev.savings.length === 0 && next.savings.length > 0,
     },
   },
   {

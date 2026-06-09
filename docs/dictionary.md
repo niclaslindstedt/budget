@@ -203,6 +203,18 @@ live in `src/components/properties/`; data helpers in
 | **Line chart** (primitive)                          | `LineChart` (`src/components/charts/LineChart.tsx`); reads theme tokens via `useThemeTokens`. [→](overview.md#line-chart)                                                                                                                                            |
 | **Location** (setting)                              | `Settings.location`; `LOCATIONS` (`src/data/tax/engine.ts`). [→](overview.md#location)                                                                                                                                                                               |
 
+## Savings page
+
+Savings accounts — money set aside (a buffer, a vacation fund), with a
+balance recorded over time. Sheet type `"savings"`. Files live in
+`src/components/savings/`; data helpers in `src/data/savings/`.
+
+| Term                                      | Refers to                                                                                                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Savings page** / **Savings sheet**      | `src/components/savings/SavingsPage.tsx`; `SavingsView`, `UserData.savings`. [→](overview.md#savings-page)                                                                                                                                 |
+| **Savings account** / **saving** (object) | `Saving` (`src/data/types/savings.ts`); `SavingsModal.tsx`; `createSaving` / `updateSaving` / `deleteSaving` (`src/data/reducers/savings.ts`). [→](overview.md#savings-account)                                                            |
+| **Savings balance** / **update balance**  | `SavingBalancePoint` (`Saving.balanceHistory`); `UpdateSavingBalanceModal.tsx`; `currentSavingBalance` (`src/data/savings/value.ts`); `addSavingBalance` / `updateSavingBalance` / `deleteSavingBalance`. [→](overview.md#savings-balance) |
+
 ## Data and storage
 
 | Term                                                          | Refers to                                                                                                                                                                                          |

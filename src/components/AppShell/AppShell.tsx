@@ -6,6 +6,7 @@ import {
   headerActionDescription,
 } from "./types";
 import { useAccountDialog } from "./hooks/useAccountDialog";
+import { useSavingDialog } from "./hooks/useSavingDialog";
 import { useBulkSelection } from "./hooks/useBulkSelection";
 import { useSalaryBulkSelection } from "../salary/useSalaryBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
@@ -103,6 +104,9 @@ const PropertiesPage = lazy(() =>
 const SalaryPage = lazy(() =>
   import("../salary/SalaryPage").then((m) => ({ default: m.SalaryPage })),
 );
+const SavingsPage = lazy(() =>
+  import("../savings/SavingsPage").then((m) => ({ default: m.SavingsPage })),
+);
 const UniversalModalHost = lazy(() =>
   import("./UniversalModalHost").then((m) => ({
     default: m.UniversalModalHost,
@@ -110,6 +114,9 @@ const UniversalModalHost = lazy(() =>
 );
 const AccountsModalHost = lazy(() =>
   import("./AccountsModalHost").then((m) => ({ default: m.AccountsModalHost })),
+);
+const SavingsModalHost = lazy(() =>
+  import("./SavingsModalHost").then((m) => ({ default: m.SavingsModalHost })),
 );
 const BudgetModalHost = lazy(() =>
   import("./BudgetModalHost").then((m) => ({ default: m.BudgetModalHost })),
@@ -549,6 +556,18 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onRequestDeleteAccount,
     onOpenUpdateBalance,
   } = accountDialog;
+
+  // Savings-account modal handlers (CRUD + dated-balance updates). Kept on
+  // the AppShell alongside the account dialog so it shares the same dispatch
+  // and state; savings render on their own sheet but live in the same
+  // workspace data.
+  const savingDialog = useSavingDialog({ data, dispatch, toast });
+  const {
+    onOpenCreateSaving,
+    onOpenEditSaving,
+    onRequestDeleteSaving,
+    onOpenUpdateBalance: onOpenUpdateSavingBalance,
+  } = savingDialog;
 
   // Bank-history import / viewer flows. The Accounts page surfaces a
   // per-row Upload button (always enabled) and a History viewer
@@ -1011,6 +1030,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onDownloadPayslip={onDownloadPayslip}
                     onRemovePayslip={onRemovePayslip}
                   />
+                ) : activeSheet.type === "savings" ? (
+                  <SavingsPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    onCreateSaving={onOpenCreateSaving}
+                    onEditSaving={onOpenEditSaving}
+                    onUpdateBalance={onOpenUpdateSavingBalance}
+                    onRequestDeleteSaving={onRequestDeleteSaving}
+                  />
                 ) : (
                   <>
                     <BudgetRecurringCandidatesPanel
@@ -1184,6 +1213,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             transferFlow={transferFlow}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}
+          />
+          <SavingsModalHost
+            effectiveSettings={effectiveSettings}
+            savingDialog={savingDialog}
           />
           <BudgetModalHost
             data={data}

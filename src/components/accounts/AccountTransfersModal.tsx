@@ -9,6 +9,7 @@ import {
 
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { compareDateStrings } from "../../data/fiscal-month";
+import { savingAsTransferEndpoint } from "../../data/savings/value";
 import type {
   Settings,
   TransactionSortOrder,
@@ -51,7 +52,17 @@ export function AccountTransfersModal({
   const t = useT();
   const lang = useLang();
 
-  const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
+  // A transfer endpoint can be a regular account or a savings account (both
+  // share the transfer id-space), so resolve names against both — otherwise a
+  // transfer touching a saving would render a blank from / to.
+  const accountsById = useMemo(
+    () =>
+      indexById([
+        ...data.accounts,
+        ...data.savings.map(savingAsTransferEndpoint),
+      ]),
+    [data.accounts, data.savings],
+  );
   // Resolve both user-added and built-in preset categories so the
   // transfer log renders a chip even when its typeId resolves to a
   // preset category.

@@ -121,6 +121,15 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .salary-table .hidden.md\:inline {
     display: none;
   }
+  /* Savings table: drop the bank column on landscape phones so the
+     three-column mobile grid (icon · name · balance) stays intact, the same
+     reason as the accounts bank cell. */
+  .savings-table .savings-bank-cell {
+    display: none;
+  }
+  .savings-table .hidden.md\:inline {
+    display: none;
+  }
 }
 
 /* Salary header glyph alignment now follows the shared amount-column

@@ -170,6 +170,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Fastigheter-sidan håller koll på bostäderna du äger: vad var och en kostade, vad den är värd nu (uppdatera värdet när som helst för att lägga till en punkt i historiken), och bolånen på den. Ge ett bolån en långivare och ett bankkonto, och låt Hitta bolånebetalningar plocka fram dess betalningar ur kontots historik.",
   },
+  saver: {
+    name: "Sparare",
+    condition: "Lägg till ditt första sparkonto på Sparande-sidan.",
+    learnMore:
+      "Sparande-sidan håller koll på pengar du lägger undan — en buffert, en resekassa — på sparkonton. Till skillnad från ett vanligt konto registrerar du saldot med ett datum (uppdatera det när som helst för att lägga till en punkt i historiken), så listan alltid visar vad du har sparat. Sparkonton deltar också i överföringsdetektering, så en överföring från ditt vardagskonto till sparandet matchas automatiskt.",
+  },
   secondDraft: {
     name: "Andra utkastet",
     condition: "Redigera en återkommande serie.",
