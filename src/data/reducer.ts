@@ -22,6 +22,8 @@ import type {
   PropertyValuePoint,
   RepairReceipt,
   Salary,
+  Saving,
+  SavingBalancePoint,
   SeriesMatchRule,
   Settings,
   Sheet,
@@ -41,6 +43,7 @@ import { reduceSettings } from "./reducers/settings";
 import { reduceCategoriesAndTypes } from "./reducers/categories-and-types";
 import { reduceItems } from "./reducers/items";
 import { reduceProperties } from "./reducers/properties";
+import { reduceSavings } from "./reducers/savings";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
@@ -375,6 +378,33 @@ export type Action =
       patch: Partial<Omit<PropertyValuePoint, "id">>;
     }
   | { type: "deletePropertyValue"; propertyId: string; pointId: string }
+  // Savings — the savings accounts the user sets money aside in, rendered by
+  // the Savings sheet. Each mutates `UserData.savings`; the balance-point
+  // actions append / edit / delete a dated snapshot under one account
+  // (mirrors the property value-point actions above).
+  | { type: "createSaving"; saving: Saving }
+  | {
+      // Edit one savings account by id. Each field in `patch` is optional; an
+      // explicit `undefined` deletes the key. Mirrors `updateProperty`.
+      type: "updateSaving";
+      savingId: string;
+      patch: Partial<Omit<Saving, "id">>;
+    }
+  | { type: "deleteSaving"; savingId: string }
+  | {
+      // Record a manually-entered balance — appends one point to the savings
+      // account's `balanceHistory` (the current balance is the latest point).
+      type: "addSavingBalance";
+      savingId: string;
+      point: SavingBalancePoint;
+    }
+  | {
+      type: "updateSavingBalance";
+      savingId: string;
+      pointId: string;
+      patch: Partial<Omit<SavingBalancePoint, "id">>;
+    }
+  | { type: "deleteSavingBalance"; savingId: string; pointId: string }
   | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
   | {
       type: "updateMortgage";
@@ -925,6 +955,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceCategoriesAndTypes(state, action) ??
     reduceItems(state, action) ??
     reduceProperties(state, action) ??
+    reduceSavings(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??

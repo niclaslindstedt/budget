@@ -51,6 +51,7 @@ import transfer from "./transfer";
 import account from "./account";
 import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
+import savingsSheet from "./savingsSheet";
 import salary from "./salary";
 import properties from "./properties";
 import tax from "./tax";
@@ -129,6 +130,7 @@ export const sv: Catalog = {
   account,
   accountsSheet,
   itemsSheet,
+  savingsSheet,
   salary,
   properties,
   tax,

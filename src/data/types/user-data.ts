@@ -23,6 +23,7 @@ import type {
   SeriesMetadata,
 } from "./rules";
 import type { FileCategory, Property } from "./properties";
+import type { Saving } from "./savings";
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
@@ -35,7 +36,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 69;
+  version: 70;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -61,6 +62,14 @@ export type UserData = {
   // with their monthly payments. Entirely user-curated — no presets
   // ship. Empty on a fresh budget.
   properties: Property[];
+  // Savings accounts the user sets money aside in (buffer accounts, vacation
+  // funds), rendered by the Savings sheet. Each carries its bank details and a
+  // manually-recorded balance history (the current balance is the latest
+  // point by date). Savings accounts also participate in cross-account
+  // transfer detection: their transactions live in `history` keyed by the
+  // saving's id, exactly like a regular account. Entirely user-curated — no
+  // presets ship. Empty on a fresh budget.
+  savings: Saving[];
   // User-defined categories for property file uploads (see `FileCategory`).
   // Each becomes a subfolder under a property's `files/` folder; a file with
   // no category lands in the `files/` root. Referenced from

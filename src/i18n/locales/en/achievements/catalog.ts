@@ -168,6 +168,12 @@ const catalog = {
     learnMore:
       "A tax profile (municipality, church membership, age, income type) lets the Salary sheet estimate each paycheck's gross from its net deposit using Swedish tax rules — so a salary you only know the net of still shows a gross and a tax. Type the exact gross any time to override the estimate.",
   },
+  saver: {
+    name: "Saver",
+    condition: "Add your first savings account on the Savings sheet.",
+    learnMore:
+      "The Savings sheet tracks money you set aside — a buffer, a vacation fund — in savings accounts. Unlike a regular account, you record its balance with a date (update it any time to add a point to its history), so the listing always shows what you have set aside. Savings accounts also take part in transfer detection, so a transfer from your everyday account into savings gets matched automatically.",
+  },
   homeOwner: {
     name: "Home Owner",
     condition: "Add your first property on the Properties sheet.",

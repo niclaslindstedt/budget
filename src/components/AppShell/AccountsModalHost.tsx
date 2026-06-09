@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { AccountModal } from "../accounts/AccountModal";
 import { AccountCutHistoryModal } from "../accounts/AccountCutHistoryModal";
 import { AccountReconciliationModal } from "../accounts/AccountReconciliationModal";
@@ -5,6 +7,7 @@ import { AccountRenamePredictorModal } from "../accounts/AccountRenamePredictorM
 import { AccountTransferCollapseModal } from "../accounts/AccountTransferCollapseModal";
 import { AccountTransferModal } from "../accounts/AccountTransferModal";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { savingAsTransferEndpoint } from "../../data/savings/value";
 import { HistoryModal } from "../accounts/HistoryModal";
 import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
 import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
@@ -40,6 +43,14 @@ export function AccountsModalHost(props: Props) {
     onCreateCategory,
   } = props;
   const t = useT();
+  // Transfer endpoints span regular accounts and savings accounts (both share
+  // the transfer id-space), so the collapse modal and the transfer create /
+  // edit picker resolve and offer both. Savings stay out of the Accounts
+  // table — they're merged only into these transfer surfaces.
+  const transferEndpoints = useMemo(
+    () => [...data.accounts, ...data.savings.map(savingAsTransferEndpoint)],
+    [data.accounts, data.savings],
+  );
   const {
     accountModal,
     setAccountModal,
@@ -178,7 +189,7 @@ export function AccountsModalHost(props: Props) {
       <AccountTransferCollapseModal
         open={transferModalOpen}
         history={data.history}
-        accounts={data.accounts}
+        accounts={transferEndpoints}
         dismissedPairKeys={data.transferCollapseDismissals}
         settings={effectiveSettings}
         onClose={() => setTransferModalOpen(false)}
@@ -188,7 +199,7 @@ export function AccountsModalHost(props: Props) {
       <AccountTransferModal
         open={transferRequest !== null}
         request={transferRequest}
-        accounts={data.accounts}
+        accounts={transferEndpoints}
         categories={categories}
         types={types}
         settings={effectiveSettings}

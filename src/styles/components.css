@@ -516,6 +516,54 @@
       width: 100%;
     }
 
+    /* Savings table — mirrors the accounts sheet's swipe affordance with a
+       three-button action strip (edit / delete / more). Desktop keeps the
+       inline icons; mobile converts the table to a block / per-row grid so
+       `position: relative` on `<tr>` establishes a containing block the
+       absolutely-positioned action cell anchors to. */
+    .savings-table,
+    .savings-table > thead,
+    .savings-table > tbody,
+    .savings-table > tfoot {
+      display: block;
+      width: 100%;
+    }
+    .savings-table > thead > tr,
+    .savings-table > tbody > tr:not(.savings-fullspan) {
+      /* 40px icon · flex name · balance (sized to its content with a
+         comfortable floor). The bank column drops on mobile (Tailwind
+         `hidden`); its landscape `md:table-cell` is overridden unlayered in
+         chrome.css, mirroring the accounts bank cell. The action cell sits
+         outside the grid as an absolute overlay so the action column reserves
+         no track on mobile. */
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(64px, max-content);
+      position: relative;
+      overflow: hidden;
+    }
+    .savings-table > tbody > tr.savings-fullspan {
+      display: block;
+      width: 100%;
+    }
+    .savings-table > tbody > tr.savings-fullspan > td {
+      display: block;
+      width: 100%;
+    }
+    .savings-table > tfoot > tr {
+      display: block;
+      width: 100%;
+    }
+    .savings-table th,
+    .savings-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .savings-table th > *,
+    .savings-table td > * {
+      width: 100%;
+    }
+
     /* Transfers table — single-button swipe strip (edit only) using the
        same overlay pattern as the accounts and budget tables, but at
        half the width since there's only one action. The desktop

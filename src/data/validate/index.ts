@@ -19,6 +19,7 @@ import type {
   Property,
   RenamePattern,
   Salary,
+  Saving,
   SeriesMatchRule,
   SeriesMetadata,
   Sheet,
@@ -47,6 +48,7 @@ import {
 } from "./history";
 import { validateEmployer, validateSalary } from "./salary";
 import { validateProperty } from "./properties";
+import { validateSaving } from "./savings";
 import {
   validateMatchRule,
   validateMerchantHint,
@@ -156,6 +158,32 @@ export function validateUserData(raw: unknown): Result<UserData> {
     seenPropertyIds.add(r.value.id);
     properties.push(r.value);
   }
+
+  // Savings accounts. Standalone (no cross-references to verify), so they
+  // validate independently of the known-id sets. Duplicate ids fail the load
+  // like the other top-level arrays. Validated before transfers and history
+  // because a savings account is a first-class transfer endpoint and its
+  // transactions live in `history` keyed by its id — see `knownLedgerIds`.
+  const rawSavings = Array.isArray(raw.savings) ? raw.savings : [];
+  const savings: Saving[] = [];
+  const seenSavingIds = new Set<string>();
+  for (let i = 0; i < rawSavings.length; i++) {
+    const r = validateSaving(rawSavings[i], `savings[${i}]`);
+    if (!r.ok) return r;
+    if (seenSavingIds.has(r.value.id))
+      return fail(`savings[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenSavingIds.add(r.value.id);
+    savings.push(r.value);
+  }
+
+  // The combined id-space of transfer endpoints and history-bucket keys.
+  // Both regular accounts and savings accounts can send / receive a
+  // `Transfer` and carry imported transactions in `history` keyed by their
+  // id, so every "is this a known ledger?" check downstream (transfer
+  // endpoints, history / historyImports / renamePatterns buckets) widens to
+  // this union — otherwise savings transactions would be silently dropped and
+  // a transfer touching a savings account would reject the whole file.
+  const knownLedgerIds = new Set<string>([...seenAccountIds, ...seenSavingIds]);
 
   // Property-file categories (the subfolders a property's uploaded files are
   // filed under). Name-only and entirely user-curated — no presets, no
@@ -335,7 +363,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
     const r = validateTransfer(
       rawTransfers[i],
       `transfers[${i}]`,
-      seenAccountIds,
+      knownLedgerIds,
       knownTypeIds,
     );
     if (!r.ok) return r;
@@ -395,7 +423,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const rawHistory = isObject(raw.history) ? raw.history : {};
   const history: Record<string, HistoryEntry[]> = {};
   for (const [accountId, rawEntries] of Object.entries(rawHistory)) {
-    if (!seenAccountIds.has(accountId)) continue;
+    if (!knownLedgerIds.has(accountId)) continue;
     if (!Array.isArray(rawEntries)) continue;
     const entries: HistoryEntry[] = [];
     const seenIds = new Set<string>();
@@ -421,7 +449,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
     : {};
   const historyImports: Record<string, HistoryImport[]> = {};
   for (const [accountId, rawImports] of Object.entries(rawHistoryImports)) {
-    if (!seenAccountIds.has(accountId)) continue;
+    if (!knownLedgerIds.has(accountId)) continue;
     if (!Array.isArray(rawImports)) continue;
     const imports: HistoryImport[] = [];
     for (let i = 0; i < rawImports.length; i++) {
@@ -509,7 +537,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
     : {};
   const renamePatterns: Record<string, Record<string, RenamePattern>> = {};
   for (const [accountId, rawBucket] of Object.entries(rawRenamePatterns)) {
-    if (!seenAccountIds.has(accountId)) continue;
+    if (!knownLedgerIds.has(accountId)) continue;
     if (!isObject(rawBucket)) continue;
     const bucket: Record<string, RenamePattern> = {};
     for (const [key, rawPattern] of Object.entries(rawBucket)) {
@@ -581,6 +609,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       salaries,
       employers,
       properties,
+      savings,
       fileCategories,
       companies,
       tags,

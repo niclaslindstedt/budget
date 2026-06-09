@@ -22,7 +22,7 @@ export type { MigrationContext, Versioned } from "./shared";
 // Typed as a literal so consumers (like the UserData type) can pin to it.
 // When bumping, change BOTH this constant and the `UserData.version` literal
 // in `data/types.ts` in the same commit.
-export const LATEST_VERSION = 69 as const;
+export const LATEST_VERSION = 70 as const;
 
 const migrations: MigrationTable = {
   ...LEGACY_MIGRATIONS,

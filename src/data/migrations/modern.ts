@@ -1005,6 +1005,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v68.properties;
     return { ...v68, version: 69, properties };
   },
+
+  // v69 → v70: introduces `UserData.savings`, the savings accounts rendered by
+  // the new Savings sheet (each with its bank details and a manually-recorded
+  // balance history). Seeds empty; old exports simply lack it and the v70
+  // validator fills `savings: []` regardless, so this is a bare additive bump.
+  69: (v69) => ({ ...v69, version: 70, savings: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

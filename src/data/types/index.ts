@@ -52,11 +52,14 @@ export type {
   ItemsView,
   PropertiesView,
   SalaryView,
+  SavingsView,
   Sheet,
   SheetGlyph,
   SheetItem,
   SheetType,
 } from "./sheets";
+
+export type { Saving, SavingBalancePoint } from "./savings";
 
 export type { Employer, Role, Salary } from "./salary";
 

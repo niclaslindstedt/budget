@@ -97,6 +97,7 @@ describe("buildSeedUserData", () => {
       "items",
       "properties",
       "salary",
+      "savings",
     ]);
   });
 

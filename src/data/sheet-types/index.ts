@@ -21,6 +21,7 @@ import {
   createDefaultPropertiesView,
 } from "./properties";
 import { SALARY_SHEET_DESCRIPTOR, createDefaultSalaryView } from "./salary";
+import { SAVINGS_SHEET_DESCRIPTOR, createDefaultSavingsView } from "./savings";
 
 // Single source of truth for every Sheet flavour. Adding a new sheet
 // type (savings, loans, scenario, …) is one new file in this directory
@@ -96,6 +97,7 @@ export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
   ITEMS_SHEET_DESCRIPTOR,
   SALARY_SHEET_DESCRIPTOR,
   PROPERTIES_SHEET_DESCRIPTOR,
+  SAVINGS_SHEET_DESCRIPTOR,
 ];
 
 // Set-shaped view for validators and any other consumer that needs an
@@ -175,4 +177,5 @@ export {
   createDefaultItemsView,
   createDefaultPropertiesView,
   createDefaultSalaryView,
+  createDefaultSavingsView,
 };
