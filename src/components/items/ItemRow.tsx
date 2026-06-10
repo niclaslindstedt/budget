@@ -195,6 +195,8 @@ function ItemRowImpl({
             canManageReceipt={canManageReceipt}
             hasReceipt={hasReceipt}
             onManageReceipt={onManageReceipt}
+            onEdit={() => onEditItem(item.id)}
+            onDelete={() => onDeleteItem(item.id, item.name)}
             onAction={() => setSwiped(false)}
           />
         </div>

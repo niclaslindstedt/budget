@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Coins,
   Landmark,
@@ -12,9 +12,10 @@ import {
 import { unlock } from "../../data/achievements";
 import { currentSavingBalance } from "../../data/savings/value";
 import type { Settings, Sheet, UserData } from "../../data/types";
-import { useAmountColumns } from "../../hooks";
+import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatBalance } from "../../utils/format";
+import { ActionsCompactContext } from "../ActionsCompactContext";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { useModalDispatch } from "../modal-dispatch";
 import {
@@ -56,6 +57,10 @@ export function SavingsPage({
 }: Props) {
   const t = useT();
   const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
+  // Collapse the trailing action column to a lone ⋯ when the table would
+  // overflow its wrapper on the desktop layout — see useActionsCompaction.
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const actionsCompact = useActionsCompaction(tableWrapperRef);
   const dispatchModal = useModalDispatch();
 
   // The sheet-level value-over-time chart. Self-contained: it reads
@@ -128,146 +133,156 @@ export function SavingsPage({
           <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
             {t("savingsSheet.title")}
           </h3>
-          <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="swipe-table savings-table w-full border-collapse text-sm md:text-[13px]">
-              <thead>
-                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
-                  <th
-                    scope="col"
-                    className="w-10 px-2.5 py-2 text-left"
-                    aria-label={t("savingsSheet.name")}
-                  >
-                    <Tag
-                      size={16}
-                      className="inline-block shrink-0 text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2.5 py-2 text-left"
-                    aria-label={t("savingsSheet.name")}
-                  >
-                    <span className="hidden md:inline">
-                      {t("savingsSheet.name")}
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="savings-bank-cell hidden px-2.5 py-2 text-left md:table-cell"
-                    aria-label={t("savingsSheet.bank")}
-                  >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
-                      <Landmark
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("savingsSheet.bank")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className={`px-2.5 py-2 ${headerClass}`}
-                    aria-label={t("savingsSheet.balance")}
-                  >
-                    <span
-                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+          <div
+            ref={tableWrapperRef}
+            className="overflow-clip rounded border border-line bg-surface"
+          >
+            <ActionsCompactContext.Provider value={actionsCompact}>
+              <table
+                className={`swipe-table savings-table w-full border-collapse text-sm md:text-[13px] ${
+                  actionsCompact ? "actions-compact" : ""
+                }`}
+              >
+                <thead>
+                  <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+                    <th
+                      scope="col"
+                      className="w-10 px-2.5 py-2 text-left"
+                      aria-label={t("savingsSheet.name")}
                     >
-                      <Coins
+                      <Tag
                         size={16}
-                        className="shrink-0 text-accent"
+                        className="inline-block shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
                       />
-                      <span className="hidden md:inline">
-                        {t("savingsSheet.balance")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="swipe-action-cell savings-action-cell w-32 px-2.5 py-2"
-                    aria-label={t("savingsSheet.actions")}
-                  >
-                    <span className="flex items-center justify-start gap-1.5 md:gap-2">
-                      <Wrench
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("savingsSheet.actions")}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {savings.length === 0 && (
-                  <tr className="savings-fullspan">
-                    <td
-                      colSpan={5}
-                      className="px-3 py-6 text-center text-xs text-muted"
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-2.5 py-2 text-left"
+                      aria-label={t("savingsSheet.name")}
                     >
-                      {t("savingsSheet.noAccounts")}
+                      <span className="hidden md:inline">
+                        {t("savingsSheet.name")}
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="savings-bank-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("savingsSheet.bank")}
+                    >
+                      <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
+                        <Landmark
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("savingsSheet.bank")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className={`px-2.5 py-2 ${headerClass}`}
+                      aria-label={t("savingsSheet.balance")}
+                    >
+                      <span
+                        className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                      >
+                        <Coins
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("savingsSheet.balance")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="swipe-action-cell savings-action-cell w-32 px-2.5 py-2"
+                      aria-label={t("savingsSheet.actions")}
+                    >
+                      <span className="flex items-center justify-start gap-1.5 md:gap-2">
+                        <Wrench
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="action-header-label hidden md:inline">
+                          {t("savingsSheet.actions")}
+                        </span>
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {savings.length === 0 && (
+                    <tr className="savings-fullspan">
+                      <td
+                        colSpan={5}
+                        className="px-3 py-6 text-center text-xs text-muted"
+                      >
+                        {t("savingsSheet.noAccounts")}
+                      </td>
+                    </tr>
+                  )}
+                  {savings.map((saving) => {
+                    const hasHistory =
+                      (data.history[saving.id]?.length ?? 0) > 0;
+                    return (
+                      <SavingsRow
+                        key={saving.id}
+                        saving={saving}
+                        settings={settings}
+                        hasHistory={hasHistory}
+                        canCut={hasHistory || cutBySaving.has(saving.id)}
+                        onEditSaving={onEditSaving}
+                        onDeleteSaving={onRequestDeleteSaving}
+                        onUpdateBalance={onUpdateBalance}
+                        onImportHistory={onImportHistory}
+                        onViewHistory={onViewHistory}
+                        onCutHistory={onCutHistory}
+                      />
+                    );
+                  })}
+                  {savings.length > 0 && (
+                    <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
+                      <td className="px-2.5 py-2" />
+                      <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
+                        {t("savingsSheet.total")}
+                      </td>
+                      <td className="savings-bank-cell hidden md:table-cell" />
+                      <td
+                        className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                      >
+                        <span>{formatBalance(total, settings)}</span>
+                      </td>
+                      <td className="swipe-action-cell savings-action-cell px-2.5 py-2" />
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5} className="bg-surface-3 p-0">
+                      <button
+                        type="button"
+                        onClick={onCreateSaving}
+                        className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <Plus size={16} aria-hidden focusable={false} />
+                        {t("savingsSheet.addAccount")}
+                      </button>
                     </td>
                   </tr>
-                )}
-                {savings.map((saving) => {
-                  const hasHistory = (data.history[saving.id]?.length ?? 0) > 0;
-                  return (
-                    <SavingsRow
-                      key={saving.id}
-                      saving={saving}
-                      settings={settings}
-                      hasHistory={hasHistory}
-                      canCut={hasHistory || cutBySaving.has(saving.id)}
-                      onEditSaving={onEditSaving}
-                      onDeleteSaving={onRequestDeleteSaving}
-                      onUpdateBalance={onUpdateBalance}
-                      onImportHistory={onImportHistory}
-                      onViewHistory={onViewHistory}
-                      onCutHistory={onCutHistory}
-                    />
-                  );
-                })}
-                {savings.length > 0 && (
-                  <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
-                    <td className="px-2.5 py-2" />
-                    <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
-                      {t("savingsSheet.total")}
-                    </td>
-                    <td className="savings-bank-cell hidden md:table-cell" />
-                    <td
-                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
-                    >
-                      <span>{formatBalance(total, settings)}</span>
-                    </td>
-                    <td className="swipe-action-cell savings-action-cell px-2.5 py-2" />
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={5} className="bg-surface-3 p-0">
-                    <button
-                      type="button"
-                      onClick={onCreateSaving}
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <Plus size={16} aria-hidden focusable={false} />
-                      {t("savingsSheet.addAccount")}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </ActionsCompactContext.Provider>
           </div>
         </section>
 

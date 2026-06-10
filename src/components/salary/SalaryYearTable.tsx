@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useRef, type CSSProperties } from "react";
 import {
   Banknote,
   Briefcase,
@@ -12,10 +12,11 @@ import {
 
 import { resolveSalary } from "../../data/salary/salary";
 import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
-import { useAmountColumns } from "../../hooks";
+import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatBalance } from "../../utils/format";
 import { monthColorVar } from "../../utils/monthColor";
+import { ActionsCompactContext } from "../ActionsCompactContext";
 import { SalaryRow } from "./SalaryRow";
 
 type Props = {
@@ -64,6 +65,10 @@ export function SalaryYearTable({
 }: Props) {
   const t = useT();
   const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
+  // Collapse the trailing action column to a lone ⋯ when the table would
+  // overflow its wrapper on the desktop layout — see useActionsCompaction.
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const actionsCompact = useActionsCompaction(tableWrapperRef);
 
   const totals = useMemo(() => {
     let gross = 0;
@@ -108,6 +113,7 @@ export function SalaryYearTable({
         {year}
       </h3>
       <div
+        ref={tableWrapperRef}
         className="overflow-clip rounded border border-line bg-surface"
         style={
           {
@@ -122,221 +128,231 @@ export function SalaryYearTable({
           } as CSSProperties
         }
       >
-        <table
-          className={`swipe-table salary-table w-full border-collapse text-sm md:text-[13px]${
-            selectMode ? " is-selecting" : ""
-          }`}
-        >
-          <thead>
-            <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
-              {selectMode && (
+        <ActionsCompactContext.Provider value={actionsCompact}>
+          <table
+            className={`swipe-table salary-table w-full border-collapse text-sm md:text-[13px]${
+              selectMode ? " is-selecting" : ""
+            }${actionsCompact ? " actions-compact" : ""}`}
+          >
+            <thead>
+              <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+                {selectMode && (
+                  <th
+                    scope="col"
+                    className="w-10 px-2.5 py-2 text-center"
+                    aria-label={t("salary.selectAllInYear")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onToggleSelectYear(yearRowIds, !allSelected)
+                      }
+                      disabled={yearRowIds.length === 0}
+                      className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 disabled:opacity-30"
+                      aria-label={
+                        allSelected
+                          ? t("salary.deselectAllInYear")
+                          : t("salary.selectAllInYear")
+                      }
+                      aria-pressed={allSelected}
+                    >
+                      <span
+                        className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
+                          allSelected
+                            ? "border-accent bg-accent text-page-bg"
+                            : someSelected
+                              ? "border-accent text-accent"
+                              : "border-muted"
+                        }`}
+                      >
+                        {allSelected ? "✓" : someSelected ? "–" : ""}
+                      </span>
+                    </button>
+                  </th>
+                )}
                 <th
                   scope="col"
-                  className="w-10 px-2.5 py-2 text-center"
-                  aria-label={t("salary.selectAllInYear")}
+                  className="px-2.5 py-2 text-left"
+                  aria-label={t("salary.month")}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onToggleSelectYear(yearRowIds, !allSelected)}
-                    disabled={yearRowIds.length === 0}
-                    className="inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 disabled:opacity-30"
-                    aria-label={
-                      allSelected
-                        ? t("salary.deselectAllInYear")
-                        : t("salary.selectAllInYear")
-                    }
-                    aria-pressed={allSelected}
-                  >
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
-                        allSelected
-                          ? "border-accent bg-accent text-page-bg"
-                          : someSelected
-                            ? "border-accent text-accent"
-                            : "border-muted"
-                      }`}
-                    >
-                      {allSelected ? "✓" : someSelected ? "–" : ""}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <CalendarDays
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("salary.month")}
                     </span>
-                  </button>
+                  </span>
                 </th>
-              )}
-              <th
-                scope="col"
-                className="px-2.5 py-2 text-left"
-                aria-label={t("salary.month")}
-              >
-                <span className="inline-flex items-center gap-1.5 md:gap-2">
-                  <CalendarDays
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.month")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className="px-2.5 py-2 text-left"
-                aria-label={t("salary.employer")}
-              >
-                <span className="inline-flex items-center gap-1.5 md:gap-2">
-                  <Briefcase
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">
-                    {t("salary.employer")}
+                <th
+                  scope="col"
+                  className="px-2.5 py-2 text-left"
+                  aria-label={t("salary.employer")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Briefcase
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("salary.employer")}
+                    </span>
                   </span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
-                aria-label={t("salary.title")}
-              >
-                <span className="inline-flex items-center gap-1.5 md:gap-2">
-                  <Tag
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.title")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className={`px-2.5 py-2 ${headerClass}`}
-                aria-label={t("salary.gross")}
-              >
-                <span
-                  className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                </th>
+                <th
+                  scope="col"
+                  className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
+                  aria-label={t("salary.title")}
                 >
-                  <Banknote
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.gross")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className={`salary-secondary-cell hidden px-2.5 py-2 md:table-cell ${headerClass}`}
-                aria-label={t("salary.tax")}
-              >
-                <span
-                  className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
-                >
-                  <Receipt
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.tax")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className={`px-2.5 py-2 ${headerClass}`}
-                aria-label={t("salary.net")}
-              >
-                <span
-                  className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
-                >
-                  <Wallet
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.net")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
-                aria-label={t("salary.days")}
-              >
-                <span className="inline-flex items-center gap-1.5 md:gap-2">
-                  <CalendarClock
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">{t("salary.days")}</span>
-                </span>
-              </th>
-              <th
-                scope="col"
-                className="swipe-action-cell salary-action-cell w-32 px-2.5 py-2"
-                aria-label={t("salary.actions")}
-              >
-                <span className="flex items-center justify-start gap-1.5 md:gap-2">
-                  <Wrench
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="hidden md:inline">
-                    {t("salary.actions")}
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <Tag
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("salary.title")}
+                    </span>
                   </span>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {salaries.map((salary) => (
-              <SalaryRow
-                key={salary.id}
-                salary={salary}
-                employer={
-                  salary.employerId
-                    ? employersById.get(salary.employerId)
-                    : undefined
-                }
-                settings={settings}
-                taxParams={taxParams}
-                selectMode={selectMode}
-                selected={selectedIds.has(salary.id)}
-                onToggleSelect={onToggleSelect}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                canManagePayslip={canManagePayslip}
-                onManagePayslip={onManagePayslip}
-              />
-            ))}
-            <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
-              {selectMode && <td className="px-2.5 py-2" />}
-              <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
-                {t("salary.yearTotal")}
-              </td>
-              <td className="px-2.5 py-2" />
-              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td
-                className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
-              >
-                {formatBalance(totals.gross, settings)}
-              </td>
-              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td
-                className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
-              >
-                {formatBalance(totals.net, settings)}
-              </td>
-              <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
-              <td className="swipe-action-cell salary-action-cell px-2.5 py-2" />
-            </tr>
-          </tbody>
-        </table>
+                </th>
+                <th
+                  scope="col"
+                  className={`px-2.5 py-2 ${headerClass}`}
+                  aria-label={t("salary.gross")}
+                >
+                  <span
+                    className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                  >
+                    <Banknote
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">
+                      {t("salary.gross")}
+                    </span>
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  className={`salary-secondary-cell hidden px-2.5 py-2 md:table-cell ${headerClass}`}
+                  aria-label={t("salary.tax")}
+                >
+                  <span
+                    className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                  >
+                    <Receipt
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">{t("salary.tax")}</span>
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  className={`px-2.5 py-2 ${headerClass}`}
+                  aria-label={t("salary.net")}
+                >
+                  <span
+                    className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                  >
+                    <Wallet
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">{t("salary.net")}</span>
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  className="salary-secondary-cell hidden px-2.5 py-2 text-left md:table-cell"
+                  aria-label={t("salary.days")}
+                >
+                  <span className="inline-flex items-center gap-1.5 md:gap-2">
+                    <CalendarClock
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="hidden md:inline">{t("salary.days")}</span>
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  className="swipe-action-cell salary-action-cell w-32 px-2.5 py-2"
+                  aria-label={t("salary.actions")}
+                >
+                  <span className="flex items-center justify-start gap-1.5 md:gap-2">
+                    <Wrench
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="action-header-label hidden md:inline">
+                      {t("salary.actions")}
+                    </span>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {salaries.map((salary) => (
+                <SalaryRow
+                  key={salary.id}
+                  salary={salary}
+                  employer={
+                    salary.employerId
+                      ? employersById.get(salary.employerId)
+                      : undefined
+                  }
+                  settings={settings}
+                  taxParams={taxParams}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(salary.id)}
+                  onToggleSelect={onToggleSelect}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  canManagePayslip={canManagePayslip}
+                  onManagePayslip={onManagePayslip}
+                />
+              ))}
+              <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
+                {selectMode && <td className="px-2.5 py-2" />}
+                <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
+                  {t("salary.yearTotal")}
+                </td>
+                <td className="px-2.5 py-2" />
+                <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+                <td
+                  className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                >
+                  {formatBalance(totals.gross, settings)}
+                </td>
+                <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+                <td
+                  className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                >
+                  {formatBalance(totals.net, settings)}
+                </td>
+                <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+                <td className="swipe-action-cell salary-action-cell px-2.5 py-2" />
+              </tr>
+            </tbody>
+          </table>
+        </ActionsCompactContext.Provider>
       </div>
     </section>
   );

@@ -242,6 +242,8 @@ function LoanRowImpl({
             onUpdateBalance={onUpdateBalance}
             onImportPayments={onImportPayments}
             onViewPayments={onViewPayments}
+            onEdit={() => onEditLoan(loan.id)}
+            onDelete={() => onDeleteLoan(loan.id, loan.name)}
             onAction={() => setSwiped(false)}
           />
         </div>

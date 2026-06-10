@@ -1,3 +1,4 @@
+export { useActionsCompaction } from "./useActionsCompaction";
 export {
   type AmountAlignment,
   type AmountColumns,

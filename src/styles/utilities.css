@@ -148,6 +148,32 @@
   animation: field-attention 1500ms ease-out;
 }
 
+/* Desktop action-column compaction — see `useActionsCompaction`. When a
+   sheet table can't fit its trailing action column, the table element
+   gains `.actions-compact`: the inline edit / delete buttons and the
+   header label collapse so only the ⋯ menu keeps the column reachable
+   (the hidden actions reappear inside that menu via
+   `ActionsCompactContext`). The column narrows to seat the lone ⋯ button,
+   handing the reclaimed width back to the content columns.
+
+   Unlayered so these win over the Tailwind `w-32` / `inline-flex` /
+   `md:inline` utilities they override. `.actions-compact` is only ever
+   applied on the desktop layout (the hook gates it on the desktop media
+   query); the mobile layout keeps its absolute swipe overlay, so these
+   never fight that strip. The transfer / ⋯ buttons stay visible — each
+   row keeps a single control. */
+.actions-compact .swipe-action-cell {
+  width: 2.5rem;
+}
+.actions-compact .swipe-action-cell .action-btn-pen,
+.actions-compact .swipe-action-cell .action-btn-delete,
+.actions-compact .swipe-action-cell .action-btn-delete-disabled {
+  display: none;
+}
+.actions-compact .swipe-action-cell .action-header-label {
+  display: none;
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the
