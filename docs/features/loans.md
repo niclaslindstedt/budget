@@ -19,12 +19,14 @@ follows the type:
 - a **mortgage** can name no lender at all — or link a property's
   mortgage instead (see below).
 
-The loans table shows each loan's monthly payment, rate, what you've
-paid so far, and what remains — with a total of remaining debt across
-all loans at the bottom. The monthly payment isn't entered anywhere:
-it's calculated from the recorded payments — the average over this
-year's payment months, or the three most recent ones while the year is
-still young.
+The loans table shows each loan's type, monthly payment, rate, what
+you've paid so far, and what remains — with a total of remaining debt
+across all loans at the bottom. Tap a row to open the loan's details:
+the lender or linked mortgages, the entered terms, the same derived
+figures, and the recorded payments, with an Edit shortcut. The monthly
+payment isn't entered anywhere: it's calculated from the recorded
+payments — the average over this year's payment months, or the three
+most recent ones while the year is still young.
 
 ## Remaining balance
 
