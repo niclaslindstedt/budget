@@ -27,9 +27,12 @@ const loansSheet: LoansSheetCatalog = {
   linkedTo: "Länkat till {name}",
   linkedToMany: "Länkat till {name} ({n} bolån)",
 
+  updateBalance: "Uppdatera saldo",
   importPayments: "Importera betalningar",
   viewPayments: "Visa betalningar",
   noPayments: "Inga betalningar registrerade ännu",
+  linkedBalanceHint:
+    "Saldot kommer från det länkade bolånet — uppdatera det på fastighetsbladet",
 
   newTitle: "Nytt lån",
   namePlaceholder: "t.ex. Billån",
@@ -37,7 +40,6 @@ const loansSheet: LoansSheetCatalog = {
   kind: "Typ av lån",
   startDate: "Startdatum",
   startSum: "Startbelopp",
-  monthlyPayment: "Månadsbetalning",
   rateLabel: "Ränta (%/år)",
   startFee: "Uppläggningsavgift",
   optionalHint: "Valfritt",
@@ -50,7 +52,21 @@ const loansSheet: LoansSheetCatalog = {
     "Villkor, betalningar och saldo kommer från det länkade bolånet på fastighetsbladet. Redigera dem där.",
   noMortgagesToLink:
     "Inga olänkade bolån på fastighetsbladet. Lägg till bolånet på en fastighet först, eller ange villkoren nedan.",
+  balanceHint:
+    "Kvarvarande skuld utgår från startbeloppet (plus avgift) och följer de registrerade betalningarna. Synka om den när som helst med Uppdatera saldo i radens …-meny.",
+  balanceHintStudent:
+    "Registrera vad du är skyldig med Uppdatera saldo i radens …-meny — saldot följer sedan de registrerade betalningarna.",
   create: "Skapa",
+
+  updateBalanceTitle: "Uppdatera saldo",
+  updateBalanceHint:
+    "Ange den kvarvarande skulden per ett datum. Saldot vid varje annat datum beräknas från det senast registrerade saldot och betalningarna sedan dess.",
+  balanceLabel: "Kvarvarande skuld",
+  balancePlaceholder: "0",
+  asOfLabel: "Per datum",
+  balanceHistory: "Registrerade saldon",
+  noBalanceHistory: "Inga saldon registrerade ännu.",
+  deleteBalanceAria: "Ta bort registrerat saldo",
 
   paymentsTitle: "Betalningar",
   noPaymentsList: "Inga betalningar registrerade ännu.",

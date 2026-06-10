@@ -11,6 +11,18 @@ import type { CategoryIcon } from "./categories";
 // `LOAN_PRESET_TYPE_BY_KIND` in `src/data/loans/presets.ts`.
 export type LoanKind = "student" | "mortgage" | "car" | "private" | "personal";
 
+// One manually-entered snapshot of a loan's outstanding balance. "Update
+// balance" on the loan row's "…" menu appends one of these; the remaining
+// balance at any date is derived from the nearest snapshot plus the
+// payments recorded between (see `loanRemainingBalance`). Carries its own
+// `id` (rather than being keyed by `date`) so two snapshots taken on the
+// same day can be deleted independently. Mirrors `SavingBalancePoint`.
+export type LoanBalancePoint = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd the balance was recorded for
+  value: number; // the outstanding debt at that date, >= 0
+};
+
 // One recorded payment against a loan. Mirrors `MortgagePayment` so a
 // linked mortgage's payments and a simple loan's payments render through
 // the same table.
@@ -39,15 +51,18 @@ export type Loan = {
   description?: string;
   // ISO yyyy-mm-dd the loan started (first day interest accrues).
   startDate?: string;
-  // Original principal, >= 0.
+  // Original principal, >= 0. Acts as the implicit opening balance
+  // anchor (dated at `startDate`) when no snapshot covers a date — see
+  // `loanRemainingBalance`. Not collected for `kind: "student"`: CSN
+  // debt accrues over the study years, so there is no meaningful single
+  // starting principal — student loans anchor on `balanceHistory` alone.
   startSum?: number;
-  // What the user pays per month (amortization + interest), >= 0.
-  monthlyPayment?: number;
-  // Annual interest rate in percent (e.g. 4.5). Absent ⇒ the remaining
-  // balance falls back to startSum + startFee − payments made.
+  // Annual interest rate in percent (e.g. 4.5). When set, the remaining-
+  // balance walk accrues monthly interest so only the payment net of
+  // interest amortises; absent ⇒ whole payments amortise.
   rate?: number;
-  // One-off setup fee ("uppläggningsavgift"), >= 0. Treated as financed
-  // into the principal by the balance simulation.
+  // One-off setup fee ("uppläggningsavgift"), >= 0. Financed into the
+  // implicit opening anchor (`startSum` + fee).
   startFee?: number;
   // kind === "personal": the person the money was borrowed from. Free
   // text rather than a Company — a friend or relative isn't a merchant.
@@ -68,6 +83,13 @@ export type Loan = {
   // Recorded payments. Unused for a linked mortgage loan — the mortgage's
   // own `payments[]` is authoritative there.
   payments: LoanPayment[];
+  // Manually-recorded outstanding balance over time ("Update balance" on
+  // the row's "…" menu, available for every kind). The remaining balance
+  // anchors on the nearest snapshot — or on the implicit `startSum`
+  // opening anchor — and walks the payments from there; with neither the
+  // row shows "—". Unused for a linked mortgage loan — the mortgage's
+  // own balance is authoritative there.
+  balanceHistory: LoanBalancePoint[];
   // Normalised bank-description keys (`normaliseDescription`) learned when
   // the user imports payments. Future `importBankHistory` runs auto-attach
   // matching new outflow entries as payments. Absent ⇒ no auto-attach.

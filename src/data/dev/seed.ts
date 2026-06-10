@@ -1064,8 +1064,9 @@ export function buildSeedUserData(): UserData {
     name: "CSN",
     kind: "student",
     startDate: "2019-01-25",
-    startSum: 188000,
-    monthlyPayment: 1180,
+    // Student loans have no start sum — the recorded snapshot anchors
+    // the derived balance, dated so every payment amortises from it.
+    balanceHistory: [{ id: mkId("lbal"), date: "2019-01-25", value: 188000 }],
     payments: csnRecordedMonths.map(({ year, month }) => {
       const charge = csnChargeByMonth.get(`${year}-${month}`);
       const sourceHist = charge
@@ -1090,9 +1091,12 @@ export function buildSeedUserData(): UserData {
     companyId: companyCarLender.id,
     startDate: "2024-08-12",
     startSum: 145000,
-    monthlyPayment: 2450,
     rate: 5.95,
     startFee: 595,
+    // The start sum (plus financed fee) is the implicit opening anchor;
+    // the recent snapshot re-syncs the derived balance so the loan's
+    // unconsumed payment candidates amortise from there once imported.
+    balanceHistory: [{ id: mkId("lbal"), date: "2025-11-30", value: 122400 }],
     payments: [],
   };
   const linkedMortgageLoan: Loan = {
@@ -1102,6 +1106,7 @@ export function buildSeedUserData(): UserData {
     propertyId: apartment.id,
     mortgageIds: [apartment.mortgages[0].id],
     payments: [],
+    balanceHistory: [],
   };
   // The villa carries three mortgages drawn as ONE combined charge, so
   // this loan links all three and the Loans sheet lists them as a single
@@ -1113,6 +1118,7 @@ export function buildSeedUserData(): UserData {
     propertyId: villa.id,
     mortgageIds: villa.mortgages.map((m) => m.id),
     payments: [],
+    balanceHistory: [],
   };
   const loans: Loan[] = [
     csnLoan,

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Download, Eye, MoreHorizontal } from "lucide-react";
+import { Download, Eye, MoreHorizontal, Scale } from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
@@ -8,9 +8,15 @@ import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
   loan: Loan;
+  // True when the loan resolves a linked property mortgage — its balance
+  // lives on the mortgage, so the Update balance entry is disabled and
+  // points the user at the Properties sheet instead.
+  isLinked: boolean;
   // True when the loan (or its linked mortgage) has recorded payments —
   // gates the View entry (which has nothing to show otherwise).
   hasPayments: boolean;
+  // Open the dated-balance update modal for this loan.
+  onUpdateBalance: (loanId: string) => void;
   // Open the payment-import modal — candidates are bank entries typed with
   // the loan's kind or matching its learned payment patterns.
   onImportPayments: (loanId: string) => void;
@@ -36,12 +42,14 @@ type MenuItem = {
   onClick: () => void;
 };
 
-// The "…" overflow popover in a loan row's swipe strip. Imports payments
-// from bank transactions and views the recorded list. Mirrors
-// `SavingActionsMenu`.
+// The "…" overflow popover in a loan row's swipe strip. Records a dated
+// outstanding balance, imports payments from bank transactions, and views
+// the recorded list. Mirrors `SavingActionsMenu`.
 export function LoanActionsMenu({
   loan,
+  isLinked,
   hasPayments,
+  onUpdateBalance,
   onImportPayments,
   onViewPayments,
   onAction,
@@ -58,6 +66,14 @@ export function LoanActionsMenu({
   }
 
   const items: MenuItem[] = [
+    {
+      key: "balance",
+      icon: <Scale size={16} aria-hidden focusable={false} />,
+      label: t("loansSheet.updateBalance"),
+      disabled: isLinked,
+      title: isLinked ? t("loansSheet.linkedBalanceHint") : undefined,
+      onClick: () => pick(() => onUpdateBalance(loan.id)),
+    },
     {
       key: "import",
       icon: <Download size={16} aria-hidden focusable={false} />,

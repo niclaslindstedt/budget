@@ -1607,17 +1607,24 @@ so far · remaining balance) with a footer total of remaining debt, and
 loan CRUD goes through `reduceLoans` (`src/data/reducers/loans.ts`), not
 the per-item reducer tail. Files live in `src/components/loans/`;
 helpers in `src/data/loans/`. Rows carry the standard left-swipe
-Edit / Delete strip plus a "…" menu (`LoanActionsMenu.tsx`) with Import
-payments and View payments. Adding the first loan unlocks the
-**Borrower** achievement.
+Edit / Delete strip plus a "…" menu (`LoanActionsMenu.tsx`) with Update
+balance, Import payments, and View payments. Adding the first loan
+unlocks the **Borrower** achievement.
 
 ### Loan
 
 A `Loan` (`src/data/types/loans.ts`) is one debt: a `kind` (`student` /
-`mortgage` / `car` / `private` / `personal`), a start date, a start sum,
-a monthly payment, an optional annual interest `rate`, and an optional
-`startFee` (uppläggningsavgift) the balance simulation treats as
-financed into the principal. The lender field depends on the kind: a
+`mortgage` / `car` / `private` / `personal`), terms (start date, a
+`startSum` that anchors the balance walk, an optional annual interest
+`rate` it accrues with, an optional `startFee` / uppläggningsavgift
+financed into the opening anchor), and dated balance snapshots
+(`balanceHistory`, see Update balance below). A **student** loan
+collects no start sum — CSN debt accrues over the study years, so there
+is no meaningful single principal and the kind anchors on Update
+balance alone. There is no monthly-payment input: the Monthly column
+derives from the recorded payments (`loanMonthlyPayment` — the average
+of the current year's payment months, falling back to the three most
+recent payment months at the start of the year). The lender field depends on the kind: a
 **personal** loan stores the person's name as free text (`lenderName`),
 a **private** or **car** loan references a `Company` (`companyId`), and
 a **mortgage** loan can instead link a property's mortgage (see Linked
@@ -1631,16 +1638,40 @@ moved in from Housing / Bills, ids unchanged).
 ### Loan remaining balance
 
 `loanRemainingBalance` (`src/data/loans/balance.ts`) computes the
-"Remaining" column. With a `rate` set (plus start date / sum / monthly
-payment), the balance is simulated month by month from the start date:
-each month accrues interest on the outstanding balance (annual rate / 12) and the monthly payment net of that interest amortises the
-principal, clamped at zero — so the figure honestly reflects that early
-payments are mostly interest. Without a rate it falls back to start sum
-(+ start fee) − payments recorded (`loanPaidSoFar`); with neither, the
-row shows "—". A linked mortgage loan bypasses the simulation entirely:
+"Remaining" column. It anchors on the loan's balance points — the
+recorded snapshots (`Loan.balanceHistory`, see Update balance below)
+plus an implicit opening point worth `startSum` + `startFee` dated at
+the start date (or just before the earliest payment when no start date
+is recorded): the latest point on or before the asked date — treated as
+that day's end-of-day figure — and the payments recorded between the
+anchor and the date amortise from there, so the figure at any date
+derives from a known balance plus the actual payments. Without a `rate`
+the whole payment amortises. With a rate the walk runs month by month:
+each month accrues interest on the outstanding balance (annual
+rate / 12) before that month's payments land, so only the payment net
+of interest amortises — honestly reflecting that early payments are
+mostly interest, and that a rated loan with no recorded payments grows.
+Clamped at zero once paid off; a date before the earliest point re-adds
+the payments in between; with neither a snapshot nor a start sum the
+row shows "—". A linked mortgage loan bypasses the walk entirely:
 `linkedMortgageFigures` resolves monthly payment / rate / remaining
 live from the mortgage's own terms (`resolveMonthlyPaymentAt`,
 `resolveRateAt`, `balanceAt` in `src/data/property-mortgage/`).
+
+### Update balance (loan)
+
+`LoanUpdateBalanceModal.tsx`, opened from the loan row's "…" menu.
+Records what remains of the loan as of a date — appends one
+`LoanBalancePoint` (`id` / `date` / `value`) to `Loan.balanceHistory`
+via `addLoanBalance`, mirroring the savings Update balance modal: the
+inline Add keeps the modal open so a run of snapshots can be recorded
+back-to-back, and the recorded list below deletes individual points
+(`deleteLoanBalance`). Available for every loan kind: it is the only
+balance source for a student loan (which collects no start sum), and
+for the other kinds it re-syncs the figure the start sum anchors — see
+Loan remaining balance above — no matter what payments were or weren't
+imported. Disabled for a linked mortgage loan — its balance lives on
+the linked mortgage, maintained on the Properties sheet.
 
 ### Linked mortgage (loan)
 

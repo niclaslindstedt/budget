@@ -13,7 +13,9 @@ import {
 } from "../constants/defaults";
 import { nsKey } from "../constants/storage";
 import { DEVICE_SCOPED_KEYS } from "../settings";
+import { newId } from "../sheet";
 import { clearRawStorage, readRawStorage } from "../../storage/local-adapter";
+import { addDaysIso, todayIso } from "../../utils/date";
 import { safeJsonParse } from "../../utils/json";
 import { isObj, type MigrationTable, type Versioned } from "./shared";
 
@@ -1085,6 +1087,59 @@ export const MODERN_MIGRATIONS: MigrationTable = {
         })
       : v73.loans;
     return { ...v73, version: 74, loans };
+  },
+
+  // v74 → v75: loans gain dated balance snapshots (`Loan.balanceHistory`,
+  // recorded via "Update balance" on the row's "…" menu, every kind) and
+  // lose the hand-entered `monthlyPayment` — the Monthly column now
+  // derives from the recorded payments. A STUDENT loan's start sum also
+  // converts to one snapshot and is dropped: CSN debt accrues over the
+  // study years, so the editor no longer collects a starting principal
+  // for that kind. The snapshot folds in the financed setup fee, dated
+  // at the start date when recorded; without one it lands the day before
+  // the earliest payment so every payment still amortises from it —
+  // preserving the old "start sum + fee − payments" figure — or today as
+  // the last resort (no payments ⇒ the date can't change the derived
+  // balance). Other kinds keep `startSum`, which now acts as the
+  // implicit opening balance anchor.
+  74: (v74) => {
+    const loans = Array.isArray(v74.loans)
+      ? v74.loans.map((loan) => {
+          if (!isObj(loan)) return loan;
+          const { monthlyPayment: _monthlyPayment, ...kept } = loan;
+          void _monthlyPayment;
+          if (kept.kind !== "student") {
+            return { ...kept, balanceHistory: [] };
+          }
+          const { startSum, ...rest } = kept;
+          const balanceHistory: unknown[] = [];
+          if (typeof startSum === "number" && Number.isFinite(startSum)) {
+            const fee =
+              typeof rest.startFee === "number" &&
+              Number.isFinite(rest.startFee)
+                ? rest.startFee
+                : 0;
+            let date: string | undefined =
+              typeof rest.startDate === "string" ? rest.startDate : undefined;
+            if (date === undefined && Array.isArray(rest.payments)) {
+              for (const payment of rest.payments) {
+                if (!isObj(payment) || typeof payment.date !== "string")
+                  continue;
+                if (date === undefined || payment.date < date)
+                  date = payment.date;
+              }
+              if (date !== undefined) date = addDaysIso(date, -1);
+            }
+            balanceHistory.push({
+              id: newId(),
+              date: date ?? todayIso(),
+              value: startSum + fee,
+            });
+          }
+          return { ...rest, balanceHistory };
+        })
+      : v74.loans;
+    return { ...v74, version: 75, loans };
   },
 };
 

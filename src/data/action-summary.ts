@@ -272,6 +272,8 @@ export function describeActionSubject(
     case "addLoanPayments":
     case "deleteLoanPayment":
     case "deleteAllLoanPayments":
+    case "addLoanBalance":
+    case "deleteLoanBalance":
       return name(byId(next.loans, action.loanId)?.name);
     case "deleteLoan":
       return name(byId(prev.loans, action.loanId)?.name);

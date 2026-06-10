@@ -11,6 +11,7 @@ import { newId } from "../../../data/sheet";
 import type {
   Company,
   Loan,
+  LoanBalancePoint,
   LoanPayment,
   MortgagePayment,
   UserData,
@@ -50,6 +51,13 @@ type Result = {
   onRequestDeleteLoan: (loanId: string, name: string) => void;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
 
+  // Update-balance modal — appends / deletes dated balance snapshots.
+  updateBalanceLoan: Loan | null;
+  setUpdateBalanceForId: (next: string | null) => void;
+  onOpenUpdateBalance: (loanId: string) => void;
+  onAddLoanBalance: (loanId: string, point: LoanBalancePoint) => void;
+  onDeleteLoanBalance: (loanId: string, pointId: string) => void;
+
   // Payments list modal.
   paymentsLoan: Loan | null;
   setPaymentsForId: (next: string | null) => void;
@@ -79,6 +87,9 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     useState<DeleteLoanPrompt | null>(null);
   const [paymentsForId, setPaymentsForId] = useState<string | null>(null);
   const [importForId, setImportForId] = useState<string | null>(null);
+  const [updateBalanceForId, setUpdateBalanceForId] = useState<string | null>(
+    null,
+  );
 
   const linkedMortgageIds: ReadonlySet<string> = useMemo(() => {
     const ids = new Set<string>();
@@ -102,7 +113,6 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const onSaveLoan = useCallback(
     (draft: LoanDraft) => {
       const startSum = parseAmount(draft.startSum);
-      const monthlyPayment = parseAmount(draft.monthlyPayment);
       const rate = parseAmount(draft.rate);
       const startFee = parseAmount(draft.startFee);
       // Sanitised term values: parseAmount tolerates signs, so clamp the
@@ -123,7 +133,6 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
             color: draft.color ?? undefined,
             startDate: draft.startDate || undefined,
             startSum: clean(startSum),
-            monthlyPayment: clean(monthlyPayment),
             rate: clean(rate),
             startFee: clean(startFee),
             lenderName: draft.lenderName || undefined,
@@ -138,14 +147,12 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
           name: draft.name,
           kind: draft.kind,
           payments: [],
+          balanceHistory: [],
           ...(draft.description && { description: draft.description }),
           ...(draft.glyph && { glyph: draft.glyph }),
           ...(draft.color && { color: draft.color }),
           ...(draft.startDate && { startDate: draft.startDate }),
           ...(clean(startSum) !== undefined && { startSum: clean(startSum) }),
-          ...(clean(monthlyPayment) !== undefined && {
-            monthlyPayment: clean(monthlyPayment),
-          }),
           ...(clean(rate) !== undefined && { rate: clean(rate) }),
           ...(clean(startFee) !== undefined && { startFee: clean(startFee) }),
           ...(draft.lenderName && { lenderName: draft.lenderName }),
@@ -201,6 +208,29 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
       const company: Company = { id: newId(), ...draft };
       dispatch({ type: "addCompany", company });
       return company;
+    },
+    [dispatch],
+  );
+
+  const updateBalanceLoan = useMemo(
+    () =>
+      updateBalanceForId
+        ? (data.loans.find((l) => l.id === updateBalanceForId) ?? null)
+        : null,
+    [updateBalanceForId, data.loans],
+  );
+  const onOpenUpdateBalance = useCallback((loanId: string) => {
+    setUpdateBalanceForId(loanId);
+  }, []);
+  const onAddLoanBalance = useCallback(
+    (loanId: string, point: LoanBalancePoint) => {
+      dispatch({ type: "addLoanBalance", loanId, point });
+    },
+    [dispatch],
+  );
+  const onDeleteLoanBalance = useCallback(
+    (loanId: string, pointId: string) => {
+      dispatch({ type: "deleteLoanBalance", loanId, pointId });
     },
     [dispatch],
   );
@@ -391,6 +421,11 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     onDeleteLoanFromModal,
     onRequestDeleteLoan,
     onCreateCompany,
+    updateBalanceLoan,
+    setUpdateBalanceForId,
+    onOpenUpdateBalance,
+    onAddLoanBalance,
+    onDeleteLoanBalance,
     paymentsLoan,
     setPaymentsForId,
     onOpenPayments,

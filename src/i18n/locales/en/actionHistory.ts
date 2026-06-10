@@ -87,6 +87,8 @@ const actionHistory = {
     addLoanPayments: "Imported loan payments",
     deleteLoanPayment: "Deleted loan payment",
     deleteAllLoanPayments: "Cleared loan payments",
+    addLoanBalance: "Recorded loan balance",
+    deleteLoanBalance: "Deleted loan balance",
     addSalaries: "Added payslips",
     updateSalary: "Edited payslip",
     deleteSalary: "Deleted payslip",

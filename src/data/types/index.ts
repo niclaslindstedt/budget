@@ -62,7 +62,7 @@ export type {
 
 export type { Saving, SavingBalancePoint } from "./savings";
 
-export type { Loan, LoanKind, LoanPayment } from "./loans";
+export type { Loan, LoanBalancePoint, LoanKind, LoanPayment } from "./loans";
 
 export type { Employer, Role, Salary } from "./salary";
 

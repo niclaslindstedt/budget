@@ -1,6 +1,7 @@
 import type {
   CategoryIcon,
   Loan,
+  LoanBalancePoint,
   LoanKind,
   LoanPayment,
   Property,
@@ -41,6 +42,18 @@ function validatePayment(raw: unknown): LoanPayment | null {
   return payment;
 }
 
+// Validate one balance-history snapshot. Advisory display data — a
+// malformed point is dropped rather than rejecting the whole loan
+// (mirrors the savings balance-point sweep).
+function validateBalancePoint(raw: unknown): LoanBalancePoint | null {
+  if (!isObject(raw)) return null;
+  const { id, date, value } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (!isIsoDate(date)) return null;
+  if (!isNonNegativeNumber(value)) return null;
+  return { id, date, value };
+}
+
 // Validate one loan. Required `id` + `name` + a known `kind` fail the file —
 // they're load-bearing identity; everything else is dropped-if-malformed so
 // a single bad optional field can't trap an otherwise-valid budget. A
@@ -63,7 +76,13 @@ export function validateLoan(
     return fail(`${path}.name`, "expected a string");
   if (typeof kind !== "string" || !LOAN_KINDS.has(kind))
     return fail(`${path}.kind`, `unknown loan kind "${String(kind)}"`);
-  const loan: Loan = { id, name, kind: kind as LoanKind, payments: [] };
+  const loan: Loan = {
+    id,
+    name,
+    kind: kind as LoanKind,
+    payments: [],
+    balanceHistory: [],
+  };
   if (
     typeof raw.glyph === "string" &&
     CATEGORY_ICONS.has(raw.glyph as CategoryIcon)
@@ -75,8 +94,6 @@ export function validateLoan(
   if (typeof raw.description === "string") loan.description = raw.description;
   if (isIsoDate(raw.startDate)) loan.startDate = raw.startDate;
   if (isNonNegativeNumber(raw.startSum)) loan.startSum = raw.startSum;
-  if (isNonNegativeNumber(raw.monthlyPayment))
-    loan.monthlyPayment = raw.monthlyPayment;
   if (isNonNegativeNumber(raw.rate)) loan.rate = raw.rate;
   if (isNonNegativeNumber(raw.startFee)) loan.startFee = raw.startFee;
   if (typeof raw.lenderName === "string" && raw.lenderName !== "")
@@ -109,6 +126,15 @@ export function validateLoan(
       if (!payment || seen.has(payment.id)) continue;
       seen.add(payment.id);
       loan.payments.push(payment);
+    }
+  }
+  if (Array.isArray(raw.balanceHistory)) {
+    const seen = new Set<string>();
+    for (const rawPoint of raw.balanceHistory) {
+      const point = validateBalancePoint(rawPoint);
+      if (!point || seen.has(point.id)) continue;
+      seen.add(point.id);
+      loan.balanceHistory.push(point);
     }
   }
   if (Array.isArray(raw.paymentPatterns)) {

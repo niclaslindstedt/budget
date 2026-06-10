@@ -3,6 +3,7 @@ import { Link2, Pencil, Trash2 } from "lucide-react";
 
 import {
   linkedMortgageFigures,
+  loanMonthlyPayment,
   loanPaidSoFar,
   loanRemainingBalance,
   resolveLinkedMortgages,
@@ -25,6 +26,7 @@ type Props = {
   companies: readonly Company[];
   onEditLoan: (loanId: string) => void;
   onDeleteLoan: (loanId: string, name: string) => void;
+  onUpdateBalance: (loanId: string) => void;
   onImportPayments: (loanId: string) => void;
   onViewPayments: (loanId: string) => void;
 };
@@ -36,6 +38,7 @@ function LoanRowImpl({
   companies,
   onEditLoan,
   onDeleteLoan,
+  onUpdateBalance,
   onImportPayments,
   onViewPayments,
 }: Props) {
@@ -50,7 +53,7 @@ function LoanRowImpl({
   const figures = linked
     ? linkedMortgageFigures(linked.mortgages, today)
     : {
-        monthlyPayment: loan.monthlyPayment ?? null,
+        monthlyPayment: loanMonthlyPayment(loan, today),
         rate: loan.rate ?? null,
         paidSoFar: loanPaidSoFar(loan),
         remaining: loanRemainingBalance(loan, today),
@@ -186,7 +189,9 @@ function LoanRowImpl({
           </button>
           <LoanActionsMenu
             loan={loan}
+            isLinked={linked !== null}
             hasPayments={hasPayments}
+            onUpdateBalance={onUpdateBalance}
             onImportPayments={onImportPayments}
             onViewPayments={onViewPayments}
             onAction={() => setSwiped(false)}
