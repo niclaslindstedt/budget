@@ -2,6 +2,7 @@ import { Link2, Pencil } from "lucide-react";
 
 import {
   linkedMortgageFigures,
+  linkedMortgageRowFigures,
   loanMonthlyPayment,
   loanPaidSoFar,
   loanRemainingBalance,
@@ -196,20 +197,35 @@ export function LoanViewModal({
           {linked && (
             <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
               <span className="text-xs text-muted">{linkedLabel}</span>
-              {linked.mortgages.map((mortgage) => (
-                <div
-                  key={mortgage.id}
-                  className="flex items-center gap-1.5 text-sm text-muted"
-                >
-                  <Link2
-                    size={12}
-                    className="shrink-0"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="truncate">{mortgage.name}</span>
-                </div>
-              ))}
+              {linked.mortgages.map((mortgage) => {
+                const row = linkedMortgageRowFigures(mortgage, today);
+                return (
+                  <div
+                    key={mortgage.id}
+                    className="flex items-center gap-1.5 text-sm text-muted"
+                  >
+                    <Link2
+                      size={12}
+                      className="shrink-0"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="flex-1 truncate">{mortgage.name}</span>
+                    <span
+                      className={`shrink-0 font-mono whitespace-nowrap tabular-nums text-fg ${cellClass}`}
+                    >
+                      {row.remaining !== null
+                        ? formatBalance(row.remaining, settings)
+                        : "—"}
+                    </span>
+                    <span className="shrink-0 font-mono whitespace-nowrap tabular-nums text-muted">
+                      {row.rate !== null
+                        ? `${formatRate(row.rate, settings)}%`
+                        : "—"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 

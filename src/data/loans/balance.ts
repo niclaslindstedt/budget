@@ -214,3 +214,21 @@ export function linkedMortgageFigures(
     remaining,
   };
 }
+
+// Per-mortgage figures for the linked-mortgages list in the loan viewer:
+// each linked mortgage's own remaining balance, rate, and monthly payment,
+// resolved live from the `Mortgage` so the card can spell out the terms
+// behind the aggregate above it. Mirrors the per-mortgage math
+// `linkedMortgageFigures` sums up.
+export function linkedMortgageRowFigures(
+  mortgage: Mortgage,
+  todayIso: string,
+): { remaining: number | null; rate: number | null; monthly: number | null } {
+  const balance = balanceAt(mortgage, todayIso);
+  const monthly = resolveMonthlyPaymentAt(mortgage, todayIso);
+  return {
+    remaining: balance ?? null,
+    rate: resolveRateAt(mortgage, todayIso),
+    monthly: monthly > 0 ? monthly : null,
+  };
+}
