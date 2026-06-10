@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import {
-  ACCOUNT_GLYPH_NAMES,
+  SAVINGS_GLYPH_NAMES,
   SHEET_COLORS,
 } from "../../data/constants/taxonomy";
 import { normalizeName } from "../../data/normalize";
@@ -167,7 +167,7 @@ export function SavingsModal({
               value={glyph}
               onChange={setGlyph}
               defaultIcon="coins"
-              icons={ACCOUNT_GLYPH_NAMES}
+              icons={SAVINGS_GLYPH_NAMES}
               tintColor={color}
             />
           </FormSection>

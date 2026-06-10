@@ -2210,6 +2210,24 @@ A lucide-react icon, addressed by name. See the `CategoryIcon` union in
 `src/data/types.ts` and the `CategoryIconGlyph` registry in
 `src/components/icons.tsx`.
 
+### Pill
+
+The rounded informative chip idiom — a small bordered capsule carrying
+a short piece of information, sometimes clickable: a type or category
+name on a budget row, the reset cadence ("every 2 years") next to a
+mortgage's rate, "today" when scrolled away from the current month.
+There is no single Pill component. The shared renderer for entities
+that carry `{ name, color, icon }` is `EntityChip`
+(`src/components/EntityChip.tsx`, wrapped by `CategoryChip` /
+`TypeChip`); each other surface keeps its own variant: the line-item
+pill and company pill in a budget row's description cell
+(`DescriptionCell.tsx`), the orange / cyan token pills inside
+`BudgetFormulaInput`, the Today pill that jumps the budget back to the
+current month (`useScrollToToday.ts`), and the rate-reset cadence pill
+in a property card (`PropertyCard.tsx`, `properties.rateResetPill*`
+keys). New pills follow the same shape: `rounded-full`, thin border,
+tinted fill matching the entity's colour.
+
 ### Settings section
 
 The labelled `<fieldset>` group every Settings tab is built from

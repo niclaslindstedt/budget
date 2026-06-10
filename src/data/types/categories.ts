@@ -127,6 +127,10 @@ export type CategoryIcon =
   | "lamp"
   | "bath"
   | "compass"
+  // People
+  | "user"
+  | "users"
+  | "handshake"
   // Status & flags
   | "circle-help"
   | "repeat"

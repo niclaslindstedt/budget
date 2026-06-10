@@ -1,3 +1,4 @@
+import { SAVINGS_GLYPH_NAMES } from "../constants/taxonomy";
 import { newId } from "../sheet";
 import type { SavingsView } from "../types";
 import { validateSavingsView } from "../validate/sheet-items";
@@ -18,6 +19,7 @@ export const SAVINGS_SHEET_DESCRIPTOR: SheetTypeDescriptor = {
   label: "Savings",
   description: "Track money you set aside in savings accounts.",
   glyph: "coins",
+  glyphNames: SAVINGS_GLYPH_NAMES,
   createDefaultItem: () => createDefaultSavingsView(),
   itemTypes: ["savingsView"],
   validate: (raw, path) => validateSavingsView(raw, path),
