@@ -98,8 +98,10 @@ export function LoansPage({
   // of line. Pin one shared template instead: a fixed type track and an
   // amount track sized to the widest formatted amount, so all rows (and
   // the header) resolve identical columns. Mirrors the
-  // `--transfers-row-template` trick in `AccountTransfersModal`.
-  const mobileRowTemplate = `40px minmax(0, 1fr) 36px minmax(64px, calc(${amountChars} * 1ch + 1.25rem))`;
+  // `--transfers-row-template` trick in `AccountTransfersModal`. The
+  // amount track adds 1ch over the cell padding (1.25rem) for the
+  // column's trailing gutter — see the remaining cells' pr-[…] class.
+  const mobileRowTemplate = `40px minmax(0, 1fr) 36px minmax(64px, calc(${amountChars + 1} * 1ch + 1.25rem))`;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -237,7 +239,7 @@ export function LoansPage({
                   </th>
                   <th
                     scope="col"
-                    className={`px-2.5 py-2 text-xs ${headerClass}`}
+                    className={`py-2 pr-[calc(0.625rem_+_1ch)] pl-2.5 text-xs ${headerClass}`}
                     aria-label={t("loansSheet.remaining")}
                   >
                     <span
@@ -310,7 +312,7 @@ export function LoansPage({
                     <td className="loans-secondary-cell hidden md:table-cell" />
                     <td className="loans-secondary-cell hidden md:table-cell" />
                     <td
-                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                      className={`py-2 pr-[calc(0.625rem_+_1ch)] pl-2.5 whitespace-nowrap tabular-nums ${cellClass}`}
                     >
                       <span>{formatBalance(total, settings)}</span>
                     </td>
