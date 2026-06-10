@@ -218,25 +218,26 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   }
 
   /* The app header's padding-top swaps from `0.5rem + env(top)` (mobile)
-     / `1rem + env(top)` (desktop) in browser mode to `env(top)` /
-     `0.25rem + env(top)` in standalone (see the `[data-app-header]`
-     rule below). On notched iOS devices `env(safe-area-inset-top)`
-     is ~47px in PWA mode but ~0 in browser Safari (where the URL bar
-     reserves the status-bar band), so the header's rendered height
-     grows from the browser-mode 53/69px to roughly 92/108px — but
-     `--app-header-h` stayed pinned to the browser value. That left
-     the sticky month-name h3 (top: --app-header-h, z-20) and the
-     column-header thead (z-15) anchored INSIDE the app header
-     (z-30, opaque), where they sat hidden until the next month
-     scrolled through. Rebase the variable on the standalone padding
-     so the two sticky bands land just below the actual header. */
+     / `1rem + env(top)` (desktop) in browser mode to the floored
+     `max(env(top), 0.75rem)` / `0.25rem + max(env(top), 0.75rem)` in
+     standalone (see the `[data-app-header]` rule below). On notched
+     iOS devices `env(safe-area-inset-top)` is ~47px in PWA mode but
+     ~0 in browser Safari (where the URL bar reserves the status-bar
+     band), so the header's rendered height grows from the
+     browser-mode 53/69px to roughly 92/108px — but `--app-header-h`
+     stayed pinned to the browser value. That left the sticky
+     month-name h3 (top: --app-header-h, z-20) and the column-header
+     thead (z-15) anchored INSIDE the app header (z-30, opaque),
+     where they sat hidden until the next month scrolled through.
+     Rebase the variable on the standalone padding so the two sticky
+     bands land just below the actual header. */
   :root {
-    --app-header-h: calc(45px + env(safe-area-inset-top));
+    --app-header-h: calc(45px + max(env(safe-area-inset-top), 0.75rem));
   }
 
   @media (min-width: 720px) {
     :root {
-      --app-header-h: calc(57px + env(safe-area-inset-top));
+      --app-header-h: calc(57px + max(env(safe-area-inset-top), 0.75rem));
     }
   }
 
@@ -298,14 +299,21 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
      mode so the gap from status bar to header roughly matches the
      gap from the top edge to the top of the island. The browser
      build keeps the original padding because the URL bar already
-     reserves that visual room. */
+     reserves that visual room.
+
+     The `0.75rem` floor is for Android (and desktop installs): there
+     the status bar is opaque system chrome the page never extends
+     under, so `env(safe-area-inset-top)` resolves to 0 and a bare
+     inset would pin "$ budget" flush against the status bar. On
+     notched iOS the ~47px inset always wins the `max()`, so the trim
+     above is unaffected. */
   [data-app-header] {
-    padding-top: env(safe-area-inset-top);
+    padding-top: max(env(safe-area-inset-top), 0.75rem);
   }
 
   @media (min-width: 720px) {
     [data-app-header] {
-      padding-top: calc(0.25rem + env(safe-area-inset-top));
+      padding-top: calc(0.25rem + max(env(safe-area-inset-top), 0.75rem));
     }
   }
 
@@ -343,9 +351,12 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
      the title and the X if we trim below the safe inset. Trim the
      extra `0.75rem` the default Tailwind utility adds on top of the
      inset, and shave the bottom in step so the bar is a tight band
-     instead of a tall card. Matches the `[data-app-header]` trim. */
+     instead of a tall card. Matches the `[data-app-header]` trim —
+     including the `0.75rem` floor for Android, where the opaque
+     status bar makes `env(safe-area-inset-top)` resolve to 0 and a
+     bare inset would pin the title against it. */
   [data-modal-header] {
-    padding-top: env(safe-area-inset-top);
+    padding-top: max(env(safe-area-inset-top), 0.75rem);
     padding-bottom: 0.5rem;
   }
 
