@@ -3,6 +3,7 @@ import { HandCoins, Trash2 } from "lucide-react";
 import { resolveLinkedMortgages } from "../../data/loans/balance";
 import { listLoanPayments } from "../../data/loans/payments";
 import type { Loan, Property, Settings } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
 import { Button } from "../form";
@@ -37,6 +38,7 @@ export function LoanPaymentsModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass } = useAmountColumns();
 
   if (!open || !loan) return null;
 
@@ -78,26 +80,26 @@ export function LoanPaymentsModal({
               {payments.map((payment) => (
                 <li
                   key={payment.id}
-                  className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
+                  className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
                 >
-                  <span className="text-muted">
+                  <span className="shrink-0 text-muted">
                     {formatDate(payment.date, settings.dateFormat, lang)}
                   </span>
-                  <span className="flex items-center gap-2">
-                    <span className="tabular-nums text-fg-bright">
-                      {formatBalance(payment.amount, settings, {
-                        neverAbbreviate: true,
-                      })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onDeletePayment(loan.id, payment.id)}
-                      aria-label={t("loansSheet.deletePaymentAria")}
-                      className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
-                    >
-                      ✕
-                    </button>
+                  <span
+                    className={`flex-1 tabular-nums text-fg-bright ${cellClass}`}
+                  >
+                    {formatBalance(payment.amount, settings, {
+                      neverAbbreviate: true,
+                    })}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => onDeletePayment(loan.id, payment.id)}
+                    aria-label={t("loansSheet.deletePaymentAria")}
+                    className="shrink-0 cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
+                  >
+                    ✕
+                  </button>
                 </li>
               ))}
             </ul>

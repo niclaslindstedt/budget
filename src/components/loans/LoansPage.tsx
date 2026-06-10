@@ -330,7 +330,9 @@ export function LoansPage({
                     <td
                       className={`py-2 pr-[calc(0.625rem_+_1ch)] pl-2.5 whitespace-nowrap tabular-nums ${cellClass}`}
                     >
-                      <span>{formatBalance(total, settings)}</span>
+                      <span className="loans-amount">
+                        {formatBalance(total, settings)}
+                      </span>
                     </td>
                     <td className="swipe-action-cell loans-action-cell px-2.5 py-2" />
                   </tr>

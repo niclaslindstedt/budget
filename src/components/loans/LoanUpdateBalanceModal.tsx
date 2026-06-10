@@ -3,7 +3,7 @@ import { Scale } from "lucide-react";
 
 import { newId } from "../../data/sheet";
 import type { Loan, LoanBalancePoint, Settings } from "../../data/types";
-import { useResetOnOpen } from "../../hooks";
+import { useAmountColumns, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
@@ -42,6 +42,7 @@ export function LoanUpdateBalanceModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass } = useAmountColumns();
   const [value, setValue] = useState("");
   const [date, setDate] = useState("");
   const valueInputRef = useRef<HTMLInputElement | null>(null);
@@ -144,26 +145,26 @@ export function LoanUpdateBalanceModal({
                 {history.map((point) => (
                   <li
                     key={point.id}
-                    className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
+                    className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
                   >
-                    <span className="text-muted">
+                    <span className="shrink-0 text-muted">
                       {formatDate(point.date, settings.dateFormat, lang)}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span className="tabular-nums text-fg-bright">
-                        {formatBalance(point.value, settings, {
-                          neverAbbreviate: true,
-                        })}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteBalance(loan.id, point.id)}
-                        aria-label={t("loansSheet.deleteBalanceAria")}
-                        className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
-                      >
-                        ✕
-                      </button>
+                    <span
+                      className={`flex-1 tabular-nums text-fg-bright ${cellClass}`}
+                    >
+                      {formatBalance(point.value, settings, {
+                        neverAbbreviate: true,
+                      })}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteBalance(loan.id, point.id)}
+                      aria-label={t("loansSheet.deleteBalanceAria")}
+                      className="shrink-0 cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
+                    >
+                      ✕
+                    </button>
                   </li>
                 ))}
               </ul>
