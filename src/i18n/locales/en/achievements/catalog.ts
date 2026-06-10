@@ -350,6 +350,12 @@ const catalog = {
     learnMore:
       "From the Loans sheet's … menu, pick Visualize loans to chart your debt as stacked bands — one per loan, with the top of the stack as the total. Switch to Payments for month-by-month bars of what you paid, and break the estimated interest out into its own segment to see how much of each month's payment went to the bank rather than the debt. Tick student loans and mortgages in or out of the stack. The chart follows your theme: colours, font, corners, and spacing all match.",
   },
+  spendingDetective: {
+    name: "Spending Detective",
+    condition: "Visualize how you spend your money.",
+    learnMore:
+      "From a budget sheet's … menu, pick Visualize spending to see where the money actually went: monthly bars stacked per category, a donut you can click to drill into the types inside a category, income against expenses month by month, and the merchants you spend the most at. Only completed entries and imported bank history count, so the picture shows real spending — not plans. Use the 3M / 6M / 12M / All row to widen the window. The charts follow your theme: colours, font, corners, and spacing all match.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",
