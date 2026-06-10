@@ -39,7 +39,7 @@ const loansSheet: LoansSheetCatalog = {
   description: "Beskrivning",
   kind: "Typ av lån",
   startDate: "Startdatum",
-  monthlyPayment: "Månadsbetalning",
+  startSum: "Startbelopp",
   rateLabel: "Ränta (%/år)",
   startFee: "Uppläggningsavgift",
   optionalHint: "Valfritt",
@@ -53,7 +53,9 @@ const loansSheet: LoansSheetCatalog = {
   noMortgagesToLink:
     "Inga olänkade bolån på fastighetsbladet. Lägg till bolånet på en fastighet först, eller ange villkoren nedan.",
   balanceHint:
-    "Registrera vad som återstår av lånet med Uppdatera saldo i radens …-meny — saldot följer sedan de registrerade betalningarna.",
+    "Kvarvarande skuld utgår från startbeloppet (plus avgift) och följer de registrerade betalningarna. Synka om den när som helst med Uppdatera saldo i radens …-meny.",
+  balanceHintStudent:
+    "Registrera vad du är skyldig med Uppdatera saldo i radens …-meny — saldot följer sedan de registrerade betalningarna.",
   create: "Skapa",
 
   updateBalanceTitle: "Uppdatera saldo",

@@ -112,7 +112,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
 
   const onSaveLoan = useCallback(
     (draft: LoanDraft) => {
-      const monthlyPayment = parseAmount(draft.monthlyPayment);
+      const startSum = parseAmount(draft.startSum);
       const rate = parseAmount(draft.rate);
       const startFee = parseAmount(draft.startFee);
       // Sanitised term values: parseAmount tolerates signs, so clamp the
@@ -132,7 +132,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
             glyph: draft.glyph ?? undefined,
             color: draft.color ?? undefined,
             startDate: draft.startDate || undefined,
-            monthlyPayment: clean(monthlyPayment),
+            startSum: clean(startSum),
             rate: clean(rate),
             startFee: clean(startFee),
             lenderName: draft.lenderName || undefined,
@@ -152,9 +152,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
           ...(draft.glyph && { glyph: draft.glyph }),
           ...(draft.color && { color: draft.color }),
           ...(draft.startDate && { startDate: draft.startDate }),
-          ...(clean(monthlyPayment) !== undefined && {
-            monthlyPayment: clean(monthlyPayment),
-          }),
+          ...(clean(startSum) !== undefined && { startSum: clean(startSum) }),
           ...(clean(rate) !== undefined && { rate: clean(rate) }),
           ...(clean(startFee) !== undefined && { startFee: clean(startFee) }),
           ...(draft.lenderName && { lenderName: draft.lenderName }),

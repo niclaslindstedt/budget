@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   linkedMortgageFigures,
+  loanMonthlyPayment,
   loanPaidSoFar,
   loanRemainingBalance,
   resolveLinkedMortgages,
@@ -36,8 +37,45 @@ describe("loanPaidSoFar", () => {
 });
 
 describe("loanRemainingBalance", () => {
-  it("returns null when no balance has been recorded", () => {
+  it("returns null when neither a snapshot nor a start sum is recorded", () => {
     expect(loanRemainingBalance(loan(), "2026-06-01")).toBeNull();
+  });
+
+  it("anchors on the start sum (plus fee) when no snapshot is recorded", () => {
+    const l = loan({
+      startDate: "2026-01-01",
+      startSum: 100000,
+      startFee: 500,
+      payments: [
+        { id: "p1", date: "2026-01-27", amount: 2000 },
+        { id: "p2", date: "2026-02-27", amount: 2000 },
+      ],
+    });
+    expect(loanRemainingBalance(l, "2026-06-01")).toBe(96500);
+  });
+
+  it("anchors the start sum before the earliest payment when no start date exists", () => {
+    const l = loan({
+      startSum: 10000,
+      payments: [{ id: "p1", date: "2026-01-27", amount: 1000 }],
+    });
+    expect(loanRemainingBalance(l, "2026-06-01")).toBe(9000);
+  });
+
+  it("lets a recorded snapshot override the start sum from its date on", () => {
+    const l = loan({
+      startDate: "2026-01-01",
+      startSum: 100000,
+      balanceHistory: [{ id: "b1", date: "2026-03-01", value: 95000 }],
+      payments: [
+        // Already reflected by the snapshot — must not double-count.
+        { id: "p1", date: "2026-01-27", amount: 2000 },
+        { id: "p2", date: "2026-03-27", amount: 2000 },
+      ],
+    });
+    expect(loanRemainingBalance(l, "2026-06-01")).toBe(93000);
+    // Before the snapshot the start sum still anchors.
+    expect(loanRemainingBalance(l, "2026-02-01")).toBe(98000);
   });
 
   it("subtracts payments after the snapshot when no rate is set", () => {
@@ -138,6 +176,58 @@ describe("loanRemainingBalance", () => {
       payments: [{ id: "p1", date: "2026-02-01", amount: 5000 }],
     });
     expect(loanRemainingBalance(l, "2026-06-01")).toBe(0);
+  });
+});
+
+describe("loanMonthlyPayment", () => {
+  it("returns null with no payments recorded", () => {
+    expect(loanMonthlyPayment(loan(), "2026-06-01")).toBeNull();
+  });
+
+  it("averages the current year's payment months", () => {
+    const l = loan({
+      payments: [
+        { id: "p0", date: "2025-12-27", amount: 9999 },
+        { id: "p1", date: "2026-01-27", amount: 2000 },
+        { id: "p2", date: "2026-02-27", amount: 2100 },
+        { id: "p3", date: "2026-03-27", amount: 2200 },
+      ],
+    });
+    // Three months in 2026 ⇒ last year's level is out of the window.
+    expect(loanMonthlyPayment(l, "2026-06-01")).toBeCloseTo(2100, 5);
+  });
+
+  it("falls back to the last three payment months at the start of the year", () => {
+    const l = loan({
+      payments: [
+        { id: "p1", date: "2025-10-27", amount: 1000 },
+        { id: "p2", date: "2025-11-27", amount: 2000 },
+        { id: "p3", date: "2025-12-27", amount: 2100 },
+        { id: "p4", date: "2026-01-27", amount: 2200 },
+      ],
+    });
+    // Only one month landed in 2026 ⇒ average the three most recent
+    // payment months across the year boundary.
+    expect(loanMonthlyPayment(l, "2026-02-01")).toBeCloseTo(
+      (2000 + 2100 + 2200) / 3,
+      5,
+    );
+  });
+
+  it("sums split rows within a month and ignores future payments", () => {
+    const l = loan({
+      payments: [
+        { id: "p1", date: "2026-01-27", amount: 2400 },
+        { id: "p2", date: "2026-02-27", amount: 2600 },
+        { id: "p3", date: "2026-03-05", amount: 1000 },
+        { id: "p4", date: "2026-03-27", amount: 1500 },
+        { id: "p5", date: "2026-07-27", amount: 9999 },
+      ],
+    });
+    expect(loanMonthlyPayment(l, "2026-06-01")).toBeCloseTo(
+      (2400 + 2600 + 2500) / 3,
+      5,
+    );
   });
 });
 

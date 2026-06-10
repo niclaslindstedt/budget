@@ -41,9 +41,11 @@ export type LoanDraft = {
   glyph: CategoryIcon | null;
   color: string | null;
   // Term fields as raw input text; the dialog hook parses them. Empty =
-  // unset. All ignored when `link` is set (terms resolve from the mortgage).
+  // unset. All ignored when `link` is set (terms resolve from the
+  // mortgage); `startSum` is also empty for a student loan — CSN debt has
+  // no single starting principal, so that kind anchors on Update balance.
   startDate: string;
-  monthlyPayment: string;
+  startSum: string;
   rate: string;
   startFee: string;
   // kind === "personal": the person's name. Empty = unset.
@@ -99,7 +101,7 @@ export function LoanModal({
   const [glyph, setGlyph] = useState<CategoryIcon | null>(null);
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [startDate, setStartDate] = useState("");
-  const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [startSum, setStartSum] = useState("");
   const [rate, setRate] = useState("");
   const [startFee, setStartFee] = useState("");
   const [lenderName, setLenderName] = useState("");
@@ -122,9 +124,9 @@ export function LoanModal({
     setGlyph(loan?.glyph ?? null);
     setColor(loan?.color ?? DEFAULT_COLOR);
     setStartDate(loan?.startDate ?? "");
-    setMonthlyPayment(
-      loan?.monthlyPayment !== undefined
-        ? formatAmountForInput(loan.monthlyPayment, settings)
+    setStartSum(
+      loan?.startSum !== undefined
+        ? formatAmountForInput(loan.startSum, settings)
         : "",
     );
     setRate(loan?.rate !== undefined ? String(loan.rate) : "");
@@ -214,7 +216,7 @@ export function LoanModal({
       glyph,
       color,
       startDate: isLinked ? "" : startDate,
-      monthlyPayment: isLinked ? "" : monthlyPayment.trim(),
+      startSum: isLinked || kind === "student" ? "" : startSum.trim(),
       rate: isLinked ? "" : rate.trim(),
       startFee: isLinked ? "" : startFee.trim(),
       lenderName: kind === "personal" ? lenderName.trim() : "",
@@ -357,20 +359,22 @@ export function LoanModal({
                     className={DATE_INPUT_CLASS}
                   />
                 </FormSection>
-                <FormSection
-                  as="label"
-                  className="min-w-0"
-                  label={t("loansSheet.monthlyPayment")}
-                >
-                  <ClearableInput
-                    value={monthlyPayment}
-                    onValueChange={setMonthlyPayment}
-                    inputMode="decimal"
-                    placeholder={amountPlaceholder}
-                    wrapperClassName="w-full min-w-0"
-                    className={monoInputClass}
-                  />
-                </FormSection>
+                {kind !== "student" && (
+                  <FormSection
+                    as="label"
+                    className="min-w-0"
+                    label={t("loansSheet.startSum")}
+                  >
+                    <ClearableInput
+                      value={startSum}
+                      onValueChange={setStartSum}
+                      inputMode="decimal"
+                      placeholder={amountPlaceholder}
+                      wrapperClassName="w-full min-w-0"
+                      className={monoInputClass}
+                    />
+                  </FormSection>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -405,7 +409,9 @@ export function LoanModal({
               </div>
 
               <p className="m-0 text-xs text-muted">
-                {t("loansSheet.balanceHint")}
+                {kind === "student"
+                  ? t("loansSheet.balanceHintStudent")
+                  : t("loansSheet.balanceHint")}
               </p>
             </>
           )}

@@ -1064,9 +1064,8 @@ export function buildSeedUserData(): UserData {
     name: "CSN",
     kind: "student",
     startDate: "2019-01-25",
-    monthlyPayment: 1180,
-    // Anchor the derived balance at the start date so every recorded
-    // payment amortises from it.
+    // Student loans have no start sum — the recorded snapshot anchors
+    // the derived balance, dated so every payment amortises from it.
     balanceHistory: [{ id: mkId("lbal"), date: "2019-01-25", value: 188000 }],
     payments: csnRecordedMonths.map(({ year, month }) => {
       const charge = csnChargeByMonth.get(`${year}-${month}`);
@@ -1091,17 +1090,13 @@ export function buildSeedUserData(): UserData {
     kind: "car",
     companyId: companyCarLender.id,
     startDate: "2024-08-12",
-    monthlyPayment: 2450,
+    startSum: 145000,
     rate: 5.95,
     startFee: 595,
-    // Two snapshots: the opening balance (the financed setup fee rides
-    // it) plus a recent re-recording, so the derived balance anchors on
-    // the latest point and the loan's unconsumed payment candidates
-    // amortise from there once imported.
-    balanceHistory: [
-      { id: mkId("lbal"), date: "2024-08-12", value: 145595 },
-      { id: mkId("lbal"), date: "2025-11-30", value: 122400 },
-    ],
+    // The start sum (plus financed fee) is the implicit opening anchor;
+    // the recent snapshot re-syncs the derived balance so the loan's
+    // unconsumed payment candidates amortise from there once imported.
+    balanceHistory: [{ id: mkId("lbal"), date: "2025-11-30", value: 122400 }],
     payments: [],
   };
   const linkedMortgageLoan: Loan = {

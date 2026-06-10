@@ -3,6 +3,7 @@ import { Link2, Pencil, Trash2 } from "lucide-react";
 
 import {
   linkedMortgageFigures,
+  loanMonthlyPayment,
   loanPaidSoFar,
   loanRemainingBalance,
   resolveLinkedMortgages,
@@ -52,7 +53,7 @@ function LoanRowImpl({
   const figures = linked
     ? linkedMortgageFigures(linked.mortgages, today)
     : {
-        monthlyPayment: loan.monthlyPayment ?? null,
+        monthlyPayment: loanMonthlyPayment(loan, today),
         rate: loan.rate ?? null,
         paidSoFar: loanPaidSoFar(loan),
         remaining: loanRemainingBalance(loan, today),

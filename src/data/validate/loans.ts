@@ -93,8 +93,7 @@ export function validateLoan(
     loan.color = raw.color;
   if (typeof raw.description === "string") loan.description = raw.description;
   if (isIsoDate(raw.startDate)) loan.startDate = raw.startDate;
-  if (isNonNegativeNumber(raw.monthlyPayment))
-    loan.monthlyPayment = raw.monthlyPayment;
+  if (isNonNegativeNumber(raw.startSum)) loan.startSum = raw.startSum;
   if (isNonNegativeNumber(raw.rate)) loan.rate = raw.rate;
   if (isNonNegativeNumber(raw.startFee)) loan.startFee = raw.startFee;
   if (typeof raw.lenderName === "string" && raw.lenderName !== "")

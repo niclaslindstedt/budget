@@ -43,7 +43,7 @@ const loansSheet = {
   description: "Description",
   kind: "Type of loan",
   startDate: "Start date",
-  monthlyPayment: "Monthly payment",
+  startSum: "Start sum",
   rateLabel: "Interest rate (%/year)",
   startFee: "Setup fee",
   optionalHint: "Optional",
@@ -57,7 +57,9 @@ const loansSheet = {
   noMortgagesToLink:
     "No unlinked mortgages on the Properties sheet. Add the mortgage to a property first, or enter the terms below.",
   balanceHint:
-    "Record what remains of the loan with Update balance in the row's … menu — the balance then follows the recorded payments.",
+    "The remaining balance starts from the start sum (plus fee) and follows the recorded payments. Re-sync it any time with Update balance in the row's … menu.",
+  balanceHintStudent:
+    "Record what you owe with Update balance in the row's … menu — the balance then follows the recorded payments.",
   create: "Create",
 
   // Update-balance modal.

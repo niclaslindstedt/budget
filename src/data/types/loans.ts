@@ -50,19 +50,19 @@ export type Loan = {
   color?: string;
   description?: string;
   // ISO yyyy-mm-dd the loan started (first day interest accrues).
-  // Informational — the balance derives from `balanceHistory`, not from
-  // the start date.
   startDate?: string;
-  // What the user pays per month (amortization + interest), >= 0.
-  // Informational — shown in the Monthly column; the balance derives
-  // from the recorded payments, not this figure.
-  monthlyPayment?: number;
+  // Original principal, >= 0. Acts as the implicit opening balance
+  // anchor (dated at `startDate`) when no snapshot covers a date — see
+  // `loanRemainingBalance`. Not collected for `kind: "student"`: CSN
+  // debt accrues over the study years, so there is no meaningful single
+  // starting principal — student loans anchor on `balanceHistory` alone.
+  startSum?: number;
   // Annual interest rate in percent (e.g. 4.5). When set, the remaining-
   // balance walk accrues monthly interest so only the payment net of
   // interest amortises; absent ⇒ whole payments amortise.
   rate?: number;
-  // One-off setup fee ("uppläggningsavgift"), >= 0. Informational — a
-  // recorded balance snapshot already includes any financed fee.
+  // One-off setup fee ("uppläggningsavgift"), >= 0. Financed into the
+  // implicit opening anchor (`startSum` + fee).
   startFee?: number;
   // kind === "personal": the person the money was borrowed from. Free
   // text rather than a Company — a friend or relative isn't a merchant.
@@ -84,10 +84,11 @@ export type Loan = {
   // own `payments[]` is authoritative there.
   payments: LoanPayment[];
   // Manually-recorded outstanding balance over time ("Update balance" on
-  // the row's "…" menu). The remaining balance anchors on the nearest
-  // snapshot and walks the payments from there; an empty history means
-  // "no balance recorded yet" and the row shows "—". Unused for a linked
-  // mortgage loan — the mortgage's own balance is authoritative there.
+  // the row's "…" menu, available for every kind). The remaining balance
+  // anchors on the nearest snapshot — or on the implicit `startSum`
+  // opening anchor — and walks the payments from there; with neither the
+  // row shows "—". Unused for a linked mortgage loan — the mortgage's
+  // own balance is authoritative there.
   balanceHistory: LoanBalancePoint[];
   // Normalised bank-description keys (`normaliseDescription`) learned when
   // the user imports payments. Future `importBankHistory` runs auto-attach

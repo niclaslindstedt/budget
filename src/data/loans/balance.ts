@@ -1,10 +1,11 @@
 // Pure balance math for the Loans sheet. A simple loan's remaining balance
-// derives from its recorded balance snapshots plus the payments between; a
-// linked mortgage loan resolves everything live from the linked `Mortgage`
-// so the Properties sheet stays the single source of truth.
+// derives from its balance anchors (recorded snapshots and/or the start
+// sum) plus the payments between; a linked mortgage loan resolves
+// everything live from the linked `Mortgage` so the Properties sheet
+// stays the single source of truth.
 
 import type { Loan, Mortgage, Property } from "../types";
-import { isoToMonthNum } from "../../utils/date";
+import { addDaysIso, isoToMonthNum } from "../../utils/date";
 import { balanceAt, resolveRateAt } from "../property-mortgage/interest";
 import { resolveMonthlyPaymentAt } from "../property-mortgage/payment";
 
@@ -13,6 +14,70 @@ export function loanPaidSoFar(loan: Loan): number {
   let sum = 0;
   for (const payment of loan.payments) sum += payment.amount;
   return sum;
+}
+
+// The "Monthly" column — derived from the recorded payments rather than
+// entered. Payments are grouped into per-month totals (a charge split
+// across several rows in one month sums back to the bank figure) and
+// the figure is the average of the current year's months-with-payments
+// — so a January rate change doesn't drag last year's level along all
+// year. At the start of the year, when fewer than three months have
+// landed yet, the average falls back to the three most recent payment
+// months regardless of year. Null with no payments recorded.
+export function loanMonthlyPayment(
+  loan: Loan,
+  todayIso: string,
+): number | null {
+  if (loan.payments.length === 0) return null;
+  const totalsByMonth = new Map<number, number>();
+  for (const payment of loan.payments) {
+    if (payment.date > todayIso) continue;
+    const month = isoToMonthNum(payment.date);
+    totalsByMonth.set(month, (totalsByMonth.get(month) ?? 0) + payment.amount);
+  }
+  if (totalsByMonth.size === 0) return null;
+  const months = [...totalsByMonth.keys()].sort((a, b) => a - b);
+  const yearStartMonth = isoToMonthNum(`${todayIso.slice(0, 4)}-01-01`);
+  const currentYear = months.filter((m) => m >= yearStartMonth);
+  const window = currentYear.length >= 3 ? currentYear : months.slice(-3);
+  let sum = 0;
+  for (const month of window) sum += totalsByMonth.get(month) ?? 0;
+  return sum / window.length;
+}
+
+// The dated anchors the remaining-balance walk can start from: every
+// recorded snapshot, plus — when a start sum is recorded — an implicit
+// opening point worth startSum + startFee. The opening point sorts
+// before everything else: dated at `startDate` when recorded, otherwise
+// the day before the earliest payment / snapshot (so every payment
+// amortises from it), otherwise `fallbackIso`. Sorted ascending.
+function effectiveBalancePoints(
+  loan: Loan,
+  fallbackIso: string,
+): Array<{ date: string; value: number }> {
+  const points: Array<{ date: string; value: number }> = [];
+  if (loan.startSum !== undefined) {
+    let date = loan.startDate;
+    if (date === undefined) {
+      let earliest: string | undefined;
+      for (const payment of loan.payments) {
+        if (earliest === undefined || payment.date < earliest)
+          earliest = payment.date;
+      }
+      for (const point of loan.balanceHistory) {
+        if (earliest === undefined || point.date < earliest)
+          earliest = point.date;
+      }
+      date = earliest !== undefined ? addDaysIso(earliest, -1) : fallbackIso;
+    }
+    points.push({ date, value: loan.startSum + (loan.startFee ?? 0) });
+  }
+  // The opening anchor goes first so a snapshot recorded on the same day
+  // wins the (stable) sort and anchors the walk.
+  points.push(...loan.balanceHistory);
+  return points.sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
 }
 
 // The linked mortgages behind a `kind: "mortgage"` loan, or null when the
@@ -42,30 +107,28 @@ export function resolveLinkedMortgages(
 
 // Remaining balance of a simple (unlinked) loan as of `dateIso`.
 //
-// The balance anchors on the loan's recorded balance snapshots ("Update
-// balance" on the row's "…" menu): the latest snapshot on or before the
-// date, treated as the end-of-day figure, and the payments recorded
-// between the snapshot and the date amortise from there. Without a rate
-// the whole payment amortises. With a rate the walk runs month by month
-// (matching the snapshot's monthly granularity): each month accrues
-// interest on the outstanding balance (annual rate / 12) before that
-// month's payments land, so only the payment net of interest amortises —
-// a loan with a rate and no recorded payments honestly grows. Clamped at
-// 0 once paid off.
+// The balance anchors on the loan's balance points ("Update balance"
+// snapshots, plus the implicit `startSum` opening anchor — see
+// `effectiveBalancePoints`): the latest point on or before the date,
+// treated as the end-of-day figure, and the payments recorded between
+// the anchor and the date amortise from there. Without a rate the whole
+// payment amortises. With a rate the walk runs month by month: each
+// month accrues interest on the outstanding balance (annual rate / 12)
+// before that month's payments land, so only the payment net of
+// interest amortises — a loan with a rate and no recorded payments
+// honestly grows. Clamped at 0 once paid off.
 //
-// A date before the earliest snapshot adds the payments in between back
+// A date before the earliest point adds the payments in between back
 // on (interest is not un-accrued — backdated figures are approximate).
 //
-// Returns null when no balance has been recorded — the row renders "—"
-// rather than a guessed figure.
+// Returns null when neither a snapshot nor a start sum is recorded —
+// the row renders "—" rather than a guessed figure.
 export function loanRemainingBalance(
   loan: Loan,
   dateIso: string,
 ): number | null {
-  if (loan.balanceHistory.length === 0) return null;
-  const points = [...loan.balanceHistory].sort((a, b) =>
-    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
-  );
+  const points = effectiveBalancePoints(loan, dateIso);
+  if (points.length === 0) return null;
   let anchor = points[0];
   for (const point of points) {
     if (point.date > dateIso) break;

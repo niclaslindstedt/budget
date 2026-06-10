@@ -327,11 +327,13 @@ src/
 │   ├── loans/              # loans page — balance math + payment import
 │   │   ├── presets.ts          # LOAN_PRESET_TYPE_BY_KIND (kind → preset type
 │   │   │                       #   id the candidate scan anchors on), LOAN_KINDS
-│   │   ├── balance.ts          # loanPaidSoFar, loanRemainingBalance (balance
-│   │   │                       #   snapshot anchor + payments; rate accrues
-│   │   │                       #   monthly interest), resolveLinkedMortgages +
-│   │   │                       #   linkedMortgageFigures (aggregated across
-│   │   │                       #   the linked mortgages)
+│   │   ├── balance.ts          # loanPaidSoFar, loanMonthlyPayment (derived
+│   │   │                       #   from the payment history), loanRemaining-
+│   │   │                       #   Balance (snapshot / start-sum anchor +
+│   │   │                       #   payments; rate accrues monthly interest),
+│   │   │                       #   resolveLinkedMortgages + linkedMortgage-
+│   │   │                       #   Figures (aggregated across the linked
+│   │   │                       #   mortgages)
 │   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
 │   │   │                       #   matched outflows minus already-recorded ids —
 │   │   │                       #   + findSimilarLoanPaymentCandidates (same

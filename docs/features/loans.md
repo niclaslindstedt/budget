@@ -6,9 +6,12 @@ straight from your imported bank transactions.
 
 ## What a loan records
 
-Each loan carries a type, a start date, a monthly payment, and
-optionally an annual interest rate and a setup fee
-(_uppläggningsavgift_). The lender field follows the type:
+Each loan carries a type, a start date, a start sum, and optionally an
+annual interest rate and a setup fee (_uppläggningsavgift_). A
+**student loan** is the exception: CSN debt builds up over the study
+years, so there is no single starting principal to enter — record what
+you owe with Update balance instead (see below). The lender field
+follows the type:
 
 - a **personal loan** names the person you borrowed from,
 - a **private loan** or **car loan** names the lending company,
@@ -18,17 +21,22 @@ optionally an annual interest rate and a setup fee
 
 The loans table shows each loan's monthly payment, rate, what you've
 paid so far, and what remains — with a total of remaining debt across
-all loans at the bottom.
+all loans at the bottom. The monthly payment isn't entered anywhere:
+it's calculated from the recorded payments — the average over this
+year's payment months, or the three most recent ones while the year is
+still young.
 
 ## Remaining balance
 
-Record what remains of the loan with **Update balance** on the loan
-row's "…" menu: enter the outstanding debt and the date it was true.
-The remaining balance at any date is then calculated from the latest
-recorded balance and the payments since — so re-recording the balance
-whenever a statement arrives keeps the figure exact, and the payments
-carry it forward in between. Older snapshots stay listed in the same
-modal and can be deleted.
+The balance starts from the loan's start sum (plus the financed setup
+fee) on its start date and follows the recorded payments from there.
+Whenever you want to re-sync it against reality — a statement arrived,
+or payments weren't imported for a while — use **Update balance** on
+the loan row's "…" menu: enter the outstanding debt and the date it was
+true. The remaining balance at any date is then calculated from the
+latest recorded balance and the payments since. Older snapshots stay
+listed in the same modal and can be deleted. For a student loan this is
+the only balance source, since that kind has no start sum.
 
 With a rate set, the calculation walks month by month: each month
 accrues interest on the outstanding balance, and the payments that

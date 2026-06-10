@@ -10,7 +10,7 @@ function loan(over: Partial<Loan> = {}): Loan {
     id: "loan-1",
     name: "Car loan",
     kind: "car",
-    monthlyPayment: 2500,
+    startSum: 120000,
     payments: [],
     balanceHistory: [],
     ...over,

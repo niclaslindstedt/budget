@@ -11,7 +11,7 @@ function loan(over: Partial<Loan> = {}): Loan {
     name: "Car loan",
     kind: "car",
     startDate: "2026-01-15",
-    monthlyPayment: 2500,
+    startSum: 120000,
     rate: 4.5,
     startFee: 495,
     payments: [{ id: "p1", date: "2026-02-27", amount: 2500 }],
@@ -169,7 +169,7 @@ describe("loan migrations", () => {
     expect("mortgageId" in loans[0]).toBe(false);
   });
 
-  it("v74 → converts startSum (+ fee) to a balance snapshot at the start date", () => {
+  it("v74 → keeps a non-student startSum and drops monthlyPayment", () => {
     const old = {
       ...freshUserData(),
       version: 74,
@@ -181,6 +181,35 @@ describe("loan migrations", () => {
           startDate: "2024-08-12",
           startSum: 145000,
           startFee: 595,
+          monthlyPayment: 2450,
+          payments: [],
+        },
+      ],
+    } as Record<string, unknown>;
+    const { data, migrated } = migrate(old as never);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const loans = (data as UserData).loans as Array<Record<string, unknown>>;
+    // The start sum stays — it now acts as the implicit opening anchor.
+    expect(loans[0].startSum).toBe(145000);
+    expect(loans[0].startFee).toBe(595);
+    expect("monthlyPayment" in loans[0]).toBe(false);
+    expect(loans[0].balanceHistory).toEqual([]);
+  });
+
+  it("v74 → converts a student startSum (+ fee) to a balance snapshot", () => {
+    const old = {
+      ...freshUserData(),
+      version: 74,
+      loans: [
+        {
+          id: "loan-1",
+          name: "CSN",
+          kind: "student",
+          startDate: "2019-01-25",
+          startSum: 145000,
+          startFee: 595,
+          monthlyPayment: 1180,
           payments: [],
         },
       ],
@@ -190,16 +219,17 @@ describe("loan migrations", () => {
     expect(data.version).toBe(LATEST_VERSION);
     const loans = (data as UserData).loans as Array<Record<string, unknown>>;
     expect("startSum" in loans[0]).toBe(false);
+    expect("monthlyPayment" in loans[0]).toBe(false);
     // The fee stays as informational metadata; its financed value rides
     // the snapshot.
     expect(loans[0].startFee).toBe(595);
     const points = loans[0].balanceHistory as Array<Record<string, unknown>>;
     expect(points).toHaveLength(1);
-    expect(points[0].date).toBe("2024-08-12");
+    expect(points[0].date).toBe("2019-01-25");
     expect(points[0].value).toBe(145595);
   });
 
-  it("v74 → anchors before the earliest payment when no start date exists", () => {
+  it("v74 → anchors a student snapshot before the earliest payment when no start date exists", () => {
     const old = {
       ...freshUserData(),
       version: 74,

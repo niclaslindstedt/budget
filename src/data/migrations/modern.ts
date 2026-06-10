@@ -1089,21 +1089,29 @@ export const MODERN_MIGRATIONS: MigrationTable = {
     return { ...v73, version: 74, loans };
   },
 
-  // v74 → v75: a loan's balance anchors on dated snapshots
-  // (`Loan.balanceHistory`, recorded via "Update balance" on the row's
-  // "…" menu) instead of the original principal — `Loan.startSum` is
-  // gone. An existing start sum converts to one snapshot: the setup fee
-  // it used to finance folds into the value (the fee field itself stays,
-  // as informational metadata), dated at the start date when recorded.
-  // Without a start date the snapshot lands the day before the earliest
-  // payment so every payment still amortises from it — preserving the
-  // old "start sum + fee − payments" figure — or today as the last
-  // resort (no payments ⇒ the date can't change the derived balance).
+  // v74 → v75: loans gain dated balance snapshots (`Loan.balanceHistory`,
+  // recorded via "Update balance" on the row's "…" menu, every kind) and
+  // lose the hand-entered `monthlyPayment` — the Monthly column now
+  // derives from the recorded payments. A STUDENT loan's start sum also
+  // converts to one snapshot and is dropped: CSN debt accrues over the
+  // study years, so the editor no longer collects a starting principal
+  // for that kind. The snapshot folds in the financed setup fee, dated
+  // at the start date when recorded; without one it lands the day before
+  // the earliest payment so every payment still amortises from it —
+  // preserving the old "start sum + fee − payments" figure — or today as
+  // the last resort (no payments ⇒ the date can't change the derived
+  // balance). Other kinds keep `startSum`, which now acts as the
+  // implicit opening balance anchor.
   74: (v74) => {
     const loans = Array.isArray(v74.loans)
       ? v74.loans.map((loan) => {
           if (!isObj(loan)) return loan;
-          const { startSum, ...rest } = loan;
+          const { monthlyPayment: _monthlyPayment, ...kept } = loan;
+          void _monthlyPayment;
+          if (kept.kind !== "student") {
+            return { ...kept, balanceHistory: [] };
+          }
+          const { startSum, ...rest } = kept;
           const balanceHistory: unknown[] = [];
           if (typeof startSum === "number" && Number.isFinite(startSum)) {
             const fee =
