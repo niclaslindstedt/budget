@@ -9,6 +9,7 @@ import {
 } from "../../data/loans/balance";
 import { listLoanPayments } from "../../data/loans/payments";
 import type { Company, Loan, Property, Settings } from "../../data/types";
+import { useAmountColumns } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, formatRate } from "../../utils/format";
@@ -46,6 +47,7 @@ export function LoanViewModal({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass } = useAmountColumns();
 
   if (!open || !loan) return null;
 
@@ -62,25 +64,28 @@ export function LoanViewModal({
       };
   const payments = listLoanPayments(loan, linked?.mortgages ?? null);
 
-  // Sub-line: the kind, plus where the money came from — mirrors the row.
+  // Sub-line: the kind, plus the lending company or person — mirrors the
+  // row. A linked loan's "Linked to …" text heads the linked-mortgages
+  // list below instead, right above the names it summarises.
   const company =
     loan.companyId !== undefined
       ? companies.find((c) => c.id === loan.companyId)
       : undefined;
+  const linkedLabel = linked
+    ? linked.mortgages.length === 1
+      ? t("loansSheet.linkedTo", { name: linked.property.name })
+      : t("loansSheet.linkedToMany", {
+          name: linked.property.name,
+          n: linked.mortgages.length,
+        })
+    : undefined;
   const subParts: string[] = [t(LOAN_KIND_LABEL_KEY[loan.kind])];
-  if (linked) {
-    subParts.push(
-      linked.mortgages.length === 1
-        ? t("loansSheet.linkedTo", { name: linked.property.name })
-        : t("loansSheet.linkedToMany", {
-            name: linked.property.name,
-            n: linked.mortgages.length,
-          }),
-    );
-  } else if (company) {
-    subParts.push(company.name);
-  } else if (loan.lenderName !== undefined) {
-    subParts.push(loan.lenderName);
+  if (!linked) {
+    if (company) {
+      subParts.push(company.name);
+    } else if (loan.lenderName !== undefined) {
+      subParts.push(loan.lenderName);
+    }
   }
 
   const termRows: Array<{ key: string; label: string; value: string }> = [];
@@ -175,7 +180,9 @@ export function LoanViewModal({
                 className="flex flex-col gap-0.5 rounded border border-line bg-surface-2 px-3 py-2"
               >
                 <span className="text-xs text-muted">{tile.label}</span>
-                <span className="font-mono text-sm whitespace-nowrap text-fg-bright tabular-nums">
+                <span
+                  className={`font-mono text-sm whitespace-nowrap text-fg-bright tabular-nums ${cellClass}`}
+                >
                   {tile.value}
                 </span>
               </div>
@@ -184,9 +191,11 @@ export function LoanViewModal({
 
           {/* The mortgages behind a linked loan, by name — the table only
               shows a chain glyph, so this is where the link spells itself
-              out. The terms themselves live on the Properties sheet. */}
+              out, headed by the "Linked to …" summary. The terms
+              themselves live on the Properties sheet. */}
           {linked && (
             <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
+              <span className="text-xs text-muted">{linkedLabel}</span>
               {linked.mortgages.map((mortgage) => (
                 <div
                   key={mortgage.id}
@@ -207,12 +216,11 @@ export function LoanViewModal({
           {termRows.length > 0 && (
             <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
               {termRows.map((row) => (
-                <div
-                  key={row.key}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <span className="text-muted">{row.label}</span>
-                  <span className="font-mono whitespace-nowrap text-fg tabular-nums">
+                <div key={row.key} className="flex items-center gap-2 text-sm">
+                  <span className="shrink-0 text-muted">{row.label}</span>
+                  <span
+                    className={`flex-1 font-mono whitespace-nowrap text-fg tabular-nums ${cellClass}`}
+                  >
                     {row.value}
                   </span>
                 </div>
@@ -233,12 +241,14 @@ export function LoanViewModal({
                 {payments.map((payment) => (
                   <li
                     key={payment.id}
-                    className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
+                    className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
                   >
-                    <span className="text-muted">
+                    <span className="shrink-0 text-muted">
                       {formatDate(payment.date, settings.dateFormat, lang)}
                     </span>
-                    <span className="tabular-nums text-fg-bright">
+                    <span
+                      className={`flex-1 tabular-nums text-fg-bright ${cellClass}`}
+                    >
                       {formatBalance(payment.amount, settings, {
                         neverAbbreviate: true,
                       })}
