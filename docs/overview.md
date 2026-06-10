@@ -2263,7 +2263,13 @@ An ephemeral status message at the bottom. `src/components/Toast.tsx` +
 ### Update toast
 
 `src/components/UpdateToast.tsx` — the "new build, click to reload" PWA
-prompt.
+prompt. When the workbox `waiting` event fires it fetches
+`version.json` (emitted into the slot root by `emitVersionJson()` in
+`vite.config.ts`, cache-bypassed so the still-active old SW lets it
+reach the network) to name the _incoming_ build's version — not the
+running bundle's `BUILD_LABEL`, which is the version being upgraded
+away from. Falls back to a version-less message when the fetch fails
+(offline, or a deploy predating `version.json`).
 
 ### Active row
 
