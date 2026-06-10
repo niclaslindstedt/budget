@@ -613,6 +613,19 @@
     .loans-table td > * {
       width: 100%;
     }
+    /* The amount span sizes to its content, not to the td. The shared
+       ch-sized track can under-resolve (browsers compute `1ch` of the
+       webfont from an approximate metric, ~0.5em in Chromium, while the
+       real glyph advance is wider), and a 100%-width span then overflows
+       its box to the RIGHT — long amounts drift past the column's right
+       edge while short ones stay put, so the column reads centred.
+       Content-sized + the td's `justify-end`, every amount's right edge
+       pins to the trailing gutter and any overflow bleeds left into the
+       column gap instead. */
+    .loans-table td > .loans-amount {
+      width: auto;
+      flex: 0 0 auto;
+    }
 
     /* Transfers table — single-button swipe strip (edit only) using the
        same overlay pattern as the accounts and budget tables, but at

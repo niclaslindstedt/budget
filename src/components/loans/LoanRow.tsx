@@ -201,7 +201,7 @@ function LoanRowImpl({
       <td
         className={`py-2 pr-[calc(0.625rem_+_1ch)] pl-2.5 align-middle font-mono whitespace-nowrap text-fg tabular-nums ${cellClass}`}
       >
-        <span>
+        <span className="loans-amount">
           {figures.remaining !== null
             ? formatBalance(figures.remaining, settings)
             : "—"}
