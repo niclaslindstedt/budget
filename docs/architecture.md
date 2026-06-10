@@ -135,7 +135,10 @@ src/
 │                                      #   ("Visualize value", account chooser)
 │   └── loans/                # loans page — the money the user owes
 │       ├── LoansPage.tsx         # page root — loans table + remaining total
-│       ├── LoanRow.tsx           # one loan row (swipe edit/delete, "…" menu)
+│       ├── LoanRow.tsx           # one loan row (tap → view, swipe edit/delete,
+│       │                         #   "…" menu)
+│       ├── LoanViewModal.tsx     # read-only loan details (terms, figures,
+│       │                         #   payments list; Edit shortcut)
 │       ├── LoanActionsMenu.tsx   # "…" swipe-strip menu (update balance,
 │       │                         #   import/view payments)
 │       ├── LoanModal.tsx         # add/edit loan (kind picker, per-kind lender
@@ -334,6 +337,9 @@ src/
 │   │   │                       #   resolveLinkedMortgages + linkedMortgage-
 │   │   │                       #   Figures (aggregated across the linked
 │   │   │                       #   mortgages)
+│   │   ├── payments.ts         # listLoanPayments — the payment rows the Loans
+│   │   │                       #   sheet lists (linked loans group per-mortgage
+│   │   │                       #   splits back into one row per bank charge)
 │   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
 │   │   │                       #   matched outflows minus already-recorded ids —
 │   │   │                       #   + findSimilarLoanPaymentCandidates (same

@@ -1602,11 +1602,19 @@ workspace-wide `UserData.loans` collection — the money the user owes
 (student loans, car loans, mortgages, money borrowed from a person). It
 is a data-light singleton flavour like Savings / Properties: the page
 (`src/components/loans/LoansPage.tsx`) lists every `Loan` as a table row
-(glyph · name + kind / lender sub-line · monthly payment · rate · paid
+(glyph · name + sub-line · kind column · monthly payment · rate · paid
 so far · remaining balance) with a footer total of remaining debt, and
 loan CRUD goes through `reduceLoans` (`src/data/reducers/loans.ts`), not
-the per-item reducer tail. Files live in `src/components/loans/`;
-helpers in `src/data/loans/`. Rows carry the standard left-swipe
+the per-item reducer tail. The kind column renders the kind's glyph +
+label on desktop and the glyph alone on mobile; the sub-line carries
+the lender (desktop only) or, for a linked mortgage loan, a chain glyph
+plus the property name (glyph only on mobile) — the full lender /
+linked-mortgage detail lives in the View loan modal. On mobile every
+row resolves the shared `--loans-row-template` grid (widest formatted
+amount, fixed type-glyph track) so the columns align across rows,
+mirroring the transfers table. Files live in `src/components/loans/`;
+helpers in `src/data/loans/`. Tapping a row body opens the read-only
+View loan modal (see below); rows also carry the standard left-swipe
 Edit / Delete strip plus a "…" menu (`LoanActionsMenu.tsx`) with Update
 balance, Import payments, and View payments. Adding the first loan
 unlocks the **Borrower** achievement.
@@ -1750,7 +1758,26 @@ linked mortgages' payments instead — shared with the Properties
 sheet's Mortgage payments view — grouped by charge: a combined bank
 draw recorded as one split per mortgage (every leg sharing the
 charge's `sourceHistoryId`) lists as one summed row, and deleting it
-deletes every leg via `deleteMortgagePayment`.
+deletes every leg via `deleteMortgagePayment`. The row-building lives
+in `listLoanPayments` (`src/data/loans/payments.ts`), shared with the
+View loan modal so the two lists can never disagree.
+
+### View loan modal
+
+`LoanViewModal.tsx` — the read-only loan details card, opened by
+tapping a loan row's body (the swipe strip's buttons still win their
+own taps; a swiped row's first tap retracts the swipe instead,
+mirroring the accounts table). Shows the loan's identity (kind plus
+the linked property / lending company / person), its description, the
+four derived figures the table also shows (monthly payment, rate, paid
+so far, remaining — computed with the same helpers, so the modal and
+the row can't disagree), the entered terms (start date / start sum /
+setup fee; a linked loan lists its linked mortgages by name instead —
+its terms live on the mortgage), and the recorded payments via
+`listLoanPayments`. Management stays
+elsewhere: the footer's Edit button closes the view and opens the edit
+modal, and the row's "…" menu keeps Update balance / Import payments /
+View payments.
 
 ## Data and storage
 

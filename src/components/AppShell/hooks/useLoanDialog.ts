@@ -51,6 +51,11 @@ type Result = {
   onRequestDeleteLoan: (loanId: string, name: string) => void;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
 
+  // Read-only loan view — opened by tapping a loan row.
+  viewLoan: Loan | null;
+  setViewForId: (next: string | null) => void;
+  onOpenViewLoan: (loanId: string) => void;
+
   // Update-balance modal — appends / deletes dated balance snapshots.
   updateBalanceLoan: Loan | null;
   setUpdateBalanceForId: (next: string | null) => void;
@@ -85,6 +90,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const [loanModal, setLoanModal] = useState<LoanModalState | null>(null);
   const [deleteLoanPrompt, setDeleteLoanPrompt] =
     useState<DeleteLoanPrompt | null>(null);
+  const [viewForId, setViewForId] = useState<string | null>(null);
   const [paymentsForId, setPaymentsForId] = useState<string | null>(null);
   const [importForId, setImportForId] = useState<string | null>(null);
   const [updateBalanceForId, setUpdateBalanceForId] = useState<string | null>(
@@ -211,6 +217,15 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     },
     [dispatch],
   );
+
+  const viewLoan = useMemo(
+    () =>
+      viewForId ? (data.loans.find((l) => l.id === viewForId) ?? null) : null,
+    [viewForId, data.loans],
+  );
+  const onOpenViewLoan = useCallback((loanId: string) => {
+    setViewForId(loanId);
+  }, []);
 
   const updateBalanceLoan = useMemo(
     () =>
@@ -421,6 +436,9 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     onDeleteLoanFromModal,
     onRequestDeleteLoan,
     onCreateCompany,
+    viewLoan,
+    setViewForId,
+    onOpenViewLoan,
     updateBalanceLoan,
     setUpdateBalanceForId,
     onOpenUpdateBalance,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type CSSProperties } from "react";
 import {
   CalendarClock,
   Coins,
@@ -6,6 +6,7 @@ import {
   Pencil,
   Percent,
   Plus,
+  Shapes,
   Tag,
   Wrench,
 } from "lucide-react";
@@ -38,6 +39,8 @@ type Props = {
   // Arms the delete confirmation (owned by the loans modal host, so the
   // edit modal's Delete button shares it). Fires from a row's trash button.
   onRequestDeleteLoan: (loanId: string, name: string) => void;
+  // Opens the read-only loan view — fires from a tap on the row body.
+  onViewLoan: (loanId: string) => void;
   onUpdateBalance: (loanId: string) => void;
   onImportPayments: (loanId: string) => void;
   onViewPayments: (loanId: string) => void;
@@ -50,6 +53,7 @@ export function LoansPage({
   onCreateLoan,
   onEditLoan,
   onRequestDeleteLoan,
+  onViewLoan,
   onUpdateBalance,
   onImportPayments,
   onViewPayments,
@@ -65,19 +69,37 @@ export function LoansPage({
   );
 
   // Footer roll-up: total remaining debt across the visible loans (linked
-  // mortgages resolve live from the property), mirroring the savings total.
-  const total = useMemo(() => {
+  // mortgages resolve live from the property), mirroring the savings
+  // total. The same walk measures the widest formatted amount for the
+  // mobile row template below.
+  const { total, amountChars } = useMemo(() => {
     const today = todayIso();
     let sum = 0;
+    let chars = 4;
     for (const loan of loans) {
       const linked = resolveLinkedMortgages(loan, data.properties);
       const remaining = linked
         ? linkedMortgageFigures(linked.mortgages, today).remaining
         : loanRemainingBalance(loan, today);
       sum += remaining ?? 0;
+      if (remaining !== null) {
+        const text = formatBalance(remaining, settings);
+        if (text.length > chars) chars = text.length;
+      }
     }
-    return sum;
-  }, [loans, data.properties]);
+    const totalText = formatBalance(sum, settings);
+    if (totalText.length > chars) chars = totalText.length;
+    return { total: sum, amountChars: chars };
+  }, [loans, data.properties, settings]);
+
+  // Mobile renders each row as its own CSS grid (the table goes
+  // display:block), so a `max-content` amount track resolves to a
+  // different width on every row — knocking the type-glyph column out
+  // of line. Pin one shared template instead: a fixed type track and an
+  // amount track sized to the widest formatted amount, so all rows (and
+  // the header) resolve identical columns. Mirrors the
+  // `--transfers-row-template` trick in `AccountTransfersModal`.
+  const mobileRowTemplate = `40px minmax(0, 1fr) 36px minmax(64px, calc(${amountChars} * 1ch + 1.25rem))`;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -95,7 +117,7 @@ export function LoansPage({
   ];
 
   const secondaryHeaderClass =
-    "loans-secondary-cell hidden px-2.5 py-2 text-right md:table-cell";
+    "loans-secondary-cell hidden px-2.5 py-2 text-right text-xs md:table-cell";
 
   return (
     <ActiveRowProvider>
@@ -111,12 +133,22 @@ export function LoansPage({
             {t("loansSheet.title")}
           </h3>
           <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="swipe-table loans-table w-full border-collapse text-sm md:text-[13px]">
+            <table
+              className="swipe-table loans-table w-full border-collapse text-sm md:text-[13px]"
+              style={
+                { "--loans-row-template": mobileRowTemplate } as CSSProperties
+              }
+            >
               <thead>
-                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+                {/* `text-xs` lives on each <th>, not on the grid-container
+                    <tr>: the mobile `--loans-row-template` sizes its
+                    amount track in `ch`, which resolves against this
+                    row's font-size — keeping the row at the body's size
+                    makes the header and data grids agree. */}
+                <tr className="border-b border-line bg-surface-3 font-bold tracking-wider uppercase text-muted">
                   <th
                     scope="col"
-                    className="w-10 px-2.5 py-2 text-left"
+                    className="w-10 px-2.5 py-2 text-left text-xs"
                     aria-label={t("loansSheet.name")}
                   >
                     <Tag
@@ -128,11 +160,28 @@ export function LoansPage({
                   </th>
                   <th
                     scope="col"
-                    className="px-2.5 py-2 text-left"
+                    className="px-2.5 py-2 text-left text-xs"
                     aria-label={t("loansSheet.name")}
                   >
                     <span className="hidden md:inline">
                       {t("loansSheet.name")}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2.5 py-2 text-left text-xs"
+                    aria-label={t("loansSheet.type")}
+                  >
+                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                      <Shapes
+                        size={16}
+                        className="shrink-0 text-accent"
+                        aria-hidden
+                        focusable={false}
+                      />
+                      <span className="hidden md:inline">
+                        {t("loansSheet.type")}
+                      </span>
                     </span>
                   </th>
                   <th
@@ -188,7 +237,7 @@ export function LoansPage({
                   </th>
                   <th
                     scope="col"
-                    className={`px-2.5 py-2 ${headerClass}`}
+                    className={`px-2.5 py-2 text-xs ${headerClass}`}
                     aria-label={t("loansSheet.remaining")}
                   >
                     <span
@@ -207,7 +256,7 @@ export function LoansPage({
                   </th>
                   <th
                     scope="col"
-                    className="swipe-action-cell loans-action-cell w-32 px-2.5 py-2"
+                    className="swipe-action-cell loans-action-cell w-32 px-2.5 py-2 text-xs"
                     aria-label={t("loansSheet.actions")}
                   >
                     <span className="flex items-center justify-start gap-1.5 md:gap-2">
@@ -228,7 +277,7 @@ export function LoansPage({
                 {loans.length === 0 && (
                   <tr className="loans-fullspan">
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-3 py-6 text-center text-xs text-muted"
                     >
                       {t("loansSheet.noLoans")}
@@ -244,6 +293,7 @@ export function LoansPage({
                     companies={data.companies}
                     onEditLoan={onEditLoan}
                     onDeleteLoan={onRequestDeleteLoan}
+                    onViewLoan={onViewLoan}
                     onUpdateBalance={onUpdateBalance}
                     onImportPayments={onImportPayments}
                     onViewPayments={onViewPayments}
@@ -255,6 +305,7 @@ export function LoansPage({
                     <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
                       {t("loansSheet.total")}
                     </td>
+                    <td className="px-2.5 py-2" />
                     <td className="loans-secondary-cell hidden md:table-cell" />
                     <td className="loans-secondary-cell hidden md:table-cell" />
                     <td className="loans-secondary-cell hidden md:table-cell" />
@@ -269,7 +320,7 @@ export function LoansPage({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={7} className="bg-surface-3 p-0">
+                  <td colSpan={8} className="bg-surface-3 p-0">
                     <button
                       type="button"
                       onClick={onCreateLoan}

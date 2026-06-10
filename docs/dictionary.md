@@ -232,7 +232,8 @@ personal), with payments imported from bank transactions. Sheet type
 | **Linked mortgage** (loan)                         | `Loan.propertyId` + `Loan.mortgageIds`; `resolveLinkedMortgages` / `linkedMortgageFigures` (`src/data/loans/balance.ts`). [→](overview.md#linked-mortgage-loan)                                                                                       |
 | **Import payments** (loan)                         | `LoanImportPaymentsModal.tsx`; `findLoanPaymentCandidates` / `findSimilarLoanPaymentCandidates` (`src/data/loans/candidates.ts`); `addLoanPayments` (+ `entryOverrides`). Opened from the loan row's "…" menu. [→](overview.md#import-payments-loan)  |
 | **Payment pattern** / **auto-attach** (loan)       | `Loan.paymentPatterns`; `learnPaymentPatterns` (`src/data/loans/patterns.ts`); `attachImportedLoanPayments` (`src/data/loans/auto-attach.ts`), run inside `importBankHistory`. [→](overview.md#loan-payment-pattern-auto-attach)                      |
-| **Loan payments view**                             | `LoanPaymentsModal.tsx`; `deleteLoanPayment` / `deleteAllLoanPayments`. [→](overview.md#loan-payments-view)                                                                                                                                           |
+| **Loan payments view**                             | `LoanPaymentsModal.tsx`; `deleteLoanPayment` / `deleteAllLoanPayments`; `listLoanPayments` (`src/data/loans/payments.ts`). [→](overview.md#loan-payments-view)                                                                                        |
+| **View loan** / **loan details modal**             | `LoanViewModal.tsx`; opened by tapping a loan row. [→](overview.md#view-loan-modal)                                                                                                                                                                   |
 
 ## Data and storage
 
