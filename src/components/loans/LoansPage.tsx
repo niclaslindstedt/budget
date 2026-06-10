@@ -378,6 +378,7 @@ export function LoansPage({
           open={chartOpen}
           loans={data.loans}
           properties={data.properties}
+          salaries={data.salaries}
           settings={settings}
           onClose={() => setChartOpen(false)}
         />

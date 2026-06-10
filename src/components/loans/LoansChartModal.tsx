@@ -6,7 +6,8 @@ import {
   buildLoanPaymentBands,
   type LoanBandSeries,
 } from "../../data/loans/series";
-import type { Loan, Property, Settings } from "../../data/types";
+import { averageMonthlyNetAt } from "../../data/salary/salary";
+import type { Loan, Property, Salary, Settings } from "../../data/types";
 import { useIsMobile, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { addMonthsIso, todayIso } from "../../utils/date";
@@ -36,6 +37,14 @@ import { StackedBarChart } from "../charts/StackedBarChart";
 // this modal only maps loans to themed, translated series and owns the
 // toggles. Mirrors `SavingsValueChartModal`.
 //
+// A "multiple of monthly salary" modifier (hidden when no salaries are
+// recorded) divides every band's value at each sample by the household's
+// average monthly net salary effective at that date
+// (`averageMonthlyNetAt`), so the Balances stack reads as months of
+// take-home pay owed and the Payments bars as the share of a paycheck
+// spent on loans — a debt-to-income view that stays honest when the
+// salary grows over time.
+//
 // A row of Avanza-style range buttons (1Y / 2Y / 3Y / 5Y / All) clips the
 // series to a trailing window — the builders sample from the loan's start,
 // which on an old loan with only recent transactions is a long useless flat
@@ -51,6 +60,7 @@ type Props = {
   open: boolean;
   loans: Loan[];
   properties: Property[];
+  salaries: Salary[];
   settings: Settings;
   onClose: () => void;
 };
@@ -97,6 +107,7 @@ export function LoansChartModal({
   open,
   loans,
   properties,
+  salaries,
   settings,
   onClose,
 }: Props) {
@@ -109,12 +120,14 @@ export function LoansChartModal({
   const [includeStudent, setIncludeStudent] = useState(true);
   const [includeMortgages, setIncludeMortgages] = useState(true);
   const [breakOutInterest, setBreakOutInterest] = useState(false);
+  const [salaryMultiple, setSalaryMultiple] = useState(false);
   useResetOnOpen(open, undefined, () => {
     setView("balances");
     setRange(DEFAULT_RANGE);
     setIncludeStudent(true);
     setIncludeMortgages(true);
     setBreakOutInterest(false);
+    setSalaryMultiple(false);
   });
 
   // Same stable order as the page's table, so band colours don't reshuffle
@@ -148,7 +161,7 @@ export function LoansChartModal({
     return loan?.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
   };
 
-  const fullSeries: StackedChartSeries[] = bands.loans.map((band) => ({
+  let fullSeries: StackedChartSeries[] = bands.loans.map((band) => ({
     id: band.loanId,
     label: sorted.find((l) => l.id === band.loanId)?.name ?? band.loanId,
     color: colorFor(band),
@@ -161,6 +174,30 @@ export function LoansChartModal({
       color: "--danger",
       points: bands.interest,
     });
+  }
+
+  // Salary-multiple modifier: divide every band's value by the household's
+  // average monthly net salary at that sample. The divisor is resolved once
+  // per sample x (the builders give every band the same x array) and a
+  // sample with no resolvable divisor is dropped from every band alike, so
+  // the stack stays aligned. The checkbox is hidden when no salaries exist,
+  // so a fully-empty divisor map can't blank the chart silently.
+  const hasSalaries = salaries.length > 0;
+  const showSalaryMultiple = salaryMultiple && hasSalaries;
+  if (showSalaryMultiple) {
+    const divisorByX = new Map<number, number | null>();
+    for (const p of fullSeries[0]?.points ?? []) {
+      const iso = new Date(p.x).toISOString().slice(0, 10);
+      divisorByX.set(p.x, averageMonthlyNetAt(salaries, iso));
+    }
+    fullSeries = fullSeries.map((s) => ({
+      ...s,
+      points: s.points.flatMap((p) => {
+        const divisor = divisorByX.get(p.x);
+        if (divisor === null || divisor === undefined) return [];
+        return [{ ...p, y: p.y / divisor }];
+      }),
+    }));
   }
 
   // Clip every band to the trailing window. The builders sample every band
@@ -220,16 +257,20 @@ export function LoansChartModal({
   // Desktop renders the full grouped figure (the chart sizes its left gutter
   // to fit); mobile is too narrow for that, so the Y axis always abbreviates
   // with one forced decimal — without it nearby ticks collapse to an
-  // identical "100K kr".
+  // identical "100K kr". In salary-multiple mode the values are unitless
+  // ratios (a mortgage is tens of monthly salaries, a month's payment a
+  // fraction of one), so one decimal plus "×" replaces the currency.
   const formatY = (y: number) =>
-    withCurrency(
-      formatNumber(
-        y,
-        isMobile ? { ...settings, showDecimals: true } : settings,
-        isMobile ? { forceAbbreviate: true } : {},
-      ),
-      settings,
-    );
+    showSalaryMultiple
+      ? `${y.toFixed(1).replace(".", settings.decimalSeparator)}×`
+      : withCurrency(
+          formatNumber(
+            y,
+            isMobile ? { ...settings, showDecimals: true } : settings,
+            isMobile ? { forceAbbreviate: true } : {},
+          ),
+          settings,
+        );
 
   return (
     <Modal
@@ -396,6 +437,13 @@ export function LoansChartModal({
                 checked={breakOutInterest}
                 onChange={() => setBreakOutInterest((prev) => !prev)}
                 label={t("loansSheet.chartBreakOutInterest")}
+              />
+            )}
+            {hasSalaries && (
+              <Checkbox
+                checked={salaryMultiple}
+                onChange={() => setSalaryMultiple((prev) => !prev)}
+                label={t("loansSheet.chartSalaryMultiple")}
               />
             )}
           </div>

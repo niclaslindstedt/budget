@@ -1828,6 +1828,20 @@ Payments view, where the stack is per-month spend rather than a balance.
 Two checkboxes (both on by default) include or exclude **student
 loans** and **mortgages** from the stack; the filter is by `kind`, so
 an unlinked mortgage-kind loan is excluded along with the linked ones.
+A third, **Show as multiple of monthly salary** (off by default,
+hidden when no salaries are recorded), re-renders both views as
+unitless salary multiples: every band's value at each monthly sample
+is divided by the household's average monthly net salary effective at
+that date — `averageMonthlyNetAt` (`src/data/salary/salary.ts`), the
+per-month sum of all recorded paychecks averaged over the up-to-12
+most recent recorded months on or before the sample (samples before
+the first paycheck fall back to the earliest recorded months). The Y
+axis switches from currency to a one-decimal `×` figure, so the
+Balances stack reads as months of take-home pay owed (a
+debt-to-income view that stays honest as the salary grows) and the
+Payments bars as the share of a paycheck spent on loans; the
+balance-change badge then tracks the change in the multiple, matching
+what's on screen.
 The series math is the pure `buildLoanBalanceBands` /
 `buildLoanPaymentBands` (`src/data/loans/series.ts`); the drawing is
 the reusable `StackedAreaChart` / `StackedBarChart` primitives

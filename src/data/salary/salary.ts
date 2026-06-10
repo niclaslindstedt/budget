@@ -59,6 +59,39 @@ export function resolveSalary(
   return { gross, tax: Math.max(0, gross - salary.net), estimated };
 }
 
+// Average monthly net household income effective at `date`. Paychecks
+// are summed per calendar month (`UserData.salaries` is one shared
+// collection, so two earners' deposits in the same month add up to the
+// household figure), then averaged over the up-to-12 most recent months
+// with at least one paycheck on or before `date`. Averaging over
+// recorded months only — not the full trailing year — keeps a sparse
+// history honest: one recorded month IS the figure, not 1/12 of it.
+// A `date` before the first paycheck falls back to the earliest
+// recorded months, so a chart whose x range starts before the salary
+// history still gets a defined divisor. Returns null when no salaries
+// exist or the window sums to zero (nothing meaningful to divide by).
+export function averageMonthlyNetAt(
+  salaries: readonly Salary[],
+  date: string,
+): number | null {
+  if (salaries.length === 0) return null;
+  const netByMonth = new Map<string, number>();
+  for (const salary of salaries) {
+    const month = salary.date.slice(0, 7);
+    netByMonth.set(month, (netByMonth.get(month) ?? 0) + salary.net);
+  }
+  const months = [...netByMonth.keys()].sort();
+  const cutoff = date.slice(0, 7);
+  let end = months.length;
+  while (end > 0 && months[end - 1] > cutoff) end -= 1;
+  const window =
+    end === 0 ? months.slice(0, 12) : months.slice(Math.max(0, end - 12), end);
+  let sum = 0;
+  for (const month of window) sum += netByMonth.get(month) ?? 0;
+  if (sum <= 0) return null;
+  return sum / window.length;
+}
+
 // Derive the brutto from a net deposit and a tax rate expressed as a
 // fraction of the gross (e.g. 0.3 for 30 %). Used by the bulk-edit "set
 // tax %" flow (Swedish "skattejämkning"): gross = net / (1 − rate).
