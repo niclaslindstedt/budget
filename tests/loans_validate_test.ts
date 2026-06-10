@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { migrate } from "../src/data/migrations";
+import { LATEST_VERSION, migrate } from "../src/data/migrations";
 import { validateUserData } from "../src/data/validate";
 import { freshUserData } from "../src/storage/local";
 import type { Loan, UserData } from "../src/data/types";
@@ -76,7 +76,7 @@ describe("validateLoan via validateUserData", () => {
     ];
     const dangling = {
       ...blob([
-        loan({ kind: "mortgage", propertyId: "prop-1", mortgageId: "gone" }),
+        loan({ kind: "mortgage", propertyId: "prop-1", mortgageIds: ["gone"] }),
       ]),
       properties,
     };
@@ -84,20 +84,26 @@ describe("validateLoan via validateUserData", () => {
     expect(r1.ok).toBe(true);
     if (r1.ok) {
       expect(r1.value.loans[0].propertyId).toBeUndefined();
-      expect(r1.value.loans[0].mortgageId).toBeUndefined();
+      expect(r1.value.loans[0].mortgageIds).toBeUndefined();
     }
 
-    const linked = {
+    // A deleted mortgage falls out of the list; the surviving subset
+    // keeps the link alive.
+    const partial = {
       ...blob([
-        loan({ kind: "mortgage", propertyId: "prop-1", mortgageId: "m-1" }),
+        loan({
+          kind: "mortgage",
+          propertyId: "prop-1",
+          mortgageIds: ["m-1", "gone"],
+        }),
       ]),
       properties,
     };
-    const r2 = validateUserData(linked);
+    const r2 = validateUserData(partial);
     expect(r2.ok).toBe(true);
     if (r2.ok) {
       expect(r2.value.loans[0].propertyId).toBe("prop-1");
-      expect(r2.value.loans[0].mortgageId).toBe("m-1");
+      expect(r2.value.loans[0].mortgageIds).toEqual(["m-1"]);
     }
   });
 
@@ -122,13 +128,36 @@ describe("validateLoan via validateUserData", () => {
   });
 });
 
-describe("migration v72 → v73", () => {
-  it("fills loans: [] on an old blob", () => {
+describe("loan migrations", () => {
+  it("v72 → fills loans: [] on an old blob", () => {
     const old = { ...freshUserData(), version: 72 } as Record<string, unknown>;
     delete old.loans;
     const { data, migrated } = migrate(old as never);
     expect(migrated).toBe(true);
-    expect(data.version).toBe(73);
+    expect(data.version).toBe(LATEST_VERSION);
     expect((data as UserData).loans).toEqual([]);
+  });
+
+  it("v73 → converts a single mortgageId link to mortgageIds", () => {
+    const old = {
+      ...freshUserData(),
+      version: 73,
+      loans: [
+        {
+          id: "loan-1",
+          name: "Bolån",
+          kind: "mortgage",
+          propertyId: "prop-1",
+          mortgageId: "m-1",
+          payments: [],
+        },
+      ],
+    } as Record<string, unknown>;
+    const { data, migrated } = migrate(old as never);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const loans = (data as UserData).loans as Array<Record<string, unknown>>;
+    expect(loans[0].mortgageIds).toEqual(["m-1"]);
+    expect("mortgageId" in loans[0]).toBe(false);
   });
 });

@@ -55,12 +55,16 @@ export type Loan = {
   // kind === "private" | "car": the lending company
   // (`UserData.companies` id). Dangling reference swept to absent on load.
   companyId?: string;
-  // kind === "mortgage", linked flavour: both set together or both absent.
-  // Terms / payments / balance resolve LIVE from
-  // `properties[propertyId].mortgages[mortgageId]` — never copied here, so
-  // the Properties sheet stays the single source of truth.
+  // kind === "mortgage", linked flavour: `propertyId` and a non-empty
+  // `mortgageIds` are set together or both absent. A property's monthly
+  // mortgage cost is paid to the bank as ONE transaction even when it
+  // covers several loans, so a single loan row can link any subset of
+  // one property's mortgages and list them as one figure. Terms /
+  // payments / balance resolve LIVE from the linked mortgages — never
+  // copied here, so the Properties sheet stays the single source of
+  // truth.
   propertyId?: string;
-  mortgageId?: string;
+  mortgageIds?: string[];
   // Recorded payments. Unused for a linked mortgage loan — the mortgage's
   // own `payments[]` is authoritative there.
   payments: LoanPayment[];

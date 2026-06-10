@@ -155,7 +155,8 @@ src/
 │   │   │                       #   transactions live in UserData.history keyed by
 │   │   │                       #   the saving id; a first-class transfer endpoint
 │   │   ├── loans.ts            # Loan (kind, terms, lender fields, optional
-│   │   │                       #   property-mortgage link), LoanPayment, LoanKind
+│   │   │                       #   link to several of one property's
+│   │   │                       #   mortgages), LoanPayment, LoanKind
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
@@ -325,7 +326,8 @@ src/
 │   │   │                       #   id the candidate scan anchors on), LOAN_KINDS
 │   │   ├── balance.ts          # loanPaidSoFar, loanRemainingBalance (rate →
 │   │   │                       #   month-by-month simulation; else subtraction),
-│   │   │                       #   resolveLinkedMortgage + linkedMortgageFigures
+│   │   │                       #   resolveLinkedMortgages + linkedMortgageFigures
+│   │   │                       #   (aggregated across the linked mortgages)
 │   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
 │   │   │                       #   matched outflows minus already-recorded ids
 │   │   ├── patterns.ts         # learnPaymentPatterns / matchesPaymentPattern —
@@ -925,6 +927,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   `payments`, learned `paymentPatterns`, and — for a mortgage — an
   optional live link to a property's mortgage). Seeds empty; old exports
   simply lack it and the v73 validator fills `loans: []` regardless.
+- **v73 → v74** — a mortgage loan links **many** property mortgages
+  instead of one: `Loan.mortgageId: string` becomes
+  `Loan.mortgageIds: string[]`, because a property's combined monthly
+  charge covers every loan against it and the Loans sheet lists that as
+  one row. Existing single links convert to one-element arrays.
 
 ## State management
 

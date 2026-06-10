@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { ConfirmAction } from "../../ConfirmDialog";
 import type { Action } from "../../../data/reducer";
-import { resolveLinkedMortgage } from "../../../data/loans/balance";
+import { resolveLinkedMortgages } from "../../../data/loans/balance";
+import { splitPaymentAcrossMortgages } from "../../../data/property-mortgage/payment";
 import type { LoanPaymentCandidate } from "../../../data/loans/candidates";
 import { learnPaymentPatterns } from "../../../data/loans/patterns";
 import { newId } from "../../../data/sheet";
@@ -76,7 +77,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const linkedMortgageIds: ReadonlySet<string> = useMemo(() => {
     const ids = new Set<string>();
     for (const loan of data.loans) {
-      if (loan.mortgageId !== undefined) ids.add(loan.mortgageId);
+      for (const mortgageId of loan.mortgageIds ?? []) ids.add(mortgageId);
     }
     return ids;
   }, [data.loans]);
@@ -122,7 +123,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
             lenderName: draft.lenderName || undefined,
             companyId: draft.companyId ?? undefined,
             propertyId: draft.link?.propertyId,
-            mortgageId: draft.link?.mortgageId,
+            mortgageIds: draft.link?.mortgageIds,
           },
         });
       } else {
@@ -145,7 +146,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
           ...(draft.companyId && { companyId: draft.companyId }),
           ...(draft.link && {
             propertyId: draft.link.propertyId,
-            mortgageId: draft.link.mortgageId,
+            mortgageIds: draft.link.mortgageIds,
           }),
         };
         dispatch({ type: "addLoan", loan });
@@ -212,14 +213,37 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const onDeleteLoanPayment = useCallback(
     (loanId: string, paymentId: string) => {
       const loan = data.loans.find((l) => l.id === loanId);
-      const linked = loan ? resolveLinkedMortgage(loan, data.properties) : null;
+      const linked = loan
+        ? resolveLinkedMortgages(loan, data.properties)
+        : null;
       if (loan && linked) {
-        dispatch({
-          type: "deleteMortgagePayment",
-          propertyId: linked.property.id,
-          mortgageId: linked.mortgage.id,
-          paymentId,
-        });
+        // The payments modal lists a combined charge as ONE row even
+        // though it's recorded as one split per linked mortgage, all
+        // sharing the charge's `sourceHistoryId`. Deleting the row
+        // deletes every leg of that charge; a hand-entered payment (no
+        // source entry) deletes just itself.
+        let sourceId: string | undefined;
+        for (const mortgage of linked.mortgages) {
+          const hit = mortgage.payments.find((p) => p.id === paymentId);
+          if (hit) {
+            sourceId = hit.sourceHistoryId;
+            break;
+          }
+        }
+        for (const mortgage of linked.mortgages) {
+          for (const payment of mortgage.payments) {
+            const isLeg =
+              payment.id === paymentId ||
+              (sourceId !== undefined && payment.sourceHistoryId === sourceId);
+            if (!isLeg) continue;
+            dispatch({
+              type: "deleteMortgagePayment",
+              propertyId: linked.property.id,
+              mortgageId: mortgage.id,
+              paymentId: payment.id,
+            });
+          }
+        }
       } else {
         dispatch({ type: "deleteLoanPayment", loanId, paymentId });
       }
@@ -229,17 +253,21 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const onDeleteAllLoanPayments = useCallback(
     (loanId: string) => {
       const loan = data.loans.find((l) => l.id === loanId);
-      const linked = loan ? resolveLinkedMortgage(loan, data.properties) : null;
+      const linked = loan
+        ? resolveLinkedMortgages(loan, data.properties)
+        : null;
       if (loan && linked) {
         // No per-mortgage clear action exists; delete the linked
-        // mortgage's payments one by one in a burst (each is undoable).
-        for (const payment of linked.mortgage.payments) {
-          dispatch({
-            type: "deleteMortgagePayment",
-            propertyId: linked.property.id,
-            mortgageId: linked.mortgage.id,
-            paymentId: payment.id,
-          });
+        // mortgages' payments one by one in a burst (each is undoable).
+        for (const mortgage of linked.mortgages) {
+          for (const payment of mortgage.payments) {
+            dispatch({
+              type: "deleteMortgagePayment",
+              propertyId: linked.property.id,
+              mortgageId: mortgage.id,
+              paymentId: payment.id,
+            });
+          }
         }
       } else {
         dispatch({ type: "deleteAllLoanPayments", loanId });
@@ -263,22 +291,40 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     (loanId: string, selected: LoanPaymentCandidate[]) => {
       const loan = data.loans.find((l) => l.id === loanId);
       if (!loan || selected.length === 0) return;
-      const linked = resolveLinkedMortgage(loan, data.properties);
+      const linked = resolveLinkedMortgages(loan, data.properties);
       if (linked) {
-        // Linked mortgage loan: the payments belong to the mortgage —
-        // recorded there, shared with the Properties sheet. Patterns are
-        // not learned (the mortgage discovery flow owns that surface).
-        const payments: MortgagePayment[] = selected.map(({ entry }) => ({
-          id: newId(),
-          date: entry.date,
-          amount: Math.abs(entry.amount),
-          sourceHistoryId: entry.id,
-        }));
+        // Linked mortgage loan: the payments belong to the mortgages —
+        // recorded there, shared with the Properties sheet. A combined
+        // bank charge is split across the linked mortgages with the same
+        // amortisation-first logic the Find-mortgage-payments walk uses,
+        // falling back to the first mortgage when no loan resolves any
+        // terms. Patterns are not learned (the mortgage discovery flow
+        // owns that surface). One action — one undo entry.
+        const byMortgage: Record<string, MortgagePayment[]> = {};
+        for (const { entry } of selected) {
+          const amount = Math.abs(entry.amount);
+          const split = splitPaymentAcrossMortgages(
+            linked.mortgages,
+            amount,
+            entry.date,
+          );
+          const shares: Array<[string, number]> =
+            split.size > 0
+              ? [...split.entries()]
+              : [[linked.mortgages[0].id, amount]];
+          for (const [mortgageId, share] of shares) {
+            (byMortgage[mortgageId] ??= []).push({
+              id: newId(),
+              date: entry.date,
+              amount: share,
+              sourceHistoryId: entry.id,
+            });
+          }
+        }
         dispatch({
-          type: "addMortgagePayments",
+          type: "addMortgagePaymentsForProperty",
           propertyId: linked.property.id,
-          mortgageId: linked.mortgage.id,
-          payments,
+          paymentsByMortgageId: byMortgage,
         });
         return;
       }

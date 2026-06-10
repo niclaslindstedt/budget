@@ -1644,18 +1644,28 @@ live from the mortgage's own terms (`resolveMonthlyPaymentAt`,
 
 ### Linked mortgage (loan)
 
-A `kind: "mortgage"` loan can carry a `propertyId` + `mortgageId` pair
-linking a mortgage from the Properties sheet — **linked, never
-copied**: terms, payments, and balance all resolve live through
-`resolveLinkedMortgage` (`src/data/loans/balance.ts`), so the two
-sheets can never disagree. The link picker in `LoanModal.tsx` lists
-every property mortgage not already linked by another loan; linking
-hides the loan's own term fields. Payment flows fork on the link:
-Import payments on a linked loan dispatches `addMortgagePayments` to
-the property, and the payments view deletes via `deleteMortgagePayment`
-— the loan's own `payments[]` stays empty. The validator drops a
-half-dangling pair (deleted property or mortgage) so the loan degrades
-to an unlinked mortgage rather than rejecting the file.
+A `kind: "mortgage"` loan can carry a `propertyId` plus a non-empty
+`mortgageIds` list linking **one or several** of that property's
+mortgages from the Properties sheet — **linked, never copied**: terms,
+payments, and balance all resolve live through
+`resolveLinkedMortgages` (`src/data/loans/balance.ts`), so the two
+sheets can never disagree. Several mortgages list as ONE loan row
+because the bank draws a property's combined monthly cost as a single
+transaction; `linkedMortgageFigures` aggregates across them — monthly
+payment and remaining balance sum, paid-so-far sums every recorded
+payment, and the rate is the balance-weighted blend. The link picker
+in `LoanModal.tsx` is a property dropdown plus one checkbox per
+mortgage not already linked by another loan (all ticked by default);
+linking hides the loan's own term fields. Payment flows fork on the
+link: Import payments on a linked loan splits each charge across the
+linked mortgages with `splitPaymentAcrossMortgages` (the same
+amortisation-first logic as Find mortgage payments) and dispatches
+`addMortgagePaymentsForProperty`; the payments view deletes via
+`deleteMortgagePayment` — the loan's own `payments[]` stays empty. The
+validator keeps the resolvable subset of `mortgageIds` (a deleted
+mortgage falls out of the list) and drops the link entirely when
+nothing survives, so the loan degrades to an unlinked mortgage rather
+than rejecting the file.
 
 ### Import payments (loan)
 
@@ -1693,8 +1703,11 @@ re-import can't double-attach because duplicate entries never reach the
 from the loan row's "…" menu (View payments). Lists payments newest
 first with per-row delete (`deleteLoanPayment`) and a Delete all
 (`deleteAllLoanPayments`). For a linked mortgage loan it renders the
-linked mortgage's payments instead — shared with the Properties sheet's
-Mortgage payments view — and deletes route to `deleteMortgagePayment`.
+linked mortgages' payments instead — shared with the Properties
+sheet's Mortgage payments view — grouped by charge: a combined bank
+draw recorded as one split per mortgage (every leg sharing the
+charge's `sourceHistoryId`) lists as one summed row, and deleting it
+deletes every leg via `deleteMortgagePayment`.
 
 ## Data and storage
 

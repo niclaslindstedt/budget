@@ -6,7 +6,7 @@
 import type { HistoryEntry, Loan, UserData } from "../types";
 import { newRuleMatchCache, resolveEntryLabels } from "../budget/synthesis";
 import { LOAN_PRESET_TYPE_BY_KIND } from "./presets";
-import { resolveLinkedMortgage } from "./balance";
+import { resolveLinkedMortgages } from "./balance";
 import { matchesPaymentPattern } from "./patterns";
 
 export type LoanPaymentCandidate = {
@@ -16,13 +16,20 @@ export type LoanPaymentCandidate = {
 };
 
 // Ids of the bank entries already consumed as payments — the loan's own
-// records, or the linked mortgage's when the loan is a live link.
+// records, or every linked mortgage's when the loan is a live link (a
+// combined charge records one split per mortgage, all pointing at the
+// same bank entry, so the union dedupes naturally).
 export function consumedHistoryIds(loan: Loan, state: UserData): Set<string> {
-  const linked = resolveLinkedMortgage(loan, state.properties);
-  const payments = linked ? linked.mortgage.payments : loan.payments;
+  const linked = resolveLinkedMortgages(loan, state.properties);
   const ids = new Set<string>();
-  for (const payment of payments) {
-    if (payment.sourceHistoryId !== undefined) ids.add(payment.sourceHistoryId);
+  const paymentLists = linked
+    ? linked.mortgages.map((m) => m.payments)
+    : [loan.payments];
+  for (const payments of paymentLists) {
+    for (const payment of payments) {
+      if (payment.sourceHistoryId !== undefined)
+        ids.add(payment.sourceHistoryId);
+    }
   }
   return ids;
 }

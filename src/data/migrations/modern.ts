@@ -1070,6 +1070,22 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // Seeds empty; old exports simply lack it and the v73 validator fills
   // `loans: []` regardless, so this is a bare additive bump.
   72: (v72) => ({ ...v72, version: 73, loans: [] }),
+
+  // v73 → v74: a mortgage loan links MANY property mortgages instead of
+  // one — `Loan.mortgageId: string` becomes `Loan.mortgageIds: string[]`,
+  // because a property's combined monthly charge covers every loan
+  // against it and the Loans sheet lists that as one row. Existing
+  // single links convert to one-element arrays.
+  73: (v73) => {
+    const loans = Array.isArray(v73.loans)
+      ? v73.loans.map((loan) => {
+          if (!isObj(loan) || typeof loan.mortgageId !== "string") return loan;
+          const { mortgageId, ...rest } = loan;
+          return { ...rest, mortgageIds: [mortgageId] };
+        })
+      : v73.loans;
+    return { ...v73, version: 74, loans };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

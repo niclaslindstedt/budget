@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
+import { LATEST_VERSION } from "../src/data/migrations";
 import {
   isPresetCategoryId,
   PRESET_CATEGORIES,
@@ -19,7 +20,7 @@ import { validateUserData } from "../src/data/validate";
 function workspace(patch: Partial<UserData> = {}): UserData {
   const sheet = createDefaultSheet("Default");
   return {
-    version: 73,
+    version: LATEST_VERSION,
     sheets: [sheet],
     activeSheetId: sheet.id,
     accounts: [],

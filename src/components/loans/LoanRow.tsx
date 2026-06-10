@@ -5,7 +5,7 @@ import {
   linkedMortgageFigures,
   loanPaidSoFar,
   loanRemainingBalance,
-  resolveLinkedMortgage,
+  resolveLinkedMortgages,
 } from "../../data/loans/balance";
 import type { Company, Loan, Property, Settings } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
@@ -46,9 +46,9 @@ function LoanRowImpl({
   const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(loan.id);
 
   const today = todayIso();
-  const linked = resolveLinkedMortgage(loan, properties);
+  const linked = resolveLinkedMortgages(loan, properties);
   const figures = linked
-    ? linkedMortgageFigures(linked.mortgage, today)
+    ? linkedMortgageFigures(linked.mortgages, today)
     : {
         monthlyPayment: loan.monthlyPayment ?? null,
         rate: loan.rate ?? null,
@@ -56,7 +56,7 @@ function LoanRowImpl({
         remaining: loanRemainingBalance(loan, today),
       };
   const hasPayments = linked
-    ? linked.mortgage.payments.length > 0
+    ? linked.mortgages.some((m) => m.payments.length > 0)
     : loan.payments.length > 0;
 
   // Sub-line: the kind, plus where the money came from — the linked
@@ -68,7 +68,14 @@ function LoanRowImpl({
       : undefined;
   const subParts: string[] = [kindLabel];
   if (linked) {
-    subParts.push(t("loansSheet.linkedTo", { name: linked.property.name }));
+    subParts.push(
+      linked.mortgages.length === 1
+        ? t("loansSheet.linkedTo", { name: linked.property.name })
+        : t("loansSheet.linkedToMany", {
+            name: linked.property.name,
+            n: linked.mortgages.length,
+          }),
+    );
   } else if (company) {
     subParts.push(company.name);
   } else if (loan.lenderName !== undefined) {

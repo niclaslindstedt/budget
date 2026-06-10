@@ -4,7 +4,7 @@ import {
   linkedMortgageFigures,
   loanPaidSoFar,
   loanRemainingBalance,
-  resolveLinkedMortgage,
+  resolveLinkedMortgages,
 } from "../src/data/loans/balance";
 import type { Loan, Property } from "../src/data/types";
 
@@ -160,36 +160,60 @@ describe("linked mortgages", () => {
           { id: "mp2", date: "2026-02-27", amount: 6742 },
         ],
       },
+      {
+        id: "m-2",
+        name: "Loan 2",
+        loanAmount: 600000,
+        currentBalance: 500000,
+        interestRate: 4.5,
+        amortization: { mode: "fixed", amount: 1000 },
+        payments: [{ id: "mp3", date: "2026-02-27", amount: 2875 }],
+      },
     ],
   };
 
-  it("resolves the linked mortgage behind a loan", () => {
+  it("resolves every linked mortgage behind a loan", () => {
     const l = loan({
       kind: "mortgage",
       propertyId: "prop-1",
-      mortgageId: "m-1",
+      mortgageIds: ["m-1", "m-2"],
     });
-    const linked = resolveLinkedMortgage(l, [property]);
+    const linked = resolveLinkedMortgages(l, [property]);
     expect(linked?.property.name).toBe("Villa");
-    expect(linked?.mortgage.name).toBe("Loan 1");
+    expect(linked?.mortgages.map((m) => m.name)).toEqual(["Loan 1", "Loan 2"]);
   });
 
   it("returns null for an unlinked or dangling loan", () => {
-    expect(resolveLinkedMortgage(loan(), [property])).toBeNull();
+    expect(resolveLinkedMortgages(loan(), [property])).toBeNull();
     const dangling = loan({
       kind: "mortgage",
       propertyId: "prop-1",
-      mortgageId: "gone",
+      mortgageIds: ["gone"],
     });
-    expect(resolveLinkedMortgage(dangling, [property])).toBeNull();
+    expect(resolveLinkedMortgages(dangling, [property])).toBeNull();
   });
 
-  it("resolves display figures live from the mortgage", () => {
-    const figures = linkedMortgageFigures(property.mortgages[0], "2026-06-01");
+  it("resolves display figures live from one mortgage", () => {
+    const figures = linkedMortgageFigures(
+      [property.mortgages[0]],
+      "2026-06-01",
+    );
     expect(figures.rate).toBe(3);
     expect(figures.paidSoFar).toBe(6750 + 6742);
     // amortisation 3000 + interest 1500000 × 3% / 12 = 3750
     expect(figures.monthlyPayment).toBeCloseTo(6750, 5);
+    expect(figures.remaining).not.toBeNull();
+  });
+
+  it("aggregates figures across several linked mortgages", () => {
+    const figures = linkedMortgageFigures(property.mortgages, "2026-06-01");
+    // Monthly payments sum: 6750 + (1000 + 500000 × 4.5% / 12 = 2875).
+    expect(figures.monthlyPayment).toBeCloseTo(6750 + 2875, 5);
+    // Paid-so-far sums every recorded payment across the loans.
+    expect(figures.paidSoFar).toBe(6750 + 6742 + 2875);
+    // The blended rate is balance-weighted:
+    // (1.5M × 3 + 0.5M × 4.5) / 2M = 3.375.
+    expect(figures.rate).toBeCloseTo(3.375, 5);
     expect(figures.remaining).not.toBeNull();
   });
 });

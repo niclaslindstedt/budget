@@ -13,7 +13,7 @@ import {
 import {
   linkedMortgageFigures,
   loanRemainingBalance,
-  resolveLinkedMortgage,
+  resolveLinkedMortgages,
 } from "../../data/loans/balance";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
@@ -68,9 +68,9 @@ export function LoansPage({
     const today = todayIso();
     let sum = 0;
     for (const loan of loans) {
-      const linked = resolveLinkedMortgage(loan, data.properties);
+      const linked = resolveLinkedMortgages(loan, data.properties);
       const remaining = linked
-        ? linkedMortgageFigures(linked.mortgage, today).remaining
+        ? linkedMortgageFigures(linked.mortgages, today).remaining
         : loanRemainingBalance(loan, today);
       sum += remaining ?? 0;
     }

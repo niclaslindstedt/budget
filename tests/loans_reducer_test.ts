@@ -185,7 +185,7 @@ describe("importBankHistory auto-attach", () => {
           id: "loan-2",
           kind: "mortgage",
           propertyId: "prop-1",
-          mortgageId: "m-1",
+          mortgageIds: ["m-1"],
           paymentPatterns: patterns,
         }),
       ],
