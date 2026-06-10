@@ -304,6 +304,48 @@ export const LOANS_GLYPH_NAMES: readonly CategoryIcon[] = [
   "receipt",
 ] as const;
 
+// Savings sheets stand for money set aside toward a goal, so beyond the
+// money-store glyphs the palette covers the things people save for —
+// vacations, clothing, kids' toys, a home, a car, electronics, pets,
+// celebrations. The SheetModal picks this set when the selected sheet
+// type is "savings" via the descriptor's `glyphNames`, and the
+// per-saving glyph picker in `SavingsModal` offers the same set.
+export const SAVINGS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "piggy-bank",
+  "coins",
+  "banknote",
+  "wallet",
+  "landmark",
+  "vault",
+  "trending-up",
+  "line-chart",
+  "bitcoin",
+  "plane",
+  "hotel",
+  "umbrella",
+  "ship",
+  "globe",
+  "home",
+  "car",
+  "bike",
+  "shirt",
+  "gem",
+  "baby",
+  "toy-brick",
+  "gamepad-2",
+  "gift",
+  "cake",
+  "graduation-cap",
+  "smartphone",
+  "laptop",
+  "tv",
+  "sofa",
+  "paw-print",
+  "dumbbell",
+  "guitar",
+  "star",
+] as const;
+
 // Accounts are real-world money stores — bank accounts, cards, cash,
 // brokerage, crypto, loans. The palette covers the spectrum so users
 // can express checking vs. mortgage vs. mobile-pay app at a glance.
