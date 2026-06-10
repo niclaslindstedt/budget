@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { ConfirmAction } from "../../ConfirmDialog";
-import type { Action } from "../../../data/reducer";
+import type { Action, LoanImportEntryOverride } from "../../../data/reducer";
 import { resolveLinkedMortgages } from "../../../data/loans/balance";
 import { splitPaymentAcrossMortgages } from "../../../data/property-mortgage/payment";
 import type { LoanPaymentCandidate } from "../../../data/loans/candidates";
 import { learnPaymentPatterns } from "../../../data/loans/patterns";
+import { LOAN_PRESET_TYPE_BY_KIND } from "../../../data/loans/presets";
 import { newId } from "../../../data/sheet";
 import type {
   Company,
@@ -17,6 +18,7 @@ import type {
 import { useT } from "../../../i18n";
 import { parseAmount } from "../../../utils/format";
 import type { useToast } from "../../../hooks";
+import type { LoanImportOptions } from "../../loans/LoanImportPaymentsModal";
 import type { LoanDraft } from "../../loans/LoanModal";
 
 type Params = {
@@ -59,7 +61,11 @@ type Result = {
   importLoan: Loan | null;
   setImportForId: (next: string | null) => void;
   onOpenImportPayments: (loanId: string) => void;
-  onImportPayments: (loanId: string, selected: LoanPaymentCandidate[]) => void;
+  onImportPayments: (
+    loanId: string,
+    selected: LoanPaymentCandidate[],
+    options: LoanImportOptions,
+  ) => void;
 };
 
 // Workspace-level loan CRUD + payment import. Mirrors `useSavingDialog`.
@@ -288,7 +294,11 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   }, []);
 
   const onImportPayments = useCallback(
-    (loanId: string, selected: LoanPaymentCandidate[]) => {
+    (
+      loanId: string,
+      selected: LoanPaymentCandidate[],
+      options: LoanImportOptions,
+    ) => {
       const loan = data.loans.find((l) => l.id === loanId);
       if (!loan || selected.length === 0) return;
       const linked = resolveLinkedMortgages(loan, data.properties);
@@ -340,7 +350,30 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
         loan.paymentPatterns,
         selected.map(({ entry }) => entry.description),
       );
-      dispatch({ type: "addLoanPayments", loanId, payments, patterns });
+      // The modal's "set type" / "rename" checkboxes: stamp the loan
+      // kind's preset type and / or the loan's name back onto the
+      // imported entries as per-entry overrides — metadata flows both
+      // ways. The modal forces both off for a linked loan, so this
+      // branch never stamps on the Properties-owned path above.
+      const stampTypeId = options.applyType
+        ? LOAN_PRESET_TYPE_BY_KIND[loan.kind]
+        : undefined;
+      const entryOverrides: LoanImportEntryOverride[] | undefined =
+        options.applyType || options.applyName
+          ? selected.map(({ accountId, entry }) => ({
+              accountId,
+              entryId: entry.id,
+              ...(stampTypeId !== undefined && { userTypeId: stampTypeId }),
+              ...(options.applyName && { userDescription: loan.name }),
+            }))
+          : undefined;
+      dispatch({
+        type: "addLoanPayments",
+        loanId,
+        payments,
+        patterns,
+        ...(entryOverrides !== undefined && { entryOverrides }),
+      });
     },
     [data.loans, data.properties, dispatch],
   );

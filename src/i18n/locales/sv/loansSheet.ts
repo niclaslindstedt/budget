@@ -65,6 +65,13 @@ const loansSheet: LoansSheetCatalog = {
   importEmpty:
     "Inga matchande transaktioner hittades. Märk banktransaktioner med typen {type} (eller importera ett kontoutdrag som innehåller lånets dragningar) och försök igen.",
   selectAll: "Markera alla",
+  importSuggestedTitle: "Föreslagna liknande betalningar",
+  importSuggestedHint:
+    "Andra transaktioner med matchande bankbeskrivning och liknande belopp.",
+  importTolerance: "Beloppstolerans",
+  importSuggestedEmpty: "Inga liknande transaktioner inom ±{pct}%.",
+  importApplyType: "Märk de importerade transaktionerna med typen {type}",
+  importApplyName: "Byt namn på de importerade transaktionerna till {name}",
   importCountOne: "Importera {n} betalning",
   importCountOther: "Importera {n} betalningar",
 };

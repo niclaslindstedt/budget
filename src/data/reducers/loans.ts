@@ -1,4 +1,4 @@
-import type { Action } from "../reducer";
+import type { Action, LoanImportEntryOverride } from "../reducer";
 import type { Loan, UserData } from "../types";
 
 // Apply a patch, treating an explicit `undefined` value as "delete this key"
@@ -17,6 +17,41 @@ function applyPatch<T extends { id: string }>(
     } else {
       (next as Record<string, unknown>)[key] = value;
     }
+  }
+  return next;
+}
+
+// Stamp `userTypeId` / `userDescription` overrides onto the imported
+// entries' bank rows — the same per-entry write `updateHistoryEntry`
+// does, folded into the import so it shares the payments' undo entry.
+// Buckets without a stamp keep their array reference.
+function applyEntryOverrides(
+  history: UserData["history"],
+  overrides: readonly LoanImportEntryOverride[],
+): UserData["history"] {
+  const byAccount = new Map<string, Map<string, LoanImportEntryOverride>>();
+  for (const override of overrides) {
+    let m = byAccount.get(override.accountId);
+    if (m === undefined) {
+      m = new Map();
+      byAccount.set(override.accountId, m);
+    }
+    m.set(override.entryId, override);
+  }
+  const next = { ...history };
+  for (const [accountId, byEntry] of byAccount) {
+    const entries = next[accountId];
+    if (entries === undefined) continue;
+    next[accountId] = entries.map((entry) => {
+      const override = byEntry.get(entry.id);
+      if (override === undefined) return entry;
+      const patched = { ...entry };
+      if (override.userTypeId !== undefined)
+        patched.userTypeId = override.userTypeId;
+      if (override.userDescription !== undefined)
+        patched.userDescription = override.userDescription;
+      return patched;
+    });
   }
   return next;
 }
@@ -54,7 +89,7 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
     };
   }
   if (action.type === "addLoanPayments") {
-    return updateLoanById(state, action.loanId, (l) => {
+    const next = updateLoanById(state, action.loanId, (l) => {
       // Defensive dedupe: a payment whose source entry is already recorded
       // (e.g. the auto-attach pass raced the modal) is silently skipped.
       const consumed = new Set<string>();
@@ -76,6 +111,15 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
       }
       return next;
     });
+    if (
+      action.entryOverrides === undefined ||
+      action.entryOverrides.length === 0
+    )
+      return next;
+    return {
+      ...next,
+      history: applyEntryOverrides(next.history, action.entryOverrides),
+    };
   }
   if (action.type === "deleteLoanPayment") {
     return updateLoanById(state, action.loanId, (l) => ({

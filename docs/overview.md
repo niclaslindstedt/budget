@@ -1678,10 +1678,22 @@ matches the loan kind's preset type, or whose description matches a
 learned payment pattern; entries already recorded (by
 `sourceHistoryId`, on the loan or its linked mortgage) are excluded. So
 tagging transactions with the Car loan type makes them surface when
-importing payments on a car loan. Candidates arrive default-ticked;
-importing dispatches `addLoanPayments` (one undo entry) with the
-payments and the patterns learned from the ticked entries' bank text.
-The first imported payment unlocks the **Debt Collector** achievement.
+importing payments on a car loan — and tagging just ONE is enough: a
+"Suggested similar payments" section
+(`findSimilarLoanPaymentCandidates`, same file) adds outflows sharing a
+normalised bank-description key with a direct match whose amount sits
+within an adjustable tolerance (`Slider`, ±10% default, 0–50%).
+Candidates arrive default-ticked; importing dispatches
+`addLoanPayments` (one undo entry) with the payments and the patterns
+learned from the ticked entries' bank text. Two checkboxes (both on by
+default) stamp metadata back the other way inside the same action:
+"Mark … with the {type} type" writes the loan kind's preset type as
+each imported entry's `userTypeId`, and "Rename … to {name}" writes the
+loan's name as its `userDescription` (the raw bank text is preserved
+underneath, as with any per-entry override). The suggestions section
+and both checkboxes are hidden for a linked-mortgage loan — its
+payments belong to the Properties flow. The first imported payment
+unlocks the **Debt Collector** achievement.
 
 ### Loan payment pattern (auto-attach)
 

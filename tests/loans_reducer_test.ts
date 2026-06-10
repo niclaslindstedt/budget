@@ -95,6 +95,75 @@ describe("addLoanPayments", () => {
     expect(next.loans[0].payments.map((p) => p.id)).toEqual(["p1", "p3"]);
   });
 
+  it("stamps type and description overrides onto the imported entries", () => {
+    const prev = state({
+      loans: [loan()],
+      history: {
+        "acct-1": [
+          {
+            id: "h1",
+            date: "2026-05-27",
+            description: "SANTANDER 12345",
+            amount: -2500,
+            importedAt: 0,
+          },
+          {
+            id: "h2",
+            date: "2026-04-27",
+            description: "ICA",
+            amount: -300,
+            importedAt: 0,
+          },
+        ],
+      },
+    });
+    const next = reducer(prev, {
+      type: "addLoanPayments",
+      loanId: "loan-1",
+      payments: [
+        { id: "p1", date: "2026-05-27", amount: 2500, sourceHistoryId: "h1" },
+      ],
+      entryOverrides: [
+        {
+          accountId: "acct-1",
+          entryId: "h1",
+          userTypeId: "preset-type-car-loan",
+          userDescription: "Car loan",
+        },
+      ],
+    });
+    const [h1, h2] = next.history["acct-1"];
+    expect(h1.userTypeId).toBe("preset-type-car-loan");
+    expect(h1.userDescription).toBe("Car loan");
+    expect(h1.description).toBe("SANTANDER 12345");
+    expect(h2).toBe(prev.history["acct-1"][1]);
+  });
+
+  it("leaves history untouched when no overrides are carried", () => {
+    const prev = state({
+      loans: [loan()],
+      history: {
+        "acct-1": [
+          {
+            id: "h1",
+            date: "2026-05-27",
+            description: "SANTANDER 12345",
+            amount: -2500,
+            importedAt: 0,
+          },
+        ],
+      },
+    });
+    const next = reducer(prev, {
+      type: "addLoanPayments",
+      loanId: "loan-1",
+      payments: [
+        { id: "p1", date: "2026-05-27", amount: 2500, sourceHistoryId: "h1" },
+      ],
+    });
+    expect(next.history).toBe(prev.history);
+  });
+
   it("deletes one payment and clears all payments", () => {
     const prev = state({
       loans: [
