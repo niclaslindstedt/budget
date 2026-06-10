@@ -456,10 +456,19 @@ function pwaPlugin(): Plugin[] {
   // Belt-and-braces denylist alongside the W3C scope rule: never
   // claim navigation fallbacks outside this slot, even if a stale
   // registration ever had a broader scope.
+  //
+  // The slot patterns must also match the slash-less `/preview` /
+  // `/branch` spellings: GitHub Pages 301-redirects those to the
+  // trailing-slash URL, but the production SW (scope `/`) intercepts
+  // the navigation before the network, so a denylist that only knows
+  // `/preview/` serves the production index.html at `/preview` and
+  // the user lands in the production app at the preview URL. Workbox
+  // tests these against `url.pathname + url.search`, hence the `\?`
+  // alternative.
   const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const navigateFallbackDenylist =
     BASE_PATH === "/"
-      ? [/^\/preview\//, /^\/branch\//]
+      ? [/^\/preview(?:\/|\?|$)/, /^\/branch(?:\/|\?|$)/]
       : [new RegExp(`^/(?!${escapeRegex(BASE_PATH.slice(1))})`)];
 
   return VitePWA({
