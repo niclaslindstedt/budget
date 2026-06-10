@@ -133,27 +133,37 @@ function LoanRowImpl({
       <td className="px-2.5 py-2 align-middle">
         <span className="flex items-center gap-1.5 font-mono font-bold text-fg-bright">
           <span className="truncate">{loan.name}</span>
-        </span>
-        {/* On mobile the td flexes the name and sub-line onto one row
-            (see `.loans-table td` in components.css), so the sub-line
-            keeps only the chain glyph there — the lender and the linked
-            property's name live in the View loan modal instead. */}
-        {linked !== null ? (
-          <span className="ml-1.5 block truncate text-xs text-muted md:ml-0">
-            <span title={linkedTitle}>
+          {/* On mobile the sub-line is dropped entirely (the lender and
+              the linked property's name live in the View loan modal
+              instead), so a linked loan flags itself with a chain glyph
+              right next to the name. As its own sub-line span the glyph
+              would strand mid-cell: the mobile td is a flex row whose
+              direct children all get `width: 100%` (see `.loans-table
+              td` in components.css), splitting the cell 50/50. */}
+          {linked !== null ? (
+            <span className="shrink-0 text-muted md:hidden" title={linkedTitle}>
               <Link2
                 size={12}
                 className="inline align-[-2px]"
                 aria-hidden
                 focusable={false}
               />
-              <span className="hidden md:inline">
-                {" "}
-                {linked.property.name}
-                {linked.mortgages.length > 1
-                  ? ` ×${linked.mortgages.length}`
-                  : ""}
-              </span>
+            </span>
+          ) : null}
+        </span>
+        {linked !== null ? (
+          <span className="hidden truncate text-xs text-muted md:block">
+            <span title={linkedTitle}>
+              <Link2
+                size={12}
+                className="inline align-[-2px]"
+                aria-hidden
+                focusable={false}
+              />{" "}
+              {linked.property.name}
+              {linked.mortgages.length > 1
+                ? ` ×${linked.mortgages.length}`
+                : ""}
             </span>
           </span>
         ) : lenderLabel !== undefined ? (
@@ -184,8 +194,12 @@ function LoanRowImpl({
       <td className="loans-secondary-cell hidden px-2.5 py-2 text-right align-middle font-mono text-xs whitespace-nowrap text-muted tabular-nums md:table-cell">
         {formatBalance(figures.paidSoFar, settings)}
       </td>
+      {/* The remaining column sits at the table's right edge (the action
+          cell is a swipe overlay, not a track), so it carries an extra
+          1ch trailing gutter — matched by the header, the footer total,
+          and the mobile row template in LoansPage. */}
       <td
-        className={`px-2.5 py-2 align-middle font-mono whitespace-nowrap text-fg tabular-nums ${cellClass}`}
+        className={`py-2 pr-[calc(0.625rem_+_1ch)] pl-2.5 align-middle font-mono whitespace-nowrap text-fg tabular-nums ${cellClass}`}
       >
         <span>
           {figures.remaining !== null
