@@ -1810,6 +1810,19 @@ contribution. A segmented toggle switches between two views:
   interest is clamped to that month's payment, so it never exceeds
   what was actually paid and the net segments stay ≥ 0.
 
+A row of **time-range buttons** (1Y / 2Y / 3Y / 5Y / All, an
+Avanza-style sliding-pill segmented control, default 3Y) clips both
+views to a trailing window: the builders sample from each loan's start
+date, so an old loan with only recent transactions draws a long flat
+line that the default range trims off. Picking a window shorter than
+the loan's data zooms in (the area / bars rescale to it); a window with
+no samples shows a "pick a longer range" notice while the buttons stay
+live. On the **Balances** view a **balance-change** badge reads the
+total debt at the first vs. last visible sample as a signed percent —
+negative in `--positive` green when the debt shrank (paying off is
+good), positive in `--negative` red when it grew; it is hidden on the
+Payments view, where the stack is per-month spend rather than a balance.
+
 Two checkboxes (both on by default) include or exclude **student
 loans** and **mortgages** from the stack; the filter is by `kind`, so
 an unlinked mortgage-kind loan is excluded along with the linked ones.

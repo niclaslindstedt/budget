@@ -107,6 +107,15 @@ layer is that loan's share. A toggle switches between two views:
   linked mortgage uses its rate history), and never counted beyond
   what was actually paid that month.
 
+A row of time-range buttons — **1Y / 2Y / 3Y / 5Y / All** — clips the
+chart to a trailing window. Loans are sampled from their start date, so
+one you opened years ago but only recently started recording would draw
+a long flat line; the default (3Y) trims it, and you can zoom in or out
+from there. On the **Balances** view a **balance-change** percentage
+sums the total debt at the start and end of the visible window: it shows
+green when your debt has shrunk over the period (you've paid it down) and
+red when it has grown.
+
 Two checkboxes — both on by default — include or exclude **student
 loans** and **mortgages** from the stack, so the long-runners can be
 set aside to study the rest. Like every chart, it follows your theme.
