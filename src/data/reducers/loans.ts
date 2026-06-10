@@ -133,5 +133,17 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
       payments: [],
     }));
   }
+  if (action.type === "addLoanBalance") {
+    return updateLoanById(state, action.loanId, (l) => ({
+      ...l,
+      balanceHistory: [...l.balanceHistory, action.point],
+    }));
+  }
+  if (action.type === "deleteLoanBalance") {
+    return updateLoanById(state, action.loanId, (l) => ({
+      ...l,
+      balanceHistory: l.balanceHistory.filter((pt) => pt.id !== action.pointId),
+    }));
+  }
   return null;
 }

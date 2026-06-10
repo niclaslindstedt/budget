@@ -30,9 +30,12 @@ const loansSheet = {
   linkedToMany: "Linked to {name} ({n} mortgages)",
 
   // Row "…" menu.
+  updateBalance: "Update balance",
   importPayments: "Import payments",
   viewPayments: "View payments",
   noPayments: "No payments recorded yet",
+  linkedBalanceHint:
+    "The balance comes from the linked mortgage — update it on the Properties sheet",
 
   // Create / edit modal.
   newTitle: "New loan",
@@ -40,7 +43,6 @@ const loansSheet = {
   description: "Description",
   kind: "Type of loan",
   startDate: "Start date",
-  startSum: "Start sum",
   monthlyPayment: "Monthly payment",
   rateLabel: "Interest rate (%/year)",
   startFee: "Setup fee",
@@ -54,7 +56,20 @@ const loansSheet = {
     "Terms, payments and balance come from the linked mortgage on the Properties sheet. Edit them there.",
   noMortgagesToLink:
     "No unlinked mortgages on the Properties sheet. Add the mortgage to a property first, or enter the terms below.",
+  balanceHint:
+    "Record what remains of the loan with Update balance in the row's … menu — the balance then follows the recorded payments.",
   create: "Create",
+
+  // Update-balance modal.
+  updateBalanceTitle: "Update balance",
+  updateBalanceHint:
+    "Enter the outstanding debt as of a date. The remaining balance at any date is calculated from the latest recorded balance and the payments since.",
+  balanceLabel: "Outstanding balance",
+  balancePlaceholder: "0",
+  asOfLabel: "As of",
+  balanceHistory: "Recorded balances",
+  noBalanceHistory: "No balances recorded yet.",
+  deleteBalanceAria: "Delete recorded balance",
 
   // Payments modal.
   paymentsTitle: "Payments",

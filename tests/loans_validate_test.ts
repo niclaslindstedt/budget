@@ -11,11 +11,11 @@ function loan(over: Partial<Loan> = {}): Loan {
     name: "Car loan",
     kind: "car",
     startDate: "2026-01-15",
-    startSum: 120000,
     monthlyPayment: 2500,
     rate: 4.5,
     startFee: 495,
     payments: [{ id: "p1", date: "2026-02-27", amount: 2500 }],
+    balanceHistory: [{ id: "b1", date: "2026-01-15", value: 120495 }],
     ...over,
   };
 }
@@ -107,23 +107,31 @@ describe("validateLoan via validateUserData", () => {
     }
   });
 
-  it("sweeps malformed payments and negative figures instead of failing", () => {
+  it("sweeps malformed payments and balance points instead of failing", () => {
     const data = blob([
       loan({
-        startSum: -5 as number,
         payments: [
           { id: "p1", date: "2026-02-27", amount: 2500 },
           { id: "", date: "2026-02-27", amount: 2500 },
           { id: "p2", date: "not-a-date", amount: 2500 },
           { id: "p1", date: "2026-03-27", amount: 2500 },
         ] as Loan["payments"],
+        balanceHistory: [
+          { id: "b1", date: "2026-01-15", value: 120495 },
+          { id: "", date: "2026-01-15", value: 1 },
+          { id: "b2", date: "not-a-date", value: 1 },
+          { id: "b3", date: "2026-02-15", value: -5 },
+          { id: "b1", date: "2026-03-15", value: 1 },
+        ] as Loan["balanceHistory"],
       }),
     ]);
     const result = validateUserData(data);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.loans[0].startSum).toBeUndefined();
       expect(result.value.loans[0].payments.map((p) => p.id)).toEqual(["p1"]);
+      expect(result.value.loans[0].balanceHistory.map((b) => b.id)).toEqual([
+        "b1",
+      ]);
     }
   });
 });
@@ -159,5 +167,73 @@ describe("loan migrations", () => {
     const loans = (data as UserData).loans as Array<Record<string, unknown>>;
     expect(loans[0].mortgageIds).toEqual(["m-1"]);
     expect("mortgageId" in loans[0]).toBe(false);
+  });
+
+  it("v74 → converts startSum (+ fee) to a balance snapshot at the start date", () => {
+    const old = {
+      ...freshUserData(),
+      version: 74,
+      loans: [
+        {
+          id: "loan-1",
+          name: "Billån",
+          kind: "car",
+          startDate: "2024-08-12",
+          startSum: 145000,
+          startFee: 595,
+          payments: [],
+        },
+      ],
+    } as Record<string, unknown>;
+    const { data, migrated } = migrate(old as never);
+    expect(migrated).toBe(true);
+    expect(data.version).toBe(LATEST_VERSION);
+    const loans = (data as UserData).loans as Array<Record<string, unknown>>;
+    expect("startSum" in loans[0]).toBe(false);
+    // The fee stays as informational metadata; its financed value rides
+    // the snapshot.
+    expect(loans[0].startFee).toBe(595);
+    const points = loans[0].balanceHistory as Array<Record<string, unknown>>;
+    expect(points).toHaveLength(1);
+    expect(points[0].date).toBe("2024-08-12");
+    expect(points[0].value).toBe(145595);
+  });
+
+  it("v74 → anchors before the earliest payment when no start date exists", () => {
+    const old = {
+      ...freshUserData(),
+      version: 74,
+      loans: [
+        {
+          id: "loan-1",
+          name: "CSN",
+          kind: "student",
+          startSum: 100000,
+          payments: [
+            { id: "p2", date: "2026-02-27", amount: 1000 },
+            { id: "p1", date: "2026-01-27", amount: 1000 },
+          ],
+        },
+      ],
+    } as Record<string, unknown>;
+    const { data } = migrate(old as never);
+    const loans = (data as UserData).loans as Array<Record<string, unknown>>;
+    const points = loans[0].balanceHistory as Array<Record<string, unknown>>;
+    expect(points).toHaveLength(1);
+    // The day before the earliest payment, so both payments still
+    // amortise from the snapshot.
+    expect(points[0].date).toBe("2026-01-26");
+    expect(points[0].value).toBe(100000);
+  });
+
+  it("v74 → seeds an empty balance history when no startSum exists", () => {
+    const old = {
+      ...freshUserData(),
+      version: 74,
+      loans: [{ id: "loan-1", name: "Bolån", kind: "mortgage", payments: [] }],
+    } as Record<string, unknown>;
+    const { data } = migrate(old as never);
+    const loans = (data as UserData).loans as Array<Record<string, unknown>>;
+    expect(loans[0].balanceHistory).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ import type {
   Item,
   LineItemLink,
   Loan,
+  LoanBalancePoint,
   LoanPayment,
   MatchRule,
   Mortgage,
@@ -444,6 +445,15 @@ export type Action =
     }
   | { type: "deleteLoanPayment"; loanId: string; paymentId: string }
   | { type: "deleteAllLoanPayments"; loanId: string }
+  | {
+      // Record a manually-entered outstanding balance — appends one point
+      // to the loan's `balanceHistory` (the remaining balance anchors on
+      // the latest point at-or-before the asked date).
+      type: "addLoanBalance";
+      loanId: string;
+      point: LoanBalancePoint;
+    }
+  | { type: "deleteLoanBalance"; loanId: string; pointId: string }
   | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
   | {
       type: "updateMortgage";

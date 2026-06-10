@@ -78,6 +78,8 @@ const actionHistory: ActionHistoryCatalog = {
     addLoanPayments: "Importerade lånebetalningar",
     deleteLoanPayment: "Tog bort lånebetalning",
     deleteAllLoanPayments: "Rensade lånebetalningar",
+    addLoanBalance: "Registrerade lånesaldo",
+    deleteLoanBalance: "Tog bort lånesaldo",
     addSalaries: "Lade till lönebesked",
     updateSalary: "Redigerade lönebesked",
     deleteSalary: "Tog bort lönebesked",

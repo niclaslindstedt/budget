@@ -584,6 +584,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onOpenCreateLoan,
     onOpenEditLoan,
     onRequestDeleteLoan,
+    onOpenUpdateBalance: onOpenUpdateLoanBalance,
     onOpenPayments: onOpenLoanPayments,
     onOpenImportPayments: onOpenLoanImportPayments,
   } = loanDialog;
@@ -1070,6 +1071,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onCreateLoan={onOpenCreateLoan}
                     onEditLoan={onOpenEditLoan}
                     onRequestDeleteLoan={onRequestDeleteLoan}
+                    onUpdateBalance={onOpenUpdateLoanBalance}
                     onImportPayments={onOpenLoanImportPayments}
                     onViewPayments={onOpenLoanPayments}
                   />

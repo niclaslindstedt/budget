@@ -13,7 +13,9 @@ import {
 } from "../constants/defaults";
 import { nsKey } from "../constants/storage";
 import { DEVICE_SCOPED_KEYS } from "../settings";
+import { newId } from "../sheet";
 import { clearRawStorage, readRawStorage } from "../../storage/local-adapter";
+import { addDaysIso, todayIso } from "../../utils/date";
 import { safeJsonParse } from "../../utils/json";
 import { isObj, type MigrationTable, type Versioned } from "./shared";
 
@@ -1085,6 +1087,51 @@ export const MODERN_MIGRATIONS: MigrationTable = {
         })
       : v73.loans;
     return { ...v73, version: 74, loans };
+  },
+
+  // v74 → v75: a loan's balance anchors on dated snapshots
+  // (`Loan.balanceHistory`, recorded via "Update balance" on the row's
+  // "…" menu) instead of the original principal — `Loan.startSum` is
+  // gone. An existing start sum converts to one snapshot: the setup fee
+  // it used to finance folds into the value (the fee field itself stays,
+  // as informational metadata), dated at the start date when recorded.
+  // Without a start date the snapshot lands the day before the earliest
+  // payment so every payment still amortises from it — preserving the
+  // old "start sum + fee − payments" figure — or today as the last
+  // resort (no payments ⇒ the date can't change the derived balance).
+  74: (v74) => {
+    const loans = Array.isArray(v74.loans)
+      ? v74.loans.map((loan) => {
+          if (!isObj(loan)) return loan;
+          const { startSum, ...rest } = loan;
+          const balanceHistory: unknown[] = [];
+          if (typeof startSum === "number" && Number.isFinite(startSum)) {
+            const fee =
+              typeof rest.startFee === "number" &&
+              Number.isFinite(rest.startFee)
+                ? rest.startFee
+                : 0;
+            let date: string | undefined =
+              typeof rest.startDate === "string" ? rest.startDate : undefined;
+            if (date === undefined && Array.isArray(rest.payments)) {
+              for (const payment of rest.payments) {
+                if (!isObj(payment) || typeof payment.date !== "string")
+                  continue;
+                if (date === undefined || payment.date < date)
+                  date = payment.date;
+              }
+              if (date !== undefined) date = addDaysIso(date, -1);
+            }
+            balanceHistory.push({
+              id: newId(),
+              date: date ?? todayIso(),
+              value: startSum + fee,
+            });
+          }
+          return { ...rest, balanceHistory };
+        })
+      : v74.loans;
+    return { ...v74, version: 75, loans };
   },
 };
 

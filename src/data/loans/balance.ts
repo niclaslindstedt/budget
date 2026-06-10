@@ -1,7 +1,7 @@
 // Pure balance math for the Loans sheet. A simple loan's remaining balance
-// is simulated from its terms; a linked mortgage loan resolves everything
-// live from the linked `Mortgage` so the Properties sheet stays the single
-// source of truth.
+// derives from its recorded balance snapshots plus the payments between; a
+// linked mortgage loan resolves everything live from the linked `Mortgage`
+// so the Properties sheet stays the single source of truth.
 
 import type { Loan, Mortgage, Property } from "../types";
 import { isoToMonthNum } from "../../utils/date";
@@ -40,43 +40,73 @@ export function resolveLinkedMortgages(
   return { property, mortgages };
 }
 
-// Remaining balance of a simple (unlinked) loan as of `todayIso`.
+// Remaining balance of a simple (unlinked) loan as of `dateIso`.
 //
-// With a rate, the balance is simulated month by month from `startDate`:
-// the setup fee is treated as financed into the principal, each month
-// accrues interest on the outstanding balance (annual rate / 12), and the
-// monthly payment net of that interest amortises the principal. Clamped at
-// 0; a non-amortising loan (payment <= interest) is naturally capped by the
-// elapsed-month iteration count, so the loop can't run unbounded.
+// The balance anchors on the loan's recorded balance snapshots ("Update
+// balance" on the row's "…" menu): the latest snapshot on or before the
+// date, treated as the end-of-day figure, and the payments recorded
+// between the snapshot and the date amortise from there. Without a rate
+// the whole payment amortises. With a rate the walk runs month by month
+// (matching the snapshot's monthly granularity): each month accrues
+// interest on the outstanding balance (annual rate / 12) before that
+// month's payments land, so only the payment net of interest amortises —
+// a loan with a rate and no recorded payments honestly grows. Clamped at
+// 0 once paid off.
 //
-// Without a rate, the whole payment is treated as amortisation:
-// startSum + startFee − payments recorded so far.
+// A date before the earliest snapshot adds the payments in between back
+// on (interest is not un-accrued — backdated figures are approximate).
 //
-// Returns null when the inputs needed for either path are missing — the
-// row renders "—" rather than a guessed figure.
+// Returns null when no balance has been recorded — the row renders "—"
+// rather than a guessed figure.
 export function loanRemainingBalance(
   loan: Loan,
-  todayIso: string,
+  dateIso: string,
 ): number | null {
-  if (loan.startSum === undefined) return null;
-  const principal = loan.startSum + (loan.startFee ?? 0);
-  if (
-    loan.rate !== undefined &&
-    loan.monthlyPayment !== undefined &&
-    loan.startDate !== undefined
-  ) {
-    const months = isoToMonthNum(todayIso) - isoToMonthNum(loan.startDate);
-    if (months <= 0) return principal;
-    const monthlyRate = loan.rate / 100 / 12;
-    let balance = principal;
-    for (let i = 0; i < months; i++) {
-      const interest = balance * monthlyRate;
-      balance -= loan.monthlyPayment - interest;
-      if (balance <= 0) return 0;
+  if (loan.balanceHistory.length === 0) return null;
+  const points = [...loan.balanceHistory].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  let anchor = points[0];
+  for (const point of points) {
+    if (point.date > dateIso) break;
+    anchor = point;
+  }
+  if (anchor.date > dateIso) {
+    // Every snapshot is in the future: walk backward from the earliest by
+    // re-adding the payments between the date and the snapshot.
+    let balance = anchor.value;
+    for (const payment of loan.payments) {
+      if (payment.date > dateIso && payment.date <= anchor.date) {
+        balance += payment.amount;
+      }
     }
     return balance;
   }
-  return Math.max(0, principal - loanPaidSoFar(loan));
+  const payments = loan.payments
+    .filter((p) => p.date > anchor.date && p.date <= dateIso)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  if (loan.rate === undefined) {
+    let balance = anchor.value;
+    for (const payment of payments) balance -= payment.amount;
+    return Math.max(0, balance);
+  }
+  const monthlyRate = loan.rate / 100 / 12;
+  const anchorMonth = isoToMonthNum(anchor.date);
+  const endMonth = isoToMonthNum(dateIso);
+  let balance = anchor.value;
+  let next = 0;
+  for (let month = anchorMonth; month <= endMonth; month++) {
+    if (month > anchorMonth) balance += balance * monthlyRate;
+    while (
+      next < payments.length &&
+      isoToMonthNum(payments[next].date) === month
+    ) {
+      balance -= payments[next].amount;
+      next += 1;
+    }
+    if (balance <= 0) return 0;
+  }
+  return balance;
 }
 
 // Display figures for a linked mortgage loan, aggregated live across the

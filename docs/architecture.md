@@ -136,16 +136,18 @@ src/
 │   └── loans/                # loans page — the money the user owes
 │       ├── LoansPage.tsx         # page root — loans table + remaining total
 │       ├── LoanRow.tsx           # one loan row (swipe edit/delete, "…" menu)
-│       ├── LoanActionsMenu.tsx   # "…" swipe-strip menu (import/view payments)
+│       ├── LoanActionsMenu.tsx   # "…" swipe-strip menu (update balance,
+│       │                         #   import/view payments)
 │       ├── LoanModal.tsx         # add/edit loan (kind picker, per-kind lender
 │       │                         #   fields, property-mortgage link picker)
+│       ├── LoanUpdateBalanceModal.tsx  # append a dated balance snapshot
 │       ├── LoanPaymentsModal.tsx # recorded payments list (+ delete)
 │       ├── LoanImportPaymentsModal.tsx # candidate tick-list → addLoanPayments
 │       └── loan-kind.ts          # kind → i18n label key + fallback glyph
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 73, incl. taxProfiles +
+│   │   ├── user-data.ts        # UserData (version 75, incl. taxProfiles +
 │   │   │                       #   properties + savings + loans), StoredUser,
 │   │   │                       #   UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
@@ -154,9 +156,10 @@ src/
 │   │   ├── savings.ts          # Saving (savings account), SavingBalancePoint —
 │   │   │                       #   transactions live in UserData.history keyed by
 │   │   │                       #   the saving id; a first-class transfer endpoint
-│   │   ├── loans.ts            # Loan (kind, terms, lender fields, optional
-│   │   │                       #   link to several of one property's
-│   │   │                       #   mortgages), LoanPayment, LoanKind
+│   │   ├── loans.ts            # Loan (kind, terms, lender fields, dated
+│   │   │                       #   balance snapshots, optional link to
+│   │   │                       #   several of one property's mortgages),
+│   │   │                       #   LoanPayment, LoanBalancePoint, LoanKind
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
@@ -324,10 +327,11 @@ src/
 │   ├── loans/              # loans page — balance math + payment import
 │   │   ├── presets.ts          # LOAN_PRESET_TYPE_BY_KIND (kind → preset type
 │   │   │                       #   id the candidate scan anchors on), LOAN_KINDS
-│   │   ├── balance.ts          # loanPaidSoFar, loanRemainingBalance (rate →
-│   │   │                       #   month-by-month simulation; else subtraction),
-│   │   │                       #   resolveLinkedMortgages + linkedMortgageFigures
-│   │   │                       #   (aggregated across the linked mortgages)
+│   │   ├── balance.ts          # loanPaidSoFar, loanRemainingBalance (balance
+│   │   │                       #   snapshot anchor + payments; rate accrues
+│   │   │                       #   monthly interest), resolveLinkedMortgages +
+│   │   │                       #   linkedMortgageFigures (aggregated across
+│   │   │                       #   the linked mortgages)
 │   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
 │   │   │                       #   matched outflows minus already-recorded ids —
 │   │   │                       #   + findSimilarLoanPaymentCandidates (same

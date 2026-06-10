@@ -25,6 +25,7 @@ type Props = {
   companies: readonly Company[];
   onEditLoan: (loanId: string) => void;
   onDeleteLoan: (loanId: string, name: string) => void;
+  onUpdateBalance: (loanId: string) => void;
   onImportPayments: (loanId: string) => void;
   onViewPayments: (loanId: string) => void;
 };
@@ -36,6 +37,7 @@ function LoanRowImpl({
   companies,
   onEditLoan,
   onDeleteLoan,
+  onUpdateBalance,
   onImportPayments,
   onViewPayments,
 }: Props) {
@@ -186,7 +188,9 @@ function LoanRowImpl({
           </button>
           <LoanActionsMenu
             loan={loan}
+            isLinked={linked !== null}
             hasPayments={hasPayments}
+            onUpdateBalance={onUpdateBalance}
             onImportPayments={onImportPayments}
             onViewPayments={onViewPayments}
             onAction={() => setSwiped(false)}

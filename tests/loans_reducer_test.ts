@@ -10,9 +10,9 @@ function loan(over: Partial<Loan> = {}): Loan {
     id: "loan-1",
     name: "Car loan",
     kind: "car",
-    startSum: 120000,
     monthlyPayment: 2500,
     payments: [],
+    balanceHistory: [],
     ...over,
   };
 }
@@ -186,6 +186,27 @@ describe("addLoanPayments", () => {
       loanId: "loan-1",
     });
     expect(none.loans[0].payments).toHaveLength(0);
+  });
+});
+
+describe("loan balance snapshots", () => {
+  it("appends and deletes balance points", () => {
+    const prev = state({ loans: [loan()] });
+    const added = reducer(prev, {
+      type: "addLoanBalance",
+      loanId: "loan-1",
+      point: { id: "b1", date: "2026-05-01", value: 90000 },
+    });
+    expect(added.loans[0].balanceHistory).toEqual([
+      { id: "b1", date: "2026-05-01", value: 90000 },
+    ]);
+
+    const deleted = reducer(added, {
+      type: "deleteLoanBalance",
+      loanId: "loan-1",
+      pointId: "b1",
+    });
+    expect(deleted.loans[0].balanceHistory).toHaveLength(0);
   });
 });
 

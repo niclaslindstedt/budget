@@ -38,6 +38,7 @@ type Props = {
   // Arms the delete confirmation (owned by the loans modal host, so the
   // edit modal's Delete button shares it). Fires from a row's trash button.
   onRequestDeleteLoan: (loanId: string, name: string) => void;
+  onUpdateBalance: (loanId: string) => void;
   onImportPayments: (loanId: string) => void;
   onViewPayments: (loanId: string) => void;
 };
@@ -49,6 +50,7 @@ export function LoansPage({
   onCreateLoan,
   onEditLoan,
   onRequestDeleteLoan,
+  onUpdateBalance,
   onImportPayments,
   onViewPayments,
 }: Props) {
@@ -242,6 +244,7 @@ export function LoansPage({
                     companies={data.companies}
                     onEditLoan={onEditLoan}
                     onDeleteLoan={onRequestDeleteLoan}
+                    onUpdateBalance={onUpdateBalance}
                     onImportPayments={onImportPayments}
                     onViewPayments={onViewPayments}
                   />

@@ -6,8 +6,8 @@ straight from your imported bank transactions.
 
 ## What a loan records
 
-Each loan carries a type, a start date, a start sum, a monthly payment,
-and optionally an annual interest rate and a setup fee
+Each loan carries a type, a start date, a monthly payment, and
+optionally an annual interest rate and a setup fee
 (_uppläggningsavgift_). The lender field follows the type:
 
 - a **personal loan** names the person you borrowed from,
@@ -22,13 +22,19 @@ all loans at the bottom.
 
 ## Remaining balance
 
-With a rate set, the remaining balance is simulated month by month from
-the start date: each month accrues interest on the outstanding balance,
-and the monthly payment net of that interest amortises the principal.
-The setup fee is treated as financed into the loan. So the figure
+Record what remains of the loan with **Update balance** on the loan
+row's "…" menu: enter the outstanding debt and the date it was true.
+The remaining balance at any date is then calculated from the latest
+recorded balance and the payments since — so re-recording the balance
+whenever a statement arrives keeps the figure exact, and the payments
+carry it forward in between. Older snapshots stay listed in the same
+modal and can be deleted.
+
+With a rate set, the calculation walks month by month: each month
+accrues interest on the outstanding balance, and the payments that
+month net of that interest amortise the principal — so the figure
 honestly reflects that early payments are mostly interest. Without a
-rate, the balance is simply the start sum (plus fee) minus the payments
-recorded.
+rate, every recorded payment amortises in full.
 
 ## Linking mortgages from the Properties sheet
 

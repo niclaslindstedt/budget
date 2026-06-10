@@ -142,6 +142,7 @@ describe("describeActionSubject", () => {
           name: "Volvo loan",
           kind: "car",
           payments: [{ id: "pay-1", date: "2026-05-27", amount: 2500 }],
+          balanceHistory: [{ id: "bal-1", date: "2026-05-01", value: 90000 }],
         },
       ],
     };
@@ -149,7 +150,13 @@ describe("describeActionSubject", () => {
       describe2(
         {
           type: "addLoan",
-          loan: { id: "l2", name: "CSN", kind: "student", payments: [] },
+          loan: {
+            id: "l2",
+            name: "CSN",
+            kind: "student",
+            payments: [],
+            balanceHistory: [],
+          },
         },
         prev,
       ),
@@ -182,6 +189,22 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Volvo loan" });
     expect(
       describe2({ type: "deleteAllLoanPayments", loanId: "loan-1" }, prev),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+    expect(
+      describe2(
+        {
+          type: "addLoanBalance",
+          loanId: "loan-1",
+          point: { id: "bal-2", date: "2026-06-01", value: 87500 },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo loan" });
+    expect(
+      describe2(
+        { type: "deleteLoanBalance", loanId: "loan-1", pointId: "bal-1" },
+        prev,
+      ),
     ).toEqual({ kind: "name", value: "Volvo loan" });
   });
 

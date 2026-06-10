@@ -43,7 +43,6 @@ export type LoanDraft = {
   // Term fields as raw input text; the dialog hook parses them. Empty =
   // unset. All ignored when `link` is set (terms resolve from the mortgage).
   startDate: string;
-  startSum: string;
   monthlyPayment: string;
   rate: string;
   startFee: string;
@@ -100,7 +99,6 @@ export function LoanModal({
   const [glyph, setGlyph] = useState<CategoryIcon | null>(null);
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [startDate, setStartDate] = useState("");
-  const [startSum, setStartSum] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [rate, setRate] = useState("");
   const [startFee, setStartFee] = useState("");
@@ -124,11 +122,6 @@ export function LoanModal({
     setGlyph(loan?.glyph ?? null);
     setColor(loan?.color ?? DEFAULT_COLOR);
     setStartDate(loan?.startDate ?? "");
-    setStartSum(
-      loan?.startSum !== undefined
-        ? formatAmountForInput(loan.startSum, settings)
-        : "",
-    );
     setMonthlyPayment(
       loan?.monthlyPayment !== undefined
         ? formatAmountForInput(loan.monthlyPayment, settings)
@@ -221,7 +214,6 @@ export function LoanModal({
       glyph,
       color,
       startDate: isLinked ? "" : startDate,
-      startSum: isLinked ? "" : startSum.trim(),
       monthlyPayment: isLinked ? "" : monthlyPayment.trim(),
       rate: isLinked ? "" : rate.trim(),
       startFee: isLinked ? "" : startFee.trim(),
@@ -368,23 +360,6 @@ export function LoanModal({
                 <FormSection
                   as="label"
                   className="min-w-0"
-                  label={t("loansSheet.startSum")}
-                >
-                  <ClearableInput
-                    value={startSum}
-                    onValueChange={setStartSum}
-                    inputMode="decimal"
-                    placeholder={amountPlaceholder}
-                    wrapperClassName="w-full min-w-0"
-                    className={monoInputClass}
-                  />
-                </FormSection>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <FormSection
-                  as="label"
-                  className="min-w-0"
                   label={t("loansSheet.monthlyPayment")}
                 >
                   <ClearableInput
@@ -396,6 +371,9 @@ export function LoanModal({
                     className={monoInputClass}
                   />
                 </FormSection>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <FormSection
                   as="label"
                   className="min-w-0"
@@ -410,21 +388,25 @@ export function LoanModal({
                     className={monoInputClass}
                   />
                 </FormSection>
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={`${t("loansSheet.startFee")} (${t("loansSheet.optionalHint").toLowerCase()})`}
+                >
+                  <ClearableInput
+                    value={startFee}
+                    onValueChange={setStartFee}
+                    inputMode="decimal"
+                    placeholder={amountPlaceholder}
+                    wrapperClassName="w-full min-w-0"
+                    className={monoInputClass}
+                  />
+                </FormSection>
               </div>
 
-              <FormSection
-                as="label"
-                label={`${t("loansSheet.startFee")} (${t("loansSheet.optionalHint").toLowerCase()})`}
-              >
-                <ClearableInput
-                  value={startFee}
-                  onValueChange={setStartFee}
-                  inputMode="decimal"
-                  placeholder={amountPlaceholder}
-                  wrapperClassName="w-full min-w-0"
-                  className={monoInputClass}
-                />
-              </FormSection>
+              <p className="m-0 text-xs text-muted">
+                {t("loansSheet.balanceHint")}
+              </p>
             </>
           )}
 
