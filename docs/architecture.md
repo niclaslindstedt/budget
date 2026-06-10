@@ -329,7 +329,9 @@ src/
 │   │   │                       #   resolveLinkedMortgages + linkedMortgageFigures
 │   │   │                       #   (aggregated across the linked mortgages)
 │   │   ├── candidates.ts       # findLoanPaymentCandidates — type- or pattern-
-│   │   │                       #   matched outflows minus already-recorded ids
+│   │   │                       #   matched outflows minus already-recorded ids —
+│   │   │                       #   + findSimilarLoanPaymentCandidates (same
+│   │   │                       #   description key, amount within tolerance)
 │   │   ├── patterns.ts         # learnPaymentPatterns / matchesPaymentPattern —
 │   │   │                       #   normalised-description memory on the loan
 │   │   └── auto-attach.ts      # attachImportedLoanPayments — silent payment

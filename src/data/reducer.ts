@@ -56,6 +56,15 @@ import { reduceHistory } from "./reducers/history";
 import { reduceSeriesMetadata } from "./reducers/series-metadata";
 import { reduceHistoryPrimaryIncome } from "./reducers/history-primary-income";
 
+// One imported bank entry's metadata stamp, carried by `addLoanPayments`
+// — see the field comment on that action.
+export type LoanImportEntryOverride = {
+  accountId: string;
+  entryId: string;
+  userTypeId?: string;
+  userDescription?: string;
+};
+
 export type Action =
   | ItemAction
   | { type: "replace"; data: UserData }
@@ -426,6 +435,12 @@ export type Action =
       loanId: string;
       payments: LoanPayment[];
       patterns?: string[];
+      // Metadata stamps the modal's "set type" / "rename" checkboxes
+      // write back onto the imported entries' bank rows — the same
+      // `userTypeId` / `userDescription` overrides `updateHistoryEntry`
+      // patches, folded in here so the whole import stays one undo
+      // entry. Absent field ⇒ leave that override untouched.
+      entryOverrides?: LoanImportEntryOverride[];
     }
   | { type: "deleteLoanPayment"; loanId: string; paymentId: string }
   | { type: "deleteAllLoanPayments"; loanId: string }

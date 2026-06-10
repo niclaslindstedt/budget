@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { findLoanPaymentCandidates } from "../src/data/loans/candidates";
+import {
+  findLoanPaymentCandidates,
+  findSimilarLoanPaymentCandidates,
+} from "../src/data/loans/candidates";
 import { learnPaymentPatterns } from "../src/data/loans/patterns";
 import { freshUserData } from "../src/storage/local";
 import type { HistoryEntry, Loan, UserData } from "../src/data/types";
@@ -196,6 +199,79 @@ describe("findLoanPaymentCandidates", () => {
     expect(findLoanPaymentCandidates(loan(), s).map((c) => c.entry.id)).toEqual(
       ["h2", "h1"],
     );
+  });
+});
+
+describe("findSimilarLoanPaymentCandidates", () => {
+  // One charge typed with the loan's preset type; the rest of the bucket
+  // shares its bank description with drifting amounts.
+  function typedState(extra: HistoryEntry[]): UserData {
+    return state({
+      history: {
+        "acct-1": [
+          entry({ id: "anchor", userTypeId: "preset-type-car-loan" }),
+          ...extra,
+        ],
+      },
+    });
+  }
+
+  function similar(s: UserData, tolerancePct: number, l: Loan = loan()) {
+    const direct = findLoanPaymentCandidates(l, s);
+    return findSimilarLoanPaymentCandidates(l, s, direct, tolerancePct);
+  }
+
+  it("suggests entries with a matching description key within the amount tolerance", () => {
+    const s = typedState([
+      // Same normalised key (reference digits stripped), 4% off.
+      entry({ id: "near", description: "SANTANDER 99887", amount: -2600 }),
+      // Same key, 40% off — outside ±10%.
+      entry({ id: "far", description: "SANTANDER 11111", amount: -3500 }),
+      // Different merchant, identical amount.
+      entry({ id: "other", description: "ICA", amount: -2500 }),
+    ]);
+    expect(similar(s, 10).map((c) => c.entry.id)).toEqual(["near"]);
+  });
+
+  it("widening the tolerance pulls in further-off amounts", () => {
+    const s = typedState([
+      entry({ id: "far", description: "SANTANDER 11111", amount: -3500 }),
+    ]);
+    expect(similar(s, 10)).toEqual([]);
+    expect(similar(s, 50).map((c) => c.entry.id)).toEqual(["far"]);
+  });
+
+  it("never repeats a direct candidate and returns empty without anchors", () => {
+    const s = typedState([
+      entry({
+        id: "also-typed",
+        description: "SANTANDER 99887",
+        userTypeId: "preset-type-car-loan",
+      }),
+    ]);
+    expect(similar(s, 10)).toEqual([]);
+    // A loan kind with no typed entries has no anchors to suggest from.
+    expect(similar(s, 50, loan({ kind: "student" }))).toEqual([]);
+  });
+
+  it("skips inflows, hidden, collapsed and already-recorded entries", () => {
+    const s = typedState([
+      entry({ id: "inflow", description: "SANTANDER 1111", amount: 2500 }),
+      entry({ id: "hid", description: "SANTANDER 2222", hidden: true }),
+      entry({
+        id: "coll",
+        description: "SANTANDER 3333",
+        collapsedIntoTransferId: "t1",
+      }),
+      entry({ id: "paid", description: "SANTANDER 4444", date: "2026-04-27" }),
+      entry({ id: "ok", description: "SANTANDER 5555", date: "2026-03-27" }),
+    ]);
+    const l = loan({
+      payments: [
+        { id: "p1", date: "2026-04-27", amount: 2500, sourceHistoryId: "paid" },
+      ],
+    });
+    expect(similar(s, 10, l).map((c) => c.entry.id)).toEqual(["ok"]);
   });
 });
 

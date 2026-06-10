@@ -71,6 +71,13 @@ const loansSheet = {
   importEmpty:
     "No matching transactions found. Mark bank transactions with the {type} type (or import a statement that contains the loan's charges) and try again.",
   selectAll: "Select all",
+  importSuggestedTitle: "Suggested similar payments",
+  importSuggestedHint:
+    "Other transactions with a matching bank description and a similar amount.",
+  importTolerance: "Amount tolerance",
+  importSuggestedEmpty: "No similar transactions within ±{pct}%.",
+  importApplyType: "Mark the imported transactions with the {type} type",
+  importApplyName: "Rename the imported transactions to {name}",
   importCountOne: "Import {n} payment",
   importCountOther: "Import {n} payments",
 } as const;

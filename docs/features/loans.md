@@ -55,6 +55,19 @@ payments** on the loan row's swipe "…" menu. Tick the charges that
 belong to the loan and import: each becomes a dated payment linked to
 its bank row, so re-imports never double-count.
 
+Marking one transaction is enough. The modal's **Suggested similar
+payments** section finds the rest of the loan's history for you:
+transactions with a matching bank description whose amount is within
+±10% of a marked charge. A slider adjusts the tolerance (0–50%) when
+the instalment has drifted more — say, after a rate change.
+
+Metadata flows both ways. Two checkboxes — both on by default — tag
+the imported transactions with the loan's type and rename them to the
+loan's name, so the bank history gets tidier with every import. The
+original bank text is kept underneath, like any manual rename. (On a
+linked mortgage loan, suggestions and the checkboxes don't apply —
+payments and metadata belong to the Properties sheet there.)
+
 Importing also remembers the bank description. The next time you import
 a bank statement, matching charges attach to the loan automatically —
 no modal, no clicks. Payments live behind **View payments** on the same

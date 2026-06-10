@@ -2,9 +2,17 @@
 // user has tagged with the loan kind's preset type (directly, via a match
 // rule, or via merchant memory) plus entries matching the loan's learned
 // payment patterns — minus everything already recorded as a payment.
+// `findSimilarLoanPaymentCandidates` widens that set: entries sharing a
+// normalised bank-description key with a direct candidate whose amount
+// sits within a percentage tolerance, so tagging ONE charge is enough to
+// surface the loan's whole history.
 
 import type { HistoryEntry, Loan, UserData } from "../types";
 import { newRuleMatchCache, resolveEntryLabels } from "../budget/synthesis";
+import {
+  isNormalisedKeyMeaningful,
+  normaliseDescription,
+} from "../description-normaliser";
 import { LOAN_PRESET_TYPE_BY_KIND } from "./presets";
 import { resolveLinkedMortgages } from "./balance";
 import { matchesPaymentPattern } from "./patterns";
@@ -69,8 +77,64 @@ export function findLoanPaymentCandidates(
       out.push({ accountId, entry });
     }
   }
-  out.sort((a, b) =>
-    a.entry.date < b.entry.date ? 1 : a.entry.date > b.entry.date ? -1 : 0,
-  );
+  out.sort(byDateDesc);
+  return out;
+}
+
+function byDateDesc(a: LoanPaymentCandidate, b: LoanPaymentCandidate): number {
+  return a.entry.date < b.entry.date ? 1 : a.entry.date > b.entry.date ? -1 : 0;
+}
+
+// Similar-payment suggestions for the same modal: outflow entries that
+// share a normalised bank-description key with one of the `direct`
+// candidates AND whose magnitude falls within ±`tolerancePct`% of that
+// anchor's. Catches the common case where the user typed ONE charge with
+// the loan's preset type — the rest of the autogiro history has the same
+// description and a near-identical amount (it only drifts when the lender
+// adjusts the instalment). The amount guard keeps a same-merchant charge
+// for something else (an extra amortisation, a one-off fee) out of the
+// default-ticked set. Disjoint from `direct`; same exclusions; sorted
+// date-descending like the direct scan.
+export function findSimilarLoanPaymentCandidates(
+  loan: Loan,
+  state: UserData,
+  direct: readonly LoanPaymentCandidate[],
+  tolerancePct: number,
+): LoanPaymentCandidate[] {
+  if (direct.length === 0) return [];
+  // Anchor key → the |amount|s seen under it among the direct candidates.
+  const anchors = new Map<string, number[]>();
+  for (const { entry } of direct) {
+    const key = normaliseDescription(entry.description);
+    if (!isNormalisedKeyMeaningful(key)) continue;
+    const amounts = anchors.get(key);
+    if (amounts) amounts.push(Math.abs(entry.amount));
+    else anchors.set(key, [Math.abs(entry.amount)]);
+  }
+  if (anchors.size === 0) return [];
+  const consumed = consumedHistoryIds(loan, state);
+  const directIds = new Set(direct.map((c) => c.entry.id));
+  const tolerance = Math.max(0, tolerancePct) / 100;
+  const out: LoanPaymentCandidate[] = [];
+  for (const [accountId, entries] of Object.entries(state.history)) {
+    for (const entry of entries) {
+      if (entry.hidden) continue;
+      if (entry.collapsedIntoTransferId !== undefined) continue;
+      if (entry.amount >= 0) continue;
+      if (consumed.has(entry.id)) continue;
+      if (directIds.has(entry.id)) continue;
+      const anchorAmounts = anchors.get(
+        normaliseDescription(entry.description),
+      );
+      if (anchorAmounts === undefined) continue;
+      const amount = Math.abs(entry.amount);
+      const close = anchorAmounts.some(
+        (anchor) => Math.abs(amount - anchor) <= anchor * tolerance,
+      );
+      if (!close) continue;
+      out.push({ accountId, entry });
+    }
+  }
+  out.sort(byDateDesc);
   return out;
 }
