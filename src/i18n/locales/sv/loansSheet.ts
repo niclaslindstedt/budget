@@ -36,6 +36,20 @@ const loansSheet: LoansSheetCatalog = {
   linkedBalanceHint:
     "Saldot kommer från det länkade bolånet — uppdatera det på fastighetsbladet",
 
+  visualizeLoans: "Visualisera lån",
+  chartViewAria: "Diagramvy",
+  chartBalances: "Skulder",
+  chartPayments: "Betalningar",
+  chartIncludeStudent: "Inkludera studielån",
+  chartIncludeMortgages: "Inkludera bolån",
+  chartBreakOutInterest: "Bryt ut uppskattad ränta",
+  chartInterest: "Ränta",
+  chartTotal: "Totalt",
+  chartEmpty:
+    "Det finns inte tillräckligt med data att visa ännu. Registrera ett saldo eller importera betalningar först.",
+  chartNoneIncluded:
+    "Alla lån är exkluderade. Markera en lånetyp för att visa.",
+
   newTitle: "Nytt lån",
   namePlaceholder: "t.ex. Billån",
   description: "Beskrivning",

@@ -171,7 +171,9 @@ src/
 │   ├── ActiveRowProvider.tsx # universal row-claim coordinator
 │   ├── useClaimActiveRow.ts  # hook every in-row interactive element calls
 │   ├── charts/               # universal: reusable, theme-aware visualizations
-│   │   └── LineChart.tsx        # visx multi-series line chart (theme tokens)
+│   │   ├── LineChart.tsx        # visx multi-series line chart (theme tokens)
+│   │   ├── StackedAreaChart.tsx # visx stacked area chart (per-band contribution)
+│   │   └── StackedBarChart.tsx  # visx stacked bar chart (per-period quantities)
 │   ├── budget/               # budget page — per-account ledger
 │   │   ├── BudgetPage.tsx       # page root — months + columns + rows
 │   │   ├── BudgetViewerModal.tsx# read-only view-mode of a budget

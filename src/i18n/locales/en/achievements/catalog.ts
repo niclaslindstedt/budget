@@ -344,6 +344,12 @@ const catalog = {
     learnMore:
       "From the Savings sheet's … menu, pick Visualize value to chart how much you've set aside over time. Tick the accounts you want to include — all of them by default — and the line shows their combined balance at each recorded date, climbing as accounts come online and as each is topped up. The chart follows your theme: colours, font, corners, and spacing all match.",
   },
+  loansChart: {
+    name: "Debt Mapper",
+    condition: "Visualize your loans over time.",
+    learnMore:
+      "From the Loans sheet's … menu, pick Visualize loans to chart your debt as stacked bands — one per loan, with the top of the stack as the total. Switch to Payments for month-by-month bars of what you paid, and break the estimated interest out into its own segment to see how much of each month's payment went to the bank rather than the debt. Tick student loans and mortgages in or out of the stack. The chart follows your theme: colours, font, corners, and spacing all match.",
+  },
   archaeologist: {
     name: "Archaeologist",
     condition: "Override an imported history entry's description or type.",

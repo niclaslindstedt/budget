@@ -1,6 +1,7 @@
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   CalendarClock,
+  ChartArea,
   Coins,
   HandCoins,
   Pencil,
@@ -11,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import {
   linkedMortgageFigures,
   loanRemainingBalance,
@@ -28,6 +30,7 @@ import {
   favoriteMenuItem,
   type SheetTitleMenuItem,
 } from "../SheetTitleMenu";
+import { LoansChartModal } from "./LoansChartModal";
 import { LoanRow } from "./LoanRow";
 
 type Props = {
@@ -107,8 +110,21 @@ export function LoansPage({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [sheet.id]);
 
+  const [chartOpen, setChartOpen] = useState(false);
+
+  function handleVisualizeLoans() {
+    setChartOpen(true);
+    unlock("loansChart");
+  }
+
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
+    {
+      key: "visualize",
+      icon: <ChartArea size={16} aria-hidden focusable={false} />,
+      label: t("loansSheet.visualizeLoans"),
+      onClick: handleVisualizeLoans,
+    },
     {
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
@@ -337,6 +353,14 @@ export function LoansPage({
             </table>
           </div>
         </section>
+
+        <LoansChartModal
+          open={chartOpen}
+          loans={data.loans}
+          properties={data.properties}
+          settings={settings}
+          onClose={() => setChartOpen(false)}
+        />
       </section>
     </ActiveRowProvider>
   );
