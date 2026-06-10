@@ -146,6 +146,9 @@ src/
 │       ├── LoanUpdateBalanceModal.tsx  # append a dated balance snapshot
 │       ├── LoanPaymentsModal.tsx # recorded payments list (+ delete)
 │       ├── LoanImportPaymentsModal.tsx # candidate tick-list → addLoanPayments
+│       ├── LoansChartModal.tsx   # "Visualize loans" stacked chart (balances
+│       │                         #   area / monthly-payments bars, kind
+│       │                         #   filters, estimated-interest break-out)
 │       └── loan-kind.ts          # kind → i18n label key + fallback glyph
 ├── data/
 │   ├── types/              # persisted data model, split by topic
@@ -346,8 +349,13 @@ src/
 │   │   │                       #   description key, amount within tolerance)
 │   │   ├── patterns.ts         # learnPaymentPatterns / matchesPaymentPattern —
 │   │   │                       #   normalised-description memory on the loan
-│   │   └── auto-attach.ts      # attachImportedLoanPayments — silent payment
-│   │                           #   recording inside importBankHistory
+│   │   ├── auto-attach.ts      # attachImportedLoanPayments — silent payment
+│   │   │                       #   recording inside importBankHistory
+│   │   └── series.ts           # buildLoanBalanceBands / buildLoanPaymentBands
+│   │                           #   — the per-loan monthly stacks behind
+│   │                           #   "Visualize loans" (balances over time;
+│   │                           #   per-month payments with the estimated
+│   │                           #   interest share clamped to what was paid)
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /

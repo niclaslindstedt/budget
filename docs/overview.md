@@ -1779,6 +1779,51 @@ elsewhere: the footer's Edit button closes the view and opens the edit
 modal, and the row's "…" menu keeps Update balance / Import payments /
 View payments.
 
+### Visualize loans
+
+`LoansChartModal.tsx` (`src/components/loans/`) — the Loans-sheet
+visualization, opened from the sheet title's "…" menu ("Visualize
+loans"). Where the savings chart draws one combined line, this is a
+**stacked area chart**: every loan is its own smooth coloured band (the
+loan's picked colour, or a deterministic theme-token fallback), so the
+top of the stack reads as the total and each layer as that loan's
+contribution. A segmented toggle switches between two views:
+
+- **Balances** (default) — a smooth stacked **area**: each band is the
+  loan's outstanding debt over time, sampled monthly from the earliest
+  date any included loan knows about (start date, snapshot, payment)
+  through today; the last sample lands on today so the stack's top
+  matches the page's footer total. Simple loans walk
+  `loanRemainingBalance`; linked mortgage loans sum `balanceAt` across
+  their linked mortgages, so the chart can never disagree with the
+  Properties sheet.
+- **Payments** — stacked **bars**, one per month from the earliest
+  payment (terms recorded years earlier don't prepend years of empty
+  months): each segment is what that loan was paid that month, and a
+  month without a payment is an honest gap rather than a curve gliding
+  across it. A **Break out estimated interest** checkbox shrinks each
+  loan's segment to the month's payment net of estimated interest and
+  adds one combined `--danger`-coloured Interest segment on top. The
+  estimate is per month — a simple loan with a rate accrues last
+  month's balance × rate/12, a linked loan sums
+  `resolveMonthlyInterestAt` (rate-history aware) — and the counted
+  interest is clamped to that month's payment, so it never exceeds
+  what was actually paid and the net segments stay ≥ 0.
+
+Two checkboxes (both on by default) include or exclude **student
+loans** and **mortgages** from the stack; the filter is by `kind`, so
+an unlinked mortgage-kind loan is excluded along with the linked ones.
+The series math is the pure `buildLoanBalanceBands` /
+`buildLoanPaymentBands` (`src/data/loans/series.ts`); the drawing is
+the reusable `StackedAreaChart` / `StackedBarChart` primitives
+(`src/components/charts/`), `LineChart`'s siblings — same theme-token
+chrome and crosshair tooltip (per-layer values plus a bold total row),
+with layers stacked by manual cumulative offsets over one shared
+monthly x array (the area chart adds monotone smoothing; the bar chart
+thins its month labels instead). `centered` (only toggles — no soft
+keyboard). Opening it unlocks the **Debt Mapper** achievement
+(`loansChart`, a manual trigger).
+
 ## Data and storage
 
 ### User data

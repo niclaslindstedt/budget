@@ -89,6 +89,28 @@ a bank statement, matching charges attach to the loan automatically —
 no modal, no clicks. Payments live behind **View payments** on the same
 menu, where individual records can be deleted.
 
+## Visualizing loans
+
+**Visualize loans** in the sheet title's … menu opens a chart of the
+whole collection. Every loan is its own colored layer (the loan's
+picked color when set), so the top of the stack is the total and each
+layer is that loan's share. A toggle switches between two views:
+
+- **Balances** — a smooth stacked area of each loan's outstanding debt
+  over time, month by month from the earliest date the loans know
+  about through today. The stack's top always matches the sheet's
+  footer total.
+- **Payments** — one stacked bar per month showing what each loan was
+  paid; a month you skipped is an honest gap. **Break out estimated
+  interest** splits each bar into the part that shrank the debt and a
+  combined red Interest segment — estimated from each loan's rate (a
+  linked mortgage uses its rate history), and never counted beyond
+  what was actually paid that month.
+
+Two checkboxes — both on by default — include or exclude **student
+loans** and **mortgages** from the stack, so the long-runners can be
+set aside to study the rest. Like every chart, it follows your theme.
+
 ## The Loans category
 
 All five loan types live under the new **Loans** preset category, so

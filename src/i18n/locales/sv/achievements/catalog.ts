@@ -342,6 +342,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Visualisera värde i Sparande-sheetets …-meny för att rita upp hur mycket du har lagt undan över tid. Markera kontona du vill inkludera — alla som standard — så visar linjen deras sammanlagda saldo vid varje registrerat datum, stigande allt eftersom konton tillkommer och fylls på. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
   },
+  loansChart: {
+    name: "Skuldkartläggare",
+    condition: "Visualisera dina lån över tid.",
+    learnMore:
+      "Välj Visualisera lån i Lån-sheetets …-meny för att rita upp din skuld som staplade band — ett per lån, där stapelns topp är totalsumman. Växla till Betalningar för månadsvisa staplar över det du betalat, och bryt ut den uppskattade räntan i ett eget segment för att se hur mycket av varje månads betalning som gick till banken i stället för till skulden. Bocka i eller ur studielån och bolån ur stapeln. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

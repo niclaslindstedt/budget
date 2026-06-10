@@ -39,6 +39,20 @@ const loansSheet = {
   linkedBalanceHint:
     "The balance comes from the linked mortgage — update it on the Properties sheet",
 
+  // Visualize-loans chart modal.
+  visualizeLoans: "Visualize loans",
+  chartViewAria: "Chart view",
+  chartBalances: "Balances",
+  chartPayments: "Payments",
+  chartIncludeStudent: "Include student loans",
+  chartIncludeMortgages: "Include mortgages",
+  chartBreakOutInterest: "Break out estimated interest",
+  chartInterest: "Interest",
+  chartTotal: "Total",
+  chartEmpty:
+    "Not enough data to chart yet. Record a balance or import payments first.",
+  chartNoneIncluded: "All loans are excluded. Tick a loan type to chart.",
+
   // Create / edit modal.
   newTitle: "New loan",
   namePlaceholder: "e.g. Car loan",
