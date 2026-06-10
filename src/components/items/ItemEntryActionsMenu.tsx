@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import { FileText, MoreHorizontal, Upload } from "lucide-react";
+import { FileText, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Item } from "../../data/types";
+import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
@@ -20,6 +21,11 @@ type Props = {
   // Open the shared attachment modal for this item's receipt — upload a new
   // one, or view / replace / remove the existing file.
   onManageReceipt: (item: Item) => void;
+  // Edit / Delete handlers surfaced as menu items ONLY when the action
+  // column has collapsed to the compact (⋯-only) layout — in the wide
+  // layout these are the inline pen / trash buttons in the swipe strip.
+  onEdit: () => void;
+  onDelete: () => void;
   // Fired after picking any menu item so the parent can dismiss its swipe
   // state in the same frame the dropdown closes.
   onAction: () => void;
@@ -48,9 +54,12 @@ export function ItemEntryActionsMenu({
   canManageReceipt,
   hasReceipt,
   onManageReceipt,
+  onEdit,
+  onDelete,
   onAction,
 }: Props) {
   const t = useT();
+  const compact = useActionsCompact();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -62,6 +71,24 @@ export function ItemEntryActionsMenu({
   }
 
   const items: MenuItem[] = [];
+
+  // In the compact layout the inline pen / trash are hidden, so the menu
+  // leads with Edit / Delete to keep both reachable (and so the ⋯ button
+  // renders even for an item with no receipt entry).
+  if (compact) {
+    items.push({
+      key: "edit",
+      icon: <Pencil size={16} aria-hidden focusable={false} />,
+      label: t("common.edit"),
+      onClick: () => pick(onEdit),
+    });
+    items.push({
+      key: "delete",
+      icon: <Trash2 size={16} aria-hidden focusable={false} />,
+      label: t("common.delete"),
+      onClick: () => pick(onDelete),
+    });
+  }
 
   if (canManageReceipt) {
     items.push({

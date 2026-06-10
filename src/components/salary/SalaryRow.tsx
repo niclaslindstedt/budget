@@ -258,6 +258,8 @@ function SalaryRowImpl({
             salary={salary}
             canManagePayslip={canManagePayslip}
             onManagePayslip={onManagePayslip}
+            onEdit={() => onEdit(salary.id)}
+            onDelete={() => onDelete(salary)}
             onAction={() => setSwiped(false)}
           />
         </div>

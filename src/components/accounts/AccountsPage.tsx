@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   Download,
@@ -14,10 +14,11 @@ import {
 import { unlock } from "../../data/achievements";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import type { Settings, Sheet, UserData } from "../../data/types";
-import { useAmountColumns } from "../../hooks";
+import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { AccountRow } from "./AccountRow";
 import { AccountTransfersModal } from "./AccountTransfersModal";
+import { ActionsCompactContext } from "../ActionsCompactContext";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { useModalDispatch } from "../modal-dispatch";
 import {
@@ -70,6 +71,10 @@ export function AccountsPage({
   const t = useT();
   const { headerClass, headerJustifyClass } = useAmountColumns();
   const dispatchModal = useModalDispatch();
+  // Collapse the trailing action column to a lone ⋯ when the table would
+  // overflow its wrapper on the desktop layout — see useActionsCompaction.
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const actionsCompact = useActionsCompaction(tableWrapperRef);
   // Transfer log lives behind a modal opened from the title menu —
   // mirrors the budget page's "Viewing mode" modal so the accounts
   // table stays the headline content of the page.
@@ -152,158 +157,167 @@ export function AccountsPage({
           <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
             {t("accountsSheet.title")}
           </h3>
-          <div className="overflow-clip rounded border border-line bg-surface">
-            <table className="swipe-table accounts-table w-full border-collapse text-sm md:text-[13px]">
-              <thead>
-                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
-                  <th
-                    scope="col"
-                    className="w-10 px-2.5 py-2 text-center"
-                    aria-label={t("accountsSheet.name")}
-                  >
-                    <Tag
-                      size={16}
-                      className="inline-block shrink-0 text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2.5 py-2 text-left"
-                    aria-label={t("accountsSheet.name")}
-                  >
-                    <span className="hidden md:inline">
-                      {t("accountsSheet.name")}
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="account-bank-cell hidden px-2.5 py-2 text-left md:table-cell"
-                    aria-label={t("accountsSheet.bank")}
-                  >
-                    <span className="inline-flex items-center gap-1.5 md:gap-2">
-                      <Landmark
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.bank")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className={`px-2.5 py-2 ${headerClass}`}
-                    aria-label={t("accountsSheet.balance")}
-                  >
-                    <span
-                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+          <div
+            ref={tableWrapperRef}
+            className="overflow-clip rounded border border-line bg-surface"
+          >
+            <ActionsCompactContext.Provider value={actionsCompact}>
+              <table
+                className={`swipe-table accounts-table w-full border-collapse text-sm md:text-[13px] ${
+                  actionsCompact ? "actions-compact" : ""
+                }`}
+              >
+                <thead>
+                  <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+                    <th
+                      scope="col"
+                      className="w-10 px-2.5 py-2 text-center"
+                      aria-label={t("accountsSheet.name")}
                     >
-                      <Wallet
+                      <Tag
                         size={16}
-                        className="shrink-0 text-accent"
+                        className="inline-block shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
                       />
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-2.5 py-2 text-left"
+                      aria-label={t("accountsSheet.name")}
+                    >
                       <span className="hidden md:inline">
-                        {t("accountsSheet.balance")}
+                        {t("accountsSheet.name")}
                       </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-20 px-2.5 py-2 text-right"
-                    aria-label={t("accountsSheet.historyCountHeader")}
-                    title={t("accountsSheet.historyCountTitle")}
-                  >
-                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
-                      <Receipt
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
+                    </th>
+                    <th
+                      scope="col"
+                      className="account-bank-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("accountsSheet.bank")}
+                    >
+                      <span className="inline-flex items-center gap-1.5 md:gap-2">
+                        <Landmark
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("accountsSheet.bank")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className={`px-2.5 py-2 ${headerClass}`}
+                      aria-label={t("accountsSheet.balance")}
+                    >
+                      <span
+                        className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                      >
+                        <Wallet
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("accountsSheet.balance")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="w-20 px-2.5 py-2 text-right"
+                      aria-label={t("accountsSheet.historyCountHeader")}
+                      title={t("accountsSheet.historyCountTitle")}
+                    >
+                      <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                        <Receipt
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("accountsSheet.historyCountHeader")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="swipe-action-cell account-action-cell w-32 px-2.5 py-2"
+                      aria-label={t("budget.rowActions")}
+                    >
+                      <span className="flex items-center justify-center gap-1.5 md:gap-2">
+                        <Wrench
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="action-header-label hidden md:inline">
+                          {t("budget.actions")}
+                        </span>
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.accounts.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3 py-6 text-center text-xs text-muted"
+                      >
+                        {t("accountsSheet.noAccounts")}
+                      </td>
+                    </tr>
+                  )}
+                  {data.accounts.map((account) => {
+                    const balance = balances.get(account.id) ?? 0;
+                    const accountSettings = account.currency
+                      ? { ...settings, currency: account.currency }
+                      : settings;
+                    const historyCount = data.history[account.id]?.length ?? 0;
+                    const transfersForAccount =
+                      transferCountByAccount.get(account.id) ?? 0;
+                    const canCut = historyCount > 0 || transfersForAccount > 0;
+                    return (
+                      <AccountRow
+                        key={account.id}
+                        account={account}
+                        balance={balance}
+                        accountSettings={accountSettings}
+                        historyCount={historyCount}
+                        canCut={canCut}
+                        canUpdateBalance={accountsWithBudget.has(account.id)}
+                        onEditAccount={onEditAccount}
+                        onDeleteAccount={onDeleteAccount}
+                        onUpdateBalance={onUpdateBalance}
+                        onImportHistory={onImportHistory}
+                        onViewHistory={onViewHistory}
+                        onCutHistory={onCutHistory}
                       />
-                      <span className="hidden md:inline">
-                        {t("accountsSheet.historyCountHeader")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="swipe-action-cell account-action-cell w-32 px-2.5 py-2"
-                    aria-label={t("budget.rowActions")}
-                  >
-                    <span className="flex items-center justify-center gap-1.5 md:gap-2">
-                      <Wrench
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("budget.actions")}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.accounts.length === 0 && (
+                    );
+                  })}
+                </tbody>
+                <tfoot>
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-3 py-6 text-center text-xs text-muted"
-                    >
-                      {t("accountsSheet.noAccounts")}
+                    <td colSpan={6} className="bg-surface-3 p-0">
+                      <button
+                        type="button"
+                        onClick={onCreateAccount}
+                        className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <Plus size={16} aria-hidden focusable={false} />
+                        {t("accountsSheet.addAccount")}
+                      </button>
                     </td>
                   </tr>
-                )}
-                {data.accounts.map((account) => {
-                  const balance = balances.get(account.id) ?? 0;
-                  const accountSettings = account.currency
-                    ? { ...settings, currency: account.currency }
-                    : settings;
-                  const historyCount = data.history[account.id]?.length ?? 0;
-                  const transfersForAccount =
-                    transferCountByAccount.get(account.id) ?? 0;
-                  const canCut = historyCount > 0 || transfersForAccount > 0;
-                  return (
-                    <AccountRow
-                      key={account.id}
-                      account={account}
-                      balance={balance}
-                      accountSettings={accountSettings}
-                      historyCount={historyCount}
-                      canCut={canCut}
-                      canUpdateBalance={accountsWithBudget.has(account.id)}
-                      onEditAccount={onEditAccount}
-                      onDeleteAccount={onDeleteAccount}
-                      onUpdateBalance={onUpdateBalance}
-                      onImportHistory={onImportHistory}
-                      onViewHistory={onViewHistory}
-                      onCutHistory={onCutHistory}
-                    />
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={6} className="bg-surface-3 p-0">
-                    <button
-                      type="button"
-                      onClick={onCreateAccount}
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <Plus size={16} aria-hidden focusable={false} />
-                      {t("accountsSheet.addAccount")}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </ActionsCompactContext.Provider>
           </div>
         </section>
       </section>

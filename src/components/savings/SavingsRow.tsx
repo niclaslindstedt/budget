@@ -135,6 +135,8 @@ function SavingsRowImpl({
             onImportHistory={onImportHistory}
             onViewHistory={onViewHistory}
             onCutHistory={onCutHistory}
+            onEdit={() => onEditSaving(saving.id)}
+            onDelete={() => onDeleteSaving(saving.id, saving.name)}
             onAction={() => setSwiped(false)}
           />
         </div>

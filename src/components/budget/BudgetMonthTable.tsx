@@ -7,10 +7,11 @@ import {
 } from "../../data/budget/synthesis";
 import { findColumnByType } from "../../data/sheet";
 import type { CellValue, Column, Row, Settings } from "../../data/types";
-import { useNearViewport } from "../../hooks";
+import { useActionsCompaction, useNearViewport } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { formatMonthKey, formatNumber, withCurrency } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { ActionsCompactContext } from "../ActionsCompactContext";
 import { useModalDispatch } from "../modal-dispatch";
 import { BudgetAddEntryButton } from "./BudgetAddEntryButton";
 import { useBudgetContext } from "./BudgetContext";
@@ -144,6 +145,13 @@ function MonthTableImpl({
   // a search jump pulls 60+ months of history into view.
   const sectionRef = useRef<HTMLElement | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
+  // Collapse the trailing action column to a lone ⋯ when the table would
+  // otherwise overflow this month's wrapper on the desktop layout. The
+  // flag both tags the table (CSS hides the inline pen / trash + header
+  // label) and rides ActionsCompactContext into the row action menus so
+  // they grow the Edit / Delete entries the strip no longer shows.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const actionsCompact = useActionsCompaction(wrapperRef);
   // Cached actual height of the tbody while rows are mounted. Used as
   // the placeholder height when the section next unmounts, so the
   // toggle is pixel-stable — without this, the placeholder fell back
@@ -276,6 +284,7 @@ function MonthTableImpl({
         </button>
       </h3>
       <div
+        ref={wrapperRef}
         hidden={collapsed}
         className={`overflow-clip rounded border border-line bg-surface ${
           selectMode ? "budget-table-selecting" : ""
@@ -308,75 +317,76 @@ function MonthTableImpl({
           } as React.CSSProperties
         }
       >
-        <table
-          className={`swipe-table budget-table w-full border-collapse text-sm md:text-[13px] ${
-            selectMode ? "is-selecting" : ""
-          }`}
-        >
-          <thead>
-            <tr>
-              {selectMode && (
+        <ActionsCompactContext.Provider value={actionsCompact}>
+          <table
+            className={`swipe-table budget-table w-full border-collapse text-sm md:text-[13px] ${
+              selectMode ? "is-selecting" : ""
+            } ${actionsCompact ? "actions-compact" : ""}`}
+          >
+            <thead>
+              <tr>
+                {selectMode && (
+                  <th
+                    scope="col"
+                    className="select-cell bg-surface-3 text-center"
+                    aria-label={t("budget.selectAllInMonth")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onToggleSelectMonth(selectableRowIds, !allSelected)
+                      }
+                      disabled={selectableRowIds.length === 0}
+                      className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-muted disabled:opacity-30"
+                      aria-label={
+                        allSelected
+                          ? t("budget.deselectAllInMonth")
+                          : t("budget.selectAllRowsInMonth")
+                      }
+                      aria-pressed={allSelected}
+                    >
+                      <span
+                        className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
+                          allSelected
+                            ? "border-accent bg-accent text-page-bg"
+                            : someSelected
+                              ? "border-accent text-accent"
+                              : "border-muted"
+                        }`}
+                      >
+                        {allSelected ? "✓" : someSelected ? "–" : ""}
+                      </span>
+                    </button>
+                  </th>
+                )}
+                {columns.map((col) => (
+                  <BudgetColumnHeader
+                    key={col.id}
+                    column={col}
+                    onReorder={onReorderColumns}
+                  />
+                ))}
                 <th
                   scope="col"
-                  className="select-cell bg-surface-3 text-center"
-                  aria-label={t("budget.selectAllInMonth")}
+                  className="swipe-action-cell action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
+                  aria-label={t("budget.rowActions")}
                 >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onToggleSelectMonth(selectableRowIds, !allSelected)
-                    }
-                    disabled={selectableRowIds.length === 0}
-                    className="flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-muted disabled:opacity-30"
-                    aria-label={
-                      allSelected
-                        ? t("budget.deselectAllInMonth")
-                        : t("budget.selectAllRowsInMonth")
-                    }
-                    aria-pressed={allSelected}
-                  >
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
-                        allSelected
-                          ? "border-accent bg-accent text-page-bg"
-                          : someSelected
-                            ? "border-accent text-accent"
-                            : "border-muted"
-                      }`}
-                    >
-                      {allSelected ? "✓" : someSelected ? "–" : ""}
+                  <span className="column-header-cell flex items-center justify-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] md:gap-2">
+                    <Wrench
+                      size={16}
+                      className="shrink-0 text-accent"
+                      aria-hidden
+                      focusable={false}
+                    />
+                    <span className="column-header-label action-header-label hidden md:inline">
+                      {t("budget.actions")}
                     </span>
-                  </button>
-                </th>
-              )}
-              {columns.map((col) => (
-                <BudgetColumnHeader
-                  key={col.id}
-                  column={col}
-                  onReorder={onReorderColumns}
-                />
-              ))}
-              <th
-                scope="col"
-                className="swipe-action-cell action-cell w-8 border-b border-line bg-surface-3 text-xs font-bold tracking-wider text-muted uppercase whitespace-nowrap"
-                aria-label={t("budget.rowActions")}
-              >
-                <span className="column-header-cell flex items-center justify-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] md:gap-2">
-                  <Wrench
-                    size={16}
-                    className="shrink-0 text-accent"
-                    aria-hidden
-                    focusable={false}
-                  />
-                  <span className="column-header-label hidden md:inline">
-                    {t("budget.actions")}
                   </span>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody ref={tbodyRef}>
-            {/* Skip building the row tree entirely when the month is
+                </th>
+              </tr>
+            </thead>
+            <tbody ref={tbodyRef}>
+              {/* Skip building the row tree entirely when the month is
                collapsed, OR when it sits far enough from the viewport
                that the user can't see it. The container above is
                `hidden` for collapsed; the placeholder branch below
@@ -386,115 +396,116 @@ function MonthTableImpl({
                month nobody can see is pure overhead and used to
                dominate the work when many years of history were
                revealed via "Show more" or a search jump. */}
-            {!renderRows && !collapsed && (
-              <tr aria-hidden="true">
+              {!renderRows && !collapsed && (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={fullWidthColSpan}
+                    style={{ height: placeholderHeight }}
+                    className="border-b border-line p-0"
+                  />
+                </tr>
+              )}
+              {renderRows &&
+                rows.map((row) => {
+                  // Skip hidden transfers — they're rendered inline above
+                  // their anchor when the anchor's expand toggle is on.
+                  if (
+                    hideTransfers &&
+                    row.kind !== "correction" &&
+                    isTransferRow(row)
+                  ) {
+                    return null;
+                  }
+                  if (row.kind === "correction") {
+                    const amount =
+                      amountCol && typeof row.cells[amountCol.id] === "number"
+                        ? (row.cells[amountCol.id] as number)
+                        : 0;
+                    return (
+                      <CorrectionLine
+                        key={row.id}
+                        colSpan={fullWidthColSpan}
+                        amount={amount}
+                        settings={settings}
+                        onClick={() =>
+                          dispatchModal({ kind: "open-correction-delete", row })
+                        }
+                      />
+                    );
+                  }
+                  const hiddenRun = hiddenBefore.get(row.id);
+                  const expanded =
+                    hiddenRun !== undefined &&
+                    expandedTransferAnchors.has(row.id);
+                  return (
+                    <Fragment key={row.id}>
+                      {expanded &&
+                        hiddenRun !== undefined &&
+                        hiddenRun.map((hidden) => (
+                          <BudgetRow
+                            key={hidden.id}
+                            row={hidden}
+                            columns={columns}
+                            balances={balances}
+                            onSetRowCompany={onSetRowCompany}
+                            onSetRowNoCompany={onSetRowNoCompany}
+                            selectMode={selectMode}
+                            selected={selectedIds.has(hidden.id)}
+                            canTransfer={canTransfer}
+                            revealedTransfer
+                            onUpdateCell={onUpdateCell}
+                            onCommitCell={onCommitCell}
+                            onToggleRowTransfer={onToggleRowTransfer}
+                            onSetFiscalMonthShift={onSetFiscalMonthShift}
+                            onToggleSelect={onToggleSelect}
+                          />
+                        ))}
+                      <BudgetRow
+                        row={row}
+                        columns={columns}
+                        balances={balances}
+                        onSetRowCompany={onSetRowCompany}
+                        onSetRowNoCompany={onSetRowNoCompany}
+                        selectMode={selectMode}
+                        selected={selectedIds.has(row.id)}
+                        canTransfer={canTransfer}
+                        hiddenTransferCount={hiddenRun?.length ?? 0}
+                        transferExpanded={expanded}
+                        onToggleTransferAnchor={() =>
+                          onToggleTransferAnchor(row.id)
+                        }
+                        onUpdateCell={onUpdateCell}
+                        onCommitCell={onCommitCell}
+                        onToggleRowTransfer={onToggleRowTransfer}
+                        onSetFiscalMonthShift={onSetFiscalMonthShift}
+                        onToggleSelect={onToggleSelect}
+                      />
+                    </Fragment>
+                  );
+                })}
+            </tbody>
+            <tfoot>
+              <tr>
                 <td
                   colSpan={fullWidthColSpan}
-                  style={{ height: placeholderHeight }}
-                  className="border-b border-line p-0"
-                />
+                  className="border-r-0 bg-surface-3 p-0"
+                >
+                  {covered ? (
+                    <OrphanIndicator
+                      orphanCount={orphanCount}
+                      onTriage={onTriage}
+                    />
+                  ) : (
+                    <BudgetAddEntryButton
+                      onAdd={onAddRow}
+                      onComplex={onAddComplex}
+                    />
+                  )}
+                </td>
               </tr>
-            )}
-            {renderRows &&
-              rows.map((row) => {
-                // Skip hidden transfers — they're rendered inline above
-                // their anchor when the anchor's expand toggle is on.
-                if (
-                  hideTransfers &&
-                  row.kind !== "correction" &&
-                  isTransferRow(row)
-                ) {
-                  return null;
-                }
-                if (row.kind === "correction") {
-                  const amount =
-                    amountCol && typeof row.cells[amountCol.id] === "number"
-                      ? (row.cells[amountCol.id] as number)
-                      : 0;
-                  return (
-                    <CorrectionLine
-                      key={row.id}
-                      colSpan={fullWidthColSpan}
-                      amount={amount}
-                      settings={settings}
-                      onClick={() =>
-                        dispatchModal({ kind: "open-correction-delete", row })
-                      }
-                    />
-                  );
-                }
-                const hiddenRun = hiddenBefore.get(row.id);
-                const expanded =
-                  hiddenRun !== undefined &&
-                  expandedTransferAnchors.has(row.id);
-                return (
-                  <Fragment key={row.id}>
-                    {expanded &&
-                      hiddenRun !== undefined &&
-                      hiddenRun.map((hidden) => (
-                        <BudgetRow
-                          key={hidden.id}
-                          row={hidden}
-                          columns={columns}
-                          balances={balances}
-                          onSetRowCompany={onSetRowCompany}
-                          onSetRowNoCompany={onSetRowNoCompany}
-                          selectMode={selectMode}
-                          selected={selectedIds.has(hidden.id)}
-                          canTransfer={canTransfer}
-                          revealedTransfer
-                          onUpdateCell={onUpdateCell}
-                          onCommitCell={onCommitCell}
-                          onToggleRowTransfer={onToggleRowTransfer}
-                          onSetFiscalMonthShift={onSetFiscalMonthShift}
-                          onToggleSelect={onToggleSelect}
-                        />
-                      ))}
-                    <BudgetRow
-                      row={row}
-                      columns={columns}
-                      balances={balances}
-                      onSetRowCompany={onSetRowCompany}
-                      onSetRowNoCompany={onSetRowNoCompany}
-                      selectMode={selectMode}
-                      selected={selectedIds.has(row.id)}
-                      canTransfer={canTransfer}
-                      hiddenTransferCount={hiddenRun?.length ?? 0}
-                      transferExpanded={expanded}
-                      onToggleTransferAnchor={() =>
-                        onToggleTransferAnchor(row.id)
-                      }
-                      onUpdateCell={onUpdateCell}
-                      onCommitCell={onCommitCell}
-                      onToggleRowTransfer={onToggleRowTransfer}
-                      onSetFiscalMonthShift={onSetFiscalMonthShift}
-                      onToggleSelect={onToggleSelect}
-                    />
-                  </Fragment>
-                );
-              })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td
-                colSpan={fullWidthColSpan}
-                className="border-r-0 bg-surface-3 p-0"
-              >
-                {covered ? (
-                  <OrphanIndicator
-                    orphanCount={orphanCount}
-                    onTriage={onTriage}
-                  />
-                ) : (
-                  <BudgetAddEntryButton
-                    onAdd={onAddRow}
-                    onComplex={onAddComplex}
-                  />
-                )}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            </tfoot>
+          </table>
+        </ActionsCompactContext.Provider>
       </div>
     </section>
   );

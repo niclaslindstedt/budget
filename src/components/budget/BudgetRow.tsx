@@ -448,6 +448,20 @@ function BudgetRowImpl({
               isSeries={isSeries}
               onToggleRowTransfer={onToggleRowTransfer}
               onSetFiscalMonthShift={onSetFiscalMonthShift}
+              onEdit={() =>
+                dispatchModal({
+                  kind: isHistory ? "open-edit-history" : "open-edit-row",
+                  row,
+                })
+              }
+              onDelete={() => {
+                if (isHistory) return;
+                dispatchModal({ kind: "open-delete-row", row });
+              }}
+              deleteDisabled={isHistory}
+              deleteDisabledTitle={
+                isHistory ? tr("cell.cannotDeleteHistory") : undefined
+              }
               onAction={() => setSwiped(false)}
             />
           )}

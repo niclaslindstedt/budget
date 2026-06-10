@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Calendar,
   Coins,
@@ -20,10 +20,11 @@ import type {
   Sheet,
   UserData,
 } from "../../data/types";
-import { useAmountColumns } from "../../hooks";
+import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, widestFormattedAmount } from "../../utils/format";
+import { ActionsCompactContext } from "../ActionsCompactContext";
 import { ActiveRowProvider } from "../ActiveRowProvider";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -65,6 +66,10 @@ export function ItemsPage({
 }: Props) {
   const t = useT();
   const { cellClass, headerClass, headerJustifyClass } = useAmountColumns();
+  // Collapse the trailing action column to a lone ⋯ when the table would
+  // overflow its wrapper on the desktop layout — see useActionsCompaction.
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
+  const actionsCompact = useActionsCompaction(tableWrapperRef);
   const dispatchModal = useModalDispatch();
   // Pending delete confirmation: the item id + name the trash button
   // armed, or null when no confirmation is open.
@@ -195,6 +200,7 @@ export function ItemsPage({
             {t("itemsSheet.title")}
           </h3>
           <div
+            ref={tableWrapperRef}
             className="overflow-clip rounded border border-line bg-surface"
             style={
               {
@@ -203,173 +209,179 @@ export function ItemsPage({
               } as React.CSSProperties
             }
           >
-            <table className="swipe-table items-table w-full border-collapse text-sm md:text-[13px]">
-              <thead>
-                <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
-                  <th
-                    scope="col"
-                    className="w-10 px-2.5 py-2 text-left"
-                    aria-label={t("itemsSheet.name")}
-                  >
-                    <Tag
-                      size={16}
-                      className="inline-block shrink-0 text-accent"
-                      aria-hidden
-                      focusable={false}
-                    />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2.5 py-2 text-left"
-                    aria-label={t("itemsSheet.name")}
-                  >
-                    <span className="hidden md:inline">
-                      {t("itemsSheet.name")}
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="items-purchased-cell hidden px-2.5 py-2 text-left md:table-cell"
-                    aria-label={t("itemsSheet.purchased")}
-                  >
-                    <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
-                      <Calendar
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("itemsSheet.purchased")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className={`px-2.5 py-2 ${headerClass}`}
-                    aria-label={t("itemsSheet.purchaseValue")}
-                  >
-                    <span
-                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+            <ActionsCompactContext.Provider value={actionsCompact}>
+              <table
+                className={`swipe-table items-table w-full border-collapse text-sm md:text-[13px] ${
+                  actionsCompact ? "actions-compact" : ""
+                }`}
+              >
+                <thead>
+                  <tr className="border-b border-line bg-surface-3 text-xs font-bold tracking-wider uppercase text-muted">
+                    <th
+                      scope="col"
+                      className="w-10 px-2.5 py-2 text-left"
+                      aria-label={t("itemsSheet.name")}
                     >
-                      <DollarSign
+                      <Tag
                         size={16}
-                        className="shrink-0 text-accent"
+                        className="inline-block shrink-0 text-accent"
                         aria-hidden
                         focusable={false}
                       />
-                      <span className="hidden md:inline">
-                        {t("itemsSheet.purchaseValue")}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className={`px-2.5 py-2 ${headerClass}`}
-                    aria-label={t("itemsSheet.currentValue")}
-                  >
-                    <span
-                      className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-2.5 py-2 text-left"
+                      aria-label={t("itemsSheet.name")}
                     >
-                      <Coins
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
                       <span className="hidden md:inline">
-                        {t("itemsSheet.currentValue")}
+                        {t("itemsSheet.name")}
                       </span>
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="swipe-action-cell items-action-cell w-32 px-2.5 py-2"
-                    aria-label={t("itemsSheet.actions")}
-                  >
-                    <span className="flex items-center justify-start gap-1.5 md:gap-2">
-                      <Wrench
-                        size={16}
-                        className="shrink-0 text-accent"
-                        aria-hidden
-                        focusable={false}
-                      />
-                      <span className="hidden md:inline">
-                        {t("itemsSheet.actions")}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ownedItems.length === 0 && (
-                  <tr className="items-fullspan">
-                    <td
-                      colSpan={6}
-                      className="px-3 py-6 text-center text-xs text-muted"
+                    </th>
+                    <th
+                      scope="col"
+                      className="items-purchased-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("itemsSheet.purchased")}
                     >
-                      {t("itemsSheet.noItems")}
-                    </td>
+                      <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
+                        <Calendar
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("itemsSheet.purchased")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className={`px-2.5 py-2 ${headerClass}`}
+                      aria-label={t("itemsSheet.purchaseValue")}
+                    >
+                      <span
+                        className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                      >
+                        <DollarSign
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("itemsSheet.purchaseValue")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className={`px-2.5 py-2 ${headerClass}`}
+                      aria-label={t("itemsSheet.currentValue")}
+                    >
+                      <span
+                        className={`inline-flex items-center gap-1.5 md:gap-2 ${headerJustifyClass}`}
+                      >
+                        <Coins
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("itemsSheet.currentValue")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="swipe-action-cell items-action-cell w-32 px-2.5 py-2"
+                      aria-label={t("itemsSheet.actions")}
+                    >
+                      <span className="flex items-center justify-start gap-1.5 md:gap-2">
+                        <Wrench
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="action-header-label hidden md:inline">
+                          {t("itemsSheet.actions")}
+                        </span>
+                      </span>
+                    </th>
                   </tr>
-                )}
-                {ownedItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    settings={settings}
-                    entryType={typeForItem(item.subtypeId)}
-                    todayIso={today}
-                    onEditItem={(itemId) =>
-                      dispatchModal({ kind: "open-edit-item", itemId })
-                    }
-                    onDeleteItem={(itemId, name) =>
-                      setPendingDelete({ id: itemId, name })
-                    }
-                    canManageReceipt={
-                      canManageReceipt && itemReceipts.has(item.id)
-                    }
-                    hasReceipt={itemReceipts.get(item.id) !== undefined}
-                    onManageReceipt={(it) => setManagingReceiptId(it.id)}
-                  />
-                ))}
-                {ownedItems.length > 0 && (
-                  <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
-                    <td className="px-2.5 py-2" />
-                    <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
-                      {t("itemsSheet.total")}
-                    </td>
-                    <td className="items-purchased-cell hidden md:table-cell" />
-                    <td
-                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
-                    >
-                      <span>{formatBalance(totals.purchase, settings)}</span>
-                    </td>
-                    <td
-                      className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
-                    >
-                      <span>{formatBalance(totals.current, settings)}</span>
-                    </td>
-                    <td className="swipe-action-cell items-action-cell px-2.5 py-2" />
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={6} className="bg-surface-3 p-0">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        dispatchModal({ kind: "open-create-item" })
+                </thead>
+                <tbody>
+                  {ownedItems.length === 0 && (
+                    <tr className="items-fullspan">
+                      <td
+                        colSpan={6}
+                        className="px-3 py-6 text-center text-xs text-muted"
+                      >
+                        {t("itemsSheet.noItems")}
+                      </td>
+                    </tr>
+                  )}
+                  {ownedItems.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      settings={settings}
+                      entryType={typeForItem(item.subtypeId)}
+                      todayIso={today}
+                      onEditItem={(itemId) =>
+                        dispatchModal({ kind: "open-edit-item", itemId })
                       }
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <Plus size={16} aria-hidden focusable={false} />
-                      {t("itemsSheet.addItem")}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                      onDeleteItem={(itemId, name) =>
+                        setPendingDelete({ id: itemId, name })
+                      }
+                      canManageReceipt={
+                        canManageReceipt && itemReceipts.has(item.id)
+                      }
+                      hasReceipt={itemReceipts.get(item.id) !== undefined}
+                      onManageReceipt={(it) => setManagingReceiptId(it.id)}
+                    />
+                  ))}
+                  {ownedItems.length > 0 && (
+                    <tr className="border-t border-line bg-surface-3 font-mono text-xs font-bold text-fg-bright">
+                      <td className="px-2.5 py-2" />
+                      <td className="px-2.5 py-2 text-left tracking-wider uppercase text-muted">
+                        {t("itemsSheet.total")}
+                      </td>
+                      <td className="items-purchased-cell hidden md:table-cell" />
+                      <td
+                        className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                      >
+                        <span>{formatBalance(totals.purchase, settings)}</span>
+                      </td>
+                      <td
+                        className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
+                      >
+                        <span>{formatBalance(totals.current, settings)}</span>
+                      </td>
+                      <td className="swipe-action-cell items-action-cell px-2.5 py-2" />
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={6} className="bg-surface-3 p-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dispatchModal({ kind: "open-create-item" })
+                        }
+                        className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent px-3 py-2 text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <Plus size={16} aria-hidden focusable={false} />
+                        {t("itemsSheet.addItem")}
+                      </button>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </ActionsCompactContext.Provider>
           </div>
         </section>
       </section>

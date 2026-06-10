@@ -1,9 +1,18 @@
 import { useCallback, useRef, useState } from "react";
-import { Download, Eye, MoreHorizontal, Scale, Scissors } from "lucide-react";
+import {
+  Download,
+  Eye,
+  MoreHorizontal,
+  Pencil,
+  Scale,
+  Scissors,
+  Trash2,
+} from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Saving } from "../../data/types";
+import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
 
 type Props = {
@@ -22,6 +31,11 @@ type Props = {
   onViewHistory: (savingId: string) => void;
   // Cut imported transactions / transfers before a chosen cutoff date.
   onCutHistory: (savingId: string) => void;
+  // Edit / Delete handlers surfaced as menu items ONLY when the action
+  // column has collapsed to the compact (⋯-only) layout — in the wide
+  // layout these are the inline pen / trash buttons in the swipe strip.
+  onEdit: () => void;
+  onDelete: () => void;
   // Fired after picking the menu item so the parent row can dismiss its
   // swipe state in the same frame the dropdown closes.
   onAction: () => void;
@@ -54,9 +68,12 @@ export function SavingActionsMenu({
   onImportHistory,
   onViewHistory,
   onCutHistory,
+  onEdit,
+  onDelete,
   onAction,
 }: Props) {
   const t = useT();
+  const compact = useActionsCompact();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -68,6 +85,24 @@ export function SavingActionsMenu({
   }
 
   const items: MenuItem[] = [
+    // In the compact layout the inline pen / trash are hidden, so the menu
+    // leads with Edit / Delete to keep both reachable.
+    ...(compact
+      ? [
+          {
+            key: "edit",
+            icon: <Pencil size={16} aria-hidden focusable={false} />,
+            label: t("common.edit"),
+            onClick: () => pick(onEdit),
+          },
+          {
+            key: "delete",
+            icon: <Trash2 size={16} aria-hidden focusable={false} />,
+            label: t("common.delete"),
+            onClick: () => pick(onDelete),
+          },
+        ]
+      : []),
     {
       key: "balance",
       icon: <Scale size={16} aria-hidden focusable={false} />,

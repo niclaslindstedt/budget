@@ -187,6 +187,8 @@ function AccountRowImpl({
             onUpdateBalance={onUpdateBalance}
             onImportHistory={onImportHistory}
             onCutHistory={onCutHistory}
+            onEdit={() => onEditAccount(account.id)}
+            onDelete={() => onDeleteAccount(account.id, account.name)}
             onAction={() => setSwiped(false)}
           />
         </div>

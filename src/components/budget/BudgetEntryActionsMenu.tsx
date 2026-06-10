@@ -7,15 +7,18 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  Pencil,
   Repeat,
   RotateCcw,
   Scissors,
   Tags,
+  Trash2,
 } from "lucide-react";
 
 import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Row } from "../../data/types";
+import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
 import { useModalDispatch } from "../modal-dispatch";
 
@@ -30,6 +33,16 @@ type Props = {
   // to. The handler is responsible for resolving the shift through the
   // reducer.
   onSetFiscalMonthShift?: (row: Row, shift: -1 | 1 | null) => void;
+  // Edit / Delete handlers surfaced as menu items ONLY when the action
+  // column has collapsed to the compact (⋯-only) layout — in the wide
+  // layout these are the inline pen / trash buttons in the swipe strip,
+  // so the menu omits them. `deleteDisabled` greys the Delete entry for
+  // history rows (which can't be deleted), with `deleteDisabledTitle` as
+  // the explanation.
+  onEdit: () => void;
+  onDelete: () => void;
+  deleteDisabled?: boolean;
+  deleteDisabledTitle?: string;
   // Fired after picking any menu item so the parent can dismiss its
   // swipe state in the same frame the dropdown closes.
   onAction: () => void;
@@ -56,10 +69,15 @@ export function BudgetEntryActionsMenu({
   isSeries,
   onToggleRowTransfer,
   onSetFiscalMonthShift,
+  onEdit,
+  onDelete,
+  deleteDisabled,
+  deleteDisabledTitle,
   onAction,
 }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
+  const compact = useActionsCompact();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -71,6 +89,25 @@ export function BudgetEntryActionsMenu({
   }
 
   const items: MenuItem[] = [];
+
+  // In the compact layout the inline pen / trash are hidden, so the menu
+  // leads with Edit / Delete to keep both reachable.
+  if (compact) {
+    items.push({
+      key: "edit",
+      icon: <Pencil size={16} aria-hidden focusable={false} />,
+      label: t("common.edit"),
+      onClick: () => pick(onEdit),
+    });
+    items.push({
+      key: "delete",
+      icon: <Trash2 size={16} aria-hidden focusable={false} />,
+      label: t("common.delete"),
+      disabled: deleteDisabled,
+      title: deleteDisabledTitle,
+      onClick: () => pick(onDelete),
+    });
+  }
 
   items.push({
     key: "recurring",

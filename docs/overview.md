@@ -2276,6 +2276,26 @@ The left / right gesture to switch between sheets.
 `src/hooks/useSheetSwipe.ts`. An edge band is reserved so row swipes
 don't collide.
 
+### Action column compaction
+
+The desktop fallback for the row swipe. On the mobile layout every
+sheet table hides its trailing action strip (pen / trash / ⋯) behind a
+left-swipe; desktop has no equivalent gesture, so when the browser
+narrows enough that the table can no longer fit the strip the action
+column used to overflow the `overflow-clip` wrapper and disappear off
+the right edge — unreachable. `useActionsCompaction` (`src/hooks/`)
+watches each table's wrapper and, on the desktop layout only, flips a
+`compact` flag the instant the table would overflow (with a hysteresis
+band so it doesn't flip-flop right at the boundary). The flag tags the
+`<table>` with `.actions-compact` — unlayered CSS in
+`src/styles/utilities.css` then hides the inline pen / trash and the
+header label and narrows the column to the lone ⋯ menu — and rides
+`ActionsCompactContext` (`src/components/ActionsCompactContext.ts`) into
+the per-sheet `*ActionsMenu` components, which grow Edit / Delete
+entries so neither action is lost. Wired into all six sheet tables
+(budget, accounts, items, salary, loans, savings); the mobile swipe
+overlay is untouched.
+
 ### Glyph
 
 A lucide-react icon, addressed by name. See the `CategoryIcon` union in
