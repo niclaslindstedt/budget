@@ -1772,8 +1772,10 @@ the linked property / lending company / person), its description, the
 four derived figures the table also shows (monthly payment, rate, paid
 so far, remaining — computed with the same helpers, so the modal and
 the row can't disagree), the entered terms (start date / start sum /
-setup fee; a linked loan lists its linked mortgages by name instead —
-its terms live on the mortgage), and the recorded payments via
+setup fee; a linked loan lists its linked mortgages instead — each by
+name with its own remaining balance and rate, so the card spells out
+the terms behind the aggregate figures above it; the mortgages'
+full terms live on the Properties sheet), and the recorded payments via
 `listLoanPayments`. Management stays
 elsewhere: the footer's Edit button closes the view and opens the edit
 modal, and the row's "…" menu keeps Update balance / Import payments /
