@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { Workbox } from "workbox-window";
 
 import { useT } from "../i18n";
-import { BUILD_LABEL } from "../utils/build-env";
 
 // Soft "a new build is ready, click to reload" prompt. Mounted by
 // `LanguageRoot` so it renders pre-auth, post-auth, and on every
@@ -37,9 +36,37 @@ import { BUILD_LABEL } from "../utils/build-env";
 // every `visibilitychange` to visible).
 const HOUR_MS = 60 * 60 * 1000;
 
+// The running bundle only knows its OWN version (`BUILD_LABEL`), which
+// is the build the toast is upgrading AWAY from — naming it would tell
+// the user they're "updating to" the version they're already on. The
+// incoming build's version lives in `version.json`, deployed alongside
+// the new SW; fetch it cache-bypassed so the still-active old SW lets
+// the request reach the network and return the freshly-deployed file.
+async function fetchIncomingVersion(base: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${base}version.json`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data: unknown = await res.json();
+    if (
+      data &&
+      typeof data === "object" &&
+      "version" in data &&
+      typeof (data as { version: unknown }).version === "string"
+    ) {
+      return (data as { version: string }).version;
+    }
+    return null;
+  } catch {
+    // Offline, or a deploy predating version.json — fall back to the
+    // version-less toast copy rather than guessing.
+    return null;
+  }
+}
+
 export function UpdateToast() {
   const t = useT();
   const [needRefresh, setNeedRefresh] = useState(false);
+  const [incomingVersion, setIncomingVersion] = useState<string | null>(null);
   const wbRef = useRef<Workbox | null>(null);
 
   useEffect(() => {
@@ -67,6 +94,9 @@ export function UpdateToast() {
 
       const onWaiting = () => {
         setNeedRefresh(true);
+        void fetchIncomingVersion(base).then((version) => {
+          if (!cancelled) setIncomingVersion(version);
+        });
       };
       const onControlling = (event: { isUpdate?: boolean }) => {
         if (event.isUpdate) window.location.reload();
@@ -122,7 +152,9 @@ export function UpdateToast() {
       className="fixed inset-x-3 bottom-[var(--toast-stack-bottom)] z-[60] mx-auto flex max-w-md items-center gap-3 rounded border border-line bg-surface px-3 py-2 text-fg shadow-md"
     >
       <span className="text-sm">
-        {t("pwa.updateReady", { version: BUILD_LABEL })}
+        {incomingVersion
+          ? t("pwa.updateReady", { version: incomingVersion })
+          : t("pwa.updateReadyGeneric")}
       </span>
       <button
         type="button"

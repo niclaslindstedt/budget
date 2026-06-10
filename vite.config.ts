@@ -430,6 +430,29 @@ function injectGoatcounter(): Plugin {
 // activates immediately, the `waiting` state is never observed, the
 // toast never renders, and the page silently runs old JS until the
 // next full navigation.
+// Emit a tiny `version.json` carrying this build's BUILD_LABEL into the
+// slot root (`/version.json`, `/preview/version.json`, …). The running
+// page knows only its OWN BUILD_LABEL, so the update toast can't name
+// the *incoming* build from anything in the loaded bundle. It fetches
+// this file (cache-bypassed) when the workbox `waiting` event fires to
+// learn the version it's about to upgrade to. Deliberately kept out of
+// precache (`json` isn't in `workbox.globPatterns`, and no runtime
+// route matches it) so the active SW lets the fetch reach the network
+// and return the freshly-deployed file, not a cached copy.
+function emitVersionJson(): Plugin {
+  return {
+    name: "emit-version-json",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: `${JSON.stringify({ version: BUILD_LABEL })}\n`,
+      });
+    },
+  };
+}
+
 function pwaPlugin(): Plugin[] {
   // W3C app identity is BASE_PATH — distinct per slot ("/",
   // "/preview/", "/branch/") so each install registers as its own
@@ -573,6 +596,7 @@ export default defineConfig({
     stripWoffFallback(),
     patchAppleTitle(),
     injectGoatcounter(),
+    emitVersionJson(),
     pwaPlugin(),
     emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE], {
       noindex: IS_PREVIEW,
