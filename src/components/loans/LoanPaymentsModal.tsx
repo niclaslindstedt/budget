@@ -1,6 +1,7 @@
 import { HandCoins, Trash2 } from "lucide-react";
 
 import { resolveLinkedMortgages } from "../../data/loans/balance";
+import { listLoanPayments } from "../../data/loans/payments";
 import type { Loan, Property, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
@@ -40,37 +41,10 @@ export function LoanPaymentsModal({
   if (!open || !loan) return null;
 
   const linked = resolveLinkedMortgages(loan, properties);
-  // A linked loan's combined charge is recorded as one split per linked
-  // mortgage, every leg sharing the charge's `sourceHistoryId` — list it
-  // as ONE row summing the legs (a hand-entered payment with no source
-  // stays its own row). Deleting the row deletes every leg (the dialog
-  // hook expands by source id). Unlinked loans list their own payments.
-  let payments: Array<{ id: string; date: string; amount: number }>;
-  if (linked) {
-    const byCharge = new Map<
-      string,
-      { id: string; date: string; amount: number }
-    >();
-    for (const mortgage of linked.mortgages) {
-      for (const payment of mortgage.payments) {
-        const key = payment.sourceHistoryId ?? `solo:${payment.id}`;
-        const existing = byCharge.get(key);
-        if (existing) {
-          existing.amount += payment.amount;
-        } else {
-          byCharge.set(key, {
-            id: payment.id,
-            date: payment.date,
-            amount: payment.amount,
-          });
-        }
-      }
-    }
-    payments = [...byCharge.values()];
-  } else {
-    payments = [...loan.payments];
-  }
-  payments.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // A linked loan's combined charge lists as ONE row per bank charge (see
+  // `listLoanPayments`); deleting the row deletes every leg (the dialog
+  // hook expands by source id).
+  const payments = listLoanPayments(loan, linked?.mortgages ?? null);
 
   return (
     <Modal

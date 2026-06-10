@@ -5,6 +5,7 @@ import { LoanImportPaymentsModal } from "../loans/LoanImportPaymentsModal";
 import { LoanModal } from "../loans/LoanModal";
 import { LoanPaymentsModal } from "../loans/LoanPaymentsModal";
 import { LoanUpdateBalanceModal } from "../loans/LoanUpdateBalanceModal";
+import { LoanViewModal } from "../loans/LoanViewModal";
 import type { useLoanDialog } from "./hooks/useLoanDialog";
 
 type Props = {
@@ -27,6 +28,9 @@ export function LoansModalHost({ data, effectiveSettings, loanDialog }: Props) {
     onSaveLoan,
     onDeleteLoanFromModal,
     onCreateCompany,
+    onOpenEditLoan,
+    viewLoan,
+    setViewForId,
     updateBalanceLoan,
     setUpdateBalanceForId,
     onAddLoanBalance,
@@ -53,6 +57,18 @@ export function LoansModalHost({ data, effectiveSettings, loanDialog }: Props) {
         onSave={onSaveLoan}
         onDelete={onDeleteLoanFromModal}
         onCreateCompany={onCreateCompany}
+      />
+      <LoanViewModal
+        open={viewLoan !== null}
+        loan={viewLoan}
+        properties={data.properties}
+        companies={data.companies}
+        settings={effectiveSettings}
+        onClose={() => setViewForId(null)}
+        onEdit={(loanId) => {
+          setViewForId(null);
+          onOpenEditLoan(loanId);
+        }}
       />
       <LoanUpdateBalanceModal
         open={updateBalanceLoan !== null}

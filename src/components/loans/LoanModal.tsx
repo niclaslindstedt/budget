@@ -381,7 +381,7 @@ export function LoanModal({
                 <FormSection
                   as="label"
                   className="min-w-0"
-                  label={`${t("loansSheet.rateLabel")} (${t("loansSheet.optionalHint").toLowerCase()})`}
+                  label={t("loansSheet.rateLabel")}
                 >
                   <ClearableInput
                     value={rate}
@@ -395,7 +395,7 @@ export function LoanModal({
                 <FormSection
                   as="label"
                   className="min-w-0"
-                  label={`${t("loansSheet.startFee")} (${t("loansSheet.optionalHint").toLowerCase()})`}
+                  label={t("loansSheet.startFee")}
                 >
                   <ClearableInput
                     value={startFee}

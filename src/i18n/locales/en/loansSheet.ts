@@ -3,6 +3,7 @@ import type { Widen } from "./_widen";
 const loansSheet = {
   title: "Loans",
   name: "Name",
+  type: "Type",
   monthly: "Monthly",
   rate: "Rate",
   paid: "Paid",
@@ -13,6 +14,7 @@ const loansSheet = {
   noLoans: "No loans yet. Add one with the button below.",
   editAria: "Edit {name}",
   editTitle: "Edit loan",
+  viewAria: "View {name}",
   deleteAria: "Delete {name}",
   deleteTitle: "Delete loan",
   deleteConfirm:
@@ -44,9 +46,8 @@ const loansSheet = {
   kind: "Type of loan",
   startDate: "Start date",
   startSum: "Start sum",
-  rateLabel: "Interest rate (%/year)",
+  rateLabel: "Rate (%/year)",
   startFee: "Setup fee",
-  optionalHint: "Optional",
   lenderName: "Lender (person)",
   lenderNamePlaceholder: "e.g. Alex",
   company: "Lender",

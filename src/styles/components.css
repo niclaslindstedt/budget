@@ -567,8 +567,8 @@
     /* Loans table — same swipe affordance and mobile block/grid conversion
        as the savings table. The secondary columns (monthly / rate / paid)
        drop on mobile (Tailwind `hidden md:table-cell`), leaving icon ·
-       name · remaining; the action cell overlays absolutely like the
-       other sheet tables. */
+       name · type glyph · remaining; the action cell overlays absolutely
+       like the other sheet tables. */
     .loans-table,
     .loans-table > thead,
     .loans-table > tbody,
@@ -576,10 +576,18 @@
       display: block;
       width: 100%;
     }
+    /* The shared template comes from React via `--loans-row-template`
+       (widest formatted amount, fixed 36px type-glyph track) so every
+       row — and the header — resolves identical columns; a per-row
+       `max-content` amount track would shift the type glyph from row
+       to row. Mirrors the transfers table. */
     .loans-table > thead > tr,
     .loans-table > tbody > tr:not(.loans-fullspan) {
       display: grid;
-      grid-template-columns: 40px minmax(0, 1fr) minmax(64px, max-content);
+      grid-template-columns: var(
+        --loans-row-template,
+        40px minmax(0, 1fr) 36px minmax(64px, max-content)
+      );
       position: relative;
       overflow: hidden;
     }

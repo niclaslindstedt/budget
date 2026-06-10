@@ -3,6 +3,7 @@ import type { LoansSheetCatalog } from "../en/loansSheet";
 const loansSheet: LoansSheetCatalog = {
   title: "Lån",
   name: "Namn",
+  type: "Typ",
   monthly: "Månadsvis",
   rate: "Ränta",
   paid: "Betalat",
@@ -13,6 +14,7 @@ const loansSheet: LoansSheetCatalog = {
   noLoans: "Inga lån ännu. Lägg till ett med knappen nedan.",
   editAria: "Redigera {name}",
   editTitle: "Redigera lån",
+  viewAria: "Visa {name}",
   deleteAria: "Ta bort {name}",
   deleteTitle: "Ta bort lån",
   deleteConfirm:
@@ -42,7 +44,6 @@ const loansSheet: LoansSheetCatalog = {
   startSum: "Startbelopp",
   rateLabel: "Ränta (%/år)",
   startFee: "Uppläggningsavgift",
-  optionalHint: "Valfritt",
   lenderName: "Långivare (person)",
   lenderNamePlaceholder: "t.ex. Alex",
   company: "Långivare",
