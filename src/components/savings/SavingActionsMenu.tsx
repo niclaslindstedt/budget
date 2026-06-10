@@ -130,7 +130,12 @@ export function SavingActionsMenu({
                 role="menuitem"
                 aria-disabled={it.disabled || undefined}
                 title={it.title}
-                onClick={() => {
+                onClick={(e) => {
+                  // The panel is portalled, but React routes synthetic
+                  // events through the component tree — stop the click here
+                  // so it can't bubble up to the row's onClick (the row tap
+                  // handler the other *Row siblings wire to a view modal).
+                  e.stopPropagation();
                   if (it.disabled) return;
                   it.onClick();
                 }}

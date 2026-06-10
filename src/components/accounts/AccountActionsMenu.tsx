@@ -118,7 +118,13 @@ export function AccountActionsMenu({
                 role="menuitem"
                 aria-disabled={it.disabled || undefined}
                 title={it.title}
-                onClick={() => {
+                onClick={(e) => {
+                  // The panel is portalled, but React routes synthetic
+                  // events through the component tree — without this the
+                  // click bubbles up to the row's onClick and also fires
+                  // its tap action (opening the history viewer behind the
+                  // modal this item just opened).
+                  e.stopPropagation();
                   if (it.disabled) return;
                   it.onClick();
                 }}
