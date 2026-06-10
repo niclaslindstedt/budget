@@ -51,6 +51,7 @@ const loansSheet: LoansSheetCatalog = {
   chartIncludeStudent: "Inkludera studielån",
   chartIncludeMortgages: "Inkludera bolån",
   chartBreakOutInterest: "Bryt ut uppskattad ränta",
+  chartSalaryMultiple: "Visa som multipel av månadslön",
   chartInterest: "Ränta",
   chartTotal: "Totalt",
   chartEmpty:

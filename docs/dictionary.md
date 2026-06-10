@@ -235,6 +235,7 @@ personal), with payments imported from bank transactions. Sheet type
 | **Loan payments view**                             | `LoanPaymentsModal.tsx`; `deleteLoanPayment` / `deleteAllLoanPayments`; `listLoanPayments` (`src/data/loans/payments.ts`). [→](overview.md#loan-payments-view)                                                                                           |
 | **View loan** / **loan details modal**             | `LoanViewModal.tsx`; opened by tapping a loan row. [→](overview.md#view-loan-modal)                                                                                                                                                                      |
 | **Visualize loans** / **loans chart**              | `LoansChartModal.tsx`; `buildLoanBalanceBands` / `buildLoanPaymentBands` (`src/data/loans/series.ts`); `StackedAreaChart` / `StackedBarChart` (`src/components/charts/`). Opened from the Loans sheet's title "…" menu. [→](overview.md#visualize-loans) |
+| **Salary multiple** / **multiple of salary**       | The "Show as multiple of monthly salary" modifier in `LoansChartModal.tsx`; `averageMonthlyNetAt` (`src/data/salary/salary.ts`). [→](overview.md#visualize-loans)                                                                                        |
 
 ## Data and storage
 

@@ -118,7 +118,19 @@ red when it has grown.
 
 Two checkboxes — both on by default — include or exclude **student
 loans** and **mortgages** from the stack, so the long-runners can be
-set aside to study the rest. Like every chart, it follows your theme.
+set aside to study the rest.
+
+If you record your paychecks on a Salary sheet, a third checkbox —
+**Show as multiple of monthly salary** — re-renders the chart in
+months of take-home pay instead of currency. Every value is divided by
+your household's average monthly net salary at that point in time (all
+recorded paychecks in a month added together, averaged over the most
+recent year of recorded months), so the Balances view answers "how
+many monthly salaries do we owe?" and the Payments view "how much of a
+paycheck went to loans this month?". Because the divisor follows your
+salary history, the curve honestly reflects raises: a debt that holds
+steady while your salary grows slopes downward. Like every chart, it
+follows your theme.
 
 ## The Loans category
 

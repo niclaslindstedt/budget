@@ -55,6 +55,7 @@ const loansSheet = {
   chartIncludeStudent: "Include student loans",
   chartIncludeMortgages: "Include mortgages",
   chartBreakOutInterest: "Break out estimated interest",
+  chartSalaryMultiple: "Show as multiple of monthly salary",
   chartInterest: "Interest",
   chartTotal: "Total",
   chartEmpty:

@@ -5,6 +5,7 @@ import {
   type DetectionRow,
 } from "../src/data/salary/detection";
 import {
+  averageMonthlyNetAt,
   grossFromNetAndRate,
   roleDateRange,
   roleForSalary,
@@ -250,6 +251,70 @@ describe("salary helpers", () => {
       end: "2022-01-15",
     });
     expect(roleDateRange("none", salaries)).toBeNull();
+  });
+});
+
+describe("averageMonthlyNetAt", () => {
+  const salary = (id: string, date: string, net: number): Salary => ({
+    id,
+    date,
+    net,
+  });
+
+  it("returns null when no salaries exist", () => {
+    expect(averageMonthlyNetAt([], "2026-06-15")).toBeNull();
+  });
+
+  it("averages over the recorded months on or before the date", () => {
+    const salaries = [
+      salary("s1", "2026-01-25", 30000),
+      salary("s2", "2026-02-25", 30000),
+      salary("s3", "2026-03-25", 36000),
+    ];
+    expect(averageMonthlyNetAt(salaries, "2026-03-31")).toBe(32000);
+    // A date mid-history only sees the paychecks up to it.
+    expect(averageMonthlyNetAt(salaries, "2026-02-28")).toBe(30000);
+  });
+
+  it("sums two paychecks in the same month into one household figure", () => {
+    const salaries = [
+      salary("s1", "2026-01-25", 30000),
+      salary("s2", "2026-01-27", 25000),
+    ];
+    expect(averageMonthlyNetAt(salaries, "2026-06-15")).toBe(55000);
+  });
+
+  it("ignores months without a paycheck instead of diluting the average", () => {
+    // January and June recorded, nothing in between — the average is over
+    // the two recorded months, not six.
+    const salaries = [
+      salary("s1", "2026-01-25", 30000),
+      salary("s2", "2026-06-25", 40000),
+    ];
+    expect(averageMonthlyNetAt(salaries, "2026-06-30")).toBe(35000);
+  });
+
+  it("only looks at the trailing twelve recorded months", () => {
+    const salaries: Salary[] = [salary("old", "2024-01-25", 90000)];
+    for (let m = 1; m <= 12; m++) {
+      const month = String(m).padStart(2, "0");
+      salaries.push(salary(`s-${m}`, `2026-${month}-25`, 30000));
+    }
+    expect(averageMonthlyNetAt(salaries, "2026-12-31")).toBe(30000);
+  });
+
+  it("falls back to the earliest recorded months before the first paycheck", () => {
+    const salaries = [
+      salary("s1", "2026-01-25", 30000),
+      salary("s2", "2026-02-25", 34000),
+    ];
+    expect(averageMonthlyNetAt(salaries, "2020-05-15")).toBe(32000);
+  });
+
+  it("returns null when the window sums to zero", () => {
+    expect(
+      averageMonthlyNetAt([salary("s1", "2026-01-25", 0)], "2026-06-15"),
+    ).toBeNull();
   });
 });
 
