@@ -1,3 +1,4 @@
+export { ActionsMenu } from "./ActionsMenu";
 export { Button, type ButtonVariant } from "./Button";
 export { Checkbox } from "./Checkbox";
 export { ClearableInput } from "./ClearableInput";
@@ -8,6 +9,7 @@ export {
   ACTIONS_MENU_PLACEMENT,
   ACTIONS_MENU_TRIGGER_CLASS,
   MENU_ITEM_CLASS,
+  MENU_ITEM_DANGER_CLASS,
   menuItemClass,
   type MenuItem,
 } from "./menu";

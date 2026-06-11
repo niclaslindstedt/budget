@@ -1,24 +1,10 @@
-import { useCallback, useRef, useState } from "react";
-import {
-  Download,
-  Eye,
-  MoreHorizontal,
-  Pencil,
-  Scale,
-  Scissors,
-  Trash2,
-} from "lucide-react";
+import { Download, Eye, Pencil, Scale, Scissors, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n";
 import type { Saving } from "../../data/types";
 import { useActionsCompact } from "../ActionsCompactContext";
-import { FloatingPanel } from "../FloatingPanel";
-import {
-  ACTIONS_MENU_PLACEMENT,
-  ACTIONS_MENU_TRIGGER_CLASS,
-  menuItemClass,
-  type MenuItem,
-} from "../form/menu";
+import { ActionsMenu } from "../form/ActionsMenu";
+import { type MenuItem } from "../form/menu";
 
 type Props = {
   saving: Saving;
@@ -64,15 +50,6 @@ export function SavingActionsMenu({
 }: Props) {
   const t = useT();
   const compact = useActionsCompact();
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const close = useCallback(() => setOpen(false), []);
-
-  function pick(handler: () => void) {
-    setOpen(false);
-    onAction();
-    handler();
-  }
 
   const items: MenuItem[] = [
     // In the compact layout the inline pen / trash are hidden, so the menu
@@ -83,13 +60,13 @@ export function SavingActionsMenu({
             key: "edit",
             icon: <Pencil size={16} aria-hidden focusable={false} />,
             label: t("common.edit"),
-            onClick: () => pick(onEdit),
+            onClick: onEdit,
           },
           {
             key: "delete",
             icon: <Trash2 size={16} aria-hidden focusable={false} />,
             label: t("common.delete"),
-            onClick: () => pick(onDelete),
+            onClick: onDelete,
           },
         ]
       : []),
@@ -97,13 +74,13 @@ export function SavingActionsMenu({
       key: "balance",
       icon: <Scale size={16} aria-hidden focusable={false} />,
       label: t("savingsSheet.updateBalance"),
-      onClick: () => pick(() => onUpdateBalance(saving.id)),
+      onClick: () => onUpdateBalance(saving.id),
     },
     {
       key: "import",
       icon: <Download size={16} aria-hidden focusable={false} />,
       label: t("savingsSheet.importHistory"),
-      onClick: () => pick(() => onImportHistory(saving.id)),
+      onClick: () => onImportHistory(saving.id),
     },
     {
       key: "view",
@@ -111,7 +88,7 @@ export function SavingActionsMenu({
       label: t("savingsSheet.viewHistory"),
       disabled: !hasHistory,
       title: hasHistory ? undefined : t("savingsSheet.noHistory"),
-      onClick: () => pick(() => onViewHistory(saving.id)),
+      onClick: () => onViewHistory(saving.id),
     },
     {
       key: "cut",
@@ -119,65 +96,20 @@ export function SavingActionsMenu({
       label: t("savingsSheet.cutHistory"),
       disabled: !canCut,
       title: canCut ? undefined : t("savingsSheet.nothingToCut"),
-      onClick: () => pick(() => onCutHistory(saving.id)),
+      onClick: () => onCutHistory(saving.id),
     },
   ];
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={ACTIONS_MENU_TRIGGER_CLASS}
-        aria-label={t("cell.moreActions")}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-      >
-        <MoreHorizontal size={16} aria-hidden focusable={false} />
-      </button>
-      <FloatingPanel
-        open={open}
-        onClose={close}
-        triggerRef={triggerRef}
-        placement={ACTIONS_MENU_PLACEMENT}
-        rowId={saving.id}
-        className="overflow-hidden"
-      >
-        <ul role="menu" className="py-1">
-          {items.map((it) => (
-            <li key={it.key} role="none">
-              <button
-                type="button"
-                role="menuitem"
-                aria-disabled={it.disabled || undefined}
-                title={it.title}
-                onClick={(e) => {
-                  // The panel is portalled, but React routes synthetic
-                  // events through the component tree — stop the click here
-                  // so it can't bubble up to the row's onClick (the row tap
-                  // handler the other *Row siblings wire to a view modal).
-                  e.stopPropagation();
-                  if (it.disabled) return;
-                  it.onClick();
-                }}
-                className={menuItemClass(it.disabled)}
-              >
-                <span
-                  aria-hidden
-                  className={it.disabled ? "text-muted" : "text-accent"}
-                >
-                  {it.icon}
-                </span>
-                <span className="flex-1 truncate">{it.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </FloatingPanel>
-    </>
+    <ActionsMenu
+      items={items}
+      ariaLabel={t("cell.moreActions")}
+      rowId={saving.id}
+      // The saving row's own tap opens the view modal (the tap handler
+      // the other *Row siblings wire) — keep menu clicks from bubbling
+      // into it.
+      stopPropagation
+      onPick={onAction}
+    />
   );
 }

@@ -6,16 +6,17 @@ import type { FloatingPlacement } from "../../hooks";
 // build on FloatingPanel (BudgetEntryActionsMenu, AccountActionsMenu,
 // ItemEntryActionsMenu, SalaryEntryActionsMenu, PropertyActionsMenu,
 // RepairEntryActionsMenu, LoanActionsMenu, SavingActionsMenu) plus the
-// universal SheetTitleMenu. Each menu re-declared these byte-identical
-// pieces; hoisting them keeps every menu's trigger, panel placement, and
-// item rows looking the same from one place. Each menu still renders its
-// own list — only the type and the styling constants are shared.
+// universal SheetTitleMenu. The per-page menus build a `MenuItem[]` and
+// hand it to the shared `ActionsMenu` shell (./ActionsMenu.tsx), which
+// renders the trigger, the floating panel, and the item rows from these
+// constants. SheetTitleMenu keeps its own renderer (and its own minimal
+// item type) but shares the row styling.
 
-// One entry in a `role="menu"` list. The optional flags are honored by
-// the renderer that owns the list: the table menus with gateable entries
-// (budget / accounts / loans / savings) grey out `disabled` rows and
-// surface `title` as the explanation; the property card menu tints
-// `danger` rows. Menus without such entries simply never set them.
+// One entry in a `role="menu"` list. The optional flags drive the row
+// variant the renderer picks: `disabled` greys the row out (with `title`
+// as the explanation); `danger` tints it for destructive entries. The
+// shared ActionsMenu closes the panel and fires its `onPick` callback
+// before invoking `onClick`, so handlers stay plain actions.
 export type MenuItem = {
   key: string;
   icon: ReactNode;
@@ -45,6 +46,12 @@ export const ACTIONS_MENU_TRIGGER_CLASS =
 // roving-focus outline.
 export const MENU_ITEM_CLASS =
   "flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
+
+// The danger-tinted variant of the menu-item row: same shell as
+// MENU_ITEM_CLASS with the text switched to the danger colour. Used for
+// destructive entries (e.g. a property card's Delete).
+export const MENU_ITEM_DANGER_CLASS =
+  "flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-danger hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
 
 // The disableable variant of the menu-item row: same shell, with the
 // cursor / text / hover classes switching on the entry's disabled flag.
