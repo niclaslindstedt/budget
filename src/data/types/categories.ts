@@ -137,7 +137,26 @@ export type CategoryIcon =
   | "banknote-arrow-down"
   | "flag"
   | "shield-alert"
-  | "cloud";
+  | "cloud"
+  // Sectors & markets — industry sectors, commodities, and trading
+  | "chart-candlestick"
+  | "diamond"
+  | "crown"
+  | "medal"
+  | "cpu"
+  | "satellite"
+  | "rocket"
+  | "dna"
+  | "microscope"
+  | "sun"
+  | "wind"
+  | "atom"
+  | "battery-charging"
+  | "factory"
+  | "pickaxe"
+  | "wheat"
+  | "truck"
+  | "shield";
 
 // Broad bucket used for cross-row analysis: Food, Housing, Transport,
 // Entertainment. A category owns a set of `EntryType`s (its concrete
