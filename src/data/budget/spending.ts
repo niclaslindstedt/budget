@@ -6,7 +6,7 @@ import {
 } from "../fiscal-month";
 import { findColumnByType } from "../sheet";
 import { isTransferRow } from "./synthesis";
-import type { Column, EntryType, Row } from "../types";
+import type { Column, EntryType, Item, Row } from "../types";
 
 // Trailing fiscal-month window for the spending dashboard. Numbers
 // count back from the current fiscal month (inclusive); "all" spans
@@ -25,6 +25,15 @@ export type SpendingInputs = {
   // deterministic.
   currentMonthKey: string;
   period: SpendingPeriod;
+  // The owned-items catalog keyed by id. Only consulted when
+  // `spreadItemCosts` is on; omit it otherwise.
+  itemsById?: ReadonlyMap<string, Item>;
+  // When true, expense rows carrying line items whose `Item` has both a
+  // `purchasePrice` and a `lifetimeYears` lose the item's cost in the
+  // purchase month and gain it back as equal monthly slices across the
+  // lifetime — straight-line cost allocation (Swedish "avskrivning")
+  // that de-spikes the charts around big purchases.
+  spreadItemCosts?: boolean;
 };
 
 // One filtered "actual money moved" observation.
@@ -62,6 +71,16 @@ export function isActualSpendingRow(
 // anchor row present, including ones (e.g. transfers) the filter drops.
 // Zero-amount rows produce no fact; months after `currentMonthKey` and
 // the "undated" bucket never enter the window.
+//
+// With `spreadItemCosts` on, an expense row's line-item costs are lifted
+// out of the purchase month and re-emitted as equal monthly slices (see
+// `SpendingInputs.spreadItemCosts`). The lifted amount per item is
+// clamped to what's left of the row's expense, so the residual fact
+// never flips into income and the window's total spend is conserved —
+// only redistributed (slices past `currentMonthKey` fall away; they'd
+// land in future months the dashboard never shows). Slices inherit the
+// row's type / category / company so the per-category charts stay
+// attributed.
 export function collectSpendingFacts(inputs: SpendingInputs): {
   facts: SpendingFact[];
   monthKeys: string[];
@@ -74,27 +93,59 @@ export function collectSpendingFacts(inputs: SpendingInputs): {
   if (!dateCol || !amountCol) return { facts: [], monthKeys: [] };
 
   const grouped = groupRowsByMonth([...rows], dateCol.id, startOfMonth);
+  const itemsById = inputs.spreadItemCosts ? inputs.itemsById : undefined;
 
   const factsByMonth = new Map<string, SpendingFact[]>();
+  const pushFact = (fact: SpendingFact) => {
+    const list = factsByMonth.get(fact.monthKey);
+    if (list) list.push(fact);
+    else factsByMonth.set(fact.monthKey, [fact]);
+  };
+
   for (const [monthKey, monthRows] of grouped) {
     if (!/^\d{4}-\d{2}$/.test(monthKey)) continue;
     if (monthKey > currentMonthKey) continue;
-    const facts: SpendingFact[] = [];
     for (const row of monthRows) {
       if (!isActualSpendingRow(row, completedCol?.id ?? null)) continue;
       const value = row.cells[amountCol.id];
-      const amount = typeof value === "number" ? value : 0;
+      let amount = typeof value === "number" ? value : 0;
       if (amount === 0) continue;
       const type = row.typeId ? typesById.get(row.typeId) : undefined;
-      facts.push({
-        monthKey,
-        amount,
-        typeId: type ? row.typeId! : null,
-        categoryId: type ? type.categoryId : null,
-        companyId: row.companyId ?? null,
-      });
+      const typeId = type ? row.typeId! : null;
+      const categoryId = type ? type.categoryId : null;
+      const companyId = row.companyId ?? null;
+
+      if (itemsById && amount < 0 && row.lineItems) {
+        for (const link of row.lineItems) {
+          const item = itemsById.get(link.itemId);
+          const lifetime = item?.lifetimeYears;
+          const price = item?.purchasePrice;
+          if (lifetime === undefined || lifetime <= 0) continue;
+          if (price === undefined || price <= 0) continue;
+          // Lift at most what's left of the row's expense — an item
+          // priced above the transaction spreads only what was paid.
+          const lifted = Math.min(price, -amount);
+          if (lifted <= 0) continue;
+          amount += lifted;
+          const months = Math.max(1, Math.round(lifetime * 12));
+          const startIndex = monthKeyToIndex(monthKey);
+          for (let m = 0; m < months; m += 1) {
+            const sliceKey = monthIndexToKey(startIndex + m);
+            if (sliceKey > currentMonthKey) break;
+            pushFact({
+              monthKey: sliceKey,
+              amount: -(lifted / months),
+              typeId,
+              categoryId,
+              companyId,
+            });
+          }
+        }
+        if (amount === 0) continue;
+      }
+
+      pushFact({ monthKey, amount, typeId, categoryId, companyId });
     }
-    if (facts.length > 0) factsByMonth.set(monthKey, facts);
   }
 
   // Resolve the window: numeric periods walk back from the current

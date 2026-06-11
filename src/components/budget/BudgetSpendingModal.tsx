@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, PieChart } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronLeft, PieChart, Settings2 } from "lucide-react";
 
 import {
   collectSpendingFacts,
@@ -19,10 +19,15 @@ import type {
   Column,
   Company,
   EntryType,
+  Item,
   Row,
   Settings,
 } from "../../data/types";
-import { useIsMobile, useResetOnOpen } from "../../hooks";
+import {
+  useIsMobile,
+  useResetOnOpen,
+  type FloatingPlacement,
+} from "../../hooks";
 import { bcp47 } from "../../i18n/locale";
 import { useLang, useT } from "../../i18n";
 import { indexById } from "../../utils/indexById";
@@ -31,6 +36,8 @@ import {
   formatNumber,
   withCurrency,
 } from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
+import { Checkbox } from "../form";
 import { Modal } from "../Modal";
 import { DonutChart, type DonutChartSlice } from "../charts/DonutChart";
 import { LineChart, type ChartSeries } from "../charts/LineChart";
@@ -47,9 +54,14 @@ import {
 // completed ones plus imported bank history; transfers and balance
 // corrections are excluded (see `isActualSpendingRow`). A trailing
 // fiscal-month range row (3M / 6M / 12M / All) clips every section to
-// the same window. The aggregation lives in the pure
+// the same window; a cogwheel dropdown to its right (shown only when
+// the items catalog has something to spread) toggles "spread item
+// costs", which de-spikes big purchases by re-allocating each linked
+// item's cost evenly across its lifetime (see
+// `SpendingInputs.spreadItemCosts`). The aggregation lives in the pure
 // `src/data/budget/spending.ts` helpers; this modal only maps facts to
-// themed, translated series and owns the period / drilldown state.
+// themed, translated series and owns the period / options / drilldown
+// state.
 //
 // Default (non-`centered`) modal mode: the dashboard is tall, so mobile
 // gets the fullscreen treatment and desktop a wide scrollable card.
@@ -65,6 +77,9 @@ type Props = {
   types: readonly EntryType[];
   categories: readonly Category[];
   companies: readonly Company[];
+  // The owned-items catalog — consulted by the "spread item costs"
+  // option to find each linked item's price and lifetime.
+  items: readonly Item[];
   settings: Settings;
 };
 
@@ -94,6 +109,15 @@ const TOP_MERCHANTS_LIMIT = 8;
 // donut is drilled into (`categoryId: null` = the uncategorised bucket).
 type Drill = { categoryId: string | null } | null;
 
+// The cogwheel options panel anchors to its trigger at the modal's top
+// right; growing leftward keeps it inside the viewport (the modal body
+// scrolls, so viewport space like the in-modal pickers).
+const OPTIONS_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 260 },
+  anchor: "right",
+  coordinateSpace: "viewport",
+};
+
 export function BudgetSpendingModal({
   open,
   onClose,
@@ -102,6 +126,7 @@ export function BudgetSpendingModal({
   types,
   categories,
   companies,
+  items,
   settings,
 }: Props) {
   const t = useT();
@@ -110,14 +135,34 @@ export function BudgetSpendingModal({
 
   const [period, setPeriod] = useState<SpendingPeriod>(DEFAULT_PERIOD);
   const [drill, setDrill] = useState<Drill>(null);
+  const [spreadItemCosts, setSpreadItemCosts] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsTriggerRef = useRef<HTMLButtonElement>(null);
   useResetOnOpen(open, undefined, () => {
     setPeriod(DEFAULT_PERIOD);
     setDrill(null);
+    setSpreadItemCosts(false);
+    setOptionsOpen(false);
   });
 
   const typesById = useMemo(() => indexById(types), [types]);
   const categoriesById = useMemo(() => indexById(categories), [categories]);
   const companiesById = useMemo(() => indexById(companies), [companies]);
+  const itemsById = useMemo(() => indexById(items), [items]);
+
+  // The cogwheel only appears when toggling the option could change the
+  // charts — i.e. at least one item carries both inputs the spread needs.
+  const hasSpreadableItems = useMemo(
+    () =>
+      items.some(
+        (item) =>
+          item.lifetimeYears !== undefined &&
+          item.lifetimeYears > 0 &&
+          item.purchasePrice !== undefined &&
+          item.purchasePrice > 0,
+      ),
+    [items],
+  );
 
   const currentMonthKey = useMemo(
     () => currentFiscalMonthKey(settings.startOfMonth),
@@ -133,8 +178,20 @@ export function BudgetSpendingModal({
         startOfMonth: settings.startOfMonth,
         currentMonthKey,
         period,
+        itemsById,
+        spreadItemCosts: spreadItemCosts && hasSpreadableItems,
       }),
-    [rows, columns, typesById, settings.startOfMonth, currentMonthKey, period],
+    [
+      rows,
+      columns,
+      typesById,
+      settings.startOfMonth,
+      currentMonthKey,
+      period,
+      itemsById,
+      spreadItemCosts,
+      hasSpreadableItems,
+    ],
   );
 
   const monthly = useMemo(
@@ -274,38 +331,76 @@ export function BudgetSpendingModal({
       <Modal.Body>
         <div className="flex flex-col gap-6">
           {/* Trailing-window range row — mirrors LoansChartModal; the
-              global reduce-motion rule zeroes the slide transition. */}
-          <div
-            role="group"
-            aria-label={t("budget.spendingRangeAria")}
-            className="relative flex rounded border border-line bg-surface-3 text-sm"
-          >
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 left-0 rounded bg-surface transition-transform"
-              style={{
-                width: `${100 / PERIODS.length}%`,
-                transform: `translateX(${PERIODS.findIndex((p) => p.value === period) * 100}%)`,
-              }}
-            />
-            {PERIODS.map((p) => (
-              <button
-                key={String(p.value)}
-                type="button"
-                onClick={() => {
-                  setPeriod(p.value);
-                  setDrill(null);
+              global reduce-motion rule zeroes the slide transition. The
+              cogwheel to its right holds chart options (item-cost
+              spreading) and only renders when there is something to
+              spread. */}
+          <div className="flex items-center gap-2">
+            <div
+              role="group"
+              aria-label={t("budget.spendingRangeAria")}
+              className="relative flex flex-1 rounded border border-line bg-surface-3 text-sm"
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 rounded bg-surface transition-transform"
+                style={{
+                  width: `${100 / PERIODS.length}%`,
+                  transform: `translateX(${PERIODS.findIndex((p) => p.value === period) * 100}%)`,
                 }}
-                aria-pressed={period === p.value}
-                className={`relative z-10 flex-1 cursor-pointer border-0 bg-transparent px-2 py-1 transition-colors ${
-                  period === p.value
-                    ? "text-accent"
-                    : "text-muted hover:text-fg"
-                }`}
-              >
-                {t(`budget.${p.labelKey}`)}
-              </button>
-            ))}
+              />
+              {PERIODS.map((p) => (
+                <button
+                  key={String(p.value)}
+                  type="button"
+                  onClick={() => {
+                    setPeriod(p.value);
+                    setDrill(null);
+                  }}
+                  aria-pressed={period === p.value}
+                  className={`relative z-10 flex-1 cursor-pointer border-0 bg-transparent px-2 py-1 transition-colors ${
+                    period === p.value
+                      ? "text-accent"
+                      : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {t(`budget.${p.labelKey}`)}
+                </button>
+              ))}
+            </div>
+            {hasSpreadableItems && (
+              <>
+                <button
+                  ref={optionsTriggerRef}
+                  type="button"
+                  onClick={() => setOptionsOpen((v) => !v)}
+                  aria-haspopup="true"
+                  aria-expanded={optionsOpen}
+                  aria-label={t("budget.spendingOptionsAria")}
+                  title={t("budget.spendingOptionsAria")}
+                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded border border-line bg-surface-3 p-1.5 hover:text-fg ${
+                    spreadItemCosts ? "text-accent" : "text-muted"
+                  }`}
+                >
+                  <Settings2 size={16} aria-hidden focusable={false} />
+                </button>
+                <FloatingPanel
+                  open={optionsOpen}
+                  onClose={() => setOptionsOpen(false)}
+                  triggerRef={optionsTriggerRef}
+                  placement={OPTIONS_PLACEMENT}
+                >
+                  <div className="p-3">
+                    <Checkbox
+                      checked={spreadItemCosts}
+                      onChange={setSpreadItemCosts}
+                      label={t("budget.spendingSpreadItemCosts")}
+                      description={t("budget.spendingSpreadItemCostsHint")}
+                    />
+                  </div>
+                </FloatingPanel>
+              </>
+            )}
           </div>
 
           {facts.length === 0 ? (

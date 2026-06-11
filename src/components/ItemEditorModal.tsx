@@ -97,6 +97,7 @@ export function ItemEditorModal({
   const [depreciates, setDepreciates] = useState(false);
   const [ratePerYear, setRatePerYear] = useState("");
   const [floor, setFloor] = useState("");
+  const [lifetimeYears, setLifetimeYears] = useState("");
   const [resaleValue, setResaleValue] = useState("");
   const [disposed, setDisposed] = useState(false);
   const [disposedAt, setDisposedAt] = useState("");
@@ -117,6 +118,11 @@ export function ItemEditorModal({
         dep ? formatAmountForInput(dep.ratePerYear, settings) : "",
       );
       setFloor(dep?.floor !== undefined ? seedAmount(dep.floor, settings) : "");
+      setLifetimeYears(
+        item?.lifetimeYears !== undefined
+          ? formatAmountForInput(item.lifetimeYears, settings)
+          : "",
+      );
       setResaleValue(seedAmount(item?.resaleValue, settings));
       setDisposed(
         item?.disposedAt !== undefined || item?.soldFor !== undefined,
@@ -161,6 +167,12 @@ export function ItemEditorModal({
     } else {
       patch.depreciation = undefined;
     }
+
+    // Lifetime: persisted only when a positive number is typed — zero or
+    // garbage clears the field (the cost is never spread).
+    const lifetime = num(lifetimeYears);
+    patch.lifetimeYears =
+      lifetime !== undefined && lifetime > 0 ? lifetime : undefined;
 
     // Disposal: only persisted when the toggle is on.
     if (disposed) {
@@ -303,6 +315,22 @@ export function ItemEditorModal({
               </div>
             )}
           </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("items.lifetimeYears")}
+            </span>
+            <ClearableInput
+              value={lifetimeYears}
+              onValueChange={setLifetimeYears}
+              inputMode="decimal"
+              placeholder={t("items.lifetimeYearsPlaceholder")}
+              className={amountInputClass}
+            />
+            <span className="text-xs text-muted">
+              {t("items.lifetimeYearsHint")}
+            </span>
+          </label>
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">{t("items.resaleValue")}</span>

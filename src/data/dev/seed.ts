@@ -1142,7 +1142,9 @@ export function buildSeedUserData(): UserData {
   // ---- Items (owned-things catalog) --------------------------------
   // The laptop is anchored to the Laptop subtype (so it inherits the
   // Electronics type → category) and linked to the budget purchase row
-  // below; the bike is left unclassified to exercise both paths.
+  // below; the bike is left unclassified to exercise both paths. The
+  // laptop's lifetime makes the spending dashboard's "spread item
+  // costs" cogwheel option reachable from the seed.
   const laptopItem: Item = {
     id: mkId("item"),
     name: 'Bärbar dator 14"',
@@ -1150,6 +1152,7 @@ export function buildSeedUserData(): UserData {
     acquiredAt: "2026-02-10",
     purchasePrice: 24990,
     depreciation: { method: "percentPerYear", ratePerYear: 25 },
+    lifetimeYears: 4,
   };
   const bikeItem: Item = {
     id: mkId("item"),

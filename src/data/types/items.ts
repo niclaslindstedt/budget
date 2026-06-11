@@ -49,6 +49,13 @@ export type Item = {
   purchasePrice?: number;
   // How the item loses value over time. Absent means it doesn't depreciate.
   depreciation?: ItemDepreciation;
+  // Expected useful life in years (may be fractional — 0.5 = six months).
+  // Drives the spending dashboard's "spread item costs" mode, which
+  // replaces the purchase-month spike with `purchasePrice` spread evenly
+  // across this many years (straight-line, like Swedish "avskrivning").
+  // Independent of `depreciation`, which models resale value, not cost
+  // allocation. Finite and positive; absent means the cost is never spread.
+  lifetimeYears?: number;
   // Manual override of the current resale value. When set it wins over a
   // computed depreciation figure — the user's own estimate of what they
   // could get for it today.

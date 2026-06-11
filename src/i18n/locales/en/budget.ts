@@ -84,6 +84,10 @@ const budget = {
   spendingAllCategories: "All categories",
   spendingDrillAria: "Show types in {name}",
   spendingEmpty: "No completed spending in this period.",
+  spendingOptionsAria: "Chart options",
+  spendingSpreadItemCosts: "Spread item costs over lifetime",
+  spendingSpreadItemCostsHint:
+    "Replaces each purchase spike with the linked item's cost divided evenly across its lifetime.",
 } as const;
 
 export type BudgetCatalog = Widen<typeof budget>;

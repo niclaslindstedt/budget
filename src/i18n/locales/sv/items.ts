@@ -53,6 +53,10 @@ const items: ItemsCatalog = {
   ratePerYear: "Takt per år (%)",
   ratePerYearPlaceholder: "t.ex. 20",
   depreciationFloor: "Lägsta värde (valfritt)",
+  lifetimeYears: "Livslängd (år)",
+  lifetimeYearsPlaceholder: "t.ex. 5",
+  lifetimeYearsHint:
+    "Låter utgiftsdiagrammen fördela inköpskostnaden jämnt över så här många år.",
   resaleValue: "Andrahandsvärde",
   disposed: "Såld eller avyttrad",
   disposedAt: "Datum",

@@ -12,7 +12,13 @@ import {
   monthKeyToIndex,
 } from "../src/data/budget/spending";
 import type { SpendingFact, SpendingInputs } from "../src/data/budget/spending";
-import type { Column, EntryType, Row } from "../src/data/types";
+import type {
+  Column,
+  EntryType,
+  Item,
+  LineItemLink,
+  Row,
+} from "../src/data/types";
 
 const DATE_COL = "col-date";
 const DESC_COL = "col-desc";
@@ -72,6 +78,7 @@ function makeRow(
     companyId?: string;
     fiscalMonthShift?: -1 | 1;
     isTransfer?: boolean;
+    lineItems?: LineItemLink[];
   } = {},
 ): Row {
   nextId += 1;
@@ -86,6 +93,7 @@ function makeRow(
     companyId: opts.companyId,
     fiscalMonthShift: opts.fiscalMonthShift,
     isTransfer: opts.isTransfer,
+    lineItems: opts.lineItems,
   };
   switch (kind) {
     case "user":
@@ -253,6 +261,134 @@ describe("collectSpendingFacts", () => {
       "2026-05",
       "2026-06",
     ]);
+  });
+
+  describe("spread item costs", () => {
+    const ITEMS: Item[] = [
+      // 0.25 years → 3 monthly slices.
+      { id: "item-tv", name: "TV", purchasePrice: 1200, lifetimeYears: 0.25 },
+      { id: "item-no-lifetime", name: "Couch", purchasePrice: 900 },
+      { id: "item-no-price", name: "Lamp", lifetimeYears: 1 },
+    ];
+    const ITEMS_BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
+    const link = (itemId: string): LineItemLink => ({
+      id: `link-${itemId}`,
+      itemId,
+    });
+    const spread = (rows: Row[], overrides: Partial<SpendingInputs> = {}) =>
+      collect(rows, {
+        itemsById: ITEMS_BY_ID,
+        spreadItemCosts: true,
+        ...overrides,
+      });
+
+    it("replaces the purchase spike with equal monthly slices", () => {
+      const { facts } = spread([
+        makeRow("historic", {
+          date: "2026-04-10",
+          amount: -1200,
+          typeId: "type-groceries",
+          companyId: "co-a",
+          lineItems: [link("item-tv")],
+        }),
+      ]);
+      expect(facts).toHaveLength(3);
+      expect(
+        facts
+          .map((f) => [f.monthKey, f.amount])
+          .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+      ).toEqual([
+        ["2026-04", -400],
+        ["2026-05", -400],
+        ["2026-06", -400],
+      ]);
+      // Slices stay attributed to the row's type / category / company.
+      for (const f of facts) {
+        expect(f.typeId).toBe("type-groceries");
+        expect(f.categoryId).toBe("cat-food");
+        expect(f.companyId).toBe("co-a");
+      }
+    });
+
+    it("keeps the unallocated remainder in the purchase month", () => {
+      const { facts } = spread([
+        makeRow("historic", {
+          date: "2026-05-10",
+          amount: -2000,
+          lineItems: [link("item-tv")],
+        }),
+      ]);
+      const purchaseMonth = facts.filter((f) => f.monthKey === "2026-05");
+      expect(purchaseMonth.map((f) => f.amount).sort((a, b) => a - b)).toEqual([
+        -800, -400,
+      ]);
+      expect(facts.find((f) => f.monthKey === "2026-06")?.amount).toBe(-400);
+    });
+
+    it("clamps the lifted cost to the row's expense", () => {
+      // Item priced above the transaction: only what was paid spreads,
+      // and no positive remainder fact leaks into income.
+      const { facts } = spread([
+        makeRow("historic", {
+          date: "2026-04-10",
+          amount: -600,
+          lineItems: [link("item-tv")],
+        }),
+      ]);
+      expect(facts.every((f) => f.amount < 0)).toBe(true);
+      expect(facts.map((f) => f.amount)).toEqual([-200, -200, -200]);
+    });
+
+    it("drops slices past the current month", () => {
+      const { facts } = spread([
+        makeRow("historic", {
+          date: "2026-06-10",
+          amount: -1200,
+          lineItems: [link("item-tv")],
+        }),
+      ]);
+      expect(facts).toEqual([
+        fact({ monthKey: "2026-06", amount: -400, companyId: null }),
+      ]);
+    });
+
+    it("leaves items without a lifetime or price (and income rows) alone", () => {
+      const { facts } = spread([
+        makeRow("historic", {
+          date: "2026-05-10",
+          amount: -900,
+          lineItems: [link("item-no-lifetime")],
+        }),
+        makeRow("historic", {
+          date: "2026-05-11",
+          amount: -300,
+          lineItems: [link("item-no-price")],
+        }),
+        makeRow("historic", {
+          date: "2026-05-12",
+          amount: 500,
+          lineItems: [link("item-tv")],
+        }),
+      ]);
+      expect(facts.map((f) => f.amount).sort((a, b) => a - b)).toEqual([
+        -900, -300, 500,
+      ]);
+    });
+
+    it("does not spread when the option is off", () => {
+      const { facts } = spread(
+        [
+          makeRow("historic", {
+            date: "2026-04-10",
+            amount: -1200,
+            lineItems: [link("item-tv")],
+          }),
+        ],
+        { spreadItemCosts: false },
+      );
+      expect(facts).toHaveLength(1);
+      expect(facts[0]).toMatchObject({ monthKey: "2026-04", amount: -1200 });
+    });
   });
 
   it("resolves typeId to categoryId and nulls dangling ids", () => {
