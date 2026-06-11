@@ -483,6 +483,16 @@ slot in):
    matches the existing `src/data/budget/` and `src/data/accounts/`
    directories. Do not pile new budget-only or accounts-only helpers
    into `src/data/sheet.ts`.
+7. **Evaluate the Insights sheet.** The Insights page
+   (`src/components/insights/`, math in `src/data/insights/`)
+   aggregates across every other sheet's data — its net-worth roll-up
+   reads accounts, savings, items, properties (with their mortgages),
+   and loans. When you add a sheet type that tracks a new asset or
+   liability, or change what an existing sheet tracks (a new value
+   field, a new debt shape, a changed balance helper), decide whether
+   the insights functions should capture the change — and either wire
+   it in (snapshot + series + settings entities + tests) or note in
+   the PR why it doesn't belong in net worth.
 
 **Data-layer module map — rules of placement.** The inventory of
 modules under `src/data/` (which file owns which helper) lives in
@@ -721,6 +731,7 @@ that aren't in the template comments:
 | Shipping a new user-facing feature / workflow / page                                       | **Always add a matching achievement** in the same PR — a catalog entry in `src/data/achievements/catalog.ts` (with its unlock trigger) plus English **and** Swedish copy under `src/i18n/locales/{en,sv}/achievements/catalog.ts`. Every feature is also an unlockable trophy. Use the `update-achievements-page` skill to pick the tier, phrase it, and wire the trigger. |
 | Node version in `.nvmrc`                                                                   | `ci.yml`, `pages.yml`, `README.md`                                                                                                                                                                                                                                                                                                                                         |
 | Persisted-data shape                                                                       | `docs/architecture.md`                                                                                                                                                                                                                                                                                                                                                     |
+| Adding a sheet type, or changing what an existing sheet tracks (values, balances, debts)   | Evaluate whether the Insights sheet's aggregation functions (`src/data/insights/`) should capture the change — see step 7 of "Adding a new page type" above. Wire it in or note in the PR why it doesn't belong.                                                                                                                                                           |
 | Adding or moving a file under `src/data/`                                                  | The data-layer inventory in `docs/architecture.md` (`## Today` tree + per-file descriptions)                                                                                                                                                                                                                                                                               |
 | Adding (or renaming the subject of) a reducer action                                       | The `actionHistory.action.<type>` label in `src/i18n/locales/{en,sv}/actionHistory.ts` **and** a `describeActionSubject` case in `src/data/action-summary.ts`. See the "Action history labels" section below.                                                                                                                                                              |
 | CHANGELOG fragment format (`type:` / `title:` / `doc:`)                                    | `scripts/release/collate-changelog.mjs`, `.agent/skills/write-changeset/SKILL.md`, `.agent/skills/release/SKILL.md`, the "Releases and changelog" section below                                                                                                                                                                                                            |

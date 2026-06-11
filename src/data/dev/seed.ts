@@ -1335,6 +1335,25 @@ export function buildSeedUserData(): UserData {
     items: [{ id: mkId("item"), type: "loansView" }],
   };
 
+  const insightsSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Insights",
+    type: "insights",
+    glyph: "line-chart",
+    color: CATEGORY_COLORS[4],
+    description: "",
+    items: [
+      {
+        id: mkId("item"),
+        type: "insightsView",
+        // Seed one co-owned property so the net-worth settings ship with a
+        // worked example: half the cabin's value AND half its mortgage
+        // count toward the seeded net worth.
+        networth: { overrides: { [cabin.id]: { sharePct: 50 } } },
+      },
+    ],
+  };
+
   // ---- Assemble the full UserData ----------------------------------
   // Every collection is listed explicitly; the closed `UserData` type
   // makes omitting a required field a compile error, so this stays in
@@ -1349,6 +1368,7 @@ export function buildSeedUserData(): UserData {
       propertiesSheet,
       savingsSheet,
       loansSheet,
+      insightsSheet,
     ],
     activeSheetId: budgetSheet.id,
     accounts,

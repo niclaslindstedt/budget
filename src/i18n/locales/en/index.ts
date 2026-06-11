@@ -55,6 +55,7 @@ import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
 import savingsSheet from "./savingsSheet";
 import loansSheet from "./loansSheet";
+import insightsSheet from "./insightsSheet";
 import salary from "./salary";
 import properties from "./properties";
 import tax from "./tax";
@@ -135,6 +136,7 @@ export const en = {
   itemsSheet,
   savingsSheet,
   loansSheet,
+  insightsSheet,
   salary,
   properties,
   tax,

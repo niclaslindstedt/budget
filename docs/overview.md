@@ -1908,6 +1908,68 @@ thins its month labels instead). `centered` (only toggles — no soft
 keyboard). Opening it unlocks the **Debt Mapper** achievement
 (`loansChart`, a manual trigger).
 
+## Insights page
+
+### Insights page
+
+The Insights sheet (`SheetType "insights"`, `InsightsView`) aggregates
+data from every area of the app — accounts, savings, items, properties,
+loans — into cross-cutting analyses about the user's economic
+situation. It is organised around **insight modes** (`InsightsMode` in
+`src/data/types/sheets.ts`): one literal today (`"networth"`), and the
+page's mode toggle is deliberately hidden until a second mode exists —
+the persisted `mode` field and the inline guard in
+`src/components/insights/InsightsPage.tsx` are the future-proofing.
+Like the other singleton flavours the sheet holds no data of its own;
+only the per-mode settings persist on the `InsightsView` item. Files
+live in `src/components/insights/`; the pure math in
+`src/data/insights/`. Adding an Insights sheet unlocks the **Big
+Picture** achievement. **When adding or changing a sheet type (or what
+an existing sheet tracks), evaluate whether the insights functions in
+`src/data/insights/` should capture the change** — the roll-up is only
+as complete as the sources it reads (see the note in `AGENTS.md`).
+
+### Net worth
+
+The first insight mode: assets minus liabilities, computed by
+`computeNetWorthSnapshot` (`src/data/insights/networth.ts`). Assets are
+account balances (`computeAccountBalances`), savings balances
+(latest `balanceHistory` point), owned items' current values
+(`computeItemCurrentValue`, disposed items excluded), and property
+values (`resolveValueHistory`). Liabilities are counted from two
+disjoint sources so a mortgage can never be double-counted: every
+property's mortgages directly (`balanceAt`), and only the loans that
+resolve **no** linked mortgages (`resolveLinkedMortgages === null`) via
+`loanRemainingBalance` — a linked mortgage-kind loan is a live view of
+mortgages already counted with its property, so it contributes nothing
+and gets no settings row. The page renders the headline total, a
+per-category breakdown (Accounts / Savings / Items / Properties /
+−Mortgages / −Other loans; categories with no entities are omitted),
+and a net-worth-over-time `LineChart` built by `buildNetWorthSeries`:
+monthly samples from the earliest dated data any included entity knows
+about through today, the current month sampled at today so the line's
+last point equals the snapshot total. Unknown values (no balance / no
+value recorded) render "—" and contribute zero.
+
+### Net worth settings
+
+The per-sheet settings for the net-worth mode
+(`InsightsSettingsModal.tsx`, opened from the sheet title's "…" menu).
+Every entity — account, saving, item, property, standalone loan — gets
+an include toggle and an **ownership share** percent (for a co-owned
+home or an account shared with a spouse). A property's share applies to
+**both** its value and its mortgages, so the property contributes the
+user's share of its equity. The draft persists as
+`InsightsNetWorthSettings.overrides` on the `InsightsView` item — a map
+keyed by entity id holding `excluded?: true` and/or `sharePct?` (absent
+⇒ 100) — written wholesale by one `setInsightsNetWorthSettings` action
+(one undo step) reduced via the insights descriptor's `reduceItem`
+(`src/data/sheet-types/insights.ts`), which normalises redundant fields
+away. The validator (`validateInsightsView` in
+`src/data/validate/sheet-items.ts`) sweeps override keys against every
+known entity id-space so a deleted entity's override silently
+disappears.
+
 ## Data and storage
 
 ### User data
@@ -1919,8 +1981,11 @@ top-level persisted shape. Bumps `version` on schema changes.
 
 A discriminated-union member inside `Sheet.items`. Today: `AccountBudget`
 (budget page), `AccountsView` (accounts page marker), `ItemsView` (items
-page marker), `SalaryView` (salary page marker), or `PropertiesView`
-(properties page marker).
+page marker), `SalaryView` (salary page marker), `PropertiesView`
+(properties page marker), `SavingsView` (savings page marker),
+`LoansView` (loans page marker), or `InsightsView` (insights page —
+carries the per-mode settings, see [Net worth
+settings](#net-worth-settings)).
 
 ### Account budget
 

@@ -304,6 +304,26 @@ export const LOANS_GLYPH_NAMES: readonly CategoryIcon[] = [
   "receipt",
 ] as const;
 
+// Insights sheets stand for analysis across everything the user tracks
+// — net worth today, more modes later — so the palette leans toward
+// charts, measurement, and discovery rather than any one money store.
+// The SheetModal picks this set when the selected sheet type is
+// "insights" via the descriptor's `glyphNames`.
+export const INSIGHTS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "line-chart",
+  "pie-chart",
+  "trending-up",
+  "scale",
+  "lightbulb",
+  "sparkles",
+  "compass",
+  "glasses",
+  "landmark",
+  "wallet",
+  "coins",
+  "gem",
+] as const;
+
 // Savings sheets stand for money set aside toward a goal, so beyond the
 // money-store glyphs the palette covers the things people save for —
 // vacations, clothing, kids' toys, a home, a car, electronics, pets,

@@ -102,6 +102,7 @@ const actionHistory = {
     updateTaxProfile: "Edited tax profile",
     deleteTaxProfile: "Deleted tax profile",
     setSalaryTaxProfile: "Set tax profile on sheet",
+    setInsightsNetWorthSettings: "Updated net worth settings",
     addProperty: "Added property",
     updateProperty: "Edited property",
     deleteProperty: "Deleted property",

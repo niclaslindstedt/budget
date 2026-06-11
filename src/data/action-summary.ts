@@ -311,6 +311,7 @@ export function describeActionSubject(
       return name(byId(prev.taxProfiles, action.profileId)?.name);
     case "setSalaryTaxProfile":
     case "setItemAccount":
+    case "setInsightsNetWorthSettings":
       return name(byId(next.sheets, action.sheetId)?.name);
 
     // Properties / mortgages — single-target actions name the property

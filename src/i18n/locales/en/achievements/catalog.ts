@@ -103,6 +103,12 @@ const catalog = {
     learnMore:
       "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, money borrowed from a person — with a start date, start sum, monthly payment, and optional rate and setup fee. With a rate set, the remaining balance is simulated month by month. A mortgage can instead link a mortgage from the Properties sheet, so its terms and payments stay in one place.",
   },
+  bigPicture: {
+    name: "Big Picture",
+    condition: "Add an Insights sheet.",
+    learnMore:
+      "The Insights sheet reads everything you track — accounts, savings, items, properties, loans — and rolls it into your net worth, with a breakdown and a chart over time. Its settings let you exclude things and set an ownership share for anything co-owned, like a house split with a spouse.",
+  },
   payDay: {
     name: "Pay Day",
     condition: "Change Start of month from the default.",

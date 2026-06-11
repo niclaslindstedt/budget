@@ -36,12 +36,7 @@ export function validateSheetItem(
 export function validateSheet(
   raw: unknown,
   path: string,
-  knownAccountIds: ReadonlySet<string>,
-  knownTypeIds: ReadonlySet<string>,
-  knownCompanyIds: ReadonlySet<string>,
-  knownTagIds: ReadonlySet<string>,
-  knownItemIds: ReadonlySet<string>,
-  knownTaxProfileIds: ReadonlySet<string>,
+  ctx: SheetItemValidationContext,
 ): Result<Sheet> {
   if (!isObject(raw)) return fail(path, "expected an object");
   const { id, name, items } = raw;
@@ -50,15 +45,6 @@ export function validateSheet(
   if (typeof name !== "string")
     return fail(`${path}.name`, "expected a string");
   if (!Array.isArray(items)) return fail(`${path}.items`, "expected an array");
-
-  const ctx: SheetItemValidationContext = {
-    knownAccountIds,
-    knownTypeIds,
-    knownCompanyIds,
-    knownTagIds,
-    knownItemIds,
-    knownTaxProfileIds,
-  };
 
   const validatedItems: SheetItem[] = [];
   const seenItemIds = new Set<string>();

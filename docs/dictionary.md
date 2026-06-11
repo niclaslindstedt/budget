@@ -240,12 +240,25 @@ personal), with payments imported from bank transactions. Sheet type
 | **Visualize loans** / **loans chart**              | `LoansChartModal.tsx`; `buildLoanBalanceBands` / `buildLoanPaymentBands` (`src/data/loans/series.ts`); `StackedAreaChart` / `StackedBarChart` (`src/components/charts/`). Opened from the Loans sheet's title "…" menu. [→](overview.md#visualize-loans) |
 | **Salary multiple** / **multiple of salary**       | The "Show as multiple of monthly salary" modifier in `LoansChartModal.tsx`; `averageMonthlyNetAt` (`src/data/salary/salary.ts`). [→](overview.md#visualize-loans)                                                                                        |
 
+## Insights page
+
+Cross-cutting analyses over everything the workspace tracks, organised
+around insight modes (net worth today; the mode toggle is hidden until
+a second mode exists). Sheet type `"insights"`. Files live in
+`src/components/insights/`; data helpers in `src/data/insights/`.
+
+| Term                                         | Refers to                                                                                                                                                                                                                                                               |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Insights page** / **Insights sheet**       | `src/components/insights/InsightsPage.tsx`; `InsightsView`, `InsightsMode` (`src/data/types/sheets.ts`). [→](overview.md#insights-page)                                                                                                                                 |
+| **Net worth**                                | `computeNetWorthSnapshot` / `buildNetWorthSeries` (`src/data/insights/networth.ts`); rendered as the headline figure + per-category breakdown + `LineChart` over time on the Insights page. [→](overview.md#net-worth)                                                  |
+| **Net worth settings** / **ownership share** | `InsightsSettingsModal.tsx`; `InsightsNetWorthSettings` / `InsightsEntityOverride` (`excluded`, `sharePct`); `setInsightsNetWorthSettings` (reduced in `src/data/sheet-types/insights.ts`). Opened from the sheet's title "…" menu. [→](overview.md#net-worth-settings) |
+
 ## Data and storage
 
 | Term                                                          | Refers to                                                                                                                                                                                          |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **User data** / **state** / **the budget**                    | `UserData` (`src/data/types.ts`). [→](overview.md#user-data)                                                                                                                                       |
-| **Sheet item**                                                | `Sheet.items` union: `AccountBudget`, `AccountsView`, `ItemsView`, `SalaryView`, `PropertiesView`, `SavingsView`, `LoansView`. [→](overview.md#sheet-item)                                         |
+| **Sheet item**                                                | `Sheet.items` union: `AccountBudget`, `AccountsView`, `ItemsView`, `SalaryView`, `PropertiesView`, `SavingsView`, `LoansView`, `InsightsView`. [→](overview.md#sheet-item)                         |
 | **Account budget**                                            | `AccountBudget` (`src/data/types.ts`). [→](overview.md#account-budget)                                                                                                                             |
 | **Row**                                                       | `Row` (`src/data/types.ts`). [→](overview.md#row)                                                                                                                                                  |
 | **Column**                                                    | `Column` (`src/data/types.ts`). [→](overview.md#column)                                                                                                                                            |

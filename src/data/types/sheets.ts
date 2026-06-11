@@ -100,6 +100,50 @@ export type LoansView = {
   type: "loansView";
 };
 
+// The insight modes the Insights sheet can render. One literal today;
+// future modes (cash flow, spending rate, …) extend the union, and the
+// page's mode toggle un-hides itself once there is more than one.
+export type InsightsMode = "networth";
+
+// Per-entity net-worth override, keyed by entity id in
+// `InsightsNetWorthSettings.overrides`. An override with neither field
+// set is never persisted — the reducer normalises it away.
+export type InsightsEntityOverride = {
+  // Excluded from the net-worth roll-up. Only `true` is persisted —
+  // stored `false` is indistinguishable from "field absent" and just
+  // bloats the snapshot.
+  excluded?: boolean;
+  // Ownership share in percent, exclusive range (0, 100) — e.g. 50 for
+  // a property co-owned with a spouse. Absent ⇒ 100 (fully owned); the
+  // reducer drops a stored 100 as redundant. For a property the share
+  // applies to BOTH its value and its mortgages (net-equity share).
+  sharePct?: number;
+};
+
+// Settings for the net-worth insight mode.
+export type InsightsNetWorthSettings = {
+  // Keyed by entity id — account / saving / item / property / loan ids
+  // share one `newId()` id-space, so a flat map is unambiguous. The
+  // validator sweeps keys against the union of the known-id sets so a
+  // deleted entity's override silently disappears.
+  overrides?: Record<string, InsightsEntityOverride>;
+};
+
+// Workspace-wide insights sheet item. The Insights sheet aggregates the
+// global collections (accounts, savings, items, properties, loans) into
+// cross-cutting analyses rather than holding data of its own — only the
+// per-mode settings persist here.
+export type InsightsView = {
+  id: string;
+  type: "insightsView";
+  // Active insight mode. Absent ⇒ "networth". The field exists now so
+  // the persisted shape is settled before a second mode lands.
+  mode?: InsightsMode;
+  // Per-mode settings live in a per-mode field so future modes carry
+  // their own config without colliding.
+  networth?: InsightsNetWorthSettings;
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
@@ -115,7 +159,8 @@ export type SheetItem =
   | SalaryView
   | PropertiesView
   | SavingsView
-  | LoansView;
+  | LoansView
+  | InsightsView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -131,7 +176,8 @@ export type SheetType =
   | "salary"
   | "properties"
   | "savings"
-  | "loans";
+  | "loans"
+  | "insights";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

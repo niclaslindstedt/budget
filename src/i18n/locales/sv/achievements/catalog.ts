@@ -98,6 +98,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Lån-sidan håller koll på pengarna du är skyldig — studielån, billån, bolån, pengar lånade av en person — med startdatum, startbelopp, månadsbetalning samt valfri ränta och uppläggningsavgift. Med en ränta satt simuleras det återstående saldot månad för månad. Ett bolån kan istället länka ett bolån från fastighetsbladet, så att villkor och betalningar bara finns på ett ställe.",
   },
+  bigPicture: {
+    name: "Helhetsbilden",
+    condition: "Lägg till ett Insikter-blad.",
+    learnMore:
+      "Insiktsbladet läser allt du håller koll på — konton, sparande, saker, fastigheter, lån — och samlar det till din nettoförmögenhet, med en fördelning och ett diagram över tid. I inställningarna kan du utesluta saker och ange en ägarandel för det som samägs, som ett hus delat med en partner.",
+  },
   payDay: {
     name: "Lönedag",
     condition: "Ändra Månadens start från standardvärdet.",

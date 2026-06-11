@@ -5,6 +5,9 @@ import type {
   Column,
   ColumnType,
   CorrectionRow,
+  InsightsEntityOverride,
+  InsightsMode,
+  InsightsView,
   ItemsView,
   LoansView,
   PropertiesView,
@@ -37,6 +40,9 @@ export type SheetItemValidationContext = {
   knownTagIds: ReadonlySet<string>;
   knownItemIds: ReadonlySet<string>;
   knownTaxProfileIds: ReadonlySet<string>;
+  knownSavingIds: ReadonlySet<string>;
+  knownPropertyIds: ReadonlySet<string>;
+  knownLoanIds: ReadonlySet<string>;
 };
 
 const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
@@ -330,6 +336,80 @@ export function validateLoansView(
     return fail(`${path}.id`, "expected a non-empty string");
   if (type !== "loansView") return fail(`${path}.type`, `expected "loansView"`);
   return { ok: true, value: { id, type: "loansView" } };
+}
+
+// Insight modes the validator recognises. Mirrors the `InsightsMode`
+// union — extend both together when a second mode lands.
+const INSIGHTS_MODES: ReadonlySet<InsightsMode> = new Set<InsightsMode>([
+  "networth",
+]);
+
+// Normalise one raw per-entity override to its minimal persisted form,
+// or `undefined` when nothing survives. Shared by the validator and the
+// `setInsightsNetWorthSettings` reducer so a round-tripped file and a
+// freshly-dispatched payload normalise identically: `excluded` only
+// when `true`, `sharePct` only when finite and strictly inside (0, 100)
+// — absent means 100 (fully owned), so a stored 100 is redundant.
+export function normalizeInsightsOverride(
+  raw: unknown,
+): InsightsEntityOverride | undefined {
+  if (!isObject(raw)) return undefined;
+  const override: InsightsEntityOverride = {};
+  if (raw.excluded === true) override.excluded = true;
+  const { sharePct } = raw;
+  if (
+    typeof sharePct === "number" &&
+    Number.isFinite(sharePct) &&
+    sharePct > 0 &&
+    sharePct < 100
+  ) {
+    override.sharePct = sharePct;
+  }
+  return Object.keys(override).length > 0 ? override : undefined;
+}
+
+export function validateInsightsView(
+  raw: unknown,
+  path: string,
+  ctx: SheetItemValidationContext,
+): Result<InsightsView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type, mode, networth } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "insightsView")
+    return fail(`${path}.type`, `expected "insightsView"`);
+  const view: InsightsView = { id, type: "insightsView" };
+  // Drop an unknown mode silently — a file written by a newer build with
+  // more modes still loads here, falling back to the default mode.
+  if (typeof mode === "string" && INSIGHTS_MODES.has(mode as InsightsMode))
+    view.mode = mode as InsightsMode;
+  // Sweep override keys against every entity id-space the net-worth
+  // roll-up draws from, so a deleted account / saving / item / property
+  // / loan sheds its override instead of trapping the file. Overrides
+  // that normalise to nothing collapse away, and an empty map drops the
+  // `networth` field entirely — same minimal-snapshot contract as the
+  // reducer.
+  if (isObject(networth)) {
+    const rawOverrides = networth.overrides;
+    if (isObject(rawOverrides)) {
+      const overrides: Record<string, InsightsEntityOverride> = {};
+      for (const [entityId, rawOverride] of Object.entries(rawOverrides)) {
+        if (
+          !ctx.knownAccountIds.has(entityId) &&
+          !ctx.knownSavingIds.has(entityId) &&
+          !ctx.knownItemIds.has(entityId) &&
+          !ctx.knownPropertyIds.has(entityId) &&
+          !ctx.knownLoanIds.has(entityId)
+        )
+          continue;
+        const override = normalizeInsightsOverride(rawOverride);
+        if (override) overrides[entityId] = override;
+      }
+      if (Object.keys(overrides).length > 0) view.networth = { overrides };
+    }
+  }
+  return { ok: true, value: view };
 }
 
 export function validateSalaryView(
