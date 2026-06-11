@@ -14,6 +14,28 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-11
+
+### Added
+
+- **Loans sheet** — Track the money you owe — student loans, car loans, mortgages (link one or several of a property's mortgages from the Properties sheet as a single loan), private and personal loans — record the outstanding balance as of a date, and import payments from your bank transactions so the remaining balance follows along: mark one charge with the loan's type and the import suggests the rest by bank description and similar amount, optionally tags and renames them for you, and attaches matching charges automatically on future imports. **Visualize loans** in the sheet's … menu charts how each loan stacks into your total debt over time, with monthly payment bars, an estimated-interest break-out, time-range buttons (1Y / 2Y / 3Y / 5Y / all) that zoom past the flat years before your first transaction, a balance-change percentage for the window — green when you've paid debt down, red when it grew — and a salary-multiple mode that shows your debt as months of take-home pay using the paychecks on your Salary sheet. [Learn more](feature:loans)
+- **Visualize spending** — The budget sheet's … menu gains a dashboard of where your money actually went (completed entries and imported bank history only): monthly bars stacked per category, a donut you can click to drill into a category's types, income against expenses month by month, and your top merchants, all over a 3M / 6M / 12M / All window. Give an owned item a **Lifetime** in the item editor and the dashboard's cogwheel option spreads its cost evenly across that lifetime — Swedish "avskrivning" — so big purchases stop spiking the month they happened.
+- **Accelerated depreciation** — The item editor's depreciation box gains a **Steady / Accelerated** toggle: the accelerated model takes an instant drop the moment the item is no longer new (a car driven off the lot), a steeper first year, then a flatter yearly decline.
+
+### Changed
+
+- **Savings goal glyphs** — Savings accounts get their own glyph palette covering the things you save toward — vacations, clothing, kids' toys, electronics, a home, a car, pets, and more — instead of borrowing the bank-account icon set.
+- **Faster item cataloguing** — Adding a line item now creates the item as you type its name — classified under the transaction's type, with a one-click subtype (pick one or type a new one inline) — and **Find items** stops suggesting purchases whose items already account for the full amount.
+
+### Fixed
+
+- **Saving after a large shrink** — The "Save anyway" button in the cloud-sync panel now pushes a paused save through when your budget shrinks a lot at once (such as after deleting an account), instead of doing nothing.
+- **Account row menu** — Picking an action from an account row's "…" menu no longer also opens that account's history view behind the modal.
+- **Reachable actions on narrow desktop** — The row action column no longer slides off-screen when a sheet table is too wide for the window on desktop — it collapses to a single ⋯ menu (carrying Edit and Delete) so the actions stay reachable without a swipe.
+- **Android status-bar spacing** — In the installed app on Android, the page header and fullscreen dialog titles no longer sit flush against the status bar — they keep a small gap, matching how the app already clears the notch on iOS.
+- Opening the preview site as `/preview` (without the trailing slash) no longer loads the production app when you have visited the main site first.
+- The "reload to apply" update prompt now names the version it's upgrading to, instead of the version you're already running.
+
 ## [1.2.0] - 2026-06-09
 
 ### Added
