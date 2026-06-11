@@ -1160,7 +1160,22 @@ export function buildSeedUserData(): UserData {
     acquiredAt: "2025-12-20",
     purchasePrice: 6500,
   };
-  const items: Item[] = [laptopItem, bikeItem];
+  // The phone exercises the accelerated (front-loaded) depreciation arm:
+  // an instant out-of-the-box drop, a steep first year, then a flatter
+  // declining balance — visible next to the laptop's steady curve.
+  const phoneItem: Item = {
+    id: mkId("item"),
+    name: "Mobiltelefon Pro",
+    acquiredAt: "2026-01-15",
+    purchasePrice: 14990,
+    depreciation: {
+      method: "accelerated",
+      initialDrop: 15,
+      firstYearRate: 30,
+      ratePerYear: 15,
+    },
+  };
+  const items: Item[] = [laptopItem, bikeItem, phoneItem];
 
   // ---- Budget sheet bound to Checking ------------------------------
   // Forward-looking recurring rows (salary, rent, subscription, gym)

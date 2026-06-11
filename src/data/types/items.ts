@@ -13,20 +13,40 @@
 //
 // Per-item depreciation rule. A discriminated union on `method` so future
 // curves (straight-line / useful-life, sum-of-years-digits, …) slot in as
-// new arms without a migration — only the declining-balance
-// `percentPerYear` arm exists today. Absent on the item means "does not
+// new arms without a migration. Absent on the item means "does not
 // depreciate" (the resale value is whatever `resaleValue` / purchase price
 // says, with no time decay).
-export type ItemDepreciation = {
-  method: "percentPerYear";
-  // Fraction of the *remaining* value shed each year, as a percentage:
-  // 20 → the item loses 20 % of its current value annually (declining
-  // balance). Finite and non-negative.
-  ratePerYear: number;
-  // Optional residual-value floor: depreciation never takes the computed
-  // value below this. Absent means it can decay toward zero.
-  floor?: number;
-};
+export type ItemDepreciation =
+  | {
+      // Steady declining balance: the same share of the remaining value
+      // is shed every year.
+      method: "percentPerYear";
+      // Fraction of the *remaining* value shed each year, as a percentage:
+      // 20 → the item loses 20 % of its current value annually (declining
+      // balance). Finite and non-negative.
+      ratePerYear: number;
+      // Optional residual-value floor: depreciation never takes the computed
+      // value below this. Absent means it can decay toward zero.
+      floor?: number;
+    }
+  | {
+      // Accelerated (front-loaded) decline: an instant drop the moment the
+      // item is no longer new (a car driven off the lot, tech out of the
+      // box), a steeper first year, then a flatter declining balance. All
+      // three rates are percentages; finite and non-negative.
+      method: "accelerated";
+      // Share of the purchase price lost immediately at `acquiredAt`:
+      // 20 → the item is worth 80 % of the purchase price from day one.
+      initialDrop: number;
+      // Share of the remaining value shed across the first year of
+      // ownership (on top of the initial drop).
+      firstYearRate: number;
+      // Share of the remaining value shed per year after the first —
+      // declining balance, same semantics as the `percentPerYear` arm.
+      ratePerYear: number;
+      // Optional residual-value floor, same contract as `percentPerYear`.
+      floor?: number;
+    };
 
 // The shape grows as the seed for the future Item sheet: it now carries the
 // inputs that sheet needs to compute tied-up capital and recoverable value

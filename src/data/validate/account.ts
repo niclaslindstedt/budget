@@ -272,21 +272,34 @@ export function validateItem(
 }
 
 // Parse a persisted depreciation rule, returning the cleaned value or
-// `undefined` when absent / malformed. Only the `percentPerYear` arm
-// exists today; an unknown `method` or a non-finite `ratePerYear` drops
-// the whole rule (the item falls back to "no depreciation"). `floor` is
-// carried only when finite.
+// `undefined` when absent / malformed. An unknown `method` or any
+// non-finite rate drops the whole rule (the item falls back to "no
+// depreciation"). `floor` is carried only when finite.
 function validateItemDepreciation(raw: unknown): ItemDepreciation | undefined {
   if (!isObject(raw)) return undefined;
-  if (raw.method !== "percentPerYear") return undefined;
-  if (typeof raw.ratePerYear !== "number" || !Number.isFinite(raw.ratePerYear))
+  const finite = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v);
+  let depreciation: ItemDepreciation;
+  if (raw.method === "percentPerYear") {
+    if (!finite(raw.ratePerYear)) return undefined;
+    depreciation = { method: "percentPerYear", ratePerYear: raw.ratePerYear };
+  } else if (raw.method === "accelerated") {
+    if (
+      !finite(raw.initialDrop) ||
+      !finite(raw.firstYearRate) ||
+      !finite(raw.ratePerYear)
+    )
+      return undefined;
+    depreciation = {
+      method: "accelerated",
+      initialDrop: raw.initialDrop,
+      firstYearRate: raw.firstYearRate,
+      ratePerYear: raw.ratePerYear,
+    };
+  } else {
     return undefined;
-  const depreciation: ItemDepreciation = {
-    method: "percentPerYear",
-    ratePerYear: raw.ratePerYear,
-  };
-  if (typeof raw.floor === "number" && Number.isFinite(raw.floor))
-    depreciation.floor = raw.floor;
+  }
+  if (finite(raw.floor)) depreciation.floor = raw.floor;
   return depreciation;
 }
 
