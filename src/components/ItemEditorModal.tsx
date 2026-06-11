@@ -95,7 +95,10 @@ export function ItemEditorModal({
   const [purchasePrice, setPurchasePrice] = useState("");
   const [acquiredAt, setAcquiredAt] = useState("");
   const [depreciates, setDepreciates] = useState(false);
+  const [depMode, setDepMode] = useState<"steady" | "accelerated">("steady");
   const [ratePerYear, setRatePerYear] = useState("");
+  const [initialDrop, setInitialDrop] = useState("");
+  const [firstYearRate, setFirstYearRate] = useState("");
   const [floor, setFloor] = useState("");
   const [lifetimeYears, setLifetimeYears] = useState("");
   const [resaleValue, setResaleValue] = useState("");
@@ -114,8 +117,19 @@ export function ItemEditorModal({
       setAcquiredAt(item?.acquiredAt ?? "");
       const dep = item?.depreciation;
       setDepreciates(dep !== undefined);
+      setDepMode(dep?.method === "accelerated" ? "accelerated" : "steady");
       setRatePerYear(
         dep ? formatAmountForInput(dep.ratePerYear, settings) : "",
+      );
+      setInitialDrop(
+        dep?.method === "accelerated"
+          ? formatAmountForInput(dep.initialDrop, settings)
+          : "",
+      );
+      setFirstYearRate(
+        dep?.method === "accelerated"
+          ? formatAmountForInput(dep.firstYearRate, settings)
+          : "",
       );
       setFloor(dep?.floor !== undefined ? seedAmount(dep.floor, settings) : "");
       setLifetimeYears(
@@ -154,19 +168,35 @@ export function ItemEditorModal({
       note: note.trim() !== "" ? note.trim() : undefined,
     };
 
-    // Depreciation: only persisted when enabled AND a finite rate is set.
-    const rate = depreciates ? parseAmount(ratePerYear) : null;
-    if (depreciates && rate !== null) {
-      const depreciation: ItemDepreciation = {
-        method: "percentPerYear",
-        ratePerYear: Math.abs(rate),
+    // Depreciation: only persisted when enabled AND at least the model's
+    // anchor rate is set — the yearly rate for the steady model, any of
+    // the three rates for the accelerated one (an initial drop alone is a
+    // valid model: "loses 20 % when opened, then holds").
+    const rate = depreciates ? num(ratePerYear) : undefined;
+    const drop = depreciates ? num(initialDrop) : undefined;
+    const firstYear = depreciates ? num(firstYearRate) : undefined;
+    let depreciation: ItemDepreciation | undefined;
+    if (depreciates && depMode === "steady" && rate !== undefined) {
+      depreciation = { method: "percentPerYear", ratePerYear: rate };
+    } else if (
+      depreciates &&
+      depMode === "accelerated" &&
+      (rate !== undefined || drop !== undefined || firstYear !== undefined)
+    ) {
+      // A blank first-year rate inherits the following-years rate (a car
+      // that drops 20 % up front, then a flat 15 %/yr); blank rates are 0.
+      depreciation = {
+        method: "accelerated",
+        initialDrop: drop ?? 0,
+        firstYearRate: firstYear ?? rate ?? 0,
+        ratePerYear: rate ?? 0,
       };
+    }
+    if (depreciation) {
       const floorNum = num(floor);
       if (floorNum !== undefined) depreciation.floor = floorNum;
-      patch.depreciation = depreciation;
-    } else {
-      patch.depreciation = undefined;
     }
+    patch.depreciation = depreciation;
 
     // Lifetime: persisted only when a positive number is typed — zero or
     // garbage clears the field (the cost is never spread).
@@ -288,31 +318,126 @@ export function ItemEditorModal({
               label={t("items.depreciates")}
             />
             {depreciates && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("items.ratePerYear")}
-                  </span>
-                  <ClearableInput
-                    value={ratePerYear}
-                    onValueChange={setRatePerYear}
-                    inputMode="decimal"
-                    placeholder={t("items.ratePerYearPlaceholder")}
-                    className={amountInputClass}
+              <>
+                {/* Two-segment model toggle — same sliding-pill track as
+                    MortgageViewToggle, with text halves instead of glyphs.
+                    The global reduce-motion rule zeroes the transition. */}
+                <div
+                  role="group"
+                  aria-label={t("items.depreciationModel")}
+                  className="relative flex rounded border border-line bg-surface-2"
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1/2 rounded bg-surface transition-transform"
+                    style={{
+                      transform:
+                        depMode === "accelerated"
+                          ? "translateX(100%)"
+                          : "translateX(0)",
+                    }}
                   />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">
-                    {t("items.depreciationFloor")}
-                  </span>
-                  <ClearableInput
-                    value={floor}
-                    onValueChange={setFloor}
-                    inputMode="decimal"
-                    className={amountInputClass}
-                  />
-                </label>
-              </div>
+                  {(["steady", "accelerated"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setDepMode(mode)}
+                      aria-pressed={depMode === mode}
+                      className={`relative z-10 flex-1 cursor-pointer border-0 bg-transparent px-2 py-1.5 text-xs transition-colors ${
+                        depMode === mode
+                          ? "text-accent"
+                          : "text-muted hover:text-fg"
+                      }`}
+                    >
+                      {mode === "steady"
+                        ? t("items.depreciationSteady")
+                        : t("items.depreciationAccelerated")}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-muted">
+                  {depMode === "steady"
+                    ? t("items.depreciationSteadyHint")
+                    : t("items.depreciationAcceleratedHint")}
+                </span>
+                {depMode === "steady" ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.ratePerYear")}
+                      </span>
+                      <ClearableInput
+                        value={ratePerYear}
+                        onValueChange={setRatePerYear}
+                        inputMode="decimal"
+                        placeholder={t("items.ratePerYearPlaceholder")}
+                        className={amountInputClass}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.depreciationFloor")}
+                      </span>
+                      <ClearableInput
+                        value={floor}
+                        onValueChange={setFloor}
+                        inputMode="decimal"
+                        className={amountInputClass}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.initialDrop")}
+                      </span>
+                      <ClearableInput
+                        value={initialDrop}
+                        onValueChange={setInitialDrop}
+                        inputMode="decimal"
+                        placeholder={t("items.initialDropPlaceholder")}
+                        className={amountInputClass}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.firstYearRate")}
+                      </span>
+                      <ClearableInput
+                        value={firstYearRate}
+                        onValueChange={setFirstYearRate}
+                        inputMode="decimal"
+                        placeholder={t("items.firstYearRatePlaceholder")}
+                        className={amountInputClass}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.rateAfterFirstYear")}
+                      </span>
+                      <ClearableInput
+                        value={ratePerYear}
+                        onValueChange={setRatePerYear}
+                        inputMode="decimal"
+                        placeholder={t("items.rateAfterFirstYearPlaceholder")}
+                        className={amountInputClass}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">
+                        {t("items.depreciationFloor")}
+                      </span>
+                      <ClearableInput
+                        value={floor}
+                        onValueChange={setFloor}
+                        inputMode="decimal"
+                        className={amountInputClass}
+                      />
+                    </label>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

@@ -560,10 +560,14 @@ comes from `computeItemCurrentValue` in `src/data/items/value.ts`.
 ### Current value (item)
 
 `computeItemCurrentValue` (`src/data/items/value.ts`), also called
-"resale value": a manual `resaleValue` wins, else declining-balance
-depreciation from `acquiredAt`, else the purchase price; a disposed
-item is worth its `soldFor`. `isItemOwned` is the predicate the Items
-table filters on.
+"resale value": a manual `resaleValue` wins, else the depreciation
+rule decays the purchase price from `acquiredAt` — a steady declining
+balance (`percentPerYear`) or the accelerated curve (`accelerated`:
+an instant `initialDrop` % off the moment the item is no longer new,
+`firstYearRate` % of the remainder across year one, then
+`ratePerYear` % per year after that), never below `floor` — else the
+purchase price; a disposed item is worth its `soldFor`. `isItemOwned`
+is the predicate the Items table filters on.
 
 ### Find items modal
 
@@ -2002,8 +2006,9 @@ line-items modal), not during entry add / edit, and edited via the Edit
 item modal. Beyond name / subtype it carries the inputs the Items sheet
 needs: `purchasePrice` ("bought for" — set either in the Edit item modal
 or from the amount typed when a line item links a transaction to it),
-`acquiredAt` ("bought at"), a `depreciation` rule (`ItemDepreciation`,
-percent-per-year today), a `lifetimeYears` expected useful life (drives
+`acquiredAt` ("bought at"), a `depreciation` rule (`ItemDepreciation`
+— steady percent-per-year, or the accelerated front-loaded curve; see
+"Current value (item)"), a `lifetimeYears` expected useful life (drives
 the spending dashboard's "spread item costs" mode; independent of
 `depreciation`, which models resale value), a `resaleValue` override,
 and disposal (`disposedAt` / `soldFor`). The Items sheet renders the
@@ -2022,7 +2027,11 @@ from the line-item pill / popover. Sets every `Item` field — name,
 subtype, purchase price, acquired date, depreciation, lifetime (years),
 resale value, disposal, note — and can delete the item (cascading link
 removal via the
-`deleteItem` reducer). Distinct from `BudgetLineItemsModal`, which edits
+`deleteItem` reducer). The depreciation box carries a two-segment
+Steady / Accelerated model toggle: Steady asks for a single rate per
+year, Accelerated asks for the initial drop, the first-year rate, and
+the following-years rate (a blank first-year rate inherits the
+following-years rate). Distinct from `BudgetLineItemsModal`, which edits
 the links between an entry and items (and the entry's receipt), not THE
 item.
 

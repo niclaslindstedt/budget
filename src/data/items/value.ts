@@ -1,4 +1,4 @@
-import type { Item } from "../types";
+import type { Item, ItemDepreciation } from "../types";
 
 // Pure helpers for the owned-items catalog rendered by the Items sheet.
 // No React, no network — the value math runs locally so the Items page
@@ -17,6 +17,39 @@ function yearsBetween(fromIso: string, toIso: string): number {
   return years > 0 ? years : 0;
 }
 
+// The share of value retained after losing `percent` % — clamped at 0 so
+// a rate ≥ 100 % decays to zero instead of producing a negative factor
+// (which would NaN under a fractional `Math.pow` exponent).
+function retained(percent: number): number {
+  const factor = 1 - percent / 100;
+  return factor > 0 ? factor : 0;
+}
+
+// What a depreciation rule says the purchase price has decayed to after
+// `years` of ownership, before the floor is applied.
+//
+//   - `percentPerYear`: steady declining balance — the same share of the
+//     remaining value is shed every year.
+//   - `accelerated`: front-loaded — `initialDrop` % comes off the moment
+//     the item is acquired (no longer new), the first year sheds
+//     `firstYearRate` % of what's left, and every year after that sheds
+//     `ratePerYear` % (declining balance).
+function decayedValue(
+  base: number,
+  dep: ItemDepreciation,
+  years: number,
+): number {
+  if (dep.method === "accelerated") {
+    const afterDrop = base * retained(dep.initialDrop);
+    const firstYear = retained(dep.firstYearRate);
+    if (years <= 1) return afterDrop * Math.pow(firstYear, years);
+    return (
+      afterDrop * firstYear * Math.pow(retained(dep.ratePerYear), years - 1)
+    );
+  }
+  return base * Math.pow(retained(dep.ratePerYear), years);
+}
+
 // The item's estimated value today, in the user's currency units.
 //
 // Resolution order, most-authoritative first:
@@ -25,9 +58,9 @@ function yearsBetween(fromIso: string, toIso: string): number {
 //      (no proceeds recorded) counts as 0.
 //   2. A manual `resaleValue` override wins over any computed figure —
 //      it is the user's own estimate of what they could get for it.
-//   3. A declining-balance depreciation rule decays the purchase price
-//      by `ratePerYear` % of the remaining value each year from
-//      `acquiredAt`, never below `floor`.
+//   3. A depreciation rule decays the purchase price from `acquiredAt`
+//      (see `decayedValue` for the per-method curves), never below
+//      `floor`.
 //   4. Otherwise the purchase price stands (no decay).
 //   5. With none of the above, the item has no known value: 0.
 export function computeItemCurrentValue(item: Item, todayIso: string): number {
@@ -42,12 +75,8 @@ export function computeItemCurrentValue(item: Item, todayIso: string): number {
   const dep = item.depreciation;
   if (dep && item.acquiredAt !== undefined) {
     const years = yearsBetween(item.acquiredAt, todayIso);
-    const rate = dep.ratePerYear / 100;
-    const decayed = base * Math.pow(1 - rate, years);
-    const floored =
-      dep.floor !== undefined ? Math.max(decayed, dep.floor) : decayed;
-    // Guard against a rate ≥ 100 % driving the value negative.
-    return floored > 0 ? floored : (dep.floor ?? 0);
+    const decayed = decayedValue(base, dep, years);
+    return dep.floor !== undefined ? Math.max(decayed, dep.floor) : decayed;
   }
 
   return base;
