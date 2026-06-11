@@ -23,6 +23,12 @@ import {
   formatNumber,
   withCurrency,
 } from "../../utils/format";
+import {
+  ChartRangeRow,
+  chartRangeCutoffMs,
+  DEFAULT_CHART_RANGE,
+  type ChartRange,
+} from "../charts/ChartRangeRow";
 import { LineChart, type ChartSeries } from "../charts/LineChart";
 import { useModalDispatch } from "../modal-dispatch";
 import {
@@ -90,6 +96,7 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
   }, [sheet.id]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [range, setRange] = useState<ChartRange>(DEFAULT_CHART_RANGE);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
@@ -108,13 +115,22 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
     },
   ];
 
-  const hasChart = seriesPoints.length >= 2;
+  // Clip the series to the trailing window picked on the shared range row
+  // (same buttons as the loans visualizer). The series has chartable data
+  // at all vs. the selected window actually containing ≥ 2 samples.
+  const cutoffMs = chartRangeCutoffMs(range, today);
+  const visiblePoints =
+    range === "all"
+      ? seriesPoints
+      : seriesPoints.filter((p) => p.x >= cutoffMs);
+  const hasAnyData = seriesPoints.length >= 2;
+  const hasChart = visiblePoints.length >= 2;
   const chartSeries: ChartSeries[] = [
     {
       id: "total",
       label: t("insightsSheet.netWorthSeries"),
       colorVar: "--accent",
-      points: seriesPoints,
+      points: visiblePoints,
     },
   ];
   const formatX = (x: number) =>
@@ -213,13 +229,22 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
                 <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
                   {t("insightsSheet.chartTitle")}
                 </h3>
-                {hasChart ? (
-                  <div className="rounded border border-line bg-surface p-2">
-                    <LineChart
-                      series={chartSeries}
-                      formatX={formatX}
-                      formatY={formatY}
-                    />
+                {hasAnyData ? (
+                  <div className="flex flex-col gap-3">
+                    {hasChart ? (
+                      <div className="rounded border border-line bg-surface p-2">
+                        <LineChart
+                          series={chartSeries}
+                          formatX={formatX}
+                          formatY={formatY}
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">
+                        {t("insightsSheet.chartNoneInRange")}
+                      </div>
+                    )}
+                    <ChartRangeRow value={range} onChange={setRange} />
                   </div>
                 ) : (
                   <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">

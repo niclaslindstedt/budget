@@ -10,7 +10,7 @@ import { averageMonthlyNetAt } from "../../data/salary/salary";
 import type { Loan, Property, Salary, Settings } from "../../data/types";
 import { useIsMobile, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
-import { addMonthsIso, todayIso } from "../../utils/date";
+import { todayIso } from "../../utils/date";
 import {
   formatMonthYearShort,
   formatNumber,
@@ -18,6 +18,12 @@ import {
 } from "../../utils/format";
 import { Checkbox } from "../form";
 import { Modal } from "../Modal";
+import {
+  ChartRangeRow,
+  chartRangeCutoffMs,
+  DEFAULT_CHART_RANGE,
+  type ChartRange,
+} from "../charts/ChartRangeRow";
 import {
   StackedAreaChart,
   type StackedChartSeries,
@@ -45,8 +51,8 @@ import { StackedBarChart } from "../charts/StackedBarChart";
 // spent on loans — a debt-to-income view that stays honest when the
 // salary grows over time.
 //
-// A row of Avanza-style range buttons (1Y / 2Y / 3Y / 5Y / All) clips the
-// series to a trailing window — the builders sample from the loan's start,
+// The shared `ChartRangeRow` (1Y / 2Y / 3Y / 5Y / All) clips the series
+// to a trailing window — the builders sample from the loan's start,
 // which on an old loan with only recent transactions is a long useless flat
 // line, so the default range trims it. The Balances view also carries a
 // signed balance-change badge for the visible window: a debt that *shrank*
@@ -66,30 +72,6 @@ type Props = {
 };
 
 type ChartView = "balances" | "payments";
-
-// Trailing window the chart is clipped to. A number is a count of years
-// back from today; "all" keeps every sample. Mirrors Avanza's range row.
-type ChartRange = 1 | 2 | 3 | 5 | "all";
-
-const RANGES: {
-  value: ChartRange;
-  labelKey:
-    | "chartRange1y"
-    | "chartRange2y"
-    | "chartRange3y"
-    | "chartRange5y"
-    | "chartRangeAll";
-}[] = [
-  { value: 1, labelKey: "chartRange1y" },
-  { value: 2, labelKey: "chartRange2y" },
-  { value: 3, labelKey: "chartRange3y" },
-  { value: 5, labelKey: "chartRange5y" },
-  { value: "all", labelKey: "chartRangeAll" },
-];
-
-// Default to a few years back: realistic data only spans a couple of years,
-// so "all" would prepend a flat line from the loan's start date for nothing.
-const DEFAULT_RANGE: ChartRange = 3;
 
 // Band colours for loans without a user-picked colour, assigned by sorted
 // index. `--danger` is deliberately absent — it's reserved for the
@@ -116,14 +98,14 @@ export function LoansChartModal({
   const isMobile = useIsMobile();
 
   const [view, setView] = useState<ChartView>("balances");
-  const [range, setRange] = useState<ChartRange>(DEFAULT_RANGE);
+  const [range, setRange] = useState<ChartRange>(DEFAULT_CHART_RANGE);
   const [includeStudent, setIncludeStudent] = useState(true);
   const [includeMortgages, setIncludeMortgages] = useState(true);
   const [breakOutInterest, setBreakOutInterest] = useState(false);
   const [salaryMultiple, setSalaryMultiple] = useState(false);
   useResetOnOpen(open, undefined, () => {
     setView("balances");
-    setRange(DEFAULT_RANGE);
+    setRange(DEFAULT_CHART_RANGE);
     setIncludeStudent(true);
     setIncludeMortgages(true);
     setBreakOutInterest(false);
@@ -202,8 +184,7 @@ export function LoansChartModal({
 
   // Clip every band to the trailing window. The builders sample every band
   // over one shared x array, so the same cutoff keeps them aligned.
-  const cutoffMs =
-    range === "all" ? -Infinity : Date.parse(addMonthsIso(today, -12 * range));
+  const cutoffMs = chartRangeCutoffMs(range, today);
   const series: StackedChartSeries[] = fullSeries.map((s) => ({
     ...s,
     points:
@@ -372,38 +353,10 @@ export function LoansChartModal({
                 </div>
               )}
 
-              {/* Avanza-style range row: clip the window, and (Balances only)
-                  show the signed balance change for it. */}
+              {/* Range row: clip the window, and (Balances only) show the
+                  signed balance change for it. */}
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <div
-                  role="group"
-                  aria-label={t("loansSheet.chartRangeAria")}
-                  className="relative flex flex-1 rounded border border-line bg-surface-3 text-sm"
-                >
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-y-0 left-0 rounded bg-surface transition-transform"
-                    style={{
-                      width: `${100 / RANGES.length}%`,
-                      transform: `translateX(${RANGES.findIndex((r) => r.value === range) * 100}%)`,
-                    }}
-                  />
-                  {RANGES.map((r) => (
-                    <button
-                      key={String(r.value)}
-                      type="button"
-                      onClick={() => setRange(r.value)}
-                      aria-pressed={range === r.value}
-                      className={`relative z-10 flex-1 cursor-pointer border-0 bg-transparent px-2 py-1 transition-colors ${
-                        range === r.value
-                          ? "text-accent"
-                          : "text-muted hover:text-fg"
-                      }`}
-                    >
-                      {t(`loansSheet.${r.labelKey}`)}
-                    </button>
-                  ))}
-                </div>
+                <ChartRangeRow value={range} onChange={setRange} />
                 {view === "balances" && changePct !== null && (
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs text-muted">

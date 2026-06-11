@@ -69,6 +69,7 @@ import tag from "./tag";
 import items from "./items";
 import glyph from "./glyph";
 import color from "./color";
+import charts from "./charts";
 import datePicker from "./datePicker";
 import formula from "./formula";
 import updateBalance from "./updateBalance";
@@ -150,6 +151,7 @@ export const en = {
   items,
   glyph,
   color,
+  charts,
   datePicker,
   formula,
   updateBalance,
