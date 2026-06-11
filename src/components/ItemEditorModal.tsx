@@ -12,7 +12,13 @@ import type {
 import { useResetOnOpen } from "../hooks";
 import { useT } from "../i18n";
 import { formatAmountForInput, parseAmount } from "../utils/format";
-import { Button, Checkbox, ClearableInput, ClearableTextarea } from "./form";
+import {
+  Button,
+  Checkbox,
+  ClearableInput,
+  ClearableTextarea,
+  DATE_INPUT_CLASS,
+} from "./form";
 import { Modal } from "./Modal";
 import { SubtypePicker } from "./SubtypePicker";
 
@@ -238,13 +244,6 @@ export function ItemEditorModal({
   const amountInputClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
-  // Native `<input type="date">` keeps the intrinsic width of its editing
-  // controls on iOS WebKit and won't shrink to a `w-full` container, so it
-  // overflows the modal. Every other date field in the app omits `w-full`
-  // and lets the control size to its content — match that here.
-  const dateInputClass =
-    "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
-
   return (
     <Modal
       open
@@ -307,7 +306,7 @@ export function ItemEditorModal({
               type="date"
               value={acquiredAt}
               onChange={(e) => setAcquiredAt(e.target.value)}
-              className={dateInputClass}
+              className={DATE_INPUT_CLASS}
             />
           </label>
 
@@ -483,7 +482,7 @@ export function ItemEditorModal({
                     type="date"
                     value={disposedAt}
                     onChange={(e) => setDisposedAt(e.target.value)}
-                    className={dateInputClass}
+                    className={DATE_INPUT_CLASS}
                   />
                 </label>
                 <label className="flex flex-col gap-1">

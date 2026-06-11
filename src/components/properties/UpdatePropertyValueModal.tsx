@@ -11,9 +11,8 @@ import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "./date-input";
 
 // Record a new market value for a property — appends one point to its
 // `valueHistory` (the current value is the latest point). Also lists the

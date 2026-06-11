@@ -499,18 +499,6 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 ### Easy wins (mechanical, land regardless of rating)
 
-- **Hoist `properties/date-input.ts` (`DATE_INPUT_CLASS`) to `form/`** — the
-  shared date-input class landed under `src/components/properties/` when
-  properties was its only consumer, but `loans/LoanUpdateBalanceModal.tsx:12`,
-  `loans/LoanModal.tsx:34`, and `savings/UpdateSavingBalanceModal.tsx:12` now
-  import it via `"../properties/date-input"` — a sibling page-directory
-  import, which `AGENTS.md` forbids — and `salary/SalaryAddModal.tsx:45`
-  re-declares the same string as a local const instead. Move the module to
-  `src/components/form/date-input.ts` (next to the landed `form/listbox.ts`),
-  keep the iOS-width-workaround comment, re-point the five properties + three
-  loans/savings imports, and adopt at `SalaryAddModal`. Pure constant
-  relocation; fixes a live import-direction rule violation.
-
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
   landed 2026-05 (see Landed), the `search.ts` four-indexer cluster
   was consumed 2026-05 (see Landed), and the genuine `id → item`
@@ -563,6 +551,24 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`properties/date-input.ts` (`DATE_INPUT_CLASS`) hoisted to
+  `form/date-input.ts`** (2026-06): the shared `<input type="date">` class
+  landed under `src/components/properties/` when properties was its only
+  consumer, but `loans/LoanUpdateBalanceModal.tsx`, `loans/LoanModal.tsx`,
+  and `savings/UpdateSavingBalanceModal.tsx` had grown sibling
+  page-directory imports (`"../properties/date-input"`), which `AGENTS.md`
+  forbids. `git mv`d the module to `src/components/form/date-input.ts`
+  (next to `form/listbox.ts` / `form/menu.ts`), kept the
+  iOS-width-workaround comment, re-exported from `form/index.ts`, and
+  merged the constant into each consumer's existing `../form` barrel import
+  (five properties modals + the three loans/savings sites). Also consumed
+  the two local re-declarations of the byte-identical string: the
+  `DATE_INPUT_CLASS` const in `salary/SalaryAddModal.tsx` (named by the
+  Pending row) and the `dateInputClass` local in `ItemEditorModal.tsx`
+  (found on re-verify — it even carried its own copy of the iOS comment).
+  Pure constant relocation; the resolved class is byte-identical at every
+  site. Fixes a live import-direction rule violation. **Easy win.**
 
 - **Eight per-page actions menus → shared `ActionsMenu` shell** (2026-06):
   slice 2 (final) of the eight-actions-menus item. The ~40-line structural

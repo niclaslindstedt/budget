@@ -24,6 +24,7 @@ import {
   Checkbox,
   ClearableInput,
   ClearableTextarea,
+  DATE_INPUT_CLASS,
   FormSection,
   SelectPicker,
   type SelectOption,
@@ -31,7 +32,6 @@ import {
 import { GlyphPicker } from "../GlyphPicker";
 import { Modal } from "../Modal";
 import { CategoryIconGlyph } from "../icons";
-import { DATE_INPUT_CLASS } from "../properties/date-input";
 import { LOAN_KIND_GLYPH, LOAN_KIND_LABEL_KEY } from "./loan-kind";
 
 export type LoanDraft = {

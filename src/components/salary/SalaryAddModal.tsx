@@ -12,6 +12,7 @@ import {
   Button,
   ClearableInput,
   ClearableTextarea,
+  DATE_INPUT_CLASS,
   FormSection,
 } from "../form";
 import { Modal } from "../Modal";
@@ -42,8 +43,6 @@ type Props = {
 
 const NUMBER_INPUT_CLASS =
   "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-right font-mono tabular-nums text-sm text-fg-bright";
-const DATE_INPUT_CLASS =
-  "field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
 // Parse a whole-day count from free text: non-negative integer, or undefined
 // when blank / invalid (leaves the field unset).

@@ -3,6 +3,7 @@ export { Button, type ButtonVariant } from "./Button";
 export { Checkbox } from "./Checkbox";
 export { ClearableInput } from "./ClearableInput";
 export { ClearableTextarea } from "./ClearableTextarea";
+export { DATE_INPUT_CLASS } from "./date-input";
 export { FormSection } from "./FormSection";
 export { LISTBOX_CREATE_OPTION_CLASS, LISTBOX_OPTION_CLASS } from "./listbox";
 export {

@@ -17,9 +17,8 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "./date-input";
 
 // The payment-frequency presets offered in the editor, in months. Most loans
 // charge monthly; the rest cover the common quarterly / semi-annual / annual
