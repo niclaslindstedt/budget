@@ -234,6 +234,10 @@ src/
 │   │   │                       #   (synthesis → merge → decorate → sort →
 │   │   │                       #    balance → bucket)
 │   │   ├── export.ts           # CSV/XLSX export builder for an AccountBudget
+│   │   ├── spending.ts         # spending-dashboard aggregation (collect-
+│   │   │                       #   SpendingFacts, per-month category sums,
+│   │   │                       #   donut shares, income vs expenses, top
+│   │   │                       #   merchants) for BudgetSpendingModal
 │   │   ├── cells.ts            # generic Row.cells readers
 │   │   ├── conflicts.ts        # duplicate-finder (findConflicts, pickWinner)
 │   │   ├── pattern-apply.ts    # cross-sheet match-rule application

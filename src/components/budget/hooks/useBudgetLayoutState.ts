@@ -16,6 +16,9 @@ export type BudgetLayoutState = {
   // sheet title.
   viewerOpen: boolean;
   setViewerOpen: (next: boolean) => void;
+  // Spending-dashboard modal, opened from the title `…` menu.
+  spendingOpen: boolean;
+  setSpendingOpen: (next: boolean) => void;
   // Duplicate-finder modal, opened from the title `…` menu.
   conflictsOpen: boolean;
   setConflictsOpen: (next: boolean) => void;
@@ -55,6 +58,7 @@ export function useBudgetLayoutState({
   hideTransfers,
 }: Params): BudgetLayoutState {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [spendingOpen, setSpendingOpen] = useState(false);
   const [conflictsOpen, setConflictsOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [extraHistory, setExtraHistory] = useState(0);
@@ -98,6 +102,8 @@ export function useBudgetLayoutState({
   return {
     viewerOpen,
     setViewerOpen,
+    spendingOpen,
+    setSpendingOpen,
     conflictsOpen,
     setConflictsOpen,
     metadataOpen,

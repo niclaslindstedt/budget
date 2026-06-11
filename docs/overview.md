@@ -309,6 +309,44 @@ from the source row (`resolveEntryLabels`; seed shape in
 same-category, near-equal pairs into one row. Detector:
 `src/data/budget/conflicts.ts`.
 
+### Visualize spending
+
+`BudgetSpendingModal.tsx` — the budget sheet's spending dashboard
+("spending dashboard"), opened from the title "…" menu ("Visualize
+spending"). A single scrollable dashboard (default modal mode:
+fullscreen on mobile, wide `max-w-4xl` card on desktop) with four
+sections, all clipped to one trailing fiscal-month window picked by an
+Avanza-style sliding-pill range row (3M / 6M / 12M / All, default 6M):
+
+- **Monthly spending by category** — `StackedBarChart`, one bar per
+  fiscal month, segments per category in the category's colour
+  (uncategorised rows get `--muted`).
+- **Where the money goes** — `DonutChart` of expense share per
+  category; clicking a slice (or its legend-row button, the
+  accessible target) drills into the entry types inside that
+  category, with a back link to return. The legend lists amount +
+  percent per slice.
+- **Income vs expenses** — `LineChart` with per-month income
+  (`--positive`), expenses (`--negative`), and net (`--accent`);
+  rendered only when the window spans ≥ 2 months.
+- **Top merchants** — the top 8 companies by spend as plain
+  token-styled bar rows (no chart primitive).
+
+**Data scope:** only money that actually moved counts — synthesized
+bank-history rows plus rows whose completed cell is ticked; transfers
+(either kind) and balance corrections are excluded. The predicate and
+all aggregation live in the pure helpers in
+`src/data/budget/spending.ts` (`isActualSpendingRow`,
+`collectSpendingFacts`, `computeMonthlyCategorySpending`,
+`computeCategoryShares` / `computeTypeShares`,
+`computeIncomeVsExpenses`, `computeTopMerchants`). Grouping honours
+the fiscal-month shift cascade (grouping runs before the scope filter
+so filtered-out anchors still cascade), reads amounts from
+`decoratedItem.rows` (formula amounts pre-resolved by
+`computeBudgetState`), and zero-fills the window so every chart shares
+one x-domain. Opening the modal unlocks the `spendingDetective`
+achievement.
+
 ### Metadata mode
 
 `BudgetMetadataModal.tsx` — opened from the title "…" menu. Walks

@@ -7,6 +7,7 @@ import {
   Download,
   Eye,
   Pencil,
+  PieChart,
   Tags,
 } from "lucide-react";
 
@@ -60,6 +61,7 @@ import {
   type SheetTitleMenuItem,
 } from "../SheetTitleMenu";
 import { BudgetMetadataModal } from "./BudgetMetadataModal";
+import { BudgetSpendingModal } from "./BudgetSpendingModal";
 import { BudgetViewerModal } from "./BudgetViewerModal";
 import {
   BudgetFindConflictsModal,
@@ -449,6 +451,8 @@ export function BudgetPage({
   const {
     viewerOpen,
     setViewerOpen,
+    spendingOpen,
+    setSpendingOpen,
     conflictsOpen,
     setConflictsOpen,
     metadataOpen,
@@ -655,6 +659,15 @@ export function BudgetPage({
       onClick: () => setViewerOpen(true),
     },
     {
+      key: "spending",
+      icon: <PieChart size={16} aria-hidden focusable={false} />,
+      label: t("budget.visualizeSpending"),
+      onClick: () => {
+        unlock("spendingDetective");
+        setSpendingOpen(true);
+      },
+    },
+    {
       key: "metadata",
       icon: <Tags size={16} aria-hidden focusable={false} />,
       label: t("sheet.metadataMode"),
@@ -789,6 +802,16 @@ export function BudgetPage({
             types={types}
             companies={companies}
             items={data.items}
+            settings={settings}
+          />
+          <BudgetSpendingModal
+            open={spendingOpen}
+            onClose={() => setSpendingOpen(false)}
+            rows={decoratedItem.rows}
+            columns={decoratedItem.columns}
+            types={types}
+            categories={categories}
+            companies={companies}
             settings={settings}
           />
           <BudgetFindConflictsModal

@@ -348,6 +348,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Visualisera lån i Lån-sheetets …-meny för att rita upp din skuld som staplade band — ett per lån, där stapelns topp är totalsumman. Växla till Betalningar för månadsvisa staplar över det du betalat, och bryt ut den uppskattade räntan i ett eget segment för att se hur mycket av varje månads betalning som gick till banken i stället för till skulden. Bocka i eller ur studielån och bolån ur stapeln. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
   },
+  spendingDetective: {
+    name: "Utgiftsdetektiv",
+    condition: "Visualisera hur du spenderar dina pengar.",
+    learnMore:
+      "Välj Visualisera utgifter i ett budget-sheets …-meny för att se vart pengarna faktiskt tog vägen: månadsstaplar staplade per kategori, en ring du kan klicka på för att borra ner i typerna inom en kategori, inkomster mot utgifter månad för månad, och de mottagare du spenderar mest hos. Bara genomförda poster och importerad bankhistorik räknas, så bilden visar verkliga utgifter — inte planer. Använd raden 3M / 6M / 12M / Allt för att vidga fönstret. Diagrammen följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
+  },
   archaeologist: {
     name: "Arkeolog",
     condition: "Skriv över en importerad historikposts beskrivning eller typ.",

@@ -59,6 +59,7 @@ import {
   Palette,
   Paperclip,
   Pencil,
+  PieChart,
   PiggyBank,
   Plus,
   Receipt,
@@ -998,6 +999,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "loansChart",
     tier: "pro",
     glyph: ChartArea,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user opened the budget sheet's spending dashboard. A manual
+    // unlock — opening a read-only modal can't be spotted from a
+    // derived state slice.
+    id: "spendingDetective",
+    tier: "pro",
+    glyph: PieChart,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },
