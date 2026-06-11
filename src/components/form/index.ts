@@ -4,6 +4,13 @@ export { ClearableInput } from "./ClearableInput";
 export { ClearableTextarea } from "./ClearableTextarea";
 export { FormSection } from "./FormSection";
 export { LISTBOX_CREATE_OPTION_CLASS, LISTBOX_OPTION_CLASS } from "./listbox";
+export {
+  ACTIONS_MENU_PLACEMENT,
+  ACTIONS_MENU_TRIGGER_CLASS,
+  MENU_ITEM_CLASS,
+  menuItemClass,
+  type MenuItem,
+} from "./menu";
 export { Radio, RadioGroup } from "./Radio";
 export { RangeSlider } from "./RangeSlider";
 export { SelectPicker, type SelectOption } from "./SelectPicker";

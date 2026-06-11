@@ -1,11 +1,16 @@
 import { useCallback, useRef, useState } from "react";
 import { FileText, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
 
-import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Item } from "../../data/types";
 import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
+import {
+  ACTIONS_MENU_PLACEMENT,
+  ACTIONS_MENU_TRIGGER_CLASS,
+  MENU_ITEM_CLASS,
+  type MenuItem,
+} from "../form/menu";
 
 type Props = {
   item: Item;
@@ -29,19 +34,6 @@ type Props = {
   // Fired after picking any menu item so the parent can dismiss its swipe
   // state in the same frame the dropdown closes.
   onAction: () => void;
-};
-
-const PLACEMENT: FloatingPlacement = {
-  width: { kind: "min", minPx: 224 },
-  anchor: "right",
-  coordinateSpace: "document",
-};
-
-type MenuItem = {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
 };
 
 // The "…" overflow popover in an item row's swipe strip — the items-sheet
@@ -110,7 +102,7 @@ export function ItemEntryActionsMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="action-btn action-btn-more inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+        className={ACTIONS_MENU_TRIGGER_CLASS}
         aria-label={t("cell.moreActions")}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -125,7 +117,7 @@ export function ItemEntryActionsMenu({
         open={open}
         onClose={close}
         triggerRef={triggerRef}
-        placement={PLACEMENT}
+        placement={ACTIONS_MENU_PLACEMENT}
         rowId={item.id}
         className="overflow-hidden"
       >
@@ -136,7 +128,7 @@ export function ItemEntryActionsMenu({
                 type="button"
                 role="menuitem"
                 onClick={it.onClick}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                className={MENU_ITEM_CLASS}
               >
                 <span aria-hidden className="text-accent">
                   {it.icon}

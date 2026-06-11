@@ -5,6 +5,7 @@ import type { Sheet } from "../data/types";
 import type { FloatingPlacement } from "../hooks";
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
+import { MENU_ITEM_CLASS } from "./form/menu";
 import type { ModalDispatch } from "./modal-dispatch";
 
 // Each sheet view owns its own action set, so the menu is dumb chrome:
@@ -123,7 +124,7 @@ export function SheetTitleMenu({ sheetName, items }: Props) {
                   setOpen(false);
                   it.onClick();
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                className={MENU_ITEM_CLASS}
               >
                 <span aria-hidden className="text-accent">
                   {it.icon}
