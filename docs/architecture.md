@@ -413,6 +413,8 @@ src/
 │   │   ├── item/               # AccountBudget item reducer (updateCell, bulk
 │   │   │                       #   patch, split, paste, drag-drop, hints,
 │   │   │                       #   primary-income shifts)
+│   │   ├── patch.ts            # shared applyPatch — id-keyed entity patch where
+│   │   │                       #   explicit `undefined` deletes the key
 │   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, loans.ts,
 │   │   │   sheets.ts, transfers.ts, history.ts, history-primary-income.ts,
 │   │   │   categories-and-types.ts, items.ts, match-rules.ts, recurring.ts,

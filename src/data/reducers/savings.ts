@@ -1,25 +1,6 @@
+import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { Saving, UserData } from "../types";
-
-// Apply a patch, treating an explicit `undefined` value as "delete this key"
-// rather than "set the key to undefined" — so clearing an optional field
-// (drop the bank name, clear the clearing number) keeps the live record
-// byte-identical to one reloaded from storage. Mirrors `applyPatch` in
-// `reducers/properties.ts`.
-function applyPatch<T extends { id: string }>(
-  entity: T,
-  patch: Partial<Omit<T, "id">>,
-): T {
-  const next: T = { ...entity };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) {
-      delete next[key as keyof T];
-    } else {
-      (next as Record<string, unknown>)[key] = value;
-    }
-  }
-  return next;
-}
 
 // Rewrite one savings account by id, leaving the rest of the array untouched.
 function updateSavingById(

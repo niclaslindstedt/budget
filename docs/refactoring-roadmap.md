@@ -364,18 +364,6 @@ _(none pending — the sheet-type registry coverage cluster landed
   - **Risk**: low — pure decomposition of a tested pure function.
   - **Severity: 3.**
 
-- **Generic `applyPatch<T extends { id: string }>` re-declared in three
-  reducers** — `src/data/reducers/savings.ts:9`, `reducers/loans.ts:9`,
-  `reducers/properties.ts:10` each declare the same ~10-line
-  find-by-id-replace-and-return helper (the fourth hit,
-  `reducers/item/hints.ts:75`, is a different row-patch shape and stays).
-  `reducers/items.ts` does the same job with inline `.map()`.
-  - **Plan**: hoist one shared helper (e.g. `src/data/reducers/util.ts` or a
-    suitable existing module) and adopt at the three sites (+ optionally
-    `items.ts`). Each new sheet-type reducer copies this today.
-  - **Risk**: near-zero — identical generic code, covered by reducer tests.
-  - **Severity: 3** (easy-win flavoured).
-
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
   `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
@@ -529,6 +517,29 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Reducer `applyPatch` quintuplication → shared
+  `src/data/reducers/patch.ts`** (2026-06): re-verify widened the "three
+  reducers" framing — the byte-identical undefined-deletes-the-key patch
+  loop lived at **five** sites, not three: the generic copies in
+  `reducers/savings.ts` / `loans.ts` / `properties.ts`, the monomorphic
+  `applyItemPatch` in `reducers/items.ts` (the roadmap's "inline `.map()`"
+  claim was stale — it had a full helper), and the loop inside
+  `reducers/salary.ts`'s `applySalaryPatch`. Hoisted one shared
+  `applyPatch<T extends { id: string }>(entity, patch)` into
+  `src/data/reducers/patch.ts` (carrying the WHY comment: explicit
+  `undefined` deletes the key so the live record stays byte-identical to a
+  storage round-trip); the first four sites now import it directly, and
+  `applySalaryPatch` delegates the loop to it while keeping its
+  salary-specific invariant (changing `employerId` without a `roleId` in
+  the same patch drops the orphaned role reference). `reducers/item/hints.ts`'s
+  `applyPatch` is a different row-patch shape (cell writes, formula /
+  estimate-range / type-lock semantics) and stays, per the plan. Pure
+  refactor — identical output at every site, covered by the existing
+  reducer suites; fast loop + build + icons-check green, all 1759 tests
+  pass. Added the new file to the `docs/architecture.md` inventory. **Was
+  severity 3 (easy-win flavoured).** New sheet-type reducers import the
+  helper instead of copying it.
 
 - **Shared mortgage math hoisted from `src/data/property-mortgage/` to
   `src/data/finance/`** (2026-06): `data/loans/balance.ts` / `series.ts` and

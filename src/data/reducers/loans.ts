@@ -1,25 +1,6 @@
+import { applyPatch } from "./patch";
 import type { Action, LoanImportEntryOverride } from "../reducer";
 import type { Loan, UserData } from "../types";
-
-// Apply a patch, treating an explicit `undefined` value as "delete this key"
-// rather than "set the key to undefined" — so clearing an optional field
-// (drop the rate, unlink a mortgage) keeps the live record byte-identical
-// to one reloaded from storage. Mirrors `applyPatch` in
-// `reducers/savings.ts`.
-function applyPatch<T extends { id: string }>(
-  entity: T,
-  patch: Partial<Omit<T, "id">>,
-): T {
-  const next: T = { ...entity };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) {
-      delete next[key as keyof T];
-    } else {
-      (next as Record<string, unknown>)[key] = value;
-    }
-  }
-  return next;
-}
 
 // Stamp `userTypeId` / `userDescription` overrides onto the imported
 // entries' bank rows — the same per-entry write `updateHistoryEntry`
