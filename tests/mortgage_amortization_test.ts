@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveMonthlyAmortization } from "../src/data/property-mortgage/amortization";
+import { resolveMonthlyAmortization } from "../src/data/finance/amortization";
 import type { Mortgage } from "../src/data/types";
 
 function mortgage(patch: Partial<Mortgage>): Mortgage {

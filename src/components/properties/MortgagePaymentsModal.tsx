@@ -17,7 +17,7 @@ import {
   type MortgageChargeItem,
   reconcileMortgageAmortization,
   splitRecordedPayment,
-} from "../../data/property-mortgage/payment";
+} from "../../data/finance/payment";
 import type {
   Account,
   HistoryEntry,

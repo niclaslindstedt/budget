@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   balanceAt,
   resolveMonthlyInterest,
-} from "../src/data/property-mortgage/interest";
+} from "../src/data/finance/interest";
 import type { Mortgage } from "../src/data/types";
 
 function mortgage(patch: Partial<Mortgage>): Mortgage {

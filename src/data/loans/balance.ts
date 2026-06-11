@@ -6,8 +6,8 @@
 
 import type { Loan, Mortgage, Property } from "../types";
 import { addDaysIso, isoToMonthNum } from "../../utils/date";
-import { balanceAt, resolveRateAt } from "../property-mortgage/interest";
-import { resolveMonthlyPaymentAt } from "../property-mortgage/payment";
+import { balanceAt, resolveRateAt } from "../finance/interest";
+import { resolveMonthlyPaymentAt } from "../finance/payment";
 
 // Total recorded against the loan so far — the "paid so far" column.
 export function loanPaidSoFar(loan: Loan): number {

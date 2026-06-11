@@ -351,28 +351,6 @@ _(none pending — the sheet-type registry coverage cluster landed
     product decision, not a refactor — don't fold it into an extraction PR.
   - **Severity: 4.**
 
-- **Shared financial math lives under `src/data/property-mortgage/` with a
-  second page consuming it across the directory boundary** —
-  `data/loans/series.ts:27` and `data/loans/balance.ts:9-10` import
-  `balanceAt` / `resolveRateAt` (from `property-mortgage/interest.ts`) and
-  `resolveMonthlyPaymentAt` (from `property-mortgage/payment.ts`). The reuse
-  itself is right (no duplicated amortization math — verified), but the
-  data-layer placement rule says cross-page modules belong at `src/data/`
-  root rather than one page reaching into another's directory. This is the
-  re-create condition the skipped `src/data/forecasting/` candidate named
-  ("re-create when the first concrete loan/savings sheet type lands") —
-  loans landed and became the real second consumer.
-  - **Plan**: hoist the genuinely shared primitives (`interest.ts`,
-    `payment.ts` — interest accrual, amortization, payment resolution) into a
-    root-level home (e.g. `src/data/finance/`), leaving mortgage-specific
-    discovery / progress logic in `property-mortgage/`. Update the
-    `docs/architecture.md` data-layer inventory in the same PR. Future
-    savings-forecast / scenario math gets a home with two real consumers
-    instead of a speculative directory.
-  - **Risk**: low — pure module relocation; the loan/mortgage math is covered
-    by existing tests.
-  - **Severity: 4.**
-
 - **`discoverMortgagePayments` crossed its re-rate threshold** —
   `src/data/property-mortgage/discovery.ts` is now 792 lines and the main
   function spans `:404`–`:784` (~380 lines), past the ~350-line trigger the
@@ -551,6 +529,27 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Shared mortgage math hoisted from `src/data/property-mortgage/` to
+  `src/data/finance/`** (2026-06): `data/loans/balance.ts` / `series.ts` and
+  `data/insights/networth.ts` imported `balanceAt` / `resolveRateAt` /
+  `resolveMonthlyInterestAt` / `resolveMonthlyPaymentAt` across the
+  page-directory boundary — the live re-create condition of the skipped
+  `src/data/forecasting/` candidate. `git mv`d `interest.ts`, `payment.ts`,
+  **and `amortization.ts`** (their shared dependency, named in the plan's
+  parenthetical but not its file list — moving only the first two would have
+  left `finance/` reaching back into `property-mortgage/`) into
+  `src/data/finance/`; mortgage-specific `discovery.ts` / `aggregate.ts` /
+  `progress.ts` stay in `property-mortgage/` (aggregate now imports the
+  finance modules — page-dir → root is the right direction). Same-depth move,
+  so the moved files' own relative imports were untouched; updated the twelve
+  consumer import sites (2 loans + insights + aggregate + 5 properties
+  components + `useLoanDialog`), four test files' paths, the path-comment in
+  `data/types/properties.ts`, and the `docs/architecture.md` inventory +
+  `docs/overview.md` / `docs/dictionary.md` references in the same PR. Pure
+  module relocation — covered by the existing interest / payment / discovery /
+  amortization test suites. **Was severity 4 (easy-win flavoured).** Future
+  savings-forecast / scenario math now has a real cross-page home.
 
 - **`properties/date-input.ts` (`DATE_INPUT_CLASS`) hoisted to
   `form/date-input.ts`** (2026-06): the shared `<input type="date">` class
@@ -1090,10 +1089,11 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   work to extract becomes concrete (the first sheet type can
   drop its primitive into `src/data/forecasting/` at that point,
   establishing the directory with a real call site).
-  **Superseded 2026-06-11**: the loans sheet type landed and consumes
+  **Superseded 2026-06-11**: the loans sheet type landed and consumed
   `property-mortgage/interest.ts` / `payment.ts` across the page-directory
-  boundary — the concrete version of this candidate is now the
-  "shared financial math" row in Pending (severity 4).
+  boundary — the concrete version of this candidate became the
+  "shared financial math" row, which landed 2026-06 as the
+  `src/data/finance/` hoist (see Landed).
 
 - **Modal form-init pattern (full `useModalFormInit<T>`)**: the
   reset-on-open `useEffect` boilerplate has been hoisted (see

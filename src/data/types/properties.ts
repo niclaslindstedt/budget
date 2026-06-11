@@ -58,7 +58,7 @@ export type MortgagePayment = {
 // - `fixed` — a flat sum paid every month, independent of the loan size.
 //
 // Both values are non-negative. Resolve the per-month amount with
-// `resolveMonthlyAmortization` in `src/data/property-mortgage/amortization.ts`.
+// `resolveMonthlyAmortization` in `src/data/finance/amortization.ts`.
 export type MortgageAmortization =
   | { mode: "percent"; percent: number } // annual % of loanAmount
   | { mode: "fixed"; amount: number }; // fixed sum per month
@@ -72,7 +72,7 @@ export type MortgageAmortization =
 // change by date is the current rate (and is mirrored onto
 // `Mortgage.interestRate` so the card and current resolvers don't have to
 // walk the list). Resolve a rate at an arbitrary date with `resolveRateAt`
-// in `src/data/property-mortgage/interest.ts`.
+// in `src/data/finance/interest.ts`.
 export type MortgageRateChange = {
   id: string;
   date: string; // ISO yyyy-mm-dd the rate took effect, or "" for the original rate

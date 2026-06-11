@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { ConfirmAction } from "../../ConfirmDialog";
 import type { Action, LoanImportEntryOverride } from "../../../data/reducer";
 import { resolveLinkedMortgages } from "../../../data/loans/balance";
-import { splitPaymentAcrossMortgages } from "../../../data/property-mortgage/payment";
+import { splitPaymentAcrossMortgages } from "../../../data/finance/payment";
 import type { LoanPaymentCandidate } from "../../../data/loans/candidates";
 import { learnPaymentPatterns } from "../../../data/loans/patterns";
 import { LOAN_PRESET_TYPE_BY_KIND } from "../../../data/loans/presets";
