@@ -19,9 +19,8 @@ import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "./date-input";
 import { RepairFields } from "./RepairFields";
 
 // The manual-repair editor — a repair / renovation with NO backing bank

@@ -13,9 +13,8 @@ import {
   formatBalance,
   parseAmount,
 } from "../../utils/format";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "./date-input";
 
 // Edit one mortgage's share within a charge. The charge total is fixed
 // (it's what the bank drew), so pinning this mortgage's amount re-splits

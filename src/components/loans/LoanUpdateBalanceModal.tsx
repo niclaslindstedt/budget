@@ -7,9 +7,8 @@ import { useAmountColumns, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "../properties/date-input";
 
 // Record the loan's outstanding balance as of a date — appends one point to
 // its `balanceHistory`. The remaining balance at any date anchors on the

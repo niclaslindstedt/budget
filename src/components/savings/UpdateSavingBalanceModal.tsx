@@ -7,9 +7,8 @@ import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
-import { Button, ClearableInput } from "../form";
+import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
-import { DATE_INPUT_CLASS } from "../properties/date-input";
 
 // Record a new balance for a savings account — appends one point to its
 // `balanceHistory` (the current balance is the latest point). Lists the
