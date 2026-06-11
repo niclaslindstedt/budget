@@ -87,6 +87,72 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
+- **Eight per-page actions menus re-derive the floating-menu shell** —
+  `budget/BudgetEntryActionsMenu.tsx` (279), `accounts/AccountActionsMenu.tsx`
+  (185), `items/ItemEntryActionsMenu.tsx` (152), `salary/SalaryEntryActionsMenu.tsx`
+  (145), `properties/PropertyActionsMenu.tsx` (155),
+  `properties/RepairEntryActionsMenu.tsx` (121), `loans/LoanActionsMenu.tsx`
+  (189), `savings/SavingActionsMenu.tsx` (197) — ~1,420 lines total. Each
+  re-declares a byte-identical `const PLACEMENT: FloatingPlacement = { width:
+{ kind: "min", minPx: 224 }, anchor: "right", coordinateSpace: "document" }`
+  (grep `const PLACEMENT` across `src/components/*/[A-Z]*ActionsMenu.tsx` — 8
+  hits), a byte-identical `type MenuItem = { key; icon; label; disabled?;
+title?; onClick }` (8 hits), the same `useRef` + `useState(open)` trigger +
+  `pick(handler)` close-and-fire wiring, the same "…" trigger-button class
+  (`action-btn action-btn-more inline-flex h-full flex-1 …`), and a
+  `role="menu"` list whose item-button class comes in exactly two shapes: the
+  plain variant (byte-identical in salary / items / both properties menus and
+  the universal `SheetTitleMenu.tsx`) and the disabled-conditional split
+  (budget / accounts / loans / savings, byte-identical ternary). The 2026-06
+  loans + savings pages each added another copy — the multiplier is active,
+  every new sheet type re-derives ~40 lines of shell.
+  - **Plan**: two slices. (1) Mechanical easy win — hoist the `MenuItem` type,
+    the `PLACEMENT` constant, and the two menu-item class strings into a shared
+    `src/components/form/menu.ts` (mirroring the landed `form/listbox.ts`
+    precedent) and route all 8 + `SheetTitleMenu` through them; zero behaviour
+    change. (2) Design pass — a `useActionsMenu` hook or thin presentational
+    shell (trigger + `FloatingPanel` + `role="menu"` list rendering an
+    `items: MenuItem[]` array) that each menu composes; the per-menu item
+    arrays, disabled predicates, `useActionsCompact` participation (properties
+    menus don't use it), and conditional `null` returns (items / salary) stay
+    local. Same don't-force-the-merge caution as the four-pickers item.
+  - **Risk**: slice 1 near-zero; slice 2 low (pure structure, no state moves)
+    but verify each menu's compact-mode and disabled rendering by eye.
+  - **Severity: 5.** (Slice 1 is an easy win regardless.)
+
+- **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
+  seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
+  `properties/MortgageDiscoveryModal.tsx` (666), `items/ItemFinderModal.tsx`
+  (427), `budget/BudgetFindConflictsModal.tsx` (384),
+  `budget/BudgetRecurringCandidatesPanel.tsx` (441),
+  `accounts/AccountTransferCollapseModal.tsx` (260),
+  `accounts/AccountRenamePredictorModal.tsx` (235) — ~3,200 lines; five data
+  engines: `salary/detection.ts` (244) + `salary/discovery.ts` (382),
+  `property-mortgage/discovery.ts` (792), `loans/candidates.ts` (140),
+  `property-repairs/candidates.ts` (173), `items/find.ts` (145). Every
+  walk re-implements the same session skeleton — scan history → emit
+  candidates → per-session `Set<string>` accepted/skipped state →
+  accept / skip / ignore actions per row → batch commit — and each data
+  engine re-derives its own "already consumed" tracking
+  (`loans/candidates.ts:30` `consumedHistoryIds`,
+  `property-repairs/candidates.ts:131` `usedSourceKeys`, etc.).
+  - **Plan**: do **not** force a shared kitchen-sink shell — the walks
+    genuinely diverge (Salary is a 4-phase step-through state machine with
+    per-month form edits; Mortgage has a tolerance slider; Conflicts has
+    threshold preset pills; Rename has inline-editable drafts; commit
+    cardinality differs everywhere). Candidate slices that don't fight the
+    divergence: a small `useCandidateSession` hook for the accepted/skipped
+    `Set` state + remaining-count derivation, and a shared consumed-id
+    convention/helper on the data side. Anything bigger is a deliberate
+    design pass, same as the pickers item.
+  - **Risk**: medium for the data side — each engine's scoring is genuinely
+    different (running-mean segments vs strictness tiers vs tolerance
+    matching); any shared scan helper must be verified against each engine's
+    existing tests with byte-identical output.
+  - **Severity: 5.** Every new sheet type with a "Find X" walk (the fake-data
+    seed already treats one-unconsumed-candidate-per-walk as a standard
+    feature shape) re-derives ~150–800 lines today.
+
 - **Four custom pickers reinvent the custom-dropdown shell instead of
   reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
   `salary/MunicipalityPicker.tsx` (147), `salary/TaxProfilePicker.tsx`
@@ -298,6 +364,73 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 3–4 — nits with leverage
 
+- **Update-balance/value modal shape duplicated at four sites** —
+  `loans/LoanUpdateBalanceModal.tsx` (182),
+  `savings/UpdateSavingBalanceModal.tsx` (176),
+  `properties/UpdatePropertyValueModal.tsx` (207), and
+  `accounts/UpdateBalanceModal.tsx` (210). The first three are near-identical
+  shells: two `useState` (value text, date) + focus ref + `useResetOnOpen`
+  stamping today + parse/validate + `handleAdd` + date-desc-sorted history
+  list with a per-entry delete button (byte-identical row layout and
+  delete-button class in loans / savings / properties). The accounts modal
+  genuinely diverges (delta-prose UI showing change + new balance).
+  - **Plan**: defer extraction until a fifth balance-snapshot surface lands
+    (e.g. an investment sheet type) — at four sites with one divergent, a
+    shared component needs a validation hook + i18n key bundle that doesn't
+    yet pay for itself. One behavioural question to settle independently of
+    any refactor: loans rejects negative snapshots (`parsed >= 0`), savings
+    silently accepts them — confirm whether that asymmetry is intended.
+  - **Risk**: low (presentational), but the negative-snapshot question is a
+    product decision, not a refactor — don't fold it into an extraction PR.
+  - **Severity: 4.**
+
+- **Shared financial math lives under `src/data/property-mortgage/` with a
+  second page consuming it across the directory boundary** —
+  `data/loans/series.ts:27` and `data/loans/balance.ts:9-10` import
+  `balanceAt` / `resolveRateAt` (from `property-mortgage/interest.ts`) and
+  `resolveMonthlyPaymentAt` (from `property-mortgage/payment.ts`). The reuse
+  itself is right (no duplicated amortization math — verified), but the
+  data-layer placement rule says cross-page modules belong at `src/data/`
+  root rather than one page reaching into another's directory. This is the
+  re-create condition the skipped `src/data/forecasting/` candidate named
+  ("re-create when the first concrete loan/savings sheet type lands") —
+  loans landed and became the real second consumer.
+  - **Plan**: hoist the genuinely shared primitives (`interest.ts`,
+    `payment.ts` — interest accrual, amortization, payment resolution) into a
+    root-level home (e.g. `src/data/finance/`), leaving mortgage-specific
+    discovery / progress logic in `property-mortgage/`. Update the
+    `docs/architecture.md` data-layer inventory in the same PR. Future
+    savings-forecast / scenario math gets a home with two real consumers
+    instead of a speculative directory.
+  - **Risk**: low — pure module relocation; the loan/mortgage math is covered
+    by existing tests.
+  - **Severity: 4.**
+
+- **`discoverMortgagePayments` crossed its re-rate threshold** —
+  `src/data/property-mortgage/discovery.ts` is now 792 lines and the main
+  function spans `:404`–`:784` (~380 lines), past the ~350-line trigger the
+  2026-06 skip entry recorded (it was ~297 when skipped; loan-linking growth
+  pushed it over). Still a comment-delimited linear funnel, so the shape
+  hasn't degraded into a tangle — but the candidate-building phase the skip
+  entry named as "the natural extract" is now the right cut.
+  - **Plan**: extract the candidate-building phase into a named module-level
+    function (mirroring the landed `migrateV24ToV25` decomposition);
+    behaviour pinned by the existing discovery tests.
+  - **Risk**: low — pure decomposition of a tested pure function.
+  - **Severity: 3.**
+
+- **Generic `applyPatch<T extends { id: string }>` re-declared in three
+  reducers** — `src/data/reducers/savings.ts:9`, `reducers/loans.ts:9`,
+  `reducers/properties.ts:10` each declare the same ~10-line
+  find-by-id-replace-and-return helper (the fourth hit,
+  `reducers/item/hints.ts:75`, is a different row-patch shape and stays).
+  `reducers/items.ts` does the same job with inline `.map()`.
+  - **Plan**: hoist one shared helper (e.g. `src/data/reducers/util.ts` or a
+    suitable existing module) and adopt at the three sites (+ optionally
+    `items.ts`). Each new sheet-type reducer copies this today.
+  - **Risk**: near-zero — identical generic code, covered by reducer tests.
+  - **Severity: 3** (easy-win flavoured).
+
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
   `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
@@ -337,7 +470,12 @@ _(none pending — the sheet-type registry coverage cluster landed
   `properties/RepairsEditModal.tsx` (9), `properties/ManualRepairModal.tsx`
   (8), `properties/PropertyEditorModal.tsx` (8), and
   `properties/NetSaleProfitModal.tsx` (8) — adopt `useReducer` opportunistically
-  when one of these modals is otherwise touched.
+  when one of these modals is otherwise touched. The 2026-06 cross-page sweep
+  added three more: `loans/LoanModal.tsx` (**14** `useState`, 468 lines — the
+  highest count yet seen), `savings/SavingsModal.tsx` (9), and
+  `salary/SalaryBulkEditModal.tsx` (7 — its three enabled/value toggle pairs
+  reset together on open; `budget/BudgetBulkEditModal.tsx` already landed the
+  reducer shape to mirror, `budget-bulk-edit-modal-reducer.ts`).
 
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains of
@@ -393,6 +531,18 @@ boolean` escape hatch landed and is checked first, `amountSign` is
   thousands-separator support lands. **Severity: 3.**
 
 ### Easy wins (mechanical, land regardless of rating)
+
+- **Hoist `properties/date-input.ts` (`DATE_INPUT_CLASS`) to `form/`** — the
+  shared date-input class landed under `src/components/properties/` when
+  properties was its only consumer, but `loans/LoanUpdateBalanceModal.tsx:12`,
+  `loans/LoanModal.tsx:34`, and `savings/UpdateSavingBalanceModal.tsx:12` now
+  import it via `"../properties/date-input"` — a sibling page-directory
+  import, which `AGENTS.md` forbids — and `salary/SalaryAddModal.tsx:45`
+  re-declares the same string as a local const instead. Move the module to
+  `src/components/form/date-input.ts` (next to the landed `form/listbox.ts`),
+  keep the iOS-width-workaround comment, re-point the five properties + three
+  loans/savings imports, and adopt at `SalaryAddModal`. Pure constant
+  relocation; fixes a live import-direction rule violation.
 
 - **`indexById<T>(items)` adoption at new inline sites** — the helper
   landed 2026-05 (see Landed), the `search.ts` four-indexer cluster
@@ -921,6 +1071,10 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   work to extract becomes concrete (the first sheet type can
   drop its primitive into `src/data/forecasting/` at that point,
   establishing the directory with a real call site).
+  **Superseded 2026-06-11**: the loans sheet type landed and consumes
+  `property-mortgage/interest.ts` / `payment.ts` across the page-directory
+  boundary — the concrete version of this candidate is now the
+  "shared financial math" row in Pending (severity 4).
 
 - **Modal form-init pattern (full `useModalFormInit<T>`)**: the
   reset-on-open `useEffect` boilerplate has been hoisted (see
@@ -1083,13 +1237,13 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   agent misread the convention; there is nothing to fix.
 
 - **`property-mortgage/discovery.ts` "monolith"** (2026-06, Explore sweep
-  rated it 1–2): `discoverMortgagePayments()` is ~297 lines
-  (`discovery.ts:335`–`:632`) but is a linear funnel (setup → scan → filter
-  candidates → rank), each phase comment-delimited, with a self-contained
-  nested `nearestTargetKey()` helper — the opposite of the tangled
-  `migrateV24ToV25` state machine that warranted decomposition. Below the
-  fix threshold; left alone. Re-rate only if it crosses ~350 lines, at which
-  point the candidate-building phase (`:472`–`:586`) is the natural extract.
+  rated it 1–2; **re-opened 2026-06-11**): `discoverMortgagePayments()` was
+  ~297 lines (`discovery.ts:335`–`:632`) and a clean linear funnel, below the
+  fix threshold, with a recorded trigger: "re-rate only if it crosses ~350
+  lines, at which point the candidate-building phase is the natural
+  extract." The trigger fired — loan-linking growth pushed the function to
+  ~380 lines (`:404`–`:784`) — so the candidate moved back to **Pending**
+  (severity 3) on the 2026-06-11 sweep.
 
 - **Per-route `<noscript>` fallback drift** (2026-05, decayed to
   severity 2): the `resolveNoscriptBody` default-derivation landed
@@ -1204,3 +1358,32 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   well-decomposed linear funnel). `AttachmentUploadModal.tsx` confirmed
   correctly placed at root (imported by salary / items / properties — genuinely
   universal).
+- 2026-06-11 sweep (Explore mode): single **cross-page duplication** angle
+  (three parallel Explore agents — the never-catalogued loans + savings
+  subsystems, cross-page UI patterns across all seven page directories, and
+  the new data-layer subsystems `loans` / `savings` / `items` / `receipts` /
+  `property-repairs` / `property-transfer` / `property-value`). The new
+  loans/savings pages came back **structurally clean**: full
+  `SHEET_TYPE_REGISTRY` participation, correct adoption of
+  `useRowSwipeAndClaim` / `useResetOnOpen` / `SelectPicker`, reducers with
+  correct cascade semantics, and zero hits on the type-safety /
+  native-`<select>` / hardcoded-string / hardcoded-hex / data→components
+  greps. Validators, export builders, and value-series math also clean (the
+  loans / savings / property-value series builders diverge intentionally).
+  Added five Pending rows: the eight-site actions-menu shell (5), the
+  discovery / candidate-walk cluster (5), the update-balance modal quartet
+  (4), the shared-financial-math hoist (4, re-opening the `forecasting/`
+  skip on its own stated condition), and the reducers `applyPatch`
+  triplication (3); plus the `date-input.ts` → `form/` easy win (which fixes
+  a live sibling-import rule violation at three loans/savings sites) and
+  three new named sites on the opportunistic `useReducer` row (`LoanModal`
+  14, `SavingsModal` 9, `SalaryBulkEditModal` 7). Moved the
+  `discoverMortgagePayments` skip back to Pending — its recorded ~350-line
+  re-rate trigger fired (now ~380 lines). Filtered the Explore over-ratings:
+  the shared discovery-scan engine (rated 7 — kept at 5 as a design pass;
+  the scoring genuinely diverges per engine), the chart-modal trio and
+  import-modal pair (rated ≤2 — domain divergence is fundamental), the
+  page-root scaffold and month/year grouping tables (1–2 — not
+  genericisable), `LoanRow` vs `SavingsRow` (2 — divergence is the domain),
+  and the `EMPTY_STATE_CLASS` constant (over-claimed — 4 hits in 2 files,
+  dropped as cosmetic).
