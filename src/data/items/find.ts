@@ -36,8 +36,10 @@ export type ItemPurchaseCandidate = {
   typeId?: string;
   // How many line items the entry already carries. The modal surfaces
   // this so a partly-catalogued purchase reads as such; it doesn't
-  // exclude the entry (a 20 000 purchase may have one item linked and
-  // more to add).
+  // exclude the entry by itself (a 20 000 purchase may have one item
+  // linked and more to add) — only a fully-allocated entry, whose
+  // linked items' purchase prices cover the whole amount, drops out
+  // of the scan.
   existingLineItemCount: number;
 };
 
@@ -46,7 +48,8 @@ export type ItemPurchaseCandidate = {
 // the account, so only outflows (negative amounts) qualify — a large
 // inflow (selling the apartment, a tax refund) is never an item
 // purchase. Skips entries the user shelved (`hidden`), already collapsed
-// into a transfer, flagged as a transfer, or previously ignored. Sorted
+// into a transfer, flagged as a transfer, previously ignored, or whose
+// line items already account for the full amount. Sorted
 // by descending year first (this year before last year, …) then by
 // descending absolute amount within a year, so the most recent
 // big-ticket purchases — the ones most worth cataloguing — come first.
@@ -66,6 +69,14 @@ export function findItemPurchaseCandidates(
     data.itemFindExclusionPatterns.length > 0
       ? new Set(data.itemFindExclusionPatterns)
       : null;
+  // Purchase prices keyed by owned-item id, so an entry whose linked
+  // items already cover its full amount drops out of the scan.
+  const priceById = new Map<string, number>();
+  for (const item of data.items) {
+    if (item.purchasePrice !== undefined) {
+      priceById.set(item.id, item.purchasePrice);
+    }
+  }
 
   const out: ItemPurchaseCandidate[] = [];
   for (const [accountId, entries] of Object.entries(data.history)) {
@@ -78,6 +89,17 @@ export function findItemPurchaseCandidates(
       // (a sale, a refund), never a purchase.
       if (entry.amount >= 0) continue;
       if (Math.abs(entry.amount) < threshold) continue;
+      // Fully catalogued: the linked items' purchase prices already
+      // account for the whole amount, so resurfacing the entry is pure
+      // noise. A partial allocation keeps the entry in the scan — there
+      // may be more items left to add.
+      if (entry.lineItems && entry.lineItems.length > 0) {
+        let allocated = 0;
+        for (const link of entry.lineItems) {
+          allocated += priceById.get(link.itemId) ?? 0;
+        }
+        if (allocated >= Math.abs(entry.amount)) continue;
+      }
 
       const { description, typeId } = resolveEntryLabels(
         entry,

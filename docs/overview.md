@@ -581,7 +581,10 @@ allow-list, `DEFAULT_ITEM_FIND_TYPE_IDS`; empty means scan every type),
 dropping the hard `NEVER_ITEM_TYPE_IDS` denylist (rent, utilities,
 subscriptions, … — never resaleable goods) regardless of the allow-
 list, and skipping hidden / transfer / collapsed / ignored / excluded
-entries). Per candidate: add line items (opens the embedded
+entries plus fully-catalogued ones — an entry whose linked items'
+`purchasePrice`s already cover its full amount drops out of the scan,
+while a partial allocation keeps it). Per candidate: add line items
+(opens the embedded
 `BudgetLineItemsModal` → `linkLineItemsToHistoryEntry`), skip
 (session-local), ignore one entry (`ignoreItemEntry` →
 `UserData.ignoredItemEntryIds`), or exclude similar
@@ -2102,10 +2105,19 @@ unstored remainder. Stored inline on `Row.lineItems` /
 entry "…" menu (which dispatches `updateItem` to set each item's price
 alongside `setRowLineItems` / `linkLineItemsToHistoryEntry`). An item
 may be linked to at most one transaction: `unlinkedItems`
-(`src/data/items/link.ts`) filters the modal's `ItemPicker` to items not
-already linked elsewhere. Parallel to split but distinct — a split
-re-slices the entry into rows, line items annotate it. A row with line
-items renders a line-item pill in its description cell.
+(`src/data/items/link.ts`) filters the modal's existing-item picker to
+items not already linked elsewhere. Cataloguing a fresh purchase usually
+means the item doesn't exist yet, so each line's primary control is a
+name input — typing a name creates a new `Item` on save, pre-classified
+under the transaction's resolved type via an optional subtype dropdown
+scoped to that type (whose own "+" swaps the dropdown for an inline
+new-subtype input, filed under the type without a type picker). The
+PackageSearch button beside the name input opens the selection-only
+`ItemPicker` dropdown (`variant="icon"`, `allowCreate={false}`) for the
+uncommon already-created-item path; picking one fills the input, typing
+again unlinks back to create-new. Parallel to split but distinct — a
+split re-slices the entry into rows, line items annotate it. A row with
+line items renders a line-item pill in its description cell.
 
 ### Line-item pill
 

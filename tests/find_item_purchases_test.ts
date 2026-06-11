@@ -33,6 +33,7 @@ function workspace(
     matchRules: [],
     companies: [],
     types: [],
+    items: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
     ...overrides,
@@ -162,5 +163,44 @@ describe("findItemPurchaseCandidates", () => {
     });
     const out = findItemPurchaseCandidates(data, settings());
     expect(out[0].existingLineItemCount).toBe(1);
+  });
+
+  it("drops entries whose linked items cover the full amount", () => {
+    // 5 000 spent, one linked item bought for 5 000: fully catalogued,
+    // so the scan stops resurfacing it.
+    const done = entry(-5000, { lineItems: [{ id: "l1", itemId: "i1" }] });
+    const data = workspace(
+      { acc: [done] },
+      { items: [{ id: "i1", name: "Watch", purchasePrice: 5000 }] },
+    );
+    const out = findItemPurchaseCandidates(data, settings());
+    expect(out).toHaveLength(0);
+  });
+
+  it("keeps partially allocated entries — more items may be left to add", () => {
+    const partial = entry(-20000, {
+      lineItems: [{ id: "l1", itemId: "i1" }],
+    });
+    const data = workspace(
+      { acc: [partial] },
+      { items: [{ id: "i1", name: "iPhone", purchasePrice: 15000 }] },
+    );
+    const out = findItemPurchaseCandidates(data, settings());
+    expect(out.map((c) => c.entryId)).toEqual([partial.id]);
+    expect(out[0].existingLineItemCount).toBe(1);
+  });
+
+  it("keeps entries whose linked items carry no purchase price", () => {
+    // An item linked without a price contributes nothing to the
+    // allocation, so the entry still reads as uncatalogued.
+    const unpriced = entry(-5000, {
+      lineItems: [{ id: "l1", itemId: "i1" }],
+    });
+    const data = workspace(
+      { acc: [unpriced] },
+      { items: [{ id: "i1", name: "Watch" }] },
+    );
+    const out = findItemPurchaseCandidates(data, settings());
+    expect(out.map((c) => c.entryId)).toEqual([unpriced.id]);
   });
 });
