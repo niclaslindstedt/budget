@@ -6,6 +6,7 @@ const insightsSheet: InsightsSheetCatalog = {
   breakdownTitle: "Fördelning",
   chartTitle: "Över tid",
   chartEmpty: "Inte tillräckligt med daterad data att rita ännu.",
+  chartNoneInRange: "Ingen data i den här perioden. Välj en längre.",
   noData:
     "Inget att summera ännu. Lägg till konton, sparande, saker, fastigheter eller lån så samlas allt här.",
 

@@ -1576,6 +1576,21 @@ reduce-motion is respected by construction. Fluid width via
 `@visx/responsive`'s `ParentSize`; a hover crosshair + tooltip snap to
 the nearest sampled x.
 
+### Time-range buttons
+
+`ChartRangeRow` in `src/components/charts/ChartRangeRow.tsx` — the
+Avanza-style sliding-pill segmented control of trailing-window buttons
+(1Y / 2Y / 3Y / 5Y / All, default 3Y via `DEFAULT_CHART_RANGE`) that
+chart surfaces render below their figure to clip the series to a
+window. The component owns only the buttons and their copy (the
+`charts.*` i18n group); the caller keeps the `ChartRange` state and
+filters its sample points by `chartRangeCutoffMs(range, today)`
+(`"all"` maps to `-Infinity`, so every sample passes). Used by the
+loans visualizer (`LoansChartModal.tsx`) and the Insights net-worth
+chart (`InsightsPage.tsx`); both show a "pick a longer range" notice
+when the selected window holds fewer than two samples, with the
+buttons staying live.
+
 ### Location
 
 `Settings.location` (a `TaxLocation`, `"SE"` today) — the global
@@ -1896,8 +1911,8 @@ contribution. A segmented toggle switches between two views:
   interest is clamped to that month's payment, so it never exceeds
   what was actually paid and the net segments stay ≥ 0.
 
-A row of **time-range buttons** (1Y / 2Y / 3Y / 5Y / All, an
-Avanza-style sliding-pill segmented control, default 3Y) clips both
+A row of **time-range buttons** (the shared `ChartRangeRow`,
+1Y / 2Y / 3Y / 5Y / All, default 3Y) clips both
 views to a trailing window: the builders sample from each loan's start
 date, so an old loan with only recent transactions draws a long flat
 line that the default range trims off. Picking a window shorter than
@@ -1979,8 +1994,12 @@ per-category breakdown (Accounts / Savings / Items / Properties /
 and a net-worth-over-time `LineChart` built by `buildNetWorthSeries`:
 monthly samples from the earliest dated data any included entity knows
 about through today, the current month sampled at today so the line's
-last point equals the snapshot total. Unknown values (no balance / no
-value recorded) render "—" and contribute zero.
+last point equals the snapshot total. The shared time-range buttons
+(`ChartRangeRow`, 1Y / 2Y / 3Y / 5Y / All, default 3Y — the same row
+as the loans visualizer) sit below the chart and clip the series to a
+trailing window; a window with fewer than two samples shows a "pick a
+longer range" notice while the buttons stay live. Unknown values (no
+balance / no value recorded) render "—" and contribute zero.
 
 ### Net worth settings
 

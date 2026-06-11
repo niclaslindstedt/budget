@@ -7,6 +7,7 @@ const insightsSheet = {
   breakdownTitle: "Breakdown",
   chartTitle: "Over time",
   chartEmpty: "Not enough dated data to chart yet.",
+  chartNoneInRange: "No data in this range. Pick a longer one.",
   noData:
     "Nothing to sum up yet. Add accounts, savings, items, properties, or loans and they all roll up here.",
 

@@ -18,7 +18,9 @@ The headline figure is everything you own minus everything you owe:
 A breakdown below the total shows what each category contributes, and a
 chart draws your net worth over time — sampled monthly from the
 earliest dated data you have through today, so the line ends exactly at
-the figure above it.
+the figure above it. Time-range buttons below the chart (1Y / 2Y / 3Y /
+5Y / All — the same row as the loans chart) zoom the line to a recent
+window or stretch it across everything you've recorded.
 
 A loan that is linked to a property's mortgage is never counted twice:
 the mortgage counts with its property, and the linked loan steps aside.
