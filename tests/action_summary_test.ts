@@ -65,6 +65,33 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Savings" });
   });
 
+  it("names the sheet when updating insights net-worth settings", () => {
+    const fresh = freshUserData();
+    const insights: UserData["sheets"][number] = {
+      ...fresh.sheets[0],
+      id: "sheet-insights",
+      name: "Insights",
+      type: "insights",
+      items: [{ id: "view-1", type: "insightsView" }],
+    };
+    const prev: UserData = {
+      ...fresh,
+      sheets: [...fresh.sheets, insights],
+      accounts: [{ id: "acc-1", name: "Checking" }],
+    };
+    expect(
+      describe2(
+        {
+          type: "setInsightsNetWorthSettings",
+          sheetId: "sheet-insights",
+          itemId: "view-1",
+          settings: { overrides: { "acc-1": { excluded: true } } },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Insights" });
+  });
+
   it("names the sheet when toggling its favorite flag", () => {
     const fresh = freshUserData();
     const [first] = fresh.sheets;

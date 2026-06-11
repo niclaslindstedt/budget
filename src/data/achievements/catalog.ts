@@ -531,6 +531,19 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "bigPicture",
+    tier: "intermediate",
+    glyph: LineChart,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) =>
+        !prev.sheets.some((sheet) => sheet.type === "insights") &&
+        next.sheets.some((sheet) => sheet.type === "insights"),
+    },
+  },
+  {
     id: "payDay",
     tier: "intermediate",
     glyph: CalendarClock,

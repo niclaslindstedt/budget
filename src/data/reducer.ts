@@ -10,6 +10,7 @@ import type {
   EntryTypeKind,
   FileCategory,
   HistoryEntrySplit,
+  InsightsNetWorthSettings,
   Item,
   LineItemLink,
   Loan,
@@ -356,6 +357,17 @@ export type Action =
       sheetId: string;
       itemId: string;
       taxProfileId: string | null;
+    }
+  | {
+      // Replace the net-worth settings on an insights sheet's
+      // `insightsView` item wholesale. The settings modal edits a local
+      // draft and dispatches once on Save, so one action is one undo
+      // step. Reduced by the insights descriptor's `reduceItem`, which
+      // normalises the payload to its minimal persisted form.
+      type: "setInsightsNetWorthSettings";
+      sheetId: string;
+      itemId: string;
+      settings: InsightsNetWorthSettings;
     }
   | { type: "createTransfer"; transfer: Transfer }
   | {

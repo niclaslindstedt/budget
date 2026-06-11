@@ -417,16 +417,17 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
-    const r = validateSheet(
-      raw.sheets[i],
-      `sheets[${i}]`,
-      seenAccountIds,
+    const r = validateSheet(raw.sheets[i], `sheets[${i}]`, {
+      knownAccountIds: seenAccountIds,
       knownTypeIds,
       knownCompanyIds,
       knownTagIds,
       knownItemIds,
       knownTaxProfileIds,
-    );
+      knownSavingIds: seenSavingIds,
+      knownPropertyIds: seenPropertyIds,
+      knownLoanIds: seenLoanIds,
+    });
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
       return fail(`sheets[${i}].id`, `duplicate id "${r.value.id}"`);

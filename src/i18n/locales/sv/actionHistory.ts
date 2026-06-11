@@ -93,6 +93,7 @@ const actionHistory: ActionHistoryCatalog = {
     updateTaxProfile: "Redigerade skatteprofil",
     deleteTaxProfile: "Tog bort skatteprofil",
     setSalaryTaxProfile: "Satte skatteprofil på blad",
+    setInsightsNetWorthSettings: "Uppdaterade nettoförmögenhetsinställningar",
     addProperty: "Lade till fastighet",
     updateProperty: "Redigerade fastighet",
     deleteProperty: "Tog bort fastighet",

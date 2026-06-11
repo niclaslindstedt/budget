@@ -111,6 +111,11 @@ const SavingsPage = lazy(() =>
 const LoansPage = lazy(() =>
   import("../loans/LoansPage").then((m) => ({ default: m.LoansPage })),
 );
+const InsightsPage = lazy(() =>
+  import("../insights/InsightsPage").then((m) => ({
+    default: m.InsightsPage,
+  })),
+);
 const UniversalModalHost = lazy(() =>
   import("./UniversalModalHost").then((m) => ({
     default: m.UniversalModalHost,
@@ -1076,6 +1081,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     onUpdateBalance={onOpenUpdateLoanBalance}
                     onImportPayments={onOpenLoanImportPayments}
                     onViewPayments={onOpenLoanPayments}
+                  />
+                ) : activeSheet.type === "insights" ? (
+                  <InsightsPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    dispatch={dispatch}
                   />
                 ) : (
                   <>

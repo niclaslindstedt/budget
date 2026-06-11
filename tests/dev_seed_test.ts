@@ -95,6 +95,7 @@ describe("buildSeedUserData", () => {
     expect([...types].sort()).toEqual([
       "accounts",
       "budget",
+      "insights",
       "items",
       "loans",
       "properties",

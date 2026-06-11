@@ -150,6 +150,12 @@ src/
 │       │                         #   area / monthly-payments bars, kind
 │       │                         #   filters, estimated-interest break-out)
 │       └── loan-kind.ts          # kind → i18n label key + fallback glyph
+│   └── insights/             # insights page — cross-area analyses
+│       ├── InsightsPage.tsx      # page root — net-worth total + breakdown +
+│       │                         #   over-time chart (mode toggle hidden until
+│       │                         #   a second InsightsMode exists)
+│       └── InsightsSettingsModal.tsx  # per-entity include toggle + ownership
+│                                 #   share (one dispatch on Save)
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
@@ -158,7 +164,8 @@ src/
 │   │   │                       #   UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
-│   │   │                       #   SavingsView, LoansView, SheetType, SheetGlyph
+│   │   │                       #   SavingsView, LoansView, InsightsView (+ mode
+│   │   │                       #   + net-worth settings), SheetType, SheetGlyph
 │   │   ├── savings.ts          # Saving (savings account), SavingBalancePoint —
 │   │   │                       #   transactions live in UserData.history keyed by
 │   │   │                       #   the saving id; a first-class transfer endpoint
@@ -360,6 +367,14 @@ src/
 │   │                           #   "Visualize loans" (balances over time;
 │   │                           #   per-month payments with the estimated
 │   │                           #   interest share clamped to what was paid)
+│   ├── insights/           # insights page — cross-area aggregation
+│   │   └── networth.ts         # computeNetWorthSnapshot (assets − liabilities
+│   │                           #   per entity + per category, exclusion +
+│   │                           #   ownership-share overrides; property mortgages
+│   │                           #   counted with the property, linked-mortgage
+│   │                           #   loans skipped to avoid double-counting) +
+│   │                           #   buildNetWorthSeries (monthly net worth over
+│   │                           #   time, last point = the snapshot total)
 │   ├── receipts/           # host-generic receipt addressing
 │   │   └── target.ts           # TxnReceiptTarget + resolveTxnReceipt + ReceiptNaming
 │   │                           #   — address a receipt's host (history entry /

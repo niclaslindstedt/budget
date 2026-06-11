@@ -49,6 +49,10 @@ export type {
 export type {
   AccountBudget,
   AccountsView,
+  InsightsEntityOverride,
+  InsightsMode,
+  InsightsNetWorthSettings,
+  InsightsView,
   ItemsView,
   LoansView,
   PropertiesView,
