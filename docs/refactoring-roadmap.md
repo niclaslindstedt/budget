@@ -87,39 +87,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
-- **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
-  seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
-  `properties/MortgageDiscoveryModal.tsx` (666), `items/ItemFinderModal.tsx`
-  (427), `budget/BudgetFindConflictsModal.tsx` (384),
-  `budget/BudgetRecurringCandidatesPanel.tsx` (441),
-  `accounts/AccountTransferCollapseModal.tsx` (260),
-  `accounts/AccountRenamePredictorModal.tsx` (235) — ~3,200 lines; five data
-  engines: `salary/detection.ts` (244) + `salary/discovery.ts` (382),
-  `property-mortgage/discovery.ts` (792), `loans/candidates.ts` (140),
-  `property-repairs/candidates.ts` (173), `items/find.ts` (145). Every
-  walk re-implements the same session skeleton — scan history → emit
-  candidates → per-session `Set<string>` accepted/skipped state →
-  accept / skip / ignore actions per row → batch commit — and each data
-  engine re-derives its own "already consumed" tracking
-  (`loans/candidates.ts:30` `consumedHistoryIds`,
-  `property-repairs/candidates.ts:131` `usedSourceKeys`, etc.).
-  - **Plan**: do **not** force a shared kitchen-sink shell — the walks
-    genuinely diverge (Salary is a 4-phase step-through state machine with
-    per-month form edits; Mortgage has a tolerance slider; Conflicts has
-    threshold preset pills; Rename has inline-editable drafts; commit
-    cardinality differs everywhere). Candidate slices that don't fight the
-    divergence: a small `useCandidateSession` hook for the accepted/skipped
-    `Set` state + remaining-count derivation, and a shared consumed-id
-    convention/helper on the data side. Anything bigger is a deliberate
-    design pass, same as the pickers item.
-  - **Risk**: medium for the data side — each engine's scoring is genuinely
-    different (running-mean segments vs strictness tiers vs tolerance
-    matching); any shared scan helper must be verified against each engine's
-    existing tests with byte-identical output.
-  - **Severity: 5.** Every new sheet type with a "Find X" walk (the fake-data
-    seed already treats one-unconsumed-candidate-per-walk as a standard
-    feature shape) re-derives ~150–800 lines today.
-
 - **Four custom pickers reinvent the custom-dropdown shell instead of
   reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
   `salary/MunicipalityPicker.tsx` (147), `salary/TaxProfilePicker.tsx`
@@ -331,6 +298,50 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 3–4 — nits with leverage
 
+- **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
+  seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
+  `properties/MortgageDiscoveryModal.tsx` (667), `items/ItemFinderModal.tsx`
+  (427), `budget/BudgetFindConflictsModal.tsx` (384),
+  `budget/BudgetRecurringCandidatesPanel.tsx` (441),
+  `accounts/AccountTransferCollapseModal.tsx` (260),
+  `accounts/AccountRenamePredictorModal.tsx` (235) — ~3,200 lines; five data
+  engines: `salary/detection.ts` (244) + `salary/discovery.ts` (382),
+  `property-mortgage/discovery.ts` (900, now phase-decomposed — see Landed),
+  `loans/candidates.ts` (140), `property-repairs/candidates.ts` (173),
+  `items/find.ts` (145). Each data engine re-derives its own "already
+  consumed" tracking (`loans/candidates.ts:30` `consumedHistoryIds`,
+  `property-repairs/candidates.ts:131` `usedSourceKeys`, etc.).
+  - **Re-verified 2026-06 — the `useCandidateSession` UI slice is dead.** The
+    "every walk re-implements per-session `Set<string>` accepted/skipped
+    state" framing failed contact with the code: only `SalaryDiscoveryModal`
+    fully matches the proposed shape (`Map` accepted + `Set` skipped,
+    reset-on-open, batch commit). `AccountTransferCollapseModal` has only a
+    skipped-set with per-row immediate commits; `AccountRenamePredictorModal`
+    keys a `Record<entryId, { accepted, text }>` of inline-editable drafts
+    that resets on suggestion-list identity, not on open;
+    `BudgetFindConflictsModal` and `BudgetRecurringCandidatesPanel` hold no
+    session decisions at all (a threshold filter / a persistent panel, both
+    committing per-row); `ItemFinderModal` tracks four specialized sets plus
+    timer-deferred refs; `MortgageDiscoveryModal` is a nullable include-set.
+    At ~1.5 genuine fits the hook fails the N≥3 bar (same precedent as the
+    skipped `useListboxKeyboard` at one site). Don't re-propose it without a
+    new walk that actually copies the salary shape.
+  - **Plan (remaining)**: the data-side consumed-id convention/helper, and —
+    only as a deliberate design pass, same as the pickers item — any shared
+    walk shell. Do **not** force a kitchen-sink shell: the walks genuinely
+    diverge (Salary is a 4-phase step-through state machine with per-month
+    form edits; Mortgage has a tolerance slider; Conflicts has threshold
+    preset pills; Rename has inline-editable drafts; commit cardinality
+    differs everywhere).
+  - **Risk**: medium for the data side — each engine's scoring is genuinely
+    different (running-mean segments vs strictness tiers vs tolerance
+    matching); any shared scan helper must be verified against each engine's
+    existing tests with byte-identical output.
+  - **Severity: 4** (was 5; the one named near-term slice — the session-state
+    hook — evaporated on re-verify, leaving the data-side convention and the
+    design-pass shell). Every new sheet type with a "Find X" walk still
+    re-derives ~150–800 lines of engine today.
+
 - **Update-balance/value modal shape duplicated at four sites** —
   `loans/LoanUpdateBalanceModal.tsx` (182),
   `savings/UpdateSavingBalanceModal.tsx` (176),
@@ -350,19 +361,6 @@ _(none pending — the sheet-type registry coverage cluster landed
   - **Risk**: low (presentational), but the negative-snapshot question is a
     product decision, not a refactor — don't fold it into an extraction PR.
   - **Severity: 4.**
-
-- **`discoverMortgagePayments` crossed its re-rate threshold** —
-  `src/data/property-mortgage/discovery.ts` is now 792 lines and the main
-  function spans `:404`–`:784` (~380 lines), past the ~350-line trigger the
-  2026-06 skip entry recorded (it was ~297 when skipped; loan-linking growth
-  pushed it over). Still a comment-delimited linear funnel, so the shape
-  hasn't degraded into a tangle — but the candidate-building phase the skip
-  entry named as "the natural extract" is now the right cut.
-  - **Plan**: extract the candidate-building phase into a named module-level
-    function (mirroring the landed `migrateV24ToV25` decomposition);
-    behaviour pinned by the existing discovery tests.
-  - **Risk**: low — pure decomposition of a tested pure function.
-  - **Severity: 3.**
 
 - **Cloud-adapter factory closures bundle ~15–20 private functions +
   mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
@@ -517,6 +515,27 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`discoverMortgagePayments` ~395-line monolith → named module-level
+  phases** (2026-06): the 2026-06 skip entry's ~350-line re-rate trigger
+  fired (loan-linking growth pushed the main function from ~297 to ~395
+  lines), so the decomposition landed, mirroring the `migrateV24ToV25`
+  precedent. `discoverMortgagePayments`
+  (`src/data/property-mortgage/discovery.ts`) now reads as a traceable
+  sequence over named phases: `scanChargeGroups` (the one-pass history walk
+  that buckets outflows into per-description / amount-salvaged charge groups
+  and resolves tag / payment anchors, returning a `ChargeGroups` record and
+  stamping the funnel counters on `diag`), `buildCandidateSeries` (the
+  per-group judging funnel — ownership-window cut, typical-amount centring,
+  cadence + window-coverage checks, amount band, plausibility gate — emitting
+  the kept series plus the per-key diagnostic / target-index maps), and
+  `promoteHighlyProbable` (the best-per-expected-figure second pass). The
+  `nearestTargetKey` closure became a module function taking `targetAmounts`,
+  and `anchorRank` hoisted alongside so both the promotion and the final sort
+  share it; ranking + seed resolution stay in the main function. Pure
+  decomposition — behaviour pinned by the 1,441-line
+  `tests/property_mortgage_discovery_test.ts`; fast loop + build +
+  icons-check green, all 1759 tests pass. **Was severity 3.**
 
 - **Reducer `applyPatch` quintuplication → shared
   `src/data/reducers/patch.ts`** (2026-06): re-verify widened the "three
@@ -1272,8 +1291,9 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   fix threshold, with a recorded trigger: "re-rate only if it crosses ~350
   lines, at which point the candidate-building phase is the natural
   extract." The trigger fired — loan-linking growth pushed the function to
-  ~380 lines (`:404`–`:784`) — so the candidate moved back to **Pending**
-  (severity 3) on the 2026-06-11 sweep.
+  ~395 lines — so the candidate moved back to **Pending** (severity 3) on
+  the 2026-06-11 sweep, and the decomposition **landed 2026-06** (see
+  Landed).
 
 - **Per-route `<noscript>` fallback drift** (2026-05, decayed to
   severity 2): the `resolveNoscriptBody` default-derivation landed
