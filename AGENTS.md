@@ -104,7 +104,9 @@ banks with bank history, cross-account transfers, and recurring budget
 rows; salary history (employer, role, tax profile) and three owned
 properties (a holiday cabin, a city flat, and a large villa) carrying
 one, one, and three mortgages whose monthly charges land across two of
-those banks; custom tags / companies / categories / types / subtypes plus
+those banks, plus a previously-sold studio flat (sale date + amount)
+so the sold-property surfaces render; custom tags / companies /
+categories / types / subtypes plus
 company-category and merchant-memory associations. It also leaves one
 **unconsumed candidate** for every discovery walk (Find salaries, Find
 items, Find mortgage payments, the recurring-candidates panel, and
@@ -125,8 +127,9 @@ SEED=1`. The `SEED=1` flag sets `VITE_DEV_SEED=1`, which seeds the
 same Fake-data backend to **on from first paint** — no developer
 mode, no Settings toggle, no preview build needed. This is the
 fastest way to land on a fully-populated app (a sheet of every type,
-five accounts with bank history, salary history, three properties
-carrying five mortgages with loan terms) when working on a feature
+five accounts with bank history, salary history, three owned
+properties carrying five mortgages with loan terms plus a sold one)
+when working on a feature
 that's only interesting with realistic data on screen. The
 `design` skill's screenshot harness pairs with it via the
 `openSeededSheet(page, name)` helper. A plain `make dev` (no `SEED`)

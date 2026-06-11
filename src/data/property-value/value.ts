@@ -48,6 +48,16 @@ export function resolveValueHistory(property: Property): PropertyValuePoint[] {
   return [purchase, ...property.valueHistory];
 }
 
+// Whether the property had already been sold at `iso` — its `soldDate` is
+// set and falls on or before that date. On the sale date itself the home is
+// gone (the proceeds are cash in an account), so the date is inclusive.
+// Mirrors `isItemOwned` for the items catalog: a sold property stays in the
+// collection (its history, repairs, and payments still matter) but stops
+// counting as owned capital from this date.
+export function isPropertySoldAt(property: Property, iso: string): boolean {
+  return property.soldDate !== undefined && property.soldDate <= iso;
+}
+
 // A property's current value — the latest value by date, with the purchase
 // folded in (so a freshly-created property shows its purchase price as the
 // current value until a newer snapshot lands). Undefined only when there is

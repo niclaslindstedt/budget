@@ -1050,7 +1050,27 @@ export function buildSeedUserData(): UserData {
     repairs: [],
     files: [],
   };
-  const properties: Property[] = [cabin, apartment, villa];
+  // A previously-owned property — the studio flat sold in 2021 to fund the
+  // cabin purchase. Carries a sold date + amount so the Properties page
+  // renders a "Sold" card and the insights net-worth series shows an asset
+  // that enters at its purchase and drops out at the sale. No bound account
+  // (its mortgage charges predate the imported bank window) and no mortgages
+  // left — the loan was settled at the sale.
+  const studio: Property = {
+    id: mkId("prop"),
+    name: "Studentlyan",
+    purchaseAmount: 1450000,
+    purchaseDate: "2016-02-01",
+    soldDate: "2021-08-15",
+    soldAmount: 2050000,
+    size: 31,
+    rooms: 1,
+    valueHistory: [{ id: mkId("pval"), date: "2019-01-01", value: 1780000 }],
+    mortgages: [],
+    repairs: [],
+    files: [],
+  };
+  const properties: Property[] = [cabin, apartment, villa, studio];
 
   // ---- Loans (rendered by the Loans sheet) --------------------------
   // One loan per flavour worth exercising: a CSN student loan with

@@ -268,6 +268,76 @@ describe("discoverMortgagePayments", () => {
   });
 });
 
+// ── Ownership end: the sold-date cut-off ─────────────────────────────────────
+//
+// A property owned in the past stops being charged at its sale. Months after
+// `toDate` are the *next* home's mortgage (often the same bank, sometimes the
+// same description), so they are dropped exactly like pre-purchase months —
+// and the expected window the promotion judges completeness against ends at
+// the sale month, so a past property's clean-but-ended series can still be
+// flagged highly probable.
+describe("discoverMortgagePayments — sold-date cut-off", () => {
+  it("drops months after the sold date and centres on the owned window", () => {
+    // Six months of this (since sold) home's 8,000 loan, then six of the
+    // next home's 5,000 loan under the same bank description.
+    const dates = monthlyDates(2023, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`p-${i}`, d, i < 6 ? -8_000 : -5_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { toDate: "2023-06-30" }),
+    );
+    const s = series[0];
+    expect(s.suggestedAmount).toBe(8_000);
+    expect(s.months).toHaveLength(6);
+    expect(s.months.every((m) => m.date <= "2023-06-30")).toBe(true);
+  });
+
+  it("drops a series whose charges all postdate the sale", () => {
+    const dates = monthlyDates(2024, 1, 12);
+    const entries = dates.map((d, i) =>
+      entry(`p-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series, diagnostics } = discoverMortgagePayments(
+      baseInput(entries, { toDate: "2023-12-31" }),
+    );
+    expect(series).toEqual([]);
+    expect(diagnostics.candidates[0].outcome).toBe("no-eligible-month");
+  });
+
+  it("judges completeness against the sale month, not the latest charge", () => {
+    // The sold home's loan was charged Jan–Jun 2024 and stopped at the
+    // sale; unrelated spending keeps the account current long after. The
+    // series covers the loan's whole active window (purchase → sale), so
+    // it is still promoted — without the sale-month clamp the expected
+    // window would run to December and the promotion could never fire for
+    // a past property.
+    const entries = [
+      ...monthlyDates(2024, 1, 6).map((d, i) =>
+        entry(`loan-${i}`, d, -18_756, "HEMBANKEN BOLAN"),
+      ),
+      ...monthlyDates(2024, 7, 6).map((d, i) =>
+        entry(`food-${i}`, d, -950, "MATBUTIKEN"),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, {
+        fromDate: "2024-01-01",
+        toDate: "2024-06-30",
+        targetAmounts: [18_750],
+        targetSchedules: [{ startDate: "2024-01-01", cadenceMonths: 1 }],
+      }),
+    );
+    const loan = series.find((s) => s.suggestedAmount === 18_756);
+    expect(loan).toBeDefined();
+    expect(loan!.highlyProbable).toBe(true);
+  });
+});
+
 // ── Amount fallback: clean payments (no company / type / existing payment) ──
 //
 // The "Find mortgage payments" walk leans on tags first, then on payments

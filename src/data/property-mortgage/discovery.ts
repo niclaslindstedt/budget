@@ -131,14 +131,15 @@ export type MortgageDiscoveryResult = {
   // can log it to the in-app Logs tab when a user reports "no matches" —
   // the funnel pinpoints whether the charge was filtered as an inflow,
   // collapsed into a transfer, skipped for a meaningless description,
-  // dropped by the purchase-date cut-off, or simply too far from the
+  // dropped by the ownership-window cut-off, or simply too far from the
   // expected payment.
   diagnostics: MortgageDiscoveryDiagnostics;
 };
 
 // Why a grouped candidate did or didn't reach the final series list.
 //   "kept"              — offered to the user
-//   "no-eligible-month" — every month fell before the purchase date
+//   "no-eligible-month" — every month fell outside the ownership window
+//                         (before the purchase, or after the sale)
 //   "amount-band"       — amount fallback only: not near any expected figure
 //   "plausibility"      — an order of magnitude off every expected figure
 export type MortgageCandidateOutcome =
@@ -153,8 +154,8 @@ export type MortgageCandidateOutcome =
 export type MortgageCandidateDiagnostic = {
   label: string; // a representative bank description (or the amount group)
   suggestedAmount: number; // the group's typical charge magnitude
-  monthCount: number; // months in the group before the purchase-date cut
-  eligibleMonthCount: number; // months surviving the purchase-date cut
+  monthCount: number; // months in the group before the ownership-window cut
+  eligibleMonthCount: number; // months surviving the ownership-window cut
   targetDelta?: number; // distance to the closest expected figure
   synthetic: boolean; // grouped by amount (meaningless description) vs by text
   regularCadence: boolean; // one charge per cadence across the span, no gaps
@@ -213,6 +214,16 @@ export type MortgageDiscoveryInput = {
   // after the purchase is dropped entirely. Absent ⇒ every month is kept and
   // the centre is the median across all of them.
   fromDate?: string;
+  // The property's sold date (ISO yyyy-mm-dd), for a property the user no
+  // longer owns. The symmetric HARD cut-off to `fromDate`: a charge after
+  // this date cannot be a payment on this property's mortgage — the loan was
+  // settled at the sale, and a later same-description charge is the *next*
+  // home's mortgage. Months after it are dropped outright, and the expected
+  // window `windowCovered` judges completeness against ends at the sale
+  // month instead of the account's latest charge (otherwise a past
+  // property's series — which correctly stopped at the sale — could never
+  // be promoted to "highly probable"). Absent ⇒ the ownership is open-ended.
+  toDate?: string;
   // Expected monthly figures the loan terms resolve to — the amortisation,
   // the interest, and/or the two combined. Drive three things: they RANK the
   // matched series (closest to an expected amount first — the amortisation
@@ -404,7 +415,7 @@ export function emptyMortgageDiagnostics(): MortgageDiscoveryDiagnostics {
 export function discoverMortgagePayments(
   input: MortgageDiscoveryInput,
 ): MortgageDiscoveryResult {
-  const { entries, mortgageTypeId, fromDate } = input;
+  const { entries, mortgageTypeId, fromDate, toDate } = input;
   const companyIds = new Set(input.companyIds ?? []);
   const seedEntryIds = new Set(input.seedEntryIds ?? []);
   const targetAmounts = (input.targetAmounts ?? []).filter((a) => a > 0);
@@ -570,15 +581,22 @@ export function discoverMortgagePayments(
         : "amount";
 
     const sortedMonths = [...months.keys()].sort();
-    // Keep only the months whose charge falls on or after the purchase date —
-    // a payment can't predate ownership, and an earlier home's
-    // same-description charge (the previous mortgage) is not a payment on this
-    // property. The surviving months also centre the band: the typical charge
-    // is the median across them. With no purchase date we keep every month. A
-    // series left with no surviving month is dropped outright.
-    const eligibleMonths = fromDate
-      ? sortedMonths.filter((m) => months.get(m)!.date >= fromDate)
-      : sortedMonths;
+    // Keep only the months whose charge falls inside the ownership window —
+    // on or after the purchase date and on or before the sold date. A payment
+    // can't predate ownership, and an earlier (or, once sold, later) home's
+    // same-description charge is the previous / next property's mortgage, not
+    // a payment on this one. The surviving months also centre the band: the
+    // typical charge is the median across them. With neither bound we keep
+    // every month. A series left with no surviving month is dropped outright.
+    const eligibleMonths =
+      fromDate !== undefined || toDate !== undefined
+        ? sortedMonths.filter((m) => {
+            const date = months.get(m)!.date;
+            if (fromDate !== undefined && date < fromDate) return false;
+            if (toDate !== undefined && date > toDate) return false;
+            return true;
+          })
+        : sortedMonths;
     const amountsFor = (ks: readonly string[]) =>
       ks.map((m) => Math.abs(months.get(m)!.amount));
     // Centres on the eligible months; with none eligible it's computed across
@@ -616,11 +634,19 @@ export function discoverMortgagePayments(
     // loan-start date, or the purchase) to the latest charge the account has
     // seen — at that cadence. A charge that recurs cleanly but covers only, say,
     // 5 of the 8 months expected since the loan began (started late, or has
-    // since stopped) is regular but NOT complete, so it isn't promoted.
+    // since stopped) is regular but NOT complete, so it isn't promoted. For a
+    // sold property the loan was active only until the sale, so the window
+    // ends at the sale month rather than the account's latest charge.
+    const soldMonth = toDate?.slice(0, 7);
+    const windowEndMonth =
+      soldMonth !== undefined &&
+      (latestOutflowMonth === undefined || soldMonth < latestOutflowMonth)
+        ? soldMonth
+        : latestOutflowMonth;
     const coversExpectedWindow = windowCovered(
       eligibleMonths.length,
       startMonth,
-      latestOutflowMonth,
+      windowEndMonth,
       cadence,
     );
     const synthetic = syntheticKeys.has(key);

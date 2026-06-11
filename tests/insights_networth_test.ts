@@ -200,6 +200,28 @@ describe("computeNetWorthSnapshot", () => {
     expect(snap.entities.some((e) => e.id === "item-2")).toBe(false);
     expect(snap.perCategory.items).toBe(500);
   });
+
+  it("skips a property sold by today, debt and all", () => {
+    const data = workspace({
+      properties: [property({ soldDate: "2026-05-01", soldAmount: 3_100_000 })],
+    });
+    const snap = computeNetWorthSnapshot(data, undefined, TODAY);
+    // The sold property gets no breakdown row; its value AND its mortgage
+    // debt are gone (the proceeds are cash the accounts already count).
+    expect(snap.entities.some((e) => e.id === "prop-1")).toBe(false);
+    expect(snap.perCategory.properties).toBe(0);
+    expect(snap.perCategory.mortgages).toBe(0);
+    expect(snap.total).toBe(1_000 + 200 + 500 - 120_000);
+  });
+
+  it("keeps a property whose sale date is still ahead", () => {
+    const data = workspace({
+      properties: [property({ soldDate: "2026-12-31" })],
+    });
+    const snap = computeNetWorthSnapshot(data, undefined, TODAY);
+    expect(snap.perCategory.properties).toBe(3_000_000);
+    expect(snap.perCategory.mortgages).toBe(-1_000_000);
+  });
 });
 
 describe("buildNetWorthSeries", () => {
@@ -266,6 +288,28 @@ describe("buildNetWorthSeries", () => {
       1_000 + 200 + 3_000_000 - 1_000_000,
       1_000 + 200 + 3_000_000 - 1_000_000,
       1_000 + 200 + 3_000_000 - 1_000_000,
+    ]);
+  });
+
+  it("drops a sold property's value and debt from the sale date", () => {
+    const data = workspace({
+      items: [],
+      loans: [],
+      properties: [property({ soldDate: "2026-04-15" })],
+    });
+    const points = buildNetWorthSeries(data, undefined, TODAY);
+    // The window still opens at the sold property's January value point —
+    // its history stays on the chart. The property and its mortgage
+    // contribute while owned (Jan–Mar) and vanish from the April sample
+    // on, since the month-end sample falls after the mid-April sale.
+    const owned = 1_000 + 3_000_000 - 1_000_000;
+    expect(points.map((p) => p.y)).toEqual([
+      owned + 100,
+      owned + 100,
+      owned + 200,
+      1_000 + 200,
+      1_000 + 200,
+      1_000 + 200,
     ]);
   });
 

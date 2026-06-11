@@ -15,7 +15,8 @@ import { Modal } from "../Modal";
 import { DATE_INPUT_CLASS } from "./date-input";
 
 // Create / edit one `Property` — name, lender, the bank account "Find
-// mortgage payments" scans, what it was bought for, and the purchase date.
+// mortgage payments" scans, what it was bought for, the purchase date, and
+// (for a property owned in the past) the sale date and amount.
 // The account is shared across the property's mortgages (a property is paid
 // to the bank as one charge covering every loan), so it's bound here, not
 // per mortgage. The value history and mortgages are managed from the card,
@@ -64,6 +65,8 @@ export function PropertyEditorModal({
   const [accountOpen, setAccountOpen] = useState(false);
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [soldAmount, setSoldAmount] = useState("");
+  const [soldDate, setSoldDate] = useState("");
   const [size, setSize] = useState("");
   const [rooms, setRooms] = useState("");
   const [fee, setFee] = useState("");
@@ -75,6 +78,8 @@ export function PropertyEditorModal({
     setAccountOpen(false);
     setPurchaseAmount(seedAmount(property?.purchaseAmount, settings));
     setPurchaseDate(property?.purchaseDate ?? "");
+    setSoldAmount(seedAmount(property?.soldAmount, settings));
+    setSoldDate(property?.soldDate ?? "");
     setSize(seedAmount(property?.size, settings));
     setRooms(seedAmount(property?.rooms, settings));
     setFee(seedAmount(property?.fee, settings));
@@ -99,6 +104,11 @@ export function PropertyEditorModal({
       accountId: accountId ?? undefined,
       purchaseAmount: num(purchaseAmount),
       purchaseDate: purchaseDate !== "" ? purchaseDate : undefined,
+      // The sale amount rides only with a sale date (a price with no date
+      // can't place the sale on the timeline) — mirrors the validator, so
+      // the live record stays byte-identical to a reload.
+      soldDate: soldDate !== "" ? soldDate : undefined,
+      soldAmount: soldDate !== "" ? num(soldAmount) : undefined,
       size: num(size),
       rooms: num(rooms),
       fee: num(fee),
@@ -123,6 +133,8 @@ export function PropertyEditorModal({
       fresh.purchaseAmount = patch.purchaseAmount;
     if (patch.purchaseDate !== undefined)
       fresh.purchaseDate = patch.purchaseDate;
+    if (patch.soldDate !== undefined) fresh.soldDate = patch.soldDate;
+    if (patch.soldAmount !== undefined) fresh.soldAmount = patch.soldAmount;
     if (patch.size !== undefined) fresh.size = patch.size;
     if (patch.rooms !== undefined) fresh.rooms = patch.rooms;
     if (patch.fee !== undefined) fresh.fee = patch.fee;
@@ -222,6 +234,36 @@ export function PropertyEditorModal({
               className={DATE_INPUT_CLASS}
             />
           </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t("properties.soldDateLabel")}
+            </span>
+            <input
+              type="date"
+              value={soldDate}
+              onChange={(e) => setSoldDate(e.target.value)}
+              className={DATE_INPUT_CLASS}
+            />
+            <p className="m-0 text-xs text-muted">
+              {t("properties.soldDateHint")}
+            </p>
+          </label>
+
+          {soldDate !== "" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.soldAmountLabel")}
+              </span>
+              <ClearableInput
+                value={soldAmount}
+                onValueChange={setSoldAmount}
+                inputMode="decimal"
+                placeholder={t("properties.soldAmountPlaceholder")}
+                className={amountInputClass}
+              />
+            </label>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">

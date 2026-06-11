@@ -174,7 +174,9 @@ src/
 │   │   │                       #   several of one property's mortgages),
 │   │   │                       #   LoanPayment, LoanBalancePoint, LoanKind
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
-│   │   ├── properties.ts       # Property (home/apartment), PropertyValuePoint,
+│   │   ├── properties.ts       # Property (home/apartment, incl. soldDate /
+│   │   │                       #   soldAmount for one owned in the past),
+│   │   │                       #   PropertyValuePoint,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
 │   │   │                       #   (source pair optional — manual repairs carry
 │   │   │                       #   own companyId/tagIds), PropertySaleEstimate
@@ -322,7 +324,8 @@ src/
 │   │   │                       #   purchaseValuePoint — fold a property's
 │   │   │                       #   purchase (purchaseAmount at purchaseDate) in
 │   │   │                       #   as its first value; current value = latest by
-│   │   │                       #   date, purchase included
+│   │   │                       #   date, purchase included; isPropertySoldAt
+│   │   │                       #   (already sold at a date — past ownership)
 │   │   └── series.ts           # buildPropertyValueSeries — market value, value
 │   │                           #   incl. cumulative repairs, and full net sale
 │   │                           #   profit per snapshot (Visualize value chart)

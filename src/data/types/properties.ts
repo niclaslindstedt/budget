@@ -5,10 +5,10 @@
 // `Salary`) so the workspace-wide Properties sheet renders the whole
 // collection and a future per-account roll-up can read it directly.
 //
-// The shape is deliberately open for the deferred follow-up (a `sale`,
-// transaction-linked repairs, a country-pluggable capital-gains engine):
-// readers tolerate and writers preserve fields they don't recognise, so
-// those land without a migration — exactly as `Item` documents.
+// The shape is deliberately open for the deferred follow-up (a
+// country-pluggable capital-gains engine): readers tolerate and writers
+// preserve fields they don't recognise, so those land without a
+// migration — exactly as `Item` documents.
 
 import type { BrokerCost } from "../tax/types";
 
@@ -284,14 +284,15 @@ export type PropertyFile = {
   private?: boolean;
 };
 
-// One property the user owns or has bought. `purchaseAmount` is what they
-// paid for it (the cost basis a future capital-gains calc reads);
-// `valueHistory` is the manually-recorded market value over time (current
-// value = latest point); `mortgages` are the loans against it; `repairs`
-// are the transaction-linked repairs / renovations on it; `files` are the
-// arbitrary documents / photos uploaded against it. Every field beyond
-// `id` / `name` is optional or starts empty so a property can be created
-// with just a name and filled in later.
+// One property the user owns — or owned in the past (`soldDate` set).
+// `purchaseAmount` is what they paid for it (the cost basis a future
+// capital-gains calc reads); `valueHistory` is the manually-recorded
+// market value over time (current value = latest point); `mortgages` are
+// the loans against it; `repairs` are the transaction-linked repairs /
+// renovations on it; `files` are the arbitrary documents / photos
+// uploaded against it. Every field beyond `id` / `name` is optional or
+// starts empty so a property can be created with just a name and filled
+// in later.
 export type Property = {
   id: string;
   name: string;
@@ -314,6 +315,17 @@ export type Property = {
   accountId?: string | null;
   purchaseAmount?: number; // what the property was bought for
   purchaseDate?: string; // ISO date of purchase
+  // What the property sold for and when, for a property the user no longer
+  // owns. A set `soldDate` marks the property as previously owned: it keeps
+  // its value history, repairs, and mortgage payments (so old bank charges
+  // still attribute to the right home), but stops counting toward net worth
+  // from that date, and discovery walks stop attributing charges after it.
+  // `soldAmount` is the sale price — the closing figure of the ownership,
+  // mirroring how `purchaseAmount` opens it. Both optional and additive
+  // (old budgets simply lack them — no migration needed); `soldAmount`
+  // without a `soldDate` is meaningless and the validator drops it.
+  soldDate?: string; // ISO date of sale — set ⇒ previously owned
+  soldAmount?: number; // what the property was sold for
   // Living area of the property, in square metres. Stored as a bare
   // number; the unit it renders with ("kvm" / "sqm") is a global
   // display preference (`Settings.propertySizeUnit`), not stored per

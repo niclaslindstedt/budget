@@ -332,6 +332,33 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("firstRepair");
   });
 
+  it("fires propertySold when a property records its sale date", () => {
+    const prev = withItem([]);
+    prev.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [],
+        repairs: [],
+      },
+    ];
+    const next = withItem([]);
+    next.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        soldDate: "2026-06-01",
+        soldAmount: 2_500_000,
+        valueHistory: [],
+        mortgages: [],
+        repairs: [],
+      },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("propertySold");
+  });
+
   it("fires groundhogDay when a row becomes recurring", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {}, seriesId: "s1" }]);

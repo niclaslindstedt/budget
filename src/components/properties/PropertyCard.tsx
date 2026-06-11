@@ -151,9 +151,12 @@ export function PropertyCard({
           aria-hidden
           focusable={false}
         />
-        <span className="flex-1 truncate font-bold text-fg-bright">
+        <span className="min-w-0 flex-1 truncate font-bold text-fg-bright">
           {property.name}
         </span>
+        {property.soldDate !== undefined && (
+          <span className={PILL_CLASS}>{t("properties.soldBadge")}</span>
+        )}
         <button
           type="button"
           onClick={() => onVisualizeValue(property)}
@@ -247,6 +250,20 @@ export function PropertyCard({
         {property.purchaseDate && (
           <Stat label={t("properties.purchased")}>
             <span className="text-fg">{property.purchaseDate}</span>
+          </Stat>
+        )}
+        {property.soldAmount !== undefined && (
+          <Stat label={t("properties.soldFor")}>
+            <span className="tabular-nums text-fg">
+              {formatBalance(property.soldAmount, settings, {
+                neverAbbreviate: true,
+              })}
+            </span>
+          </Stat>
+        )}
+        {property.soldDate !== undefined && (
+          <Stat label={t("properties.soldOn")}>
+            <span className="text-fg">{property.soldDate}</span>
           </Stat>
         )}
         {lender && (
