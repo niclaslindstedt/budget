@@ -173,6 +173,24 @@ export const CATEGORY_ICON_NAMES = [
   "flag",
   "shield-alert",
   "cloud",
+  "chart-candlestick",
+  "diamond",
+  "crown",
+  "medal",
+  "cpu",
+  "satellite",
+  "rocket",
+  "dna",
+  "microscope",
+  "sun",
+  "wind",
+  "atom",
+  "battery-charging",
+  "factory",
+  "pickaxe",
+  "wheat",
+  "truck",
+  "shield",
 ] as const;
 
 // Sheets are workspace containers and planners — what's being tracked.
@@ -367,24 +385,77 @@ export const SAVINGS_GLYPH_NAMES: readonly CategoryIcon[] = [
 ] as const;
 
 // Investment sheets stand for assets the user expects to grow — shares,
-// funds, gold, crypto, bonds — so the palette leans toward the
-// markets-and-stores-of-value glyphs. The SheetModal picks this set when
-// the selected sheet type is "investment" via the descriptor's
-// `glyphNames`, and the per-holding / per-position glyph pickers offer
-// the same set.
+// funds, gold, crypto, bonds — so beyond the markets-and-stores-of-value
+// glyphs the palette covers the industry sectors a holding can track
+// (healthcare, technology, energy, industrials, real estate, …) and the
+// commodities people hold directly (precious metals, crypto). The
+// SheetModal picks this set when the selected sheet type is "investment"
+// via the descriptor's `glyphNames`, and the per-holding / per-position
+// glyph pickers offer the same set.
 export const INVESTMENT_GLYPH_NAMES: readonly CategoryIcon[] = [
+  // Markets & money
   "trending-up",
   "line-chart",
   "pie-chart",
+  "chart-candlestick",
+  "percent",
+  "globe",
   "coins",
   "banknote",
   "landmark",
   "vault",
-  "bitcoin",
-  "gem",
   "wallet",
+  "piggy-bank",
+  "credit-card",
   "scale",
+  // Crypto
+  "bitcoin",
+  // Precious metals & valuables
+  "gem",
+  "diamond",
+  "crown",
+  "medal",
+  // Technology
+  "cpu",
+  "laptop",
+  "smartphone",
+  "satellite",
+  "rocket",
+  "gamepad-2",
+  // Healthcare & biotech
+  "stethoscope",
+  "pill",
+  "dna",
+  "microscope",
+  "heart-pulse",
+  // Energy & utilities
+  "zap",
+  "sun",
+  "wind",
+  "atom",
+  "battery-charging",
+  "fuel",
+  "droplet",
+  // Industry & transport
+  "factory",
+  "pickaxe",
+  "truck",
+  "ship",
+  "plane",
+  "car-front",
+  // Real estate
+  "home",
+  "building-2",
+  // Agriculture & consumer
+  "wheat",
+  "sprout",
+  "tree-pine",
+  "shopping-cart",
+  // Misc
+  "shield",
+  "briefcase",
   "sparkles",
+  "star",
 ] as const;
 
 // Accounts are real-world money stores — bank accounts, cards, cash,
