@@ -1,30 +1,18 @@
 import { findRoleByTitle, grossFromNetAndRate } from "../salary/salary";
 import { newId } from "../sheet";
+import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { Employer, Role, Salary, UserData } from "../types";
 
-// Apply a salary patch, treating an explicit `undefined` value as
-// "delete this key" rather than "set the key to undefined" — so
-// clearing an optional field (drop the gross, clear an absence count)
-// keeps the live salary byte-identical to one reloaded from storage,
-// where absent optional fields simply aren't present. Mirrors
-// `applyItemPatch` in `reducers/items.ts`.
-//
-// Invariant: a `roleId` belongs to the salary's employer, so changing
-// `employerId` (when the patch doesn't itself set a `roleId`) drops the
-// now-orphaned role reference rather than leaving it dangling.
+// `applyPatch` plus a salary-specific invariant: a `roleId` belongs to
+// the salary's employer, so changing `employerId` (when the patch doesn't
+// itself set a `roleId`) drops the now-orphaned role reference rather
+// than leaving it dangling.
 function applySalaryPatch(
   salary: Salary,
   patch: Partial<Omit<Salary, "id">>,
 ): Salary {
-  const next: Salary = { ...salary };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) {
-      delete next[key as keyof Salary];
-    } else {
-      (next as Record<string, unknown>)[key] = value;
-    }
-  }
+  const next = applyPatch(salary, patch);
   if (
     "employerId" in patch &&
     patch.employerId !== salary.employerId &&
