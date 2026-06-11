@@ -412,62 +412,77 @@ export function emptyMortgageDiagnostics(): MortgageDiscoveryDiagnostics {
   };
 }
 
-export function discoverMortgagePayments(
-  input: MortgageDiscoveryInput,
-): MortgageDiscoveryResult {
-  const { entries, mortgageTypeId, fromDate, toDate } = input;
-  const companyIds = new Set(input.companyIds ?? []);
-  const seedEntryIds = new Set(input.seedEntryIds ?? []);
-  const targetAmounts = (input.targetAmounts ?? []).filter((a) => a > 0);
-  const ruleCache = newRuleMatchCache();
+// The synthetic group an amount-only charge belongs to: the expected figure
+// it sits closest to, when that figure is within the anchor band — else
+// null, so a meaningless-description charge of an unrelated size is left out
+// rather than lumped in. This is what lets the amount fallback rescue a
+// recurring mortgage transfer whose bank text is just "Överföring" or a bare
+// reference number — there's no merchant identity to group by, so the maths
+// (the expected monthly figure) does the grouping instead. Returns null when
+// no terms resolved, so a tag/payment walk never grows synthetic groups.
+function nearestTargetKey(
+  amount: number,
+  targetAmounts: readonly number[],
+): string | null {
+  const magnitude = Math.abs(amount);
+  let bestIdx = -1;
+  let bestDelta = Infinity;
+  targetAmounts.forEach((target, i) => {
+    const delta = relativeDelta(magnitude, target);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      bestIdx = i;
+    }
+  });
+  if (bestIdx < 0 || bestDelta > MORTGAGE_AMOUNT_ANCHOR_TOLERANCE) return null;
+  return `~amount:${bestIdx}`;
+}
 
-  // The synthetic group an amount-only charge belongs to: the expected figure
-  // it sits closest to, when that figure is within the anchor band — else
-  // null, so a meaningless-description charge of an unrelated size is left out
-  // rather than lumped in. This is what lets the amount fallback rescue a
-  // recurring mortgage transfer whose bank text is just "Överföring" or a bare
-  // reference number — there's no merchant identity to group by, so the maths
-  // (the expected monthly figure) does the grouping instead. Returns null when
-  // no terms resolved, so a tag/payment walk never grows synthetic groups.
-  const nearestTargetKey = (amount: number): string | null => {
-    const magnitude = Math.abs(amount);
-    let bestIdx = -1;
-    let bestDelta = Infinity;
-    targetAmounts.forEach((target, i) => {
-      const delta = relativeDelta(magnitude, target);
-      if (delta < bestDelta) {
-        bestDelta = delta;
-        bestIdx = i;
-      }
-    });
-    if (bestIdx < 0 || bestDelta > MORTGAGE_AMOUNT_ANCHOR_TOLERANCE)
-      return null;
-    return `~amount:${bestIdx}`;
-  };
-
-  // Re-derive the per-month winning charge for each group: the largest outflow
-  // that month whose normalised description (or, for a meaningless one, its
-  // amount group) matches. One winner per month per group so a stray same-
-  // month charge doesn't double-count. Tracked across the FULL history so a
-  // single tagged month can pull in every other month of the same charge.
-  const byKeyMonth = new Map<string, Map<string, HistoryEntry>>();
-  const labelByKey = new Map<string, string>();
+// The grouped view of the account's outflows that the scan phase hands to
+// the candidate builder.
+type ChargeGroups = {
+  // Per-month winning charge for each group: the largest outflow that month
+  // whose normalised description (or, for a meaningless one, its amount
+  // group) matches. One winner per month per group so a stray same-month
+  // charge doesn't double-count. Tracked across the FULL history so a single
+  // tagged month can pull in every other month of the same charge.
+  byKeyMonth: Map<string, Map<string, HistoryEntry>>;
+  labelByKey: Map<string, string>;
   // Keys grouped by amount rather than by description text — they only ever
   // feed the amount fallback (a meaningless description can't carry a tag).
-  const syntheticKeys = new Set<string>();
+  syntheticKeys: Set<string>;
   // Description keys anchored by a company / type tag, and by an existing
   // payment, kept apart so tags win when both are present.
-  const tagKeys = new Set<string>();
-  const paymentKeys = new Set<string>();
-
-  const diag = emptyMortgageDiagnostics();
-  diag.totalEntries = entries.length;
-  diag.targetAmounts = targetAmounts;
-
+  tagKeys: Set<string>;
+  paymentKeys: Set<string>;
   // The most recent month any outflow lands in — how current the account's
   // data is. Ordinary spending recurs every month, so a mortgage that stopped
-  // a few months ago shows up as a series whose last month falls short of this,
-  // which `windowCovered` reads to demote it from "highly probable".
+  // a few months ago shows up as a series whose last month falls short of
+  // this, which `windowCovered` reads to demote it from "highly probable".
+  latestOutflowMonth: string | undefined;
+};
+
+// Scan phase: walk the account's history once, dropping the entries that
+// cannot be a mortgage charge (hidden, collapsed into a transfer, inflows),
+// bucketing the rest into per-description charge groups — falling back to
+// amount groups for meaningless descriptions — and resolving which groups a
+// company / type tag or an existing payment anchors. Stamps the scan-funnel
+// and group counters on `diag` as it goes.
+function scanChargeGroups(
+  input: MortgageDiscoveryInput,
+  targetAmounts: readonly number[],
+  diag: MortgageDiscoveryDiagnostics,
+): ChargeGroups {
+  const { entries, mortgageTypeId } = input;
+  const companyIds = new Set(input.companyIds ?? []);
+  const seedEntryIds = new Set(input.seedEntryIds ?? []);
+  const ruleCache = newRuleMatchCache();
+
+  const byKeyMonth = new Map<string, Map<string, HistoryEntry>>();
+  const labelByKey = new Map<string, string>();
+  const syntheticKeys = new Set<string>();
+  const tagKeys = new Set<string>();
+  const paymentKeys = new Set<string>();
   let latestOutflowMonth: string | undefined;
 
   for (const entry of entries) {
@@ -499,7 +514,7 @@ export function discoverMortgagePayments(
       // No usable merchant text. Salvage it for the amount fallback by
       // grouping on the closest expected figure, or drop it when none is near.
       diag.skippedMeaningless++;
-      const salvaged = nearestTargetKey(entry.amount);
+      const salvaged = nearestTargetKey(entry.amount, targetAmounts);
       if (salvaged === null) continue;
       diag.salvagedByAmount++;
       key = salvaged;
@@ -543,6 +558,43 @@ export function discoverMortgagePayments(
   diag.groupCount = byKeyMonth.size;
   diag.tagKeyCount = tagKeys.size;
   diag.paymentKeyCount = paymentKeys.size;
+
+  return {
+    byKeyMonth,
+    labelByKey,
+    syntheticKeys,
+    tagKeys,
+    paymentKeys,
+    latestOutflowMonth,
+  };
+}
+
+// Candidate-building phase: judge every anchored group — and, whenever the
+// loan terms resolve an expected figure, every group — against the
+// ownership-window cut, the typical-amount centring, the cadence and
+// window-coverage checks, the amount band (amount-only groups), and the
+// plausibility gate, recording each group's keep/drop decision on `diag`
+// and emitting the kept ones as series. `highlyProbable` starts false on
+// every series; `promoteHighlyProbable` decides it in a second pass.
+function buildCandidateSeries(
+  groups: ChargeGroups,
+  input: MortgageDiscoveryInput,
+  targetAmounts: readonly number[],
+  diag: MortgageDiscoveryDiagnostics,
+): {
+  series: MortgagePaymentSeries[];
+  candidateByKey: Map<string, MortgageCandidateDiagnostic>;
+  targetIndexByKey: Map<string, number>;
+} {
+  const { fromDate, toDate } = input;
+  const {
+    byKeyMonth,
+    labelByKey,
+    syntheticKeys,
+    tagKeys,
+    paymentKeys,
+    latestOutflowMonth,
+  } = groups;
 
   const hasTargets = targetAmounts.length > 0;
   const maxPlausibleDelta =
@@ -714,20 +766,31 @@ export function discoverMortgagePayments(
     });
   }
 
-  const anchorRank = (a: MortgagePaymentSeries["anchor"]) =>
-    a === "tag" ? 0 : a === "payment" ? 1 : 2;
+  return { series, candidateByKey, targetIndexByKey };
+}
 
-  // Promote the standout candidate per expected figure to "highly probable":
-  // among the kept series whose amount, cadence, and full-window coverage all
-  // match a given target, the strongest one earns it — chosen by the same
-  // strictness-then-closeness order the final ranking uses, so a charge the
-  // user tagged still wins over a marginally-closer untagged one. Going
-  // best-per-figure (not a single global winner) lets a property paid as one
-  // draw PER loan light up each loan's charge, while a property paid as one
-  // combined charge lights up only that — and a second clean-but-wrong charge
-  // sitting near the same figure (the screenshot's incomplete 5-of-8-months
-  // run) never also lights up, because it either loses to the stronger charge
-  // or fails the window check outright.
+// Strictness order of the anchor tiers — a tagged charge leads, then a
+// payment-seeded one, then an amount-only match.
+function anchorRank(a: MortgagePaymentSeries["anchor"]): number {
+  return a === "tag" ? 0 : a === "payment" ? 1 : 2;
+}
+
+// Promote the standout candidate per expected figure to "highly probable":
+// among the kept series whose amount, cadence, and full-window coverage all
+// match a given target, the strongest one earns it — chosen by the same
+// strictness-then-closeness order the final ranking uses, so a charge the
+// user tagged still wins over a marginally-closer untagged one. Going
+// best-per-figure (not a single global winner) lets a property paid as one
+// draw PER loan light up each loan's charge, while a property paid as one
+// combined charge lights up only that — and a second clean-but-wrong charge
+// sitting near the same figure (the screenshot's incomplete 5-of-8-months
+// run) never also lights up, because it either loses to the stronger charge
+// or fails the window check outright.
+function promoteHighlyProbable(
+  series: readonly MortgagePaymentSeries[],
+  candidateByKey: ReadonlyMap<string, MortgageCandidateDiagnostic>,
+  targetIndexByKey: ReadonlyMap<string, number>,
+): void {
   const bestByTarget = new Map<number, MortgagePaymentSeries>();
   for (const s of series) {
     const cand = candidateByKey.get(s.key);
@@ -756,6 +819,25 @@ export function discoverMortgagePayments(
     const cand = candidateByKey.get(s.key);
     if (cand) cand.highlyProbable = true;
   }
+}
+
+export function discoverMortgagePayments(
+  input: MortgageDiscoveryInput,
+): MortgageDiscoveryResult {
+  const targetAmounts = (input.targetAmounts ?? []).filter((a) => a > 0);
+
+  const diag = emptyMortgageDiagnostics();
+  diag.totalEntries = input.entries.length;
+  diag.targetAmounts = targetAmounts;
+
+  const groups = scanChargeGroups(input, targetAmounts, diag);
+  const { series, candidateByKey, targetIndexByKey } = buildCandidateSeries(
+    groups,
+    input,
+    targetAmounts,
+    diag,
+  );
+  promoteHighlyProbable(series, candidateByKey, targetIndexByKey);
 
   // Rank a HIGHLY PROBABLE charge first — a complete on-cadence recurrence + a
   // matching amount + stable text is a surer signal that a charge is the
@@ -783,11 +865,11 @@ export function discoverMortgagePayments(
   // user is actually being shown — falling back to the strongest signal merely
   // attempted when nothing survived, for the empty-state nudge.
   const attemptedSeed: MortgageDiscoverySeed =
-    tagKeys.size > 0
+    groups.tagKeys.size > 0
       ? "tags"
-      : paymentKeys.size > 0
+      : groups.paymentKeys.size > 0
         ? "payments"
-        : hasTargets
+        : targetAmounts.length > 0
           ? "amount"
           : "none";
   const seed: MortgageDiscoverySeed =
