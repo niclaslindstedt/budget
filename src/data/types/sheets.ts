@@ -144,6 +144,18 @@ export type InsightsView = {
   networth?: InsightsNetWorthSettings;
 };
 
+// Workspace-wide investment sheet item. The Investment sheet renders the
+// global `UserData.investmentHoldings` (the broad holdings catalog) and
+// `UserData.investmentStocks` (privately-bought single stocks)
+// collections rather than a per-account ledger. Like `PropertiesView` the
+// item carries no data of its own — it reads the shared collections — so
+// the shape exists only so future per-sheet config (sort order,
+// group-by-wrapper toggle, …) lands here without another migration.
+export type InvestmentView = {
+  id: string;
+  type: "investmentView";
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
@@ -160,7 +172,8 @@ export type SheetItem =
   | PropertiesView
   | SavingsView
   | LoansView
-  | InsightsView;
+  | InsightsView
+  | InvestmentView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -177,7 +190,8 @@ export type SheetType =
   | "properties"
   | "savings"
   | "loans"
-  | "insights";
+  | "insights"
+  | "investment";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

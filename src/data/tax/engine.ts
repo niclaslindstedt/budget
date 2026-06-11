@@ -4,8 +4,14 @@
 // net → gross direction the salary page needs without each country
 // hand-rolling an inverse.
 
-import { swedishCalculator, swedishPropertySaleCalculator } from "./se";
+import {
+  swedishCalculator,
+  swedishInvestmentCalculator,
+  swedishPropertySaleCalculator,
+} from "./se";
 import type {
+  InvestmentTaxInputs,
+  InvestmentTaxResult,
   LocationCalculators,
   PropertySaleInputs,
   PropertySaleResult,
@@ -93,6 +99,7 @@ const LOCATIONS: Record<TaxLocation, LocationCalculators> = {
     location: "SE",
     salary: swedishCalculator,
     propertySale: swedishPropertySaleCalculator,
+    investment: swedishInvestmentCalculator,
   },
 };
 
@@ -114,4 +121,13 @@ export function computePropertySale(
   inputs: PropertySaleInputs,
 ): PropertySaleResult {
   return getLocationCalculators(location).propertySale.computeSale(inputs);
+}
+
+// Investment net-value-on-sale forward calc for a location. Thin
+// pass-through so callers import one module.
+export function computeInvestmentNetValue(
+  location: TaxLocation,
+  inputs: InvestmentTaxInputs,
+): InvestmentTaxResult {
+  return getLocationCalculators(location).investment.computeNetValue(inputs);
 }

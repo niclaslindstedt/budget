@@ -34,6 +34,8 @@ export function freshUserData(): UserData {
     properties: [],
     savings: [],
     loans: [],
+    investmentHoldings: [],
+    investmentStocks: [],
     fileCategories: [],
     companies: [],
     tags: [],

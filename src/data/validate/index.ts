@@ -12,8 +12,10 @@ import type {
   FileCategory,
   HistoryEntry,
   HistoryImport,
+  InvestmentHolding,
   Item,
   Loan,
+  StockPosition,
   MatchRule,
   MerchantHint,
   PrimaryIncomeMerchant,
@@ -51,6 +53,10 @@ import { validateEmployer, validateSalary } from "./salary";
 import { validateProperty } from "./properties";
 import { validateSaving } from "./savings";
 import { validateLoan } from "./loans";
+import {
+  validateInvestmentHolding,
+  validateStockPosition,
+} from "./investments";
 import {
   validateMatchRule,
   validateMerchantHint,
@@ -198,6 +204,44 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`loans[${i}].id`, `duplicate id "${r.value.id}"`);
     seenLoanIds.add(r.value.id);
     loans.push(r.value);
+  }
+
+  // Investment holdings (broad catalog). Standalone (no cross-references
+  // to verify), so they validate independently of the known-id sets.
+  // Duplicate ids fail the load like the other top-level arrays.
+  const rawHoldings = Array.isArray(raw.investmentHoldings)
+    ? raw.investmentHoldings
+    : [];
+  const investmentHoldings: InvestmentHolding[] = [];
+  const seenHoldingIds = new Set<string>();
+  for (let i = 0; i < rawHoldings.length; i++) {
+    const r = validateInvestmentHolding(
+      rawHoldings[i],
+      `investmentHoldings[${i}]`,
+    );
+    if (!r.ok) return r;
+    if (seenHoldingIds.has(r.value.id))
+      return fail(
+        `investmentHoldings[${i}].id`,
+        `duplicate id "${r.value.id}"`,
+      );
+    seenHoldingIds.add(r.value.id);
+    investmentHoldings.push(r.value);
+  }
+
+  // Private stock positions. Standalone like the holdings above.
+  const rawStocks = Array.isArray(raw.investmentStocks)
+    ? raw.investmentStocks
+    : [];
+  const investmentStocks: StockPosition[] = [];
+  const seenStockIds = new Set<string>();
+  for (let i = 0; i < rawStocks.length; i++) {
+    const r = validateStockPosition(rawStocks[i], `investmentStocks[${i}]`);
+    if (!r.ok) return r;
+    if (seenStockIds.has(r.value.id))
+      return fail(`investmentStocks[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenStockIds.add(r.value.id);
+    investmentStocks.push(r.value);
   }
 
   // The combined id-space of transfer endpoints and history-bucket keys.
@@ -636,6 +680,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       properties,
       savings,
       loans,
+      investmentHoldings,
+      investmentStocks,
       fileCategories,
       companies,
       tags,

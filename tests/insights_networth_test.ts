@@ -97,6 +97,7 @@ describe("computeNetWorthSnapshot", () => {
       accounts: 1_000,
       savings: 200,
       items: 500,
+      investments: 0,
       properties: 3_000_000,
       mortgages: -1_000_000,
       loans: -120_000,

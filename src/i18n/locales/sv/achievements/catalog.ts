@@ -98,6 +98,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Lån-sidan håller koll på pengarna du är skyldig — studielån, billån, bolån, pengar lånade av en person — med startdatum, startbelopp, månadsbetalning samt valfri ränta och uppläggningsavgift. Med en ränta satt simuleras det återstående saldot månad för månad. Ett bolån kan istället länka ett bolån från fastighetsbladet, så att villkor och betalningar bara finns på ett ställe.",
   },
+  investor: {
+    name: "Investerare",
+    condition: "Lägg till din första investering på Investeringssidan.",
+    learnMore:
+      "Investeringssidan har två tabeller. Innehav är fonder, aktier, guld eller krypto med ett värde du uppdaterar för hand; kontotypen (ISK, KF eller depå) avgör skatten vid försäljning. Privata aktier följer köp/sälj-transaktioner, antalet aktier, snittkostnaden och ett aktuellt pris, ägda antingen privat eller av ditt företag — vilket ändrar nettovärdet eftersom vinsten beskattas olika.",
+  },
   bigPicture: {
     name: "Helhetsbilden",
     condition: "Lägg till ett Insikter-blad.",
@@ -353,6 +359,12 @@ const catalog: AchievementsCatalogEntries = {
     condition: "Visualisera ditt sparande över tid.",
     learnMore:
       "Välj Visualisera värde i Sparande-sheetets …-meny för att rita upp hur mycket du har lagt undan över tid. Markera kontona du vill inkludera — alla som standard — så visar linjen deras sammanlagda saldo vid varje registrerat datum, stigande allt eftersom konton tillkommer och fylls på. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
+  },
+  investmentValueChart: {
+    name: "Portföljpuls",
+    condition: "Visualisera dina investeringar över tid.",
+    learnMore:
+      "Välj Visualisera värde i Investeringssidans …-meny för att rita upp det sammanlagda värdet av alla innehav och aktier över tid. Använd tidsknapparna under grafen för att zooma fönstret, och slå på Visa nettovärde för att se vad portföljen är värd efter skatt om du sålde idag. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
   },
   loansChart: {
     name: "Skuldkartläggare",

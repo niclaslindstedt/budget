@@ -13,6 +13,7 @@ const insightsSheet: InsightsSheetCatalog = {
   categoryAccounts: "Konton",
   categorySavings: "Sparande",
   categoryItems: "Saker",
+  categoryInvestments: "Investeringar",
   categoryProperties: "Fastigheter",
   categoryMortgages: "Bolån",
   categoryLoans: "Övriga lån",

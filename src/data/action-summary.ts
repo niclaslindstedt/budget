@@ -278,6 +278,28 @@ export function describeActionSubject(
     case "deleteLoan":
       return name(byId(prev.loans, action.loanId)?.name);
 
+    // Investments — holdings and private stocks. Single-target actions
+    // name the holding / position; edits and nested value / trade / price
+    // actions read off `next`, the delete reads the name off `prev`.
+    case "addInvestmentHolding":
+      return name(action.holding.name);
+    case "updateInvestmentHolding":
+    case "addInvestmentHoldingValue":
+    case "deleteInvestmentHoldingValue":
+      return name(byId(next.investmentHoldings, action.holdingId)?.name);
+    case "deleteInvestmentHolding":
+      return name(byId(prev.investmentHoldings, action.holdingId)?.name);
+    case "addStockPosition":
+      return name(action.position.name);
+    case "updateStockPosition":
+    case "addStockTransaction":
+    case "deleteStockTransaction":
+    case "addStockPrice":
+    case "deleteStockPrice":
+      return name(byId(next.investmentStocks, action.positionId)?.name);
+    case "deleteStockPosition":
+      return name(byId(prev.investmentStocks, action.positionId)?.name);
+
     // Salary / employers / tax profiles.
     case "addSalaries":
       return action.salaries.length === 1

@@ -2023,6 +2023,70 @@ away. The validator (`validateInsightsView` in
 known entity id-space so a deleted entity's override silently
 disappears.
 
+## Investment page
+
+The Investment sheet (`src/components/investment/InvestmentPage.tsx`,
+`InvestmentView`) renders two workspace-wide collections as two card
+tables and owns its own modal state (like the Insights page), dispatching
+the catalog actions directly. Opened from the title "…" menu: **Visualize
+value** and **Edit sheet**.
+
+### Investment holding
+
+A **holding** (`InvestmentHolding`, `src/data/types/investments.ts`;
+`UserData.investmentHoldings`) is a broad investable asset — a fund,
+basket of shares, gold, silver, crypto, a bond. Its market value is
+recorded by hand over time as `valueHistory` points (the purchase is
+folded in as the first value via `resolveHoldingValueHistory`, mirroring a
+property's value), updated through `UpdateHoldingValueModal`. The
+**wrapper** (`InvestmentWrapper`: ISK / KF / depå) is first-class: it
+decides the sale tax via `holdingTaxTreatment` (`holdings.ts`) feeding the
+location's investment calculator. Created / edited via
+`InvestmentHoldingModal` (custom `SelectPicker` dropdowns for wrapper and
+asset kind — no native `<select>`). CRUD lives in
+`src/data/reducers/investments.ts` (`addInvestmentHolding`,
+`updateInvestmentHolding`, `deleteInvestmentHolding`,
+`addInvestmentHoldingValue`, `deleteInvestmentHoldingValue`).
+
+### Private stock
+
+A **private stock** (`StockPosition`; `UserData.investmentStocks`) is a
+single stock tracked at the share level. Buys and sells are signed-share
+`StockTransaction`s entered through `StockTransactionModal`; the share
+count and average cost are **derived**, never stored, by
+`resolveStockPosition` (`src/data/investment/stock.ts`) using the Swedish
+moving-average method (genomsnittsmetoden): a buy blends the average cost,
+a sell drops the share count at the unchanged average. The current price
+per share is a hand-recorded `priceHistory` point set through
+`UpdateStockPriceModal`, which can derive the per-share price from a total
+value plus a share count. **Ownership** (`StockOwnership`: private vs your
+company) decides the gain tax. CRUD: `addStockPosition`,
+`updateStockPosition`, `deleteStockPosition`, `addStockTransaction`,
+`deleteStockTransaction`, `addStockPrice`, `deleteStockPrice`.
+
+### Investment net value
+
+The **net value** of an investment is what it's worth after the sale tax,
+computed by `computeInvestmentNetValue` (`src/data/tax/engine.ts`) routing
+to `swedishInvestmentCalculator` (`src/data/tax/se/investment.ts`) by the
+global `Settings.location`. ISK / KF carry no capital-gains tax on a sale
+(the yearly schablon already covers it) so net = full value; a depå is
+taxed 30 % on the gain over the cost basis when held privately, 20.6 %
+(corporate) when held by the user's company. A loss is not taxed. Tunable
+via `SE_INVESTMENT_GAINS_PRIVATE` / `SE_INVESTMENT_GAINS_COMPANY`. Holding
+net value subtracts the gain from `purchaseAmount`; stock net value from
+the derived average-cost basis. Investments also feed the Insights
+net-worth roll-up (gross value) under the `investments` category.
+
+### Visualize value (investments)
+
+`InvestmentValueChartModal.tsx` charts the combined value of every holding
+and stock over time as one line, via the pure `buildInvestmentTotalSeries`
+(`src/data/investment/series.ts`) which samples monthly (like
+`buildNetWorthSeries`). A **Show net value** checkbox swaps gross market
+value for after-sale-tax value, and the `ChartRangeRow` trailing-window
+buttons sit **below** the graph. Reuses the `LineChart` primitive.
+
 ## Data and storage
 
 ### User data
@@ -2036,9 +2100,10 @@ A discriminated-union member inside `Sheet.items`. Today: `AccountBudget`
 (budget page), `AccountsView` (accounts page marker), `ItemsView` (items
 page marker), `SalaryView` (salary page marker), `PropertiesView`
 (properties page marker), `SavingsView` (savings page marker),
-`LoansView` (loans page marker), or `InsightsView` (insights page —
+`LoansView` (loans page marker), `InsightsView` (insights page —
 carries the per-mode settings, see [Net worth
-settings](#net-worth-settings)).
+settings](#net-worth-settings)), or `InvestmentView` (investment page
+marker).
 
 ### Account budget
 

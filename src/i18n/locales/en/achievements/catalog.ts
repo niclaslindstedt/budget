@@ -103,6 +103,12 @@ const catalog = {
     learnMore:
       "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, money borrowed from a person — with a start date, start sum, monthly payment, and optional rate and setup fee. With a rate set, the remaining balance is simulated month by month. A mortgage can instead link a mortgage from the Properties sheet, so its terms and payments stay in one place.",
   },
+  investor: {
+    name: "Investor",
+    condition: "Add your first investment on the Investment sheet.",
+    learnMore:
+      "The Investment sheet has two tables. Holdings are funds, shares, gold, or crypto with a value you update by hand; the account type (ISK, KF, or depå) decides the tax when sold. Private stocks track buy/sell trades, the share count, the average cost, and a current price, owned either privately or by your company — which changes the net value because the gain is taxed differently.",
+  },
   bigPicture: {
     name: "Big Picture",
     condition: "Add an Insights sheet.",
@@ -355,6 +361,12 @@ const catalog = {
     condition: "Visualize your savings over time.",
     learnMore:
       "From the Savings sheet's … menu, pick Visualize value to chart how much you've set aside over time. Tick the accounts you want to include — all of them by default — and the line shows their combined balance at each recorded date, climbing as accounts come online and as each is topped up. The chart follows your theme: colours, font, corners, and spacing all match.",
+  },
+  investmentValueChart: {
+    name: "Portfolio Pulse",
+    condition: "Visualize your investments over time.",
+    learnMore:
+      "From the Investment sheet's … menu, pick Visualize value to chart the combined worth of every holding and stock over time. Use the range buttons below the graph to zoom the window, and toggle Show net value to see what the portfolio is worth after tax if you sold today. The chart follows your theme: colours, font, corners, and spacing all match.",
   },
   loansChart: {
     name: "Debt Mapper",

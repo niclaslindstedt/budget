@@ -19,6 +19,10 @@ import {
   INSIGHTS_SHEET_DESCRIPTOR,
   createDefaultInsightsView,
 } from "./insights";
+import {
+  INVESTMENT_SHEET_DESCRIPTOR,
+  createDefaultInvestmentView,
+} from "./investment";
 import { ITEMS_SHEET_DESCRIPTOR, createDefaultItemsView } from "./items";
 import {
   PROPERTIES_SHEET_DESCRIPTOR,
@@ -105,6 +109,7 @@ export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
   SAVINGS_SHEET_DESCRIPTOR,
   LOANS_SHEET_DESCRIPTOR,
   INSIGHTS_SHEET_DESCRIPTOR,
+  INVESTMENT_SHEET_DESCRIPTOR,
 ];
 
 // Set-shaped view for validators and any other consumer that needs an
@@ -182,6 +187,7 @@ export {
   createDefaultAccountBudget,
   createDefaultAccountsView,
   createDefaultInsightsView,
+  createDefaultInvestmentView,
   createDefaultItemsView,
   createDefaultLoansView,
   createDefaultPropertiesView,

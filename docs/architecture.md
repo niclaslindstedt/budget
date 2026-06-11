@@ -156,16 +156,34 @@ src/
 │       │                         #   a second InsightsMode exists)
 │       └── InsightsSettingsModal.tsx  # per-entity include toggle + ownership
 │                                 #   share (one dispatch on Save)
+│   └── investment/           # investment page — holdings + private stocks
+│       ├── InvestmentPage.tsx     # page root — two card tables, owns modals
+│       ├── InvestmentHoldingModal.tsx  # add/edit holding (wrapper + kind pickers)
+│       ├── UpdateHoldingValueModal.tsx # append a dated value point
+│       ├── StockPositionModal.tsx  # add/edit private stock (ownership picker)
+│       ├── StockTransactionModal.tsx   # record a buy/sell (signed shares)
+│       ├── UpdateStockPriceModal.tsx   # set current price/share (per-share or
+│       │                         #   total ÷ shares)
+│       └── InvestmentValueChartModal.tsx  # "Visualize value" — combined value
+│                                 #   over time, net-value toggle, range buttons
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
-│   │   ├── user-data.ts        # UserData (version 75, incl. taxProfiles +
-│   │   │                       #   properties + savings + loans), StoredUser,
-│   │   │                       #   UsersFile
+│   │   ├── user-data.ts        # UserData (version 77, incl. taxProfiles +
+│   │   │                       #   properties + savings + loans +
+│   │   │                       #   investmentHoldings + investmentStocks),
+│   │   │                       #   StoredUser, UsersFile
 │   │   ├── sheets.ts           # Sheet, SheetItem, AccountBudget, AccountsView,
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
 │   │   │                       #   SavingsView, LoansView, InsightsView (+ mode
-│   │   │                       #   + net-worth settings), SheetType, SheetGlyph
+│   │   │                       #   + net-worth settings), InvestmentView,
+│   │   │                       #   SheetType, SheetGlyph
+│   │   ├── investments.ts      # InvestmentHolding (wrapper ISK/KF/depå, dated
+│   │   │                       #   valueHistory), StockPosition (signed-share
+│   │   │                       #   transactions + dated priceHistory),
+│   │   │                       #   InvestmentValuePoint, StockTransaction,
+│   │   │                       #   StockPricePoint, InvestmentWrapper/Kind,
+│   │   │                       #   StockOwnership
 │   │   ├── savings.ts          # Saving (savings account), SavingBalancePoint —
 │   │   │                       #   transactions live in UserData.history keyed by
 │   │   │                       #   the saving id; a first-class transfer endpoint
@@ -217,6 +235,7 @@ src/
 │   │   ├── salary.ts           # SALARY_SHEET_DESCRIPTOR + createDefaultSalaryView
 │   │   ├── savings.ts          # SAVINGS_SHEET_DESCRIPTOR + createDefaultSavingsView
 │   │   ├── loans.ts            # LOANS_SHEET_DESCRIPTOR + createDefaultLoansView
+│   │   ├── investment.ts       # INVESTMENT_SHEET_DESCRIPTOR + createDefaultInvestmentView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -373,6 +392,15 @@ src/
 │   │                           #   "Visualize loans" (balances over time;
 │   │                           #   per-month payments with the estimated
 │   │                           #   interest share clamped to what was paid)
+│   ├── investment/         # investment page — holdings + private-stock helpers
+│   │   ├── holdings.ts         # resolveHoldingValueHistory (purchase folded in),
+│   │   │                       #   currentHoldingValue / holdingValueAt,
+│   │   │                       #   holdingTaxTreatment + holdingNetValue
+│   │   ├── stock.ts            # resolveStockPosition — shares held + average cost
+│   │   │                       #   via genomsnittsmetoden, current price + value;
+│   │   │                       #   stockTaxTreatment + stockNetValue
+│   │   └── series.ts           # buildInvestmentTotalSeries — combined value-over-
+│   │                           #   time line behind "Visualize value" (gross/net)
 │   ├── insights/           # insights page — cross-area aggregation
 │   │   └── networth.ts         # computeNetWorthSnapshot (assets − liabilities
 │   │                           #   per entity + per category, exclusion +
@@ -387,20 +415,25 @@ src/
 │   │                           #   budget row / property repair) so Items +
 │   │                           #   repairs share one flow
 │   ├── tax/                # country-pluggable tax engine — salary income tax
-│   │   │                   #   (estimate gross from a net deposit) AND property-sale
-│   │   │                   #   capital-gains. No SE figure leaks outside se/
+│   │   │                   #   (estimate gross from a net deposit), property-sale
+│   │   │                   #   capital-gains, AND investment net-value-on-sale.
+│   │   │                   #   No SE figure leaks outside se/
 │   │   ├── types.ts            # TaxCountry, TaxParams, TaxProfile, TaxResult,
 │   │   │                       #   TaxCalculator; TaxLocation, BrokerCost,
 │   │   │                       #   PropertySale* + PropertySaleTaxCalculator,
+│   │   │                       #   InvestmentTax* + InvestmentTaxCalculator,
 │   │   │                       #   LocationCalculators (all country-agnostic)
 │   │   ├── engine.ts           # salary registry + net→gross bisection; LOCATIONS
-│   │   │                       #   bundle (salary + property-sale per location) +
-│   │   │                       #   SUPPORTED_LOCATIONS + computePropertySale
+│   │   │                       #   bundle (salary + property-sale + investment per
+│   │   │                       #   location) + SUPPORTED_LOCATIONS +
+│   │   │                       #   computePropertySale + computeInvestmentNetValue
 │   │   └── se/                 # ALL Sweden-specific rules live here
 │   │       ├── index.ts        # swedishCalculator — grundavdrag, kommunal/statlig,
 │   │       │                   #   jobbskatteavdrag, pensionsavgift, kyrkoavgift
 │   │       ├── property-sale.ts # swedishPropertySaleCalculator — 22% capital-gains
 │   │       │                    #   on a private residence (net = gain × 0.78)
+│   │       ├── investment.ts   # swedishInvestmentCalculator — ISK/KF untaxed on
+│   │       │                    #   sale, depå 30% (private) / 20.6% (company) gain
 │   │       ├── constants.ts    # per-year pbb / ibb / skiktgräns (2022–2026)
 │   │       └── municipalities.ts # ~290 kommuner + combined per-year rates
 │   ├── achievements/      # the gamified "guided tour" system

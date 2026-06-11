@@ -8,6 +8,7 @@ import type {
   InsightsEntityOverride,
   InsightsMode,
   InsightsView,
+  InvestmentView,
   ItemsView,
   LoansView,
   PropertiesView,
@@ -336,6 +337,19 @@ export function validateLoansView(
     return fail(`${path}.id`, "expected a non-empty string");
   if (type !== "loansView") return fail(`${path}.type`, `expected "loansView"`);
   return { ok: true, value: { id, type: "loansView" } };
+}
+
+export function validateInvestmentView(
+  raw: unknown,
+  path: string,
+): Result<InvestmentView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "investmentView")
+    return fail(`${path}.type`, `expected "investmentView"`);
+  return { ok: true, value: { id, type: "investmentView" } };
 }
 
 // Insight modes the validator recognises. Mirrors the `InsightsMode`

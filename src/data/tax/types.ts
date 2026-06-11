@@ -149,12 +149,55 @@ export interface PropertySaleTaxCalculator {
   computeSale(inputs: PropertySaleInputs): PropertySaleResult;
 }
 
+// How an investment is taxed when sold, by jurisdiction. The treatment
+// is chosen from the holding's wrapper / the position's ownership:
+//   - `isk` / `kf` — yearly schablon-taxed wrappers; a sale carries no
+//     capital-gains tax, so net value = market value.
+//   - `depot-private` — a regular depå held privately; the gain is taxed
+//     at the private capital-gains rate.
+//   - `depot-company` — held by the user's company; the gain is taxed at
+//     the corporate rate. Only the sale-level tax is modelled — getting
+//     the proceeds out of the company (dividend / salary) is not.
+export type InvestmentTaxTreatment =
+  | "isk"
+  | "kf"
+  | "depot-private"
+  | "depot-company";
+
+// Everything an investment net-value calc reads. Bare numbers in the
+// user's display currency; the calc does no formatting. `costBasis` is
+// the acquisition cost the gain is measured against (ignored by the
+// schablon wrappers, which carry no sale tax).
+export type InvestmentTaxInputs = {
+  treatment: InvestmentTaxTreatment;
+  value: number; // current market value
+  costBasis: number; // acquisition cost
+};
+
+// The result of an investment net-value calc. `taxableGain` is clamped
+// at 0 (a loss is not taxed); `netValue` is what the holder keeps after
+// the sale tax (= `value` for the schablon wrappers).
+export type InvestmentTaxResult = {
+  taxableGain: number;
+  tax: number;
+  netValue: number;
+};
+
+// One jurisdiction's investment capital-gains-on-sale calculation. Pure;
+// no React, no formatting. Mirrors `PropertySaleTaxCalculator`'s "one
+// country, one forward function" shape so the modal stays
+// jurisdiction-agnostic.
+export interface InvestmentTaxCalculator {
+  computeNetValue(inputs: InvestmentTaxInputs): InvestmentTaxResult;
+}
+
 // Every calculator that varies by jurisdiction, bundled per location.
-// Today: the salary forward calc and the property-sale calc. Adding a
-// country means adding one value here and one registry entry in
-// `engine.ts`.
+// Today: the salary forward calc, the property-sale calc, and the
+// investment net-value calc. Adding a country means adding one value
+// here and one registry entry in `engine.ts`.
 export type LocationCalculators = {
   location: TaxLocation;
   salary: TaxCalculator;
   propertySale: PropertySaleTaxCalculator;
+  investment: InvestmentTaxCalculator;
 };

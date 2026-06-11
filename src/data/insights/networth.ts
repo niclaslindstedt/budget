@@ -20,9 +20,11 @@
 
 import type {
   InsightsNetWorthSettings,
+  InvestmentHolding,
   Loan,
   Property,
   Saving,
+  StockPosition,
   UserData,
 } from "../types";
 import { computeAccountBalances } from "../accounts/balance";
@@ -30,6 +32,8 @@ import { computeItemCurrentValue, isItemOwned } from "../items/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
 import { balanceAt } from "../finance/interest";
 import { isPropertySoldAt, resolveValueHistory } from "../property-value/value";
+import { holdingValueAt } from "../investment/holdings";
+import { resolveStockPosition } from "../investment/stock";
 import { findColumnByType } from "../sheet";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";
 
@@ -37,6 +41,7 @@ export type NetWorthCategory =
   | "accounts"
   | "savings"
   | "items"
+  | "investments"
   | "properties"
   | "mortgages"
   | "loans";
@@ -106,6 +111,25 @@ function savingBalanceAt(saving: Saving, iso: string): number | undefined {
   return latestPointAt(saving.balanceHistory, iso);
 }
 
+// An investment holding's gross market value at `iso`. Net worth counts
+// gross (what it's worth), consistent with properties charting market
+// value rather than after-sale-tax.
+function holdingNetWorthValue(
+  holding: InvestmentHolding,
+  iso: string,
+): number | undefined {
+  return holdingValueAt(holding, iso);
+}
+
+// A stock position's gross market value at `iso` — share count × the last
+// recorded price on or before the date. Undefined when no price is known.
+function stockNetWorthValue(
+  position: StockPosition,
+  iso: string,
+): number | undefined {
+  return resolveStockPosition(position, iso).value;
+}
+
 // A sold property's value resolves to nothing from its sale date — the
 // asset became cash (which the account balances already count), so keeping
 // it would double-count the proceeds. Before the sale it contributes its
@@ -170,6 +194,7 @@ export function computeNetWorthSnapshot(
     accounts: 0,
     savings: 0,
     items: 0,
+    investments: 0,
     properties: 0,
     mortgages: 0,
     loans: 0,
@@ -215,6 +240,22 @@ export function computeNetWorthSnapshot(
       item.id,
       item.name,
       computeItemCurrentValue(item, todayIso),
+    );
+  }
+  for (const holding of data.investmentHoldings) {
+    pushAsset(
+      "investments",
+      holding.id,
+      holding.name,
+      holdingNetWorthValue(holding, todayIso),
+    );
+  }
+  for (const position of data.investmentStocks) {
+    pushAsset(
+      "investments",
+      position.id,
+      position.name,
+      stockNetWorthValue(position, todayIso),
     );
   }
 
@@ -265,6 +306,7 @@ export function computeNetWorthSnapshot(
     perCategory.accounts +
     perCategory.savings +
     perCategory.items +
+    perCategory.investments +
     perCategory.properties +
     perCategory.mortgages +
     perCategory.loans;
@@ -323,6 +365,16 @@ function earliestRelevantDate(
   for (const item of data.items) {
     if (!isItemOwned(item) || !included(item.id)) continue;
     consider(item.acquiredAt);
+  }
+  for (const holding of data.investmentHoldings) {
+    if (!included(holding.id)) continue;
+    consider(holding.purchaseDate);
+    for (const point of holding.valueHistory) consider(point.date);
+  }
+  for (const position of data.investmentStocks) {
+    if (!included(position.id)) continue;
+    for (const tx of position.transactions) consider(tx.date);
+    for (const point of position.priceHistory) consider(point.date);
   }
   for (const property of data.properties) {
     if (!included(property.id)) continue;
@@ -385,6 +437,16 @@ export function buildNetWorthSeries(
       if (excluded) continue;
       if (item.acquiredAt !== undefined && item.acquiredAt > iso) continue;
       total += computeItemCurrentValue(item, iso) * (sharePct / 100);
+    }
+    for (const holding of data.investmentHoldings) {
+      const { excluded, sharePct } = resolveOverride(settings, holding.id);
+      if (excluded) continue;
+      total += (holdingNetWorthValue(holding, iso) ?? 0) * (sharePct / 100);
+    }
+    for (const position of data.investmentStocks) {
+      const { excluded, sharePct } = resolveOverride(settings, position.id);
+      if (excluded) continue;
+      total += (stockNetWorthValue(position, iso) ?? 0) * (sharePct / 100);
     }
     for (const property of data.properties) {
       const { excluded, sharePct } = resolveOverride(settings, property.id);

@@ -45,6 +45,8 @@ function sampleData(): UserData {
     properties: [],
     savings: [],
     loans: [],
+    investmentHoldings: [],
+    investmentStocks: [],
     fileCategories: [],
     companies: [],
     tags: [],
@@ -135,6 +137,8 @@ describe("serializeUserData", () => {
       properties: b.properties,
       savings: b.savings,
       loans: b.loans,
+      investmentHoldings: b.investmentHoldings,
+      investmentStocks: b.investmentStocks,
       fileCategories: b.fileCategories,
       companies: b.companies,
       tags: b.tags,
@@ -173,7 +177,7 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 36)).toEqual([
+    expect(topKeys.slice(0, 38)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
@@ -187,6 +191,8 @@ describe("serializeUserData", () => {
       "history",
       "historyImports",
       "ignoredItemEntryIds",
+      "investmentHoldings",
+      "investmentStocks",
       "itemFindExclusionPatterns",
       "items",
       "loans",
