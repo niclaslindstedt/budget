@@ -53,6 +53,10 @@ const items = {
   ratePerYear: "Rate per year (%)",
   ratePerYearPlaceholder: "e.g. 20",
   depreciationFloor: "Value floor (optional)",
+  lifetimeYears: "Lifetime (years)",
+  lifetimeYearsPlaceholder: "e.g. 5",
+  lifetimeYearsHint:
+    "Lets spending charts spread the purchase cost evenly over this many years.",
   resaleValue: "Resale value",
   disposed: "Sold or disposed",
   disposedAt: "Date",

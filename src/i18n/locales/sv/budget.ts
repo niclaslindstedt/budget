@@ -80,6 +80,10 @@ const budget: BudgetCatalog = {
   spendingAllCategories: "Alla kategorier",
   spendingDrillAria: "Visa typer i {name}",
   spendingEmpty: "Inga genomförda utgifter under perioden.",
+  spendingOptionsAria: "Diagramalternativ",
+  spendingSpreadItemCosts: "Fördela prylkostnader över livslängden",
+  spendingSpreadItemCostsHint:
+    "Ersätter varje inköpstopp med prylens kostnad jämnt fördelad över dess livslängd.",
 };
 
 export default budget;

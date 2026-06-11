@@ -958,6 +958,14 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   `Loan.mortgageIds: string[]`, because a property's combined monthly
   charge covers every loan against it and the Loans sheet lists that as
   one row. Existing single links convert to one-element arrays.
+- **v74 → v75** — loans gain dated balance snapshots
+  (`Loan.balanceHistory`) and lose the hand-entered `monthlyPayment`
+  (the Monthly column derives from recorded payments). A STUDENT loan's
+  `startSum` converts to one snapshot and is dropped.
+- **v75 → v76** — grows `Item` with an optional `lifetimeYears`
+  (expected useful life in years, driving the spending dashboard's
+  "spread item costs" mode). A bare version bump — the field is
+  optional per item, so a v75 record is absence-tolerant.
 
 ## State management
 

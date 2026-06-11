@@ -812,6 +812,7 @@ export function BudgetPage({
             types={types}
             categories={categories}
             companies={companies}
+            items={data.items}
             settings={settings}
           />
           <BudgetFindConflictsModal

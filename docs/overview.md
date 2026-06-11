@@ -316,7 +316,17 @@ same-category, near-equal pairs into one row. Detector:
 spending"). A single scrollable dashboard (default modal mode:
 fullscreen on mobile, wide `max-w-4xl` card on desktop) with four
 sections, all clipped to one trailing fiscal-month window picked by an
-Avanza-style sliding-pill range row (3M / 6M / 12M / All, default 6M):
+Avanza-style sliding-pill range row (3M / 6M / 12M / All, default 6M).
+A cogwheel button right of the range row — rendered only when at least
+one owned item carries both a purchase price and a lifetime — opens a
+chart-options dropdown with **Spread item costs over lifetime**: when
+ticked, each expense row's line-item costs are lifted out of the
+purchase month and re-emitted as equal monthly slices across the item's
+`lifetimeYears` (straight-line cost allocation, Swedish "avskrivning"),
+de-spiking the charts around big purchases. The lifted amount is
+clamped to the row's expense so the residual never flips into income;
+slices inherit the row's type / category / company and slices past the
+current month fall away. Off by default, resets on open.
 
 - **Monthly spending by category** — `StackedBarChart`, one bar per
   fiscal month, segments per category in the category's colour
@@ -1993,10 +2003,13 @@ item modal. Beyond name / subtype it carries the inputs the Items sheet
 needs: `purchasePrice` ("bought for" — set either in the Edit item modal
 or from the amount typed when a line item links a transaction to it),
 `acquiredAt` ("bought at"), a `depreciation` rule (`ItemDepreciation`,
-percent-per-year today), a `resaleValue` override, and disposal
-(`disposedAt` / `soldFor`). The Items sheet renders the catalog and
-rolls up tied-up capital and current (resale) value. An item is linked
-to at most one transaction (the picker hides already-linked items); its
+percent-per-year today), a `lifetimeYears` expected useful life (drives
+the spending dashboard's "spread item costs" mode; independent of
+`depreciation`, which models resale value), a `resaleValue` override,
+and disposal (`disposedAt` / `soldFor`). The Items sheet renders the
+catalog and rolls up tied-up capital and current (resale) value. An
+item is linked to at most one transaction (the picker hides
+already-linked items); its
 receipt is NOT held on the item but on that linked purchase, surfaced
 through the item row "…" menu.
 
@@ -2006,8 +2019,9 @@ through the item row "…" menu.
 `UniversalModalHost`. A root-level (universal catalog) editor mirroring
 `CompanyEditorModal`, reached via the `open-edit-item` modal command
 from the line-item pill / popover. Sets every `Item` field — name,
-subtype, purchase price, acquired date, depreciation, resale value,
-disposal, note — and can delete the item (cascading link removal via the
+subtype, purchase price, acquired date, depreciation, lifetime (years),
+resale value, disposal, note — and can delete the item (cascading link
+removal via the
 `deleteItem` reducer). Distinct from `BudgetLineItemsModal`, which edits
 the links between an entry and items (and the entry's receipt), not THE
 item.

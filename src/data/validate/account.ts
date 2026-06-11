@@ -224,9 +224,10 @@ export function validateFileCategory(
 // the item, so a dangling reference is dropped silently (mirroring
 // `Row.companyId`). `acquiredAt` / `disposedAt` / `note` are free-form
 // strings accepted straight through; `purchasePrice` / `resaleValue` /
-// `soldFor` are finite numbers; `depreciation` is parsed method-aware and
-// dropped whole if malformed (advisory, like a dangling subtype). Unknown
-// fields are ignored so future per-item metadata lands without a migration.
+// `soldFor` are finite numbers; `lifetimeYears` is a finite positive
+// number; `depreciation` is parsed method-aware and dropped whole if
+// malformed (advisory, like a dangling subtype). Unknown fields are
+// ignored so future per-item metadata lands without a migration.
 export function validateItem(
   raw: unknown,
   path: string,
@@ -259,6 +260,12 @@ export function validateItem(
     item.disposedAt = raw.disposedAt;
   if (typeof raw.soldFor === "number" && Number.isFinite(raw.soldFor))
     item.soldFor = raw.soldFor;
+  if (
+    typeof raw.lifetimeYears === "number" &&
+    Number.isFinite(raw.lifetimeYears) &&
+    raw.lifetimeYears > 0
+  )
+    item.lifetimeYears = raw.lifetimeYears;
   const depreciation = validateItemDepreciation(raw.depreciation);
   if (depreciation) item.depreciation = depreciation;
   return { ok: true, value: item };

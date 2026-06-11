@@ -1141,6 +1141,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v74.loans;
     return { ...v74, version: 75, loans };
   },
+
+  // Bare bump: grows `Item` with an optional `lifetimeYears` (expected
+  // useful life driving the spending dashboard's "spread item costs"
+  // mode). Absent on every pre-v76 item, and the validator simply omits
+  // it when missing, so the blob needs no touch-up.
+  75: (v75) => ({ ...v75, version: 76 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {
