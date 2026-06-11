@@ -87,38 +87,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
-- **Eight per-page actions menus re-derive the floating-menu shell** —
-  `budget/BudgetEntryActionsMenu.tsx`, `accounts/AccountActionsMenu.tsx`,
-  `items/ItemEntryActionsMenu.tsx`, `salary/SalaryEntryActionsMenu.tsx`,
-  `properties/PropertyActionsMenu.tsx`, `properties/RepairEntryActionsMenu.tsx`,
-  `loans/LoanActionsMenu.tsx`, `savings/SavingActionsMenu.tsx`. **Slice 1 —
-  the shared-constants hoist — landed 2026-06** (see Landed: shared
-  `form/menu.ts`): the `MenuItem` type, the 224px right/document
-  `ACTIONS_MENU_PLACEMENT`, the "…" trigger-button class, and the two
-  item-row class shapes now live in `src/components/form/menu.ts`. What
-  remains is the structural duplication: each menu still re-derives the same
-  `useRef` + `useState(open)` trigger + `pick(handler)` close-and-fire
-  wiring and the same `role="menu"` list rendering (~40 lines of shell per
-  menu), so every new sheet type copies it.
-  - **Plan (remaining)**: design pass — a `useActionsMenu` hook or thin
-    presentational shell (trigger + `FloatingPanel` + `role="menu"` list
-    rendering an `items: MenuItem[]` array) that each menu composes; the
-    per-menu item arrays, disabled predicates, `useActionsCompact`
-    participation (properties menus don't use it), and conditional `null`
-    returns (items / salary / repairs) stay local. Divergences slice 1
-    surfaced that the shell must accommodate: `AccountActionsMenu` keeps a
-    narrower local 200px placement (the "byte-identical PLACEMENT at 8
-    sites" framing was stale); `PropertyActionsMenu` has its own card-header
-    trigger (not the swipe-strip class) and a `danger`-tinted row variant
-    instead of the disabled split; and the item `onClick` handlers split
-    between plain calls and `stopPropagation` wrappers (menus inside rows
-    that have their own tap action). Same don't-force-the-merge caution as
-    the four-pickers item.
-  - **Risk**: low (pure structure, no state moves) but verify each menu's
-    compact-mode and disabled rendering by eye.
-  - **Severity: 4** (was 5; the mechanical constants slice landed, leaving
-    the structural shell).
-
 - **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
   seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
   `properties/MortgageDiscoveryModal.tsx` (666), `items/ItemFinderModal.tsx`
@@ -596,6 +564,28 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 
 ## Landed
 
+- **Eight per-page actions menus → shared `ActionsMenu` shell** (2026-06):
+  slice 2 (final) of the eight-actions-menus item. The ~40-line structural
+  shell every "…" menu re-derived — the `useRef` + `useState(open)` trigger
+  wiring, the `pick(handler)` close-and-fire helper, the `FloatingPanel`
+  mount, and the `role="menu"` list rendering — now lives in
+  `src/components/form/ActionsMenu.tsx`. Each menu builds its `MenuItem[]`
+  (item arrays, disabled predicates, `useActionsCompact` participation stay
+  local) and composes the shell, which closes the panel and fires `onPick`
+  (the swipe-dismiss `onAction`) before each item's handler. The slice-1
+  divergences are props: `placement` (`AccountActionsMenu`'s 200px),
+  `triggerClassName` + the now-shared `MENU_ITEM_DANGER_CLASS` row variant
+  (`PropertyActionsMenu`), `triggerTitle` (accounts), and a single
+  `stopPropagation` knob covering both trigger and item clicks for menus
+  inside rows with their own tap action. The empty-items `null` return
+  (items / salary / repairs) moved into the shell. One deliberate
+  unification: items / salary / repairs item clicks now also stop
+  propagation (previously only their triggers did) — verified harmless,
+  those rows' tap handlers only retract a swipe the menus' `onAction`
+  already dismisses. `SheetTitleMenu` keeps its own renderer as planned.
+  Each menu dropped ~45 lines; every new sheet type now writes only its
+  item array.
+
 - **Actions-menu shared constants hoisted into `form/menu.ts`** (2026-06):
   slice 1 of the eight-actions-menus item. The byte-identical pieces every
   "…" menu re-declared — the `MenuItem` type (now one shared type whose
@@ -617,8 +607,8 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
   `PropertyActionsMenu`'s danger-tinted row class stays local likewise.
   Pure constant/type hoist — every resolved class and placement is
   byte-identical at every site; fast loop + build + icons-check green, all
-  1723 tests pass. **Slice 2 (the structural shell) stays Pending,
-  re-rated 4.**
+  1723 tests pass. **Slice 2 (the structural shell) landed 2026-06 — see
+  the `ActionsMenu` shell entry above.**
 
 - **Row-swipe action strip duplicated across seven tables → shared
   `swipe-table` / `swipe-action-cell` CSS + `useRowSwipeAndClaim` hook**

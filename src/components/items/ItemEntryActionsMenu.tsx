@@ -1,16 +1,10 @@
-import { useCallback, useRef, useState } from "react";
-import { FileText, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
+import { FileText, Pencil, Trash2, Upload } from "lucide-react";
 
 import { useT } from "../../i18n";
 import type { Item } from "../../data/types";
 import { useActionsCompact } from "../ActionsCompactContext";
-import { FloatingPanel } from "../FloatingPanel";
-import {
-  ACTIONS_MENU_PLACEMENT,
-  ACTIONS_MENU_TRIGGER_CLASS,
-  MENU_ITEM_CLASS,
-  type MenuItem,
-} from "../form/menu";
+import { ActionsMenu } from "../form/ActionsMenu";
+import { type MenuItem } from "../form/menu";
 
 type Props = {
   item: Item;
@@ -52,15 +46,6 @@ export function ItemEntryActionsMenu({
 }: Props) {
   const t = useT();
   const compact = useActionsCompact();
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const close = useCallback(() => setOpen(false), []);
-
-  function pick(handler: () => void) {
-    setOpen(false);
-    onAction();
-    handler();
-  }
 
   const items: MenuItem[] = [];
 
@@ -72,13 +57,13 @@ export function ItemEntryActionsMenu({
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
       label: t("common.edit"),
-      onClick: () => pick(onEdit),
+      onClick: onEdit,
     });
     items.push({
       key: "delete",
       icon: <Trash2 size={16} aria-hidden focusable={false} />,
       label: t("common.delete"),
-      onClick: () => pick(onDelete),
+      onClick: onDelete,
     });
   }
 
@@ -91,54 +76,19 @@ export function ItemEntryActionsMenu({
         <Upload size={16} aria-hidden focusable={false} />
       ),
       label: hasReceipt ? t("items.viewReceipt") : t("items.receiptUpload"),
-      onClick: () => pick(() => onManageReceipt(item)),
+      onClick: () => onManageReceipt(item),
     });
   }
 
-  if (items.length === 0) return null;
-
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={ACTIONS_MENU_TRIGGER_CLASS}
-        aria-label={t("cell.moreActions")}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-      >
-        <MoreHorizontal size={16} aria-hidden focusable={false} />
-      </button>
-      <FloatingPanel
-        open={open}
-        onClose={close}
-        triggerRef={triggerRef}
-        placement={ACTIONS_MENU_PLACEMENT}
-        rowId={item.id}
-        className="overflow-hidden"
-      >
-        <ul role="menu" className="py-1">
-          {items.map((it) => (
-            <li key={it.key} role="none">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={it.onClick}
-                className={MENU_ITEM_CLASS}
-              >
-                <span aria-hidden className="text-accent">
-                  {it.icon}
-                </span>
-                <span className="flex-1 truncate">{it.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </FloatingPanel>
-    </>
+    <ActionsMenu
+      items={items}
+      ariaLabel={t("cell.moreActions")}
+      rowId={item.id}
+      // The item row's own tap retracts the swipe — keep menu clicks from
+      // bubbling into it.
+      stopPropagation
+      onPick={onAction}
+    />
   );
 }

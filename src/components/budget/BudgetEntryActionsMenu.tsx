@@ -1,4 +1,3 @@
-import { useCallback, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -6,7 +5,6 @@ import {
   Copy,
   Eye,
   EyeOff,
-  MoreHorizontal,
   Pencil,
   Repeat,
   RotateCcw,
@@ -18,13 +16,8 @@ import {
 import { useT } from "../../i18n";
 import type { Row } from "../../data/types";
 import { useActionsCompact } from "../ActionsCompactContext";
-import { FloatingPanel } from "../FloatingPanel";
-import {
-  ACTIONS_MENU_PLACEMENT,
-  ACTIONS_MENU_TRIGGER_CLASS,
-  menuItemClass,
-  type MenuItem,
-} from "../form/menu";
+import { ActionsMenu } from "../form/ActionsMenu";
+import { type MenuItem } from "../form/menu";
 import { useModalDispatch } from "../modal-dispatch";
 
 type Props = {
@@ -68,15 +61,6 @@ export function BudgetEntryActionsMenu({
   const t = useT();
   const dispatchModal = useModalDispatch();
   const compact = useActionsCompact();
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const close = useCallback(() => setOpen(false), []);
-
-  function pick(handler: () => void) {
-    setOpen(false);
-    onAction();
-    handler();
-  }
 
   const items: MenuItem[] = [];
 
@@ -87,7 +71,7 @@ export function BudgetEntryActionsMenu({
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,
       label: t("common.edit"),
-      onClick: () => pick(onEdit),
+      onClick: onEdit,
     });
     items.push({
       key: "delete",
@@ -95,7 +79,7 @@ export function BudgetEntryActionsMenu({
       label: t("common.delete"),
       disabled: deleteDisabled,
       title: deleteDisabledTitle,
-      onClick: () => pick(onDelete),
+      onClick: onDelete,
     });
   }
 
@@ -103,7 +87,7 @@ export function BudgetEntryActionsMenu({
     key: "recurring",
     icon: <Repeat size={16} aria-hidden focusable={false} />,
     label: isSeries ? t("cell.editRecurring") : t("cell.makeRecurring"),
-    onClick: () => pick(() => dispatchModal({ kind: "open-edit-entry", row })),
+    onClick: () => dispatchModal({ kind: "open-edit-entry", row }),
   });
 
   // Available on every editable row, not just history. For a history
@@ -120,8 +104,7 @@ export function BudgetEntryActionsMenu({
       icon: <Tags size={16} aria-hidden focusable={false} />,
       label: t("cell.labelSimilar"),
       title: t("cell.labelSimilarTitle"),
-      onClick: () =>
-        pick(() => dispatchModal({ kind: "open-match-rule", row })),
+      onClick: () => dispatchModal({ kind: "open-match-rule", row }),
     });
   }
 
@@ -139,7 +122,7 @@ export function BudgetEntryActionsMenu({
       title: row.isTransfer
         ? t("cell.unmarkAsTransfer")
         : t("cell.markAsTransferTitle"),
-      onClick: () => pick(() => onToggleRowTransfer(row)),
+      onClick: () => onToggleRowTransfer(row),
     });
   }
 
@@ -147,7 +130,7 @@ export function BudgetEntryActionsMenu({
     key: "split",
     icon: <Scissors size={16} aria-hidden focusable={false} />,
     label: t("cell.split"),
-    onClick: () => pick(() => dispatchModal({ kind: "open-split-row", row })),
+    onClick: () => dispatchModal({ kind: "open-split-row", row }),
   });
 
   // Tie part of this entry's amount to owned items (see `LineItemLink`).
@@ -160,8 +143,7 @@ export function BudgetEntryActionsMenu({
       key: "lineItems",
       icon: <Boxes size={16} aria-hidden focusable={false} />,
       label: t("cell.lineItems"),
-      onClick: () =>
-        pick(() => dispatchModal({ kind: "open-line-items", row })),
+      onClick: () => dispatchModal({ kind: "open-line-items", row }),
     });
   }
 
@@ -175,7 +157,7 @@ export function BudgetEntryActionsMenu({
     key: "copy",
     icon: <Copy size={16} aria-hidden focusable={false} />,
     label: t("cell.copy"),
-    onClick: () => pick(() => dispatchModal({ kind: "open-copy-row", row })),
+    onClick: () => dispatchModal({ kind: "open-copy-row", row }),
   });
 
   // Manual fiscal-month override. Hidden on synthesized rows (history /
@@ -191,7 +173,7 @@ export function BudgetEntryActionsMenu({
         icon: <ArrowUpRight size={16} aria-hidden focusable={false} />,
         label: t("cell.pushToNextMonth"),
         title: t("cell.pushToNextMonthTitle"),
-        onClick: () => pick(() => onSetFiscalMonthShift(row, 1)),
+        onClick: () => onSetFiscalMonthShift(row, 1),
       });
     }
     if (shift !== -1) {
@@ -200,7 +182,7 @@ export function BudgetEntryActionsMenu({
         icon: <ArrowDownLeft size={16} aria-hidden focusable={false} />,
         label: t("cell.pushToPrevMonth"),
         title: t("cell.pushToPrevMonthTitle"),
-        onClick: () => pick(() => onSetFiscalMonthShift(row, -1)),
+        onClick: () => onSetFiscalMonthShift(row, -1),
       });
     }
     if (shift === 1 || shift === -1) {
@@ -208,58 +190,17 @@ export function BudgetEntryActionsMenu({
         key: "resetMonthOverride",
         icon: <RotateCcw size={16} aria-hidden focusable={false} />,
         label: t("cell.resetMonthOverride"),
-        onClick: () => pick(() => onSetFiscalMonthShift(row, null)),
+        onClick: () => onSetFiscalMonthShift(row, null),
       });
     }
   }
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={ACTIONS_MENU_TRIGGER_CLASS}
-        aria-label={t("cell.moreActions")}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <MoreHorizontal size={16} aria-hidden focusable={false} />
-      </button>
-      <FloatingPanel
-        open={open}
-        onClose={close}
-        triggerRef={triggerRef}
-        placement={ACTIONS_MENU_PLACEMENT}
-        rowId={row.id}
-        className="overflow-hidden"
-      >
-        <ul role="menu" className="py-1">
-          {items.map((it) => (
-            <li key={it.key} role="none">
-              <button
-                type="button"
-                role="menuitem"
-                aria-disabled={it.disabled || undefined}
-                title={it.title}
-                onClick={() => {
-                  if (it.disabled) return;
-                  it.onClick();
-                }}
-                className={menuItemClass(it.disabled)}
-              >
-                <span
-                  aria-hidden
-                  className={it.disabled ? "text-muted" : "text-accent"}
-                >
-                  {it.icon}
-                </span>
-                <span className="flex-1 truncate">{it.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </FloatingPanel>
-    </>
+    <ActionsMenu
+      items={items}
+      ariaLabel={t("cell.moreActions")}
+      rowId={row.id}
+      onPick={onAction}
+    />
   );
 }
