@@ -8,11 +8,16 @@ import {
   Trash2,
 } from "lucide-react";
 
-import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import type { Loan } from "../../data/types";
 import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
+import {
+  ACTIONS_MENU_PLACEMENT,
+  ACTIONS_MENU_TRIGGER_CLASS,
+  menuItemClass,
+  type MenuItem,
+} from "../form/menu";
 
 type Props = {
   loan: Loan;
@@ -38,21 +43,6 @@ type Props = {
   // Fired after picking the menu item so the parent row can dismiss its
   // swipe state in the same frame the dropdown closes.
   onAction: () => void;
-};
-
-const PLACEMENT: FloatingPlacement = {
-  width: { kind: "min", minPx: 224 },
-  anchor: "right",
-  coordinateSpace: "document",
-};
-
-type MenuItem = {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  disabled?: boolean;
-  title?: string;
-  onClick: () => void;
 };
 
 // The "…" overflow popover in a loan row's swipe strip. Records a dated
@@ -129,7 +119,7 @@ export function LoanActionsMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="action-btn action-btn-more inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+        className={ACTIONS_MENU_TRIGGER_CLASS}
         aria-label={t("cell.moreActions")}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -144,7 +134,7 @@ export function LoanActionsMenu({
         open={open}
         onClose={close}
         triggerRef={triggerRef}
-        placement={PLACEMENT}
+        placement={ACTIONS_MENU_PLACEMENT}
         rowId={loan.id}
         className="overflow-hidden"
       >
@@ -166,11 +156,7 @@ export function LoanActionsMenu({
                   if (it.disabled) return;
                   it.onClick();
                 }}
-                className={`flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-                  it.disabled
-                    ? "cursor-not-allowed text-muted opacity-50"
-                    : "cursor-pointer text-fg hover:bg-surface"
-                }`}
+                className={menuItemClass(it.disabled)}
               >
                 <span
                   aria-hidden

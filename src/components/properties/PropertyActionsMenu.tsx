@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 
 import type { Property } from "../../data/types";
-import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { FloatingPanel } from "../FloatingPanel";
+import { ACTIONS_MENU_PLACEMENT, type MenuItem } from "../form/menu";
 
 type Props = {
   property: Property;
@@ -22,20 +22,6 @@ type Props = {
   onExportProperty: (property: Property) => void;
   onEditProperty: (property: Property) => void;
   onDeleteProperty: (property: Property) => void;
-};
-
-const PLACEMENT: FloatingPlacement = {
-  width: { kind: "min", minPx: 224 },
-  anchor: "right",
-  coordinateSpace: "document",
-};
-
-type MenuItem = {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  danger?: boolean;
-  onClick: () => void;
 };
 
 // The "…" overflow menu in a property card's header. Collapses the
@@ -124,7 +110,7 @@ export function PropertyActionsMenu({
         open={open}
         onClose={close}
         triggerRef={triggerRef}
-        placement={PLACEMENT}
+        placement={ACTIONS_MENU_PLACEMENT}
         className="overflow-hidden"
       >
         <ul role="menu" className="py-1">

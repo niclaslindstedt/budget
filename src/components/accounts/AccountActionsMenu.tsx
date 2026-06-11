@@ -12,6 +12,11 @@ import type { FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { useActionsCompact } from "../ActionsCompactContext";
 import { FloatingPanel } from "../FloatingPanel";
+import {
+  ACTIONS_MENU_TRIGGER_CLASS,
+  menuItemClass,
+  type MenuItem,
+} from "../form/menu";
 
 type Props = {
   accountId: string;
@@ -32,19 +37,12 @@ type Props = {
   onAction: () => void;
 };
 
+// Narrower than the shared ACTIONS_MENU_PLACEMENT — the accounts table's
+// shorter labels fit a 200px panel.
 const PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 200 },
   anchor: "right",
   coordinateSpace: "document",
-};
-
-type MenuItem = {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  disabled?: boolean;
-  title?: string;
-  onClick: () => void;
 };
 
 // Overflow menu for the Accounts table. Mirrors `BudgetEntryActionsMenu` from
@@ -124,7 +122,7 @@ export function AccountActionsMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="action-btn action-btn-more inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+        className={ACTIONS_MENU_TRIGGER_CLASS}
         aria-label={t("accountsSheet.moreActionsAria", { name: accountName })}
         title={t("accountsSheet.moreActions")}
         aria-haspopup="menu"
@@ -162,11 +160,7 @@ export function AccountActionsMenu({
                   if (it.disabled) return;
                   it.onClick();
                 }}
-                className={`flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left font-mono text-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-                  it.disabled
-                    ? "cursor-not-allowed text-muted opacity-50"
-                    : "cursor-pointer text-fg hover:bg-surface"
-                }`}
+                className={menuItemClass(it.disabled)}
               >
                 <span
                   aria-hidden

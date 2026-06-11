@@ -88,37 +88,36 @@ _(none pending — the sheet-type registry coverage cluster landed
 ### Severity 5–6 — friction
 
 - **Eight per-page actions menus re-derive the floating-menu shell** —
-  `budget/BudgetEntryActionsMenu.tsx` (279), `accounts/AccountActionsMenu.tsx`
-  (185), `items/ItemEntryActionsMenu.tsx` (152), `salary/SalaryEntryActionsMenu.tsx`
-  (145), `properties/PropertyActionsMenu.tsx` (155),
-  `properties/RepairEntryActionsMenu.tsx` (121), `loans/LoanActionsMenu.tsx`
-  (189), `savings/SavingActionsMenu.tsx` (197) — ~1,420 lines total. Each
-  re-declares a byte-identical `const PLACEMENT: FloatingPlacement = { width:
-{ kind: "min", minPx: 224 }, anchor: "right", coordinateSpace: "document" }`
-  (grep `const PLACEMENT` across `src/components/*/[A-Z]*ActionsMenu.tsx` — 8
-  hits), a byte-identical `type MenuItem = { key; icon; label; disabled?;
-title?; onClick }` (8 hits), the same `useRef` + `useState(open)` trigger +
-  `pick(handler)` close-and-fire wiring, the same "…" trigger-button class
-  (`action-btn action-btn-more inline-flex h-full flex-1 …`), and a
-  `role="menu"` list whose item-button class comes in exactly two shapes: the
-  plain variant (byte-identical in salary / items / both properties menus and
-  the universal `SheetTitleMenu.tsx`) and the disabled-conditional split
-  (budget / accounts / loans / savings, byte-identical ternary). The 2026-06
-  loans + savings pages each added another copy — the multiplier is active,
-  every new sheet type re-derives ~40 lines of shell.
-  - **Plan**: two slices. (1) Mechanical easy win — hoist the `MenuItem` type,
-    the `PLACEMENT` constant, and the two menu-item class strings into a shared
-    `src/components/form/menu.ts` (mirroring the landed `form/listbox.ts`
-    precedent) and route all 8 + `SheetTitleMenu` through them; zero behaviour
-    change. (2) Design pass — a `useActionsMenu` hook or thin presentational
-    shell (trigger + `FloatingPanel` + `role="menu"` list rendering an
-    `items: MenuItem[]` array) that each menu composes; the per-menu item
-    arrays, disabled predicates, `useActionsCompact` participation (properties
-    menus don't use it), and conditional `null` returns (items / salary) stay
-    local. Same don't-force-the-merge caution as the four-pickers item.
-  - **Risk**: slice 1 near-zero; slice 2 low (pure structure, no state moves)
-    but verify each menu's compact-mode and disabled rendering by eye.
-  - **Severity: 5.** (Slice 1 is an easy win regardless.)
+  `budget/BudgetEntryActionsMenu.tsx`, `accounts/AccountActionsMenu.tsx`,
+  `items/ItemEntryActionsMenu.tsx`, `salary/SalaryEntryActionsMenu.tsx`,
+  `properties/PropertyActionsMenu.tsx`, `properties/RepairEntryActionsMenu.tsx`,
+  `loans/LoanActionsMenu.tsx`, `savings/SavingActionsMenu.tsx`. **Slice 1 —
+  the shared-constants hoist — landed 2026-06** (see Landed: shared
+  `form/menu.ts`): the `MenuItem` type, the 224px right/document
+  `ACTIONS_MENU_PLACEMENT`, the "…" trigger-button class, and the two
+  item-row class shapes now live in `src/components/form/menu.ts`. What
+  remains is the structural duplication: each menu still re-derives the same
+  `useRef` + `useState(open)` trigger + `pick(handler)` close-and-fire
+  wiring and the same `role="menu"` list rendering (~40 lines of shell per
+  menu), so every new sheet type copies it.
+  - **Plan (remaining)**: design pass — a `useActionsMenu` hook or thin
+    presentational shell (trigger + `FloatingPanel` + `role="menu"` list
+    rendering an `items: MenuItem[]` array) that each menu composes; the
+    per-menu item arrays, disabled predicates, `useActionsCompact`
+    participation (properties menus don't use it), and conditional `null`
+    returns (items / salary / repairs) stay local. Divergences slice 1
+    surfaced that the shell must accommodate: `AccountActionsMenu` keeps a
+    narrower local 200px placement (the "byte-identical PLACEMENT at 8
+    sites" framing was stale); `PropertyActionsMenu` has its own card-header
+    trigger (not the swipe-strip class) and a `danger`-tinted row variant
+    instead of the disabled split; and the item `onClick` handlers split
+    between plain calls and `stopPropagation` wrappers (menus inside rows
+    that have their own tap action). Same don't-force-the-merge caution as
+    the four-pickers item.
+  - **Risk**: low (pure structure, no state moves) but verify each menu's
+    compact-mode and disabled rendering by eye.
+  - **Severity: 4** (was 5; the mechanical constants slice landed, leaving
+    the structural shell).
 
 - **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
   seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
@@ -596,6 +595,30 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Actions-menu shared constants hoisted into `form/menu.ts`** (2026-06):
+  slice 1 of the eight-actions-menus item. The byte-identical pieces every
+  "…" menu re-declared — the `MenuItem` type (now one shared type whose
+  optional `disabled` / `title` / `danger` flags cover the full
+  budget/accounts/loans/savings shape, the minimal items/salary/repairs
+  shape, and the properties `danger` variant), the 224px right/document
+  `ACTIONS_MENU_PLACEMENT` (7 of 8 menus; `AccountActionsMenu` keeps its
+  drifted local 200px placement unchanged), the swipe-strip "…"
+  `ACTIONS_MENU_TRIGGER_CLASS` (7 sites; `PropertyActionsMenu`'s
+  card-header trigger genuinely differs and stays local), the plain
+  `MENU_ITEM_CLASS` row (items / salary / repairs / `SheetTitleMenu`), and
+  the disabled-conditional `menuItemClass(disabled)` helper (budget /
+  accounts / loans / savings, previously a byte-identical ternary) — now
+  live in `src/components/form/menu.ts` (mirroring the `form/listbox.ts`
+  precedent), re-exported from `form/index.ts`. `SheetTitleMenu` keeps its
+  own exported minimal `SheetTitleMenuItem` type (public API for pages
+  building item arrays; widening it to the flagged shape would imply
+  support its renderer doesn't have) and its deliberate 180px placement.
+  `PropertyActionsMenu`'s danger-tinted row class stays local likewise.
+  Pure constant/type hoist — every resolved class and placement is
+  byte-identical at every site; fast loop + build + icons-check green, all
+  1723 tests pass. **Slice 2 (the structural shell) stays Pending,
+  re-rated 4.**
 
 - **Row-swipe action strip duplicated across seven tables → shared
   `swipe-table` / `swipe-action-cell` CSS + `useRowSwipeAndClaim` hook**
