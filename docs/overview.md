@@ -787,7 +787,9 @@ whose history Find mortgage payments scans — one account per property,
 shared across all its mortgages because a property is paid to the bank
 as a single charge covering every loan; a dangling reference is dropped
 to `null` on load), optional `purchaseAmount` (what it was bought for) +
-`purchaseDate`, optional `size` (living area in square metres), optional
+`purchaseDate`, optional `soldDate` + `soldAmount` (the sale that ended
+the ownership — see [Sold property](#sold-property)), optional `size`
+(living area in square metres), optional
 `rooms` (number of rooms), a
 `valueHistory` of value points, `mortgages`, `repairs`, `files` (uploaded
 documents / photos — see Property file), and an optional `saleEstimate`
@@ -824,6 +826,31 @@ number in the user's currency, entered in `PropertyEditorModal` and
 shown as a stat on `PropertyCard` (formatted with the currency, like the
 purchase amount). Optional and additive — absent until the user records
 one, so old budgets simply lack it and no migration is needed.
+
+### Sold property
+
+A property owned in the past — `Property.soldDate` (ISO sale date) plus
+optional `Property.soldAmount` (the sale price), both set in
+`PropertyEditorModal` (the amount field appears once a sale date is
+picked; the amount only persists alongside a date — the validator drops
+an amount with no date to ride with). `isPropertySoldAt(property, iso)`
+(`src/data/property-value/value.ts`) answers "was it already sold at
+this date?", inclusive of the sale date itself. The property stays in
+`UserData.properties` with all its history — value points, repairs,
+mortgage payments, files — so old bank charges keep attributing to the
+right home. What changes: `PropertyCard` shows a "Sold" header badge
+plus "Sold for" / "Sold" stats, `PropertiesPage` sorts sold properties
+after the owned ones, the net-worth math drops the property's value AND
+its mortgage debt from every sample on/after the sale date (and gives
+it no snapshot breakdown row — the proceeds are cash the account
+balances already count), and Find mortgage payments stops attributing
+charges after the sale (`toDate` in `discoverMortgagePayments`, the
+symmetric cut-off to the purchase-date one; the expected window the
+"highly probable" promotion judges completeness against ends at the
+sale month). Both fields are optional and additive — no migration. The
+sale-handover export deliberately omits them: the archive is for the
+property's buyer, whose ownership is just beginning. Recording a first
+sale date unlocks the `propertySold` achievement.
 
 ### Property settings tab
 
@@ -1083,9 +1110,11 @@ grouped candidate with its amount, `targetDelta`, and keep/drop reason)
 is returned as `result.diagnostics` and logged to the in-app Logs tab
 under the `mortgage-finder` scope so a "no matches" report can be
 diagnosed. From each anchored charge it learns the bank description and
-sweeps the history for matching months, dropping any month before the
-property's `purchaseDate` outright (a payment can't predate ownership)
-and centring the amount band on the surviving on/after-purchase months.
+sweeps the history for matching months, dropping any month outside the
+ownership window — before the property's `purchaseDate` or after its
+`soldDate` — outright (a payment can't predate ownership, and a sold
+home stopped being charged at the sale) and centring the amount band on
+the surviving owned months.
 Series rank a highly probable charge first (`highlyProbable`) — one that
 recurs on its loan's cadence with no gaps (`regularCadence`: consecutive
 months spaced by `paymentCadenceMonths`, over ≥
@@ -1094,8 +1123,8 @@ description (not amount-salvaged), whose typical amount lands within
 `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure, AND which
 covers the whole window the loan has been active (`windowCovered`:
 charges from the loan start — `loanStartDate`, or the purchase — to the
-latest outflow the account has seen, at that cadence, allowing one
-missing slot). The window leg is what keeps a charge that recurs cleanly
+latest outflow the account has seen, or the sale month for a sold
+property, at that cadence, allowing one missing slot). The window leg is what keeps a charge that recurs cleanly
 for only the last five of eight expected months (started late, or
 stopped) out of the promotion — it stays an ordinary candidate. Only one
 charge is promoted per expected figure (combined, or per-loan): among the
@@ -1936,7 +1965,9 @@ The first insight mode: assets minus liabilities, computed by
 account balances (`computeAccountBalances`), savings balances
 (latest `balanceHistory` point), owned items' current values
 (`computeItemCurrentValue`, disposed items excluded), and property
-values (`resolveValueHistory`). Liabilities are counted from two
+values (`resolveValueHistory`; a sold property drops out — value and
+mortgage debt both — from its `soldDate`, like a disposed item).
+Liabilities are counted from two
 disjoint sources so a mortgage can never be double-counted: every
 property's mortgages directly (`balanceAt`), and only the loans that
 resolve **no** linked mortgages (`resolveLinkedMortgages === null`) via

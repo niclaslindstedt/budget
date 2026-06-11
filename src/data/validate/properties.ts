@@ -381,6 +381,14 @@ export function validateProperty(
   if (isFiniteNumber(raw.purchaseAmount))
     property.purchaseAmount = raw.purchaseAmount;
   if (isIsoDate(raw.purchaseDate)) property.purchaseDate = raw.purchaseDate;
+  // The sale that ended the ownership. `soldAmount` rides only with a
+  // valid `soldDate` — a sale price with no date can't place the sale on
+  // the timeline, so it's dropped rather than kept half-meaningful.
+  if (isIsoDate(raw.soldDate)) {
+    property.soldDate = raw.soldDate;
+    if (isFiniteNumber(raw.soldAmount) && raw.soldAmount >= 0)
+      property.soldAmount = raw.soldAmount;
+  }
   // Living area in square metres. Non-negative finite only; a bad value
   // is dropped (the field goes absent) rather than rejecting the file.
   if (isFiniteNumber(raw.size) && raw.size >= 0) property.size = raw.size;

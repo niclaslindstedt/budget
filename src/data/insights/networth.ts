@@ -29,7 +29,7 @@ import { computeAccountBalances } from "../accounts/balance";
 import { computeItemCurrentValue, isItemOwned } from "../items/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
 import { balanceAt } from "../property-mortgage/interest";
-import { resolveValueHistory } from "../property-value/value";
+import { isPropertySoldAt, resolveValueHistory } from "../property-value/value";
 import { findColumnByType } from "../sheet";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";
 
@@ -106,7 +106,12 @@ function savingBalanceAt(saving: Saving, iso: string): number | undefined {
   return latestPointAt(saving.balanceHistory, iso);
 }
 
+// A sold property's value resolves to nothing from its sale date — the
+// asset became cash (which the account balances already count), so keeping
+// it would double-count the proceeds. Before the sale it contributes its
+// recorded history, so the series still shows the years it was owned.
 function propertyValueAt(property: Property, iso: string): number | undefined {
+  if (isPropertySoldAt(property, iso)) return undefined;
   return latestPointAt(resolveValueHistory(property), iso);
 }
 
@@ -119,10 +124,14 @@ function propertyValueAt(property: Property, iso: string): number | undefined {
 // the timeline with the property. A property with no dated value at
 // all keeps counting its mortgages (the snapshot must reflect the debt
 // even when the user never recorded a value).
+// A sold property's mortgages were settled at the sale, so the debt is gone
+// from the sale date too — `balanceAt` would otherwise keep extrapolating a
+// loan the user no longer carries.
 function propertyMortgageBalanceAt(
   property: Property,
   iso: string,
 ): number | undefined {
+  if (isPropertySoldAt(property, iso)) return undefined;
   const valueDates = resolveValueHistory(property);
   if (valueDates.length > 0 && valueDates.every((p) => p.date > iso))
     return undefined;
@@ -210,6 +219,10 @@ export function computeNetWorthSnapshot(
   }
 
   for (const property of data.properties) {
+    // A property sold by today gets no breakdown row at all — like a
+    // disposed item, it is no longer owned capital (the per-date helpers
+    // above keep its history alive in the series).
+    if (isPropertySoldAt(property, todayIso)) continue;
     const { excluded, sharePct } = resolveOverride(settings, property.id);
     const value = propertyValueAt(property, todayIso);
     const mortgages = propertyMortgageBalanceAt(property, todayIso);

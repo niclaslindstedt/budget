@@ -178,8 +178,16 @@ export function PropertiesPage({
   // history entries against to spot the "Mortgage" tag.
   const types = useMemo(() => allTypes(data), [data]);
 
+  // Currently-owned properties first (alphabetical), previously-sold ones
+  // after — they're kept for history, not part of the active portfolio.
   const properties = useMemo(
-    () => [...data.properties].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...data.properties].sort((a, b) => {
+        const aSold = a.soldDate !== undefined;
+        const bSold = b.soldDate !== undefined;
+        if (aSold !== bSold) return aSold ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      }),
     [data.properties],
   );
 

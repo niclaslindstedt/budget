@@ -338,6 +338,12 @@ const catalog = {
     learnMore:
       "From a property's … menu, pick Net sale profit. Drag the sale-price slider and watch the breakdown: broker fee, advertising, repairs, the purchase price, and your location's capital-gains tax all come off before the bottom line. Try the broker modes — fixed, a percentage, or a base plus a percentage above a threshold — to match how your agent charges.",
   },
+  propertySold: {
+    name: "Moving On",
+    condition: "Record the sale date on a property you no longer own.",
+    learnMore:
+      "Edit a property and set its sale date — and what it sold for. The home stays on the Properties page as history: its recorded values, repairs, and mortgage payments still belong to it, so old bank charges keep attributing to the right home. But from the day of the sale it stops counting toward your net worth, and Find mortgage payments stops offering charges after that date.",
+  },
   valueChart: {
     name: "Trend Spotter",
     condition: "Visualize a property's value over time.",

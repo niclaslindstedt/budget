@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PURCHASE_VALUE_POINT_ID,
   currentPropertyValue,
+  isPropertySoldAt,
   isPurchaseValuePoint,
   purchaseValuePoint,
   resolveValueHistory,
@@ -117,5 +118,18 @@ describe("currentPropertyValue", () => {
       undefined,
     );
     expect(currentPropertyValue(property({}))).toBe(undefined);
+  });
+});
+
+describe("isPropertySoldAt", () => {
+  it("is false without a sale date", () => {
+    expect(isPropertySoldAt(property({}), "2026-06-11")).toBe(false);
+  });
+
+  it("flips on the sale date itself, inclusive", () => {
+    const sold = property({ soldDate: "2021-08-15" });
+    expect(isPropertySoldAt(sold, "2021-08-14")).toBe(false);
+    expect(isPropertySoldAt(sold, "2021-08-15")).toBe(true);
+    expect(isPropertySoldAt(sold, "2026-06-11")).toBe(true);
   });
 });

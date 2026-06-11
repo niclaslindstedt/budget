@@ -38,6 +38,7 @@ import {
   GitMerge,
   Hammer,
   HandCoins,
+  Handshake,
   Hash,
   History,
   Home,
@@ -282,6 +283,11 @@ const hasManualRepair = (s: UserData) =>
   s.properties.some((p) =>
     p.repairs.some((r) => !(r.accountId && r.sourceHistoryId)),
   );
+
+// A property carries a sale date — owned in the past, kept for history but
+// no longer part of the active portfolio.
+const hasSoldProperty = (s: UserData) =>
+  s.properties.some((p) => p.soldDate !== undefined);
 
 // A payslip was added manually — no backing bank transaction or budget row,
 // so it came from the "Add payslip" form rather than a discovery walk.
@@ -987,6 +993,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: Calculator,
     hasLearnMore: true,
     trigger: { kind: "manual" },
+  },
+  {
+    // The user recorded a sale date on a property — it becomes a
+    // previously-owned home: kept for history (values, repairs, mortgage
+    // payments still attribute to it) but dropped from net worth.
+    id: "propertySold",
+    tier: "pro",
+    glyph: Handshake,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasSoldProperty(prev) && hasSoldProperty(next),
+    },
   },
   {
     // The user opened the property value-over-time chart — the app's first

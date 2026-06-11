@@ -336,6 +336,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Nettovinst vid försäljning i en fastighets …-meny. Dra i reglaget för försäljningspris och se uppdelningen: mäklararvode, annonsering, reparationer, inköpspriset och din plats vinstskatt dras alla av före slutsumman. Prova mäklarlägena — fast belopp, en procentsats, eller en bas plus en procentsats över en gräns — för att matcha hur din mäklare tar betalt.",
   },
+  propertySold: {
+    name: "Flyttlasset",
+    condition: "Ange försäljningsdatum på en bostad du inte längre äger.",
+    learnMore:
+      "Redigera en fastighet och ange dess försäljningsdatum — och vad den såldes för. Bostaden ligger kvar på fastighetssidan som historik: dess registrerade värden, reparationer och bolånebetalningar hör fortfarande till den, så gamla banktransaktioner kopplas till rätt bostad. Men från försäljningsdagen räknas den inte längre med i din nettoförmögenhet, och Hitta bolånebetalningar föreslår inga transaktioner efter det datumet.",
+  },
   valueChart: {
     name: "Trendspanare",
     condition: "Visualisera en fastighets värde över tid.",

@@ -11,6 +11,11 @@ const properties = {
   // Property card.
   boughtFor: "Bought for",
   purchased: "Purchased",
+  // Sale figures for a previously-owned property (`soldDate` set) — the
+  // header badge plus the two stats mirroring "Bought for" / "Purchased".
+  soldBadge: "Sold",
+  soldFor: "Sold for",
+  soldOn: "Sold",
   size: "Size",
   rooms: "Rooms",
   fee: "Monthly fee",
@@ -82,6 +87,11 @@ const properties = {
   purchaseAmountLabel: "Purchase amount",
   purchaseAmountPlaceholder: "What you paid for it",
   purchaseDateLabel: "Purchase date",
+  soldDateLabel: "Sale date",
+  soldDateHint:
+    "Set when you no longer own the property — it keeps its history but stops counting toward your net worth.",
+  soldAmountLabel: "Sale amount",
+  soldAmountPlaceholder: "What you sold it for",
   sizeLabel: "Size",
   sizePlaceholder: "Living area",
   roomsLabel: "Rooms",

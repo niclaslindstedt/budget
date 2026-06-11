@@ -196,6 +196,7 @@ export function MortgageDiscoveryModal({
       mortgageTypeId: PRESET_TYPE_MORTGAGE_ID,
       seedEntryIds: [...addedSourceIds],
       fromDate: property.purchaseDate,
+      toDate: property.soldDate,
       targetAmounts,
       targetSchedules,
     });

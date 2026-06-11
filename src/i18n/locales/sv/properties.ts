@@ -11,6 +11,9 @@ const properties: PropertiesCatalog = {
   // Property card.
   boughtFor: "Köpt för",
   purchased: "Köpt",
+  soldBadge: "Såld",
+  soldFor: "Såld för",
+  soldOn: "Såld",
   size: "Storlek",
   rooms: "Rum",
   fee: "Månadsavgift",
@@ -66,6 +69,11 @@ const properties: PropertiesCatalog = {
   purchaseAmountLabel: "Köpesumma",
   purchaseAmountPlaceholder: "Vad du betalade för den",
   purchaseDateLabel: "Köpdatum",
+  soldDateLabel: "Försäljningsdatum",
+  soldDateHint:
+    "Ange när du inte längre äger bostaden — historiken behålls men den räknas inte längre med i din nettoförmögenhet.",
+  soldAmountLabel: "Försäljningssumma",
+  soldAmountPlaceholder: "Vad du sålde den för",
   sizeLabel: "Storlek",
   sizePlaceholder: "Boyta",
   roomsLabel: "Rum",
