@@ -116,6 +116,11 @@ const InsightsPage = lazy(() =>
     default: m.InsightsPage,
   })),
 );
+const InvestmentPage = lazy(() =>
+  import("../investment/InvestmentPage").then((m) => ({
+    default: m.InvestmentPage,
+  })),
+);
 const UniversalModalHost = lazy(() =>
   import("./UniversalModalHost").then((m) => ({
     default: m.UniversalModalHost,
@@ -1084,6 +1089,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                   />
                 ) : activeSheet.type === "insights" ? (
                   <InsightsPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    dispatch={dispatch}
+                  />
+                ) : activeSheet.type === "investment" ? (
+                  <InvestmentPage
                     sheet={activeSheet}
                     data={data}
                     settings={effectiveSettings}

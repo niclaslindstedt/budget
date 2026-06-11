@@ -1147,6 +1147,19 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // mode). Absent on every pre-v76 item, and the validator simply omits
   // it when missing, so the blob needs no touch-up.
   75: (v75) => ({ ...v75, version: 76 }),
+
+  // v76 → v77: introduces `UserData.investmentHoldings` and
+  // `UserData.investmentStocks`, the two collections rendered by the new
+  // Investment sheet (broad holdings with a hand-recorded value history,
+  // and privately-bought single stocks tracked at the share level). Both
+  // seed empty; old exports simply lack them and the v77 validator fills
+  // `[]` regardless, so this is a bare additive bump.
+  76: (v76) => ({
+    ...v76,
+    version: 77,
+    investmentHoldings: [],
+    investmentStocks: [],
+  }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

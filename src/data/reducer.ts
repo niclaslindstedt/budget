@@ -11,6 +11,8 @@ import type {
   FileCategory,
   HistoryEntrySplit,
   InsightsNetWorthSettings,
+  InvestmentHolding,
+  InvestmentValuePoint,
   Item,
   LineItemLink,
   Loan,
@@ -31,6 +33,9 @@ import type {
   SeriesMatchRule,
   Settings,
   Sheet,
+  StockPosition,
+  StockPricePoint,
+  StockTransaction,
   Subtype,
   Tag,
   TaxProfile,
@@ -49,6 +54,7 @@ import { reduceItems } from "./reducers/items";
 import { reduceProperties } from "./reducers/properties";
 import { reduceSavings } from "./reducers/savings";
 import { reduceLoans } from "./reducers/loans";
+import { reduceInvestments } from "./reducers/investments";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
 import { reduceRecurring } from "./reducers/recurring";
@@ -466,6 +472,65 @@ export type Action =
       point: LoanBalancePoint;
     }
   | { type: "deleteLoanBalance"; loanId: string; pointId: string }
+  // Investments — the holdings catalog + private stocks rendered by the
+  // Investment sheet. Holdings mutate `UserData.investmentHoldings`
+  // (value points nest one level deep); stock positions mutate
+  // `UserData.investmentStocks` (transactions + price points nest one
+  // level deep). Mirror the property value-point / savings balance-point
+  // shapes.
+  | { type: "addInvestmentHolding"; holding: InvestmentHolding }
+  | {
+      // Edit one holding by id. Each field in `patch` is optional; an
+      // explicit `undefined` deletes the key. Mirrors `updateProperty`.
+      type: "updateInvestmentHolding";
+      holdingId: string;
+      patch: Partial<Omit<InvestmentHolding, "id">>;
+    }
+  | { type: "deleteInvestmentHolding"; holdingId: string }
+  | {
+      // Record a manually-entered market value — appends one point to the
+      // holding's `valueHistory` (the current value is the latest point).
+      type: "addInvestmentHoldingValue";
+      holdingId: string;
+      point: InvestmentValuePoint;
+    }
+  | {
+      type: "deleteInvestmentHoldingValue";
+      holdingId: string;
+      pointId: string;
+    }
+  | { type: "addStockPosition"; position: StockPosition }
+  | {
+      // Edit one stock position by id (name, ownership, glyph, …). Each
+      // field in `patch` is optional; an explicit `undefined` deletes the
+      // key.
+      type: "updateStockPosition";
+      positionId: string;
+      patch: Partial<Omit<StockPosition, "id">>;
+    }
+  | { type: "deleteStockPosition"; positionId: string }
+  | {
+      // Record a buy or sell — appends one signed-shares transaction to
+      // the position (the share count and average cost are derived from
+      // the log, never stored).
+      type: "addStockTransaction";
+      positionId: string;
+      transaction: StockTransaction;
+    }
+  | {
+      type: "deleteStockTransaction";
+      positionId: string;
+      transactionId: string;
+    }
+  | {
+      // Record a manually-entered current price per share — appends one
+      // point to the position's `priceHistory` (the current price is the
+      // latest point).
+      type: "addStockPrice";
+      positionId: string;
+      point: StockPricePoint;
+    }
+  | { type: "deleteStockPrice"; positionId: string; pointId: string }
   | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
   | {
       type: "updateMortgage";
@@ -1020,6 +1085,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceProperties(state, action) ??
     reduceSavings(state, action) ??
     reduceLoans(state, action) ??
+    reduceInvestments(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??
     reduceRecurring(state, action) ??

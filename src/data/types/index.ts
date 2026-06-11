@@ -53,6 +53,7 @@ export type {
   InsightsMode,
   InsightsNetWorthSettings,
   InsightsView,
+  InvestmentView,
   ItemsView,
   LoansView,
   PropertiesView,
@@ -65,6 +66,17 @@ export type {
 } from "./sheets";
 
 export type { Saving, SavingBalancePoint } from "./savings";
+
+export type {
+  InvestmentHolding,
+  InvestmentKind,
+  InvestmentValuePoint,
+  InvestmentWrapper,
+  StockOwnership,
+  StockPosition,
+  StockPricePoint,
+  StockTransaction,
+} from "./investments";
 
 export type { Loan, LoanBalancePoint, LoanKind, LoanPayment } from "./loans";
 

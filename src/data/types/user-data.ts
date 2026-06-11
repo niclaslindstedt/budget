@@ -25,6 +25,7 @@ import type {
 import type { FileCategory, Property } from "./properties";
 import type { Loan } from "./loans";
 import type { Saving } from "./savings";
+import type { InvestmentHolding, StockPosition } from "./investments";
 import type { Employer, Salary } from "./salary";
 import type { PersistedSettings } from "./settings";
 import type { Sheet } from "./sheets";
@@ -37,7 +38,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 76;
+  version: 77;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -81,6 +82,20 @@ export type UserData = {
   // resolve live from `properties`. Entirely user-curated — no presets
   // ship. Empty on a fresh budget.
   loans: Loan[];
+  // Broad investment holdings the user owns (funds, baskets of shares,
+  // gold, crypto, bonds), rendered by the Investment sheet's holdings
+  // table. Each carries the wrapper it's held in (ISK / KF / depå, which
+  // drives its sale tax), an optional cost basis, and a manually-recorded
+  // market-value history (the current value is the latest point by date).
+  // Entirely user-curated — no presets ship. Empty on a fresh budget.
+  investmentHoldings: InvestmentHolding[];
+  // Privately-bought single stocks, rendered by the Investment sheet's
+  // private-stocks table. Each tracks buy / sell transactions (which drive
+  // the share count and average cost) and a hand-recorded current price
+  // per share, plus whether it's owned privately or by the user's company
+  // (which drives the gain tax on its net value). Entirely user-curated —
+  // no presets ship. Empty on a fresh budget.
+  investmentStocks: StockPosition[];
   // User-defined categories for property file uploads (see `FileCategory`).
   // Each becomes a subfolder under a property's `files/` folder; a file with
   // no category lands in the `files/` root. Referenced from

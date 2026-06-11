@@ -46,6 +46,7 @@ const SECTION_ORDER: readonly NetWorthEntityCategory[] = [
   "accounts",
   "savings",
   "items",
+  "investments",
   "properties",
   "loans",
 ];
@@ -54,6 +55,7 @@ const SECTION_LABEL_KEY = {
   accounts: "insightsSheet.categoryAccounts",
   savings: "insightsSheet.categorySavings",
   items: "insightsSheet.categoryItems",
+  investments: "insightsSheet.categoryInvestments",
   properties: "insightsSheet.categoryProperties",
   loans: "insightsSheet.categoryLoans",
 } as const;

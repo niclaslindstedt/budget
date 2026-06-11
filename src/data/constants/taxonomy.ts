@@ -366,6 +366,27 @@ export const SAVINGS_GLYPH_NAMES: readonly CategoryIcon[] = [
   "star",
 ] as const;
 
+// Investment sheets stand for assets the user expects to grow — shares,
+// funds, gold, crypto, bonds — so the palette leans toward the
+// markets-and-stores-of-value glyphs. The SheetModal picks this set when
+// the selected sheet type is "investment" via the descriptor's
+// `glyphNames`, and the per-holding / per-position glyph pickers offer
+// the same set.
+export const INVESTMENT_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "trending-up",
+  "line-chart",
+  "pie-chart",
+  "coins",
+  "banknote",
+  "landmark",
+  "vault",
+  "bitcoin",
+  "gem",
+  "wallet",
+  "scale",
+  "sparkles",
+] as const;
+
 // Accounts are real-world money stores — bank accounts, cards, cash,
 // brokerage, crypto, loans. The palette covers the spectrum so users
 // can express checking vs. mortgage vs. mobile-pay app at a glance.

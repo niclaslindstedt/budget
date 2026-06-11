@@ -78,6 +78,7 @@ import {
   Split,
   Star,
   Tag,
+  TrendingUp,
   Type as TypeIcon,
   Undo2,
   UserPlus,
@@ -534,6 +535,25 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.loans],
       predicate: (prev, next) =>
         prev.loans.length === 0 && next.loans.length > 0,
+    },
+  },
+  {
+    // The user added their first investment — a holding (ISK / KF / depå)
+    // or a private stock position. Either table counts.
+    id: "investor",
+    tier: "intermediate",
+    glyph: TrendingUp,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.investmentHoldings, s.investmentStocks],
+      predicate: (prev, next) =>
+        (prev.investmentHoldings?.length ?? 0) +
+          (prev.investmentStocks?.length ?? 0) ===
+          0 &&
+        (next.investmentHoldings?.length ?? 0) +
+          (next.investmentStocks?.length ?? 0) >
+          0,
     },
   },
   {
@@ -1026,6 +1046,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "savingsValueChart",
     tier: "pro",
     glyph: PiggyBank,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user opened the Investment sheet's value-over-time chart to see
+    // the combined portfolio value (gross or net-after-tax) over time. A
+    // manual unlock — opening a read-only modal can't be spotted from a
+    // derived state slice.
+    id: "investmentValueChart",
+    tier: "pro",
+    glyph: TrendingUp,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

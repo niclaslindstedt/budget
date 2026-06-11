@@ -152,6 +152,10 @@ function computeAnnual(
 // here so `engine.ts` imports every SE calculator from one place.
 export { swedishPropertySaleCalculator } from "./property-sale";
 
+// SE investment net-value-on-sale calc lives in its own module;
+// re-exported here so `../engine.ts` imports one SE module.
+export { swedishInvestmentCalculator } from "./investment";
+
 export const swedishCalculator: TaxCalculator = {
   netFromGrossMonthly(
     grossMonthly: number,

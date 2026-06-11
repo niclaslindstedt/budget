@@ -96,6 +96,7 @@ describe("buildSeedUserData", () => {
       "accounts",
       "budget",
       "insights",
+      "investment",
       "items",
       "loans",
       "properties",

@@ -35,6 +35,7 @@ import type {
   EntryType,
   FileCategory,
   HistoryEntry,
+  InvestmentHolding,
   Item,
   Loan,
   LoanPayment,
@@ -50,6 +51,7 @@ import type {
   Saving,
   SeriesMetadata,
   Sheet,
+  StockPosition,
   Subtype,
   Tag,
   TaxProfile,
@@ -1374,6 +1376,127 @@ export function buildSeedUserData(): UserData {
     ],
   };
 
+  const investmentSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Investments",
+    type: "investment",
+    glyph: "trending-up",
+    color: CATEGORY_COLORS[3],
+    description: "",
+    items: [{ id: mkId("item"), type: "investmentView" }],
+  };
+
+  // Broad holdings across the three wrappers so every tax treatment is
+  // reachable: an ISK index fund (untaxed on sale), a KF global fund, a
+  // depå gold position (capital-gains taxed), and a depå crypto wallet.
+  const investmentHoldings: InvestmentHolding[] = [
+    {
+      id: mkId("hold"),
+      name: "Avanza Zero (ISK)",
+      wrapper: "isk",
+      kind: "fund",
+      glyph: "trending-up",
+      purchaseAmount: 120000,
+      purchaseDate: "2022-02-01",
+      valueHistory: [
+        { id: mkId("hval"), date: "2024-01-01", value: 158000 },
+        { id: mkId("hval"), date: "2026-05-01", value: 196500 },
+      ],
+    },
+    {
+      id: mkId("hold"),
+      name: "Global indexfond (KF)",
+      wrapper: "kf",
+      kind: "fund",
+      glyph: "line-chart",
+      purchaseAmount: 80000,
+      purchaseDate: "2023-06-01",
+      valueHistory: [{ id: mkId("hval"), date: "2026-05-01", value: 104200 }],
+    },
+    {
+      id: mkId("hold"),
+      name: "Guld (depå)",
+      wrapper: "depot",
+      kind: "metal",
+      glyph: "gem",
+      purchaseAmount: 50000,
+      purchaseDate: "2021-11-01",
+      valueHistory: [{ id: mkId("hval"), date: "2026-05-01", value: 73000 }],
+    },
+    {
+      id: mkId("hold"),
+      name: "Bitcoin (depå)",
+      wrapper: "depot",
+      kind: "crypto",
+      glyph: "bitcoin",
+      purchaseAmount: 30000,
+      purchaseDate: "2020-12-01",
+      valueHistory: [
+        { id: mkId("hval"), date: "2024-01-01", value: 41000 },
+        { id: mkId("hval"), date: "2026-05-01", value: 88000 },
+      ],
+    },
+  ];
+
+  // Two private single-stock positions — one held privately, one by the
+  // user's company — each with a couple of buys, a partial sell, and a
+  // current price so the share count / average cost / net value all
+  // render, and the private-vs-company tax difference is visible.
+  const investmentStocks: StockPosition[] = [
+    {
+      id: mkId("stock"),
+      name: "Volvo B",
+      ownership: "private",
+      glyph: "trending-up",
+      transactions: [
+        {
+          id: mkId("stx"),
+          date: "2022-03-15",
+          shares: 100,
+          pricePerShare: 175,
+        },
+        {
+          id: mkId("stx"),
+          date: "2023-08-01",
+          shares: 50,
+          pricePerShare: 210,
+        },
+        {
+          id: mkId("stx"),
+          date: "2025-02-10",
+          shares: -40,
+          pricePerShare: 265,
+        },
+      ],
+      priceHistory: [
+        { id: mkId("spx"), date: "2026-05-01", pricePerShare: 290 },
+      ],
+    },
+    {
+      id: mkId("stock"),
+      name: "Investor B",
+      ownership: "company",
+      glyph: "landmark",
+      transactions: [
+        {
+          id: mkId("stx"),
+          date: "2021-05-20",
+          shares: 200,
+          pricePerShare: 195,
+        },
+        {
+          id: mkId("stx"),
+          date: "2024-11-05",
+          shares: 80,
+          pricePerShare: 255,
+        },
+      ],
+      priceHistory: [
+        { id: mkId("spx"), date: "2026-05-01", pricePerShare: 312 },
+      ],
+    },
+  ];
+
   // ---- Assemble the full UserData ----------------------------------
   // Every collection is listed explicitly; the closed `UserData` type
   // makes omitting a required field a compile error, so this stays in
@@ -1388,6 +1511,7 @@ export function buildSeedUserData(): UserData {
       propertiesSheet,
       savingsSheet,
       loansSheet,
+      investmentSheet,
       insightsSheet,
     ],
     activeSheetId: budgetSheet.id,
@@ -1398,6 +1522,8 @@ export function buildSeedUserData(): UserData {
     properties,
     savings: savingsAccounts,
     loans,
+    investmentHoldings,
+    investmentStocks,
     fileCategories,
     companies,
     tags,
