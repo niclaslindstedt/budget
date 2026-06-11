@@ -8,7 +8,7 @@ import {
 import {
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
-} from "../src/data/property-mortgage/payment";
+} from "../src/data/finance/payment";
 import { PRESET_TYPE_MORTGAGE_ID } from "../src/data/presets/types";
 import type {
   Company,

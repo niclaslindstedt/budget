@@ -21,10 +21,7 @@
 import type { Loan, Mortgage, Property } from "../types";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";
 import { loanRemainingBalance, resolveLinkedMortgages } from "./balance";
-import {
-  balanceAt,
-  resolveMonthlyInterestAt,
-} from "../property-mortgage/interest";
+import { balanceAt, resolveMonthlyInterestAt } from "../finance/interest";
 
 export type SeriesPoint = { x: number; y: number };
 

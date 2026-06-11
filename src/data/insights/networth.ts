@@ -28,7 +28,7 @@ import type {
 import { computeAccountBalances } from "../accounts/balance";
 import { computeItemCurrentValue, isItemOwned } from "../items/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
-import { balanceAt } from "../property-mortgage/interest";
+import { balanceAt } from "../finance/interest";
 import { isPropertySoldAt, resolveValueHistory } from "../property-value/value";
 import { findColumnByType } from "../sheet";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";

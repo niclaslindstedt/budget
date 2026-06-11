@@ -4,7 +4,7 @@ import { Pencil } from "lucide-react";
 import {
   splitPaymentAcrossMortgages,
   type MortgageChargeGroup,
-} from "../../data/property-mortgage/payment";
+} from "../../data/finance/payment";
 import type { Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";

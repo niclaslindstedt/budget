@@ -17,9 +17,9 @@ import {
   aggregateMortgages,
   type MortgageAggregate,
 } from "../../data/property-mortgage/aggregate";
-import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
-import { resolveMonthlyInterest } from "../../data/property-mortgage/interest";
-import { splitRecordedPayment } from "../../data/property-mortgage/payment";
+import { resolveMonthlyAmortization } from "../../data/finance/amortization";
+import { resolveMonthlyInterest } from "../../data/finance/interest";
+import { splitRecordedPayment } from "../../data/finance/payment";
 import { mortgagePayoffProgress } from "../../data/property-mortgage/progress";
 import { currentPropertyValue } from "../../data/property-value/value";
 import type {

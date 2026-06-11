@@ -11,7 +11,7 @@ import {
 import {
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
-} from "../../data/property-mortgage/payment";
+} from "../../data/finance/payment";
 import { PRESET_TYPE_MORTGAGE_ID } from "../../data/presets/types";
 import { newId } from "../../data/sheet";
 import type {

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Check, ChevronDown, Landmark, Plus, X } from "lucide-react";
 
-import { resolveMonthlyAmortization } from "../../data/property-mortgage/amortization";
+import { resolveMonthlyAmortization } from "../../data/finance/amortization";
 import { newId } from "../../data/sheet";
 import type {
   Mortgage,

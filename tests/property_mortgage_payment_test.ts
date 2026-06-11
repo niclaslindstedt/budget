@@ -3,14 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   resolveRateAt,
   resolveMonthlyInterestAt,
-} from "../src/data/property-mortgage/interest";
+} from "../src/data/finance/interest";
 import {
   groupPaymentsByCharge,
   reconcileMortgageAmortization,
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
   splitRecordedPayment,
-} from "../src/data/property-mortgage/payment";
+} from "../src/data/finance/payment";
 import type { Mortgage, Property } from "../src/data/types";
 
 function mortgage(over: Partial<Mortgage> = {}): Mortgage {

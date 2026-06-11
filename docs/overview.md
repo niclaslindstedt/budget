@@ -765,7 +765,10 @@ shown in `TaxProfileModal`. Each option shows the kommun's combined
 
 Owned homes, their mortgages, and their repairs. Sheet type
 `"properties"`. Files live in `src/components/properties/`; data helpers
-in `src/data/property-mortgage/` and `src/data/property-repairs/`.
+in `src/data/property-mortgage/` and `src/data/property-repairs/`, with
+the shared mortgage math (amortisation, interest, payment split) in
+`src/data/finance/` — it's also consumed by the Loans and Insights
+pages.
 
 ### Properties page
 
@@ -892,7 +895,7 @@ property: `name`, optional loan terms (`loanAmount` — the sum borrowed,
 / `nextRateChangeDate`, `amortization` — monthly amortisation as either
 an annual percent of the initial loan or a fixed sum per month, resolved
 by `resolveMonthlyAmortization` in
-`src/data/property-mortgage/amortization.ts`, `paymentCadenceMonths` —
+`src/data/finance/amortization.ts`, `paymentCadenceMonths` —
 how often amortisation + interest is charged in months (1 = monthly, the
 default; 3 = quarterly, etc., picked in the editor's "Payment frequency"
 dropdown), `loanStartDate` — when the loan started being paid, falling
@@ -984,7 +987,7 @@ an effective-dated annual interest rate. The rate became `rate`% on
 `date` (blank `date` = the original rate, effective from the start) and
 holds until the next change; the latest by date is the current rate
 (mirrored onto `Mortgage.interestRate`). `resolveRateAt(mortgage, date)`
-in `src/data/property-mortgage/interest.ts` walks it to the rate in
+in `src/data/finance/interest.ts` walks it to the rate in
 effect on any date, so a historical payment's interest is computed at
 the rate that actually applied that month. Absent ⇒ `interestRate` is
 used for every date.
@@ -996,7 +999,7 @@ used for every date.
 property is paid to the bank as a single transaction covering every loan
 against it, so Find mortgage payments splits each found transaction
 across the property's mortgages (`splitPaymentAcrossMortgages` in
-`src/data/property-mortgage/payment.ts` — each loan's amortisation is
+`src/data/finance/payment.ts` — each loan's amortisation is
 settled in full first, then each loan is pinned to its **own** computed
 interest for that month, with only the residual shared out). Each loan's
 interest is taken on the balance reconstructed for the charge's date by
@@ -1019,7 +1022,7 @@ mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
 - the re-scan dedupe key). `PropertyCard` sums a mortgage's payments as
   its Paid total, broken down beneath into the cumulative interest and
   amortisation (`splitRecordedPayment` in
-  `src/data/property-mortgage/payment.ts` inverts the amortisation-first
+  `src/data/finance/payment.ts` inverts the amortisation-first
   split: amortisation = the mortgage's monthly amortisation capped at the
   recorded amount, interest = the rest). Added in bulk via
   `addMortgagePaymentsForProperty` (one undo entry for the whole
@@ -1034,7 +1037,7 @@ mortgage payments, opened from the View payments glyph button in the
 property card's "MORTGAGES" header (shown only when the property has ≥ 1
 payment). Rows
 are grouped by the monthly charge they came from (`groupPaymentsByCharge`
-in `src/data/property-mortgage/payment.ts` — keyed by `sourceHistoryId`,
+in `src/data/finance/payment.ts` — keyed by `sourceHistoryId`,
 falling back to date) with a per-charge total, one row per mortgage's
 share rendered as a glyph-headed table with a leading Loan (`Landmark`,
 label on desktop / glyph only on mobile) column plus Amortisation (↘) /
@@ -1068,7 +1071,7 @@ across the property's mortgages in one undo entry
 the recorded payments are wrong and the user wants to re-run Find
 mortgage payments from scratch. A footer "Unaccounted for" summary
 (`reconcileMortgageAmortization` in
-`src/data/property-mortgage/payment.ts`) lists any mortgage whose
+`src/data/finance/payment.ts`) lists any mortgage whose
 recorded amortisation doesn't reconcile with `loanAmount −
 currentBalance` — a positive gap means a payment is missing, a negative
 one means the balance / loan figure is off; only shown for loans with
@@ -1763,7 +1766,7 @@ the payments in between; with neither a snapshot nor a start sum the
 row shows "—". A linked mortgage loan bypasses the walk entirely:
 `linkedMortgageFigures` resolves monthly payment / rate / remaining
 live from the mortgage's own terms (`resolveMonthlyPaymentAt`,
-`resolveRateAt`, `balanceAt` in `src/data/property-mortgage/`).
+`resolveRateAt`, `balanceAt` in `src/data/finance/`).
 
 ### Update balance (loan)
 

@@ -3,17 +3,22 @@
 // card. Each leg reuses the per-mortgage resolvers so the summed view and the
 // split view never disagree about an individual loan's contribution.
 //
-// The "null / undefined when not enough info" convention from the sibling
-// resolvers (`interest.ts`, `amortization.ts`, `progress.ts`) carries through:
-// a total is `undefined` when no mortgage supplied that figure, and the
-// effective rate / progress are `null` when no mortgage carries the terms they
-// need. A caller renders only the legs that resolved.
+// The "null / undefined when not enough info" convention from the per-mortgage
+// resolvers (`finance/interest.ts`, `finance/amortization.ts`, the sibling
+// `progress.ts`) carries through: a total is `undefined` when no mortgage
+// supplied that figure, and the effective rate / progress are `null` when no
+// mortgage carries the terms they need. A caller renders only the legs that
+// resolved.
 
 import type { Mortgage } from "../types";
 
-import { resolveMonthlyAmortization } from "./amortization";
-import { balanceAt, resolveMonthlyInterest, resolveRateAt } from "./interest";
-import { splitRecordedPayment } from "./payment";
+import { resolveMonthlyAmortization } from "../finance/amortization";
+import {
+  balanceAt,
+  resolveMonthlyInterest,
+  resolveRateAt,
+} from "../finance/interest";
+import { splitRecordedPayment } from "../finance/payment";
 import { todayIso } from "../../utils/date";
 
 export type MortgageAggregate = {

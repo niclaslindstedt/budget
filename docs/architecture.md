@@ -233,6 +233,15 @@ src/
 │   │                           #   toggle (in-memory dev-seed-adapter)
 │   ├── fiscal-month.ts    # fiscal-month + ISO date math (getMonthKey,
 │   │                       #   groupRowsByMonth, previous/nextMonthKey, …)
+│   ├── finance/           # cross-page financial math on the shared Mortgage
+│   │   │                   #   entity — consumed by properties, loans, insights
+│   │   ├── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
+│   │   │                       #   or fixed monthly amortisation → a per-month sum
+│   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
+│   │   │                       #   balanceAt (balance reconstructed for a month) +
+│   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
+│   │   └── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages
+│   │                           #   — split a combined charge across a property's loans
 │   ├── budget/
 │   │   ├── rows.ts             # budget-row algebra (sort, computeBalances,
 │   │   │                       #   buildVisibleRows, mintBudgetRow, …)
@@ -299,12 +308,6 @@ src/
 │   │   │                       #   on-cadence run per figure (cadence + window
 │   │   │                       #   from targetSchedules) to "highly probable"
 │   │   │                       #   (Find mortgage payments walk)
-│   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
-│   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
-│   │   ├── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages
-│   │   │                       #   — split a combined charge across a property's loans
-│   │   ├── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
-│   │   │                       #   or fixed monthly amortisation → a per-month sum
 │   │   └── progress.ts         # mortgagePayoffProgress — share of the original
 │   │                           #   loan amortised away (drives the payoff bar)
 │   ├── property-repairs/   # properties page — repairs / renovations helpers
