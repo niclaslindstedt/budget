@@ -43,6 +43,10 @@ type Props = {
   // never the user's choice. Callers also pass an already-filtered `subtypes`
   // list so the dropdown only offers subtypes under the same type.
   fixedParentTypeId?: string;
+  // Hide the "New subtype" footer when the host offers its own creation
+  // path (the line-items modal swaps the dropdown for an inline name
+  // input via its own "+" button).
+  allowCreate?: boolean;
   placeholder?: string;
 };
 
@@ -56,6 +60,7 @@ export function SubtypePicker({
   onCreateType,
   onCreateCategory,
   fixedParentTypeId,
+  allowCreate = true,
   placeholder,
 }: Props) {
   const t = useT();
@@ -212,16 +217,18 @@ export function SubtypePicker({
               </button>
             </li>
           )}
-          <li className="mt-1 border-t border-line">
-            <button
-              type="button"
-              onClick={beginCreating}
-              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-            >
-              <Plus size={14} aria-hidden focusable={false} />
-              {t("items.newSubtype")}
-            </button>
-          </li>
+          {allowCreate && (
+            <li className="mt-1 border-t border-line">
+              <button
+                type="button"
+                onClick={beginCreating}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                {t("items.newSubtype")}
+              </button>
+            </li>
+          )}
         </ul>
       </FloatingPanel>
       {creating && (

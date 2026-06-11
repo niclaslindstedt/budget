@@ -3,6 +3,8 @@ import type { Widen } from "./_widen";
 const items = {
   // ItemPicker
   pickItemEllipsis: "Pick an item…",
+  pickExisting: "Pick an existing item",
+  existingItemSelected: "Existing item selected.",
   noItemsYet: "No items yet.",
   clearItem: "Clear item",
   newItem: "New item",

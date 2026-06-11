@@ -3,6 +3,8 @@ import type { ItemsCatalog } from "../en/items";
 const items: ItemsCatalog = {
   // ItemPicker
   pickItemEllipsis: "Välj en pryl…",
+  pickExisting: "Välj en befintlig pryl",
+  existingItemSelected: "Befintlig pryl vald.",
   noItemsYet: "Inga prylar än.",
   clearItem: "Rensa pryl",
   newItem: "Ny pryl",

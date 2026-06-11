@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Boxes, Plus, Trash2 } from "lucide-react";
+import { Boxes, Plus, Trash2, X } from "lucide-react";
 
 import { findColumnByType, newId } from "../../data/sheet";
 import type {
@@ -23,14 +23,33 @@ import {
 import { Button, ClearableInput, SignedAmountInput } from "../form";
 import { ItemPicker } from "../ItemPicker";
 import { Modal } from "../Modal";
+import { SubtypePicker } from "../SubtypePicker";
+import { TypeChip } from "../TypePicker";
 
 // Per-line UI state. `amount` is the typed text (absolute, sign on
 // `negative`) so the field can keep partial input mid-edit. Resolved to a
 // signed number on save. Not persisted — every save mints fresh
 // `LineItemLink` ids.
+//
+// Cataloguing a fresh purchase almost always means the item doesn't
+// exist yet, so the primary control is the `name` input — typing a name
+// creates a new `Item` on save. Picking an existing item (the
+// PackageSearch button beside the input) fills `itemId` + mirrors the
+// item's name into the input; editing the name again clears `itemId`
+// back to create-new mode.
 type LineDraft = {
   uiId: string;
+  // The existing owned item this line links to, or null when the line
+  // creates a new item from `name` on save.
   itemId: string | null;
+  name: string;
+  // Classification for the inline-created item: a picked subtype id, or
+  // — in "create" mode — a new subtype name filed under the
+  // transaction's type on save. Ignored when `itemId` is set (an
+  // existing item already carries its own classification).
+  subtypeId: string | null;
+  subtypeMode: "pick" | "create";
+  newSubtypeName: string;
   amount: string;
   negative: boolean;
   note: string;
@@ -82,7 +101,17 @@ function makeUiId(): string {
 }
 
 function makeEmptyLine(negative: boolean): LineDraft {
-  return { uiId: makeUiId(), itemId: null, amount: "", negative, note: "" };
+  return {
+    uiId: makeUiId(),
+    itemId: null,
+    name: "",
+    subtypeId: null,
+    subtypeMode: "pick",
+    newSubtypeName: "",
+    amount: "",
+    negative,
+    note: "",
+  };
 }
 
 export function BudgetLineItemsModal({
@@ -134,10 +163,15 @@ export function BudgetLineItemsModal({
       return existing.map((l) => {
         // The price lives on the item now — seed the amount field from
         // the linked item's `purchasePrice` so editing stays consistent.
-        const price = itemsById.get(l.itemId)?.purchasePrice;
+        const item = itemsById.get(l.itemId);
+        const price = item?.purchasePrice;
         return {
           uiId: makeUiId(),
           itemId: l.itemId,
+          name: item?.name ?? "",
+          subtypeId: null,
+          subtypeMode: "pick" as const,
+          newSubtypeName: "",
           amount:
             price === undefined || price === 0
               ? ""
@@ -151,6 +185,26 @@ export function BudgetLineItemsModal({
   }
 
   const [lines, setLines] = useState<LineDraft[]>(seedLines);
+
+  // The transaction's resolved type — pre-picked as the new item's type
+  // so the user only chooses (or types) a subtype. Scopes the subtype
+  // dropdown and anchors inline subtype creation. Null when the row has
+  // no type (or a dangling id): the subtype dropdown then falls back to
+  // the full list with its own creator.
+  const txnType = useMemo(
+    () =>
+      row?.typeId !== undefined
+        ? (types.find((ty) => ty.id === row.typeId) ?? null)
+        : null,
+    [types, row],
+  );
+  const scopedSubtypes = useMemo(
+    () =>
+      txnType !== null
+        ? subtypes.filter((s) => s.typeId === txnType.id)
+        : subtypes,
+    [subtypes, txnType],
+  );
 
   useResetOnOpen(open, row?.id, () => {
     setLines(seedLines());
@@ -185,17 +239,17 @@ export function BudgetLineItemsModal({
     return { ...l, signed };
   });
 
-  // A line counts when it names an item AND carries a numeric amount.
+  // A line counts when it names an item — an existing one picked, or a
+  // new name typed — AND carries a numeric amount.
   const completed = resolved.filter(
-    (l) => l.itemId !== null && l.signed !== null,
+    (l) => (l.itemId !== null || l.name.trim() !== "") && l.signed !== null,
   );
   // Half-filled lines (item without amount, or amount without item) are a
   // validation error so the user doesn't silently lose them on save.
-  const halfDone = resolved.some(
-    (l) =>
-      (l.itemId !== null && l.signed === null) ||
-      (l.itemId === null && l.signed !== null),
-  );
+  const halfDone = resolved.some((l) => {
+    const hasItem = l.itemId !== null || l.name.trim() !== "";
+    return (hasItem && l.signed === null) || (!hasItem && l.signed !== null);
+  });
 
   const allocated = completed.reduce((acc, l) => acc + (l.signed ?? 0), 0);
   const remainder = total - allocated;
@@ -215,8 +269,42 @@ export function BudgetLineItemsModal({
     if (!row || !canSubmit) return;
     const payload: LineItemLink[] = [];
     const itemPrices: ItemPriceUpdate[] = [];
+    // Subtypes minted during this save, keyed by lower-cased name, so
+    // two lines typing the same new subtype share one record.
+    const createdSubtypeIds = new Map<string, string>();
     for (const l of completed) {
-      const itemId = l.itemId as string;
+      let itemId = l.itemId;
+      if (itemId === null) {
+        // Inline creation: the typed name becomes a fresh `Item`,
+        // classified under the picked / typed subtype (which files
+        // under the transaction's pre-picked type).
+        const draft: Omit<Item, "id"> = { name: l.name.trim() };
+        let subtypeId = l.subtypeId ?? undefined;
+        const newSubtypeName = l.newSubtypeName.trim();
+        if (
+          l.subtypeMode === "create" &&
+          newSubtypeName !== "" &&
+          txnType !== null
+        ) {
+          // Reuse an existing subtype with the same name under the
+          // type rather than minting a duplicate.
+          const key = newSubtypeName.toLowerCase();
+          const existing = scopedSubtypes.find(
+            (s) => s.name.trim().toLowerCase() === key,
+          );
+          subtypeId = existing?.id ?? createdSubtypeIds.get(key);
+          if (subtypeId === undefined) {
+            const created = onCreateSubtype({
+              name: newSubtypeName,
+              typeId: txnType.id,
+            });
+            createdSubtypeIds.set(key, created.id);
+            subtypeId = created.id;
+          }
+        }
+        if (subtypeId !== undefined) draft.subtypeId = subtypeId;
+        itemId = onCreateItem(draft).id;
+      }
       const link: LineItemLink = { id: newId(), itemId };
       const note = l.note.trim();
       if (note !== "") link.note = note;
@@ -292,18 +380,45 @@ export function BudgetLineItemsModal({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs text-muted">{t("items.item")}</span>
-                  <ItemPicker
-                    items={items}
-                    subtypes={subtypes}
-                    types={types}
-                    categories={categories}
-                    selectedId={l.itemId}
-                    onSelect={(id) => updateLine(l.uiId, { itemId: id })}
-                    onCreateItem={onCreateItem}
-                    onCreateSubtype={onCreateSubtype}
-                    onCreateType={onCreateType}
-                    onCreateCategory={onCreateCategory}
-                  />
+                  <div className="flex min-w-0 items-stretch gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <ClearableInput
+                        value={l.name}
+                        onValueChange={(next) =>
+                          updateLine(l.uiId, { name: next, itemId: null })
+                        }
+                        placeholder={t("items.itemNamePlaceholder")}
+                        className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+                      />
+                    </div>
+                    <ItemPicker
+                      variant="icon"
+                      allowCreate={false}
+                      items={items}
+                      subtypes={subtypes}
+                      types={types}
+                      categories={categories}
+                      selectedId={l.itemId}
+                      onSelect={(id) => {
+                        const picked =
+                          id !== null ? itemsById.get(id) : undefined;
+                        updateLine(l.uiId, {
+                          itemId: id,
+                          name: picked?.name ?? "",
+                        });
+                      }}
+                      onCreateItem={onCreateItem}
+                      onCreateSubtype={onCreateSubtype}
+                      onCreateType={onCreateType}
+                      onCreateCategory={onCreateCategory}
+                      placeholder={t("items.pickExisting")}
+                    />
+                  </div>
+                  {l.itemId !== null && (
+                    <span className="text-[11px] text-muted">
+                      {t("items.existingItemSelected")}
+                    </span>
+                  )}
                 </div>
                 <label className="flex min-w-0 flex-col gap-1">
                   <span className="text-xs text-muted">
@@ -321,6 +436,77 @@ export function BudgetLineItemsModal({
                     surface="surface"
                   />
                 </label>
+                {l.itemId === null && l.name.trim() !== "" && (
+                  <div className="flex min-w-0 flex-col gap-1 sm:col-span-2">
+                    <span className="inline-flex items-center gap-2 text-xs text-muted">
+                      {t("items.subtypeOptional")}
+                      {txnType !== null && <TypeChip type={txnType} />}
+                    </span>
+                    {l.subtypeMode === "pick" ? (
+                      <div className="flex min-w-0 items-stretch gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <SubtypePicker
+                            subtypes={scopedSubtypes}
+                            types={types}
+                            categories={categories}
+                            selectedId={l.subtypeId}
+                            onSelect={(id) =>
+                              updateLine(l.uiId, { subtypeId: id })
+                            }
+                            onCreate={onCreateSubtype}
+                            onCreateType={onCreateType}
+                            onCreateCategory={onCreateCategory}
+                            fixedParentTypeId={txnType?.id}
+                            allowCreate={txnType === null}
+                          />
+                        </div>
+                        {txnType !== null && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateLine(l.uiId, {
+                                subtypeMode: "create",
+                                subtypeId: null,
+                              })
+                            }
+                            aria-label={t("items.newSubtype")}
+                            title={t("items.newSubtype")}
+                            className="inline-flex w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
+                          >
+                            <Plus size={14} aria-hidden focusable={false} />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex min-w-0 items-stretch gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <ClearableInput
+                            value={l.newSubtypeName}
+                            onValueChange={(next) =>
+                              updateLine(l.uiId, { newSubtypeName: next })
+                            }
+                            placeholder={t("items.subtypeNamePlaceholder")}
+                            className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-sm text-fg"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateLine(l.uiId, {
+                              subtypeMode: "pick",
+                              newSubtypeName: "",
+                            })
+                          }
+                          aria-label={t("common.cancel")}
+                          title={t("common.cancel")}
+                          className="inline-flex w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-danger hover:text-danger"
+                        >
+                          <X size={14} aria-hidden focusable={false} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <label className="flex flex-col gap-1 sm:col-span-2">
                   <span className="text-xs text-muted">
                     {t("items.lineNote")}

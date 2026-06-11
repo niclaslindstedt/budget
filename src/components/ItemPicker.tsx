@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Package, Plus, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Package,
+  PackageSearch,
+  Plus,
+  X,
+} from "lucide-react";
 
 import type { Category, EntryType, Item, Subtype } from "../data/types";
 import {
@@ -35,6 +42,15 @@ type Props = {
   onCreateSubtype: (draft: Omit<Subtype, "id">) => Subtype;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  // "field" renders the standard full-width labelled trigger; "icon"
+  // renders a compact square button (PackageSearch glyph) for hosts
+  // where picking an existing item is the secondary path beside a
+  // primary input (the line-items modal's inline item-name field).
+  variant?: "field" | "icon";
+  // Hide the "New item" footer when the host offers its own creation
+  // path (the line-items modal creates items inline from a name input,
+  // so its dropdown is selection-only).
+  allowCreate?: boolean;
   placeholder?: string;
 };
 
@@ -49,6 +65,8 @@ export function ItemPicker({
   onCreateSubtype,
   onCreateType,
   onCreateCategory,
+  variant = "field",
+  allowCreate = true,
   placeholder,
 }: Props) {
   const t = useT();
@@ -110,32 +128,53 @@ export function ItemPicker({
   });
 
   return (
-    <div ref={rootRef} className="relative inline-block w-full">
-      <button
-        type="button"
-        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
-        onClick={handleOpen}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        {selected ? (
-          <span className="inline-flex min-w-0 items-center gap-2 text-fg">
-            <Package size={14} aria-hidden focusable={false} />
-            <span className="min-w-0 truncate">{selected.name}</span>
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-2 text-muted">
-            <Package size={14} aria-hidden focusable={false} />
-            <span>{placeholderText}</span>
-          </span>
-        )}
-        <ChevronDown
-          size={12}
-          className="ml-auto shrink-0 text-muted"
-          aria-hidden
-          focusable={false}
-        />
-      </button>
+    <div
+      ref={rootRef}
+      className={
+        variant === "icon"
+          ? "relative inline-flex"
+          : "relative inline-block w-full"
+      }
+    >
+      {variant === "icon" ? (
+        <button
+          type="button"
+          className="inline-flex w-9 shrink-0 cursor-pointer items-center justify-center self-stretch rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent"
+          onClick={handleOpen}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={placeholderText}
+          title={placeholderText}
+        >
+          <PackageSearch size={14} aria-hidden focusable={false} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm hover:border-accent focus-visible:outline-none"
+          onClick={handleOpen}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+        >
+          {selected ? (
+            <span className="inline-flex min-w-0 items-center gap-2 text-fg">
+              <Package size={14} aria-hidden focusable={false} />
+              <span className="min-w-0 truncate">{selected.name}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 text-muted">
+              <Package size={14} aria-hidden focusable={false} />
+              <span>{placeholderText}</span>
+            </span>
+          )}
+          <ChevronDown
+            size={12}
+            className="ml-auto shrink-0 text-muted"
+            aria-hidden
+            focusable={false}
+          />
+        </button>
+      )}
 
       <FloatingPanel
         open={open}
@@ -191,16 +230,18 @@ export function ItemPicker({
               </button>
             </li>
           )}
-          <li className="mt-1 border-t border-line">
-            <button
-              type="button"
-              onClick={beginCreating}
-              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-            >
-              <Plus size={14} aria-hidden focusable={false} />
-              {t("items.newItem")}
-            </button>
-          </li>
+          {allowCreate && (
+            <li className="mt-1 border-t border-line">
+              <button
+                type="button"
+                onClick={beginCreating}
+                className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-accent hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                {t("items.newItem")}
+              </button>
+            </li>
+          )}
         </ul>
       </FloatingPanel>
       {creating && (
