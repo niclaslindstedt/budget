@@ -54,6 +54,7 @@ const scenarios: ScenariosCatalog = {
     "Justeringen är länkad till din budget — ändras postens belopp där följer scenariot med automatiskt.",
   modulateOpLabel: "Justering",
   modulateOpAdd: "Lägg till belopp",
+  modulateOpSubtract: "Dra av belopp",
   modulateOpMultiply: "Multiplicera med",
   modulateOpPercent: "Ändra med procent",
   modulateValueLabel: "Värde",
