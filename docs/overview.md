@@ -367,7 +367,11 @@ Skip) revisit entries already skipped or saved this session via a
 `trail` of handled ids + a `reviewIndex` cursor; Forward returns toward
 the live front without saving or skipping. The "Also apply to N
 similar" checkbox fans labels out via `applyMetadataToMatchingHistory`
-(`src/data/budget/pattern-apply.ts`). The "Split into parts…" button
+(`src/data/budget/pattern-apply.ts`); checking it expands a selection
+list of the matched entries (date, amount, bank text — all checked by
+default) so individual lookalikes can be unchecked and left out of the
+sweep, e.g. when one merchant's bank text covers unrelated payments.
+The "Split into parts…" button
 enters the inline split builder (`budget-metadata-split-reducer.ts`):
 fill an amount + type / company / tags / description per part, press
 Split again to commit it and start the next on the remaining sum, or

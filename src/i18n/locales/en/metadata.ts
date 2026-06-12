@@ -20,6 +20,7 @@ const metadata = {
   bulkApplyOther: "Also apply to {n} similar entries",
   bulkApplyHint:
     "Matches the bank text of older entries and fills only the fields they're still missing.",
+  bulkApplyListHint: "Uncheck any entry that shouldn't be updated.",
   skip: "Skip",
   back: "Back",
   forward: "Forward",
