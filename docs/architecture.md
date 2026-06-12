@@ -31,6 +31,8 @@ src/
 │   ├── FloatingPanel.tsx        # portalled dropdown shell for pickers
 │   ├── DismissBackdrop.tsx      # shared click-outside / Escape backdrop
 │   ├── ConfirmDialog.tsx        # generic confirm prompt with scope options
+│   ├── ApplySeriesDialog.tsx    # "apply edit to recurring series?" prompt
+│   │                            #   (budget cell commits + scenario overrides)
 │   ├── DatePickerModal.tsx      # modal calendar (mobile-friendly)
 │   ├── ColorPalette.tsx         # circular color-swatch grid
 │   ├── GlyphGrid.tsx            # 8-column icon-button grid
@@ -87,8 +89,8 @@ src/
 │   │   │   BudgetEditEntryFullModal.tsx, BudgetEditSeriesForm.tsx,
 │   │   │   BudgetPromoteHistoryForm.tsx, BudgetPromoteToSeriesForm.tsx,
 │   │   │   BudgetComplexEntryModal.tsx, BudgetRecurrenceForm.tsx,
-│   │   │   BudgetDeleteRecurringDialog.tsx, BudgetApplySeriesDialog.tsx,
-│   │   │   BudgetSplitEntryModal.tsx, BudgetBulkEditModal.tsx,
+│   │   │   BudgetDeleteRecurringDialog.tsx, BudgetSplitEntryModal.tsx,
+│   │   │   BudgetBulkEditModal.tsx,
 │   │   │   BudgetMoveCopyModal.tsx, BudgetMetadataModal.tsx,
 │   │   │   BudgetMatchRuleModal.tsx, BudgetFindConflictsModal.tsx,
 │   │   │   BudgetRecurringCandidatesPanel.tsx, BudgetAmountSpanFields.tsx
@@ -167,13 +169,15 @@ src/
 │       └── InvestmentValueChartModal.tsx  # "Visualize value" — combined value
 │                                 #   over time, net-value toggle, range buttons
 │   └── scenarios/            # scenarios page — what-ifs against a base budget
-│       ├── ScenariosPage.tsx     # page root — base picker, tabs, chart + legend,
-│       │                         #   monitors, month tables, delta dispatch
+│       ├── ScenariosPage.tsx     # page root — base picker, tabs, monitors,
+│       │                         #   month tables, delta dispatch + series sweep
 │       ├── ScenarioTabs.tsx      # Baseline chip + per-scenario chips + "+"
-│       ├── ScenarioMonthTable.tsx # one month, inline override/exclude/add
+│       ├── ScenarioMonthTable.tsx # one month — header + rows + add-row footer
+│       ├── ScenarioRow.tsx       # one row — inline override/exclude, swipe strip
 │       ├── ScenarioRowModal.tsx  # add/edit a scenario-only row
 │       ├── ScenarioEditModal.tsx # create/rename a scenario
 │       ├── ScenariosMonitorRow.tsx # monitor-date cards + add/remove
+│       ├── ScenariosChartModal.tsx # "Visualize scenarios" — forward-horizon chart
 │       ├── ScenariosDiffModal.tsx # "View changes" — scenario vs baseline diff
 │       └── scenario-colors.ts    # index → theme-token series colors
 ├── data/
@@ -419,8 +423,9 @@ src/
 │   │   │                       #   overridesByRowId, diffScenario
 │   │   └── series.ts           # computeScenarioState (applyScenario +
 │   │                           #   computeBudgetState), monthlyEndBalances,
-│   │                           #   buildScenarioChartPoints (union month axis,
-│   │                           #   carry-forward fill), balanceAtDate (monitors)
+│   │                           #   buildScenarioChartPoints (union or pinned
+│   │                           #   month axis, carry-forward fill, pre-range
+│   │                           #   seeding), balanceAtDate (monitors)
 │   ├── insights/           # insights page — cross-area aggregation
 │   │   └── networth.ts         # computeNetWorthSnapshot (assets − liabilities
 │   │                           #   per entity + per category, exclusion +

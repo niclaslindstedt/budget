@@ -1,7 +1,11 @@
+import { rowsInSeriesFrom } from "../budget/rows";
 import type { Action } from "../reducer";
+import { findBaseBudget } from "../scenarios/apply";
+import { getStandardColumns } from "../sheet";
 import type {
   Scenario,
   ScenarioAddedRow,
+  ScenarioRowOverride,
   ScenariosView,
   UserData,
 } from "../types";
@@ -16,6 +20,7 @@ export const SCENARIOS_ITEM_ACTION_TYPES = [
   "updateScenario",
   "deleteScenario",
   "setScenarioOverride",
+  "propagateScenarioOverrideToFuture",
   "addScenarioRow",
   "updateScenarioRow",
   "deleteScenarioRow",
@@ -59,6 +64,42 @@ function updateScenariosView(
     return { ...sheet, items };
   });
   return changed ? { ...state, sheets } : state;
+}
+
+// Upsert one normalised override into a scenario's list — shared by the
+// single-row `setScenarioOverride` path and the series sweep. The raw
+// override is normalised first (the validator's contract), so an entry
+// that keeps no field is REMOVED — that is the revert / re-include
+// path. Same reference ⇒ no change.
+function upsertOverride(
+  scenario: Scenario,
+  override: ScenarioRowOverride,
+): Scenario {
+  const normalized = normalizeScenarioOverride(override);
+  const existing = scenario.overrides.find((o) => o.rowId === override.rowId);
+  if (normalized === undefined) {
+    if (existing === undefined) return scenario;
+    return {
+      ...scenario,
+      overrides: scenario.overrides.filter((o) => o.rowId !== override.rowId),
+    };
+  }
+  if (
+    existing !== undefined &&
+    existing.amount === normalized.amount &&
+    existing.description === normalized.description &&
+    existing.excluded === normalized.excluded
+  )
+    return scenario;
+  return {
+    ...scenario,
+    overrides:
+      existing === undefined
+        ? [...scenario.overrides, normalized]
+        : scenario.overrides.map((o) =>
+            o.rowId === normalized.rowId ? normalized : o,
+          ),
+  };
 }
 
 // Rewrite one scenario by id inside a view. Same reference ⇒ no change.
@@ -134,39 +175,50 @@ export function reduceScenariosItem(
   }
   if (action.type === "setScenarioOverride") {
     return updateScenariosView(state, action.sheetId, action.itemId, (view) =>
+      updateScenarioById(view, action.scenarioId, (s) =>
+        upsertOverride(s, action.override),
+      ),
+    );
+  }
+  if (action.type === "propagateScenarioOverrideToFuture") {
+    return updateScenariosView(state, action.sheetId, action.itemId, (view) =>
       updateScenarioById(view, action.scenarioId, (s) => {
-        // Normalising shares the validator's contract, so an override
-        // that keeps no field REMOVES the entry — this is also the
-        // revert / re-include path (dispatch `{ rowId }` bare).
-        const normalized = normalizeScenarioOverride(action.override);
-        const existing = s.overrides.find(
-          (o) => o.rowId === action.override.rowId,
+        const base = findBaseBudget(state.sheets, view.baseSheetId ?? null);
+        if (!base) return s;
+        const { dateCol, descCol, amountCol } = getStandardColumns(
+          base.item.columns,
         );
-        if (normalized === undefined) {
-          if (existing === undefined) return s;
-          return {
-            ...s,
-            overrides: s.overrides.filter(
-              (o) => o.rowId !== action.override.rowId,
-            ),
+        if (!dateCol || !descCol || !amountCol) return s;
+        const anchor = base.item.rows.find((r) => r.id === action.rowId);
+        if (!anchor || anchor.kind !== "user") return s;
+        const valueCol = action.field === "amount" ? amountCol : descCol;
+        let next = s;
+        for (const target of rowsInSeriesFrom(
+          base.item.rows,
+          anchor,
+          dateCol.id,
+          action.untilIso,
+        )) {
+          if (target.kind !== "user") continue;
+          const existing = next.overrides.find((o) => o.rowId === target.id);
+          const override: ScenarioRowOverride = {
+            ...existing,
+            rowId: target.id,
           };
+          // A swept value identical to the target's own base cell is a
+          // revert for that row — drop the field so no no-op override
+          // lingers (and the entry itself when nothing else remains).
+          if (action.value === target.cells[valueCol.id]) {
+            delete override[action.field];
+          } else if (action.field === "amount") {
+            if (typeof action.value === "number")
+              override.amount = action.value;
+          } else if (typeof action.value === "string") {
+            override.description = action.value;
+          }
+          next = upsertOverride(next, override);
         }
-        if (
-          existing !== undefined &&
-          existing.amount === normalized.amount &&
-          existing.description === normalized.description &&
-          existing.excluded === normalized.excluded
-        )
-          return s;
-        return {
-          ...s,
-          overrides:
-            existing === undefined
-              ? [...s.overrides, normalized]
-              : s.overrides.map((o) =>
-                  o.rowId === normalized.rowId ? normalized : o,
-                ),
-        };
+        return next;
       }),
     );
   }

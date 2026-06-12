@@ -18,7 +18,9 @@ of that reality:
 - **Change a value** — tap an amount (or a description) in the
   scenario's table and type a new one. Only that row, only in that
   scenario. An overridden row shows in the accent color, with a revert
-  control to undo the change.
+  control to undo the change. Editing a recurring entry asks whether
+  the upcoming entries in the same series should change too — apply to
+  all of them, stop after a date, or keep it to just this one.
 - **Drop a row** — exclude an expense you wouldn't keep ("if I lose my
   job, the gym goes"). Excluded rows stay visible, struck through, and
   contribute nothing to the balances.
@@ -32,11 +34,14 @@ earlier months" line reveals the full history.
 
 ## The chart
 
-One line chart draws the **monthly end balance** of the Baseline and
-every scenario at once — the dashed line is the Baseline, and each
-scenario gets its own color (the same dot shown on its tab). Click a
-name in the legend to hide or show that line. This is where "can the
-economy handle it?" gets its answer at a glance.
+Open **Visualize scenarios** from the sheet's "…" menu. One line chart
+draws the **monthly end balance** of the Baseline and every scenario
+at once — the dashed line is the Baseline, and each scenario gets its
+own color (the same dot shown on its tab). The chart looks strictly
+forward: pick how far into the future it runs with the 1M / 3M / 6M /
+1Y / 2Y buttons, counted from the current month. Click a name in the
+legend to hide or show that line. This is where "can the economy
+handle it?" gets its answer at a glance.
 
 ## Balance monitors
 

@@ -1,0 +1,364 @@
+import { memo, useState } from "react";
+import { CircleMinus, Pencil, Plus, RotateCcw, Undo2 } from "lucide-react";
+
+import {
+  isScenarioAddedRowId,
+  scenarioAddedIdFromRowId,
+} from "../../data/scenarios/apply";
+import type { Row, ScenarioRowOverride, Settings } from "../../data/types";
+import { useLang, useT } from "../../i18n";
+import {
+  formatDate,
+  formatDayOnly,
+  formatNumber,
+  formatRunningBalance,
+  parseAmount,
+} from "../../utils/format";
+import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
+
+type Props = {
+  // Display row (already scenario-applied) plus the column ids to read
+  // its cells through.
+  row: Row;
+  dateColId: string | undefined;
+  descColId: string | undefined;
+  amountColId: string | undefined;
+  balance: number | undefined;
+  // The active scenario's override for this row, if any.
+  override: ScenarioRowOverride | undefined;
+  // The base budget's amount — the applied clone has already rewritten
+  // (or zeroed) the cell, so excluded rows read the original from here.
+  baseAmount: number | undefined;
+  // True when this is a persisted user row a scenario may override.
+  editable: boolean;
+  // True on the Baseline tab — no editing affordances at all.
+  readOnly: boolean;
+  settings: Settings;
+  onCommitAmount: (rowId: string, amount: number) => void;
+  onCommitDescription: (rowId: string, description: string) => void;
+  onToggleExcluded: (rowId: string) => void;
+  onRevert: (rowId: string) => void;
+  onEditAddedRow: (addedId: string) => void;
+};
+
+// One row of a scenario month table: date / description / amount /
+// running balance plus the per-row affordances when a scenario is
+// active. Desktop keeps the inline action icons; mobile follows the
+// budget table's pattern — the row is a CSS grid (see `.scenario-table`
+// in components.css), the date column narrows to the day-of-month, and
+// the actions live in a swipe-to-reveal strip (`useRowSwipeAndClaim` +
+// `swipe-action-cell`, same as every other sheet row).
+function ScenarioRowImpl({
+  row,
+  dateColId,
+  descColId,
+  amountColId,
+  balance,
+  override,
+  baseAmount,
+  editable,
+  readOnly,
+  settings,
+  onCommitAmount,
+  onCommitDescription,
+  onToggleExcluded,
+  onRevert,
+  onEditAddedRow,
+}: Props) {
+  const t = useT();
+  const lang = useLang();
+  const [editing, setEditing] = useState<"amount" | "description" | null>(null);
+  const [draft, setDraft] = useState("");
+
+  const dateValue =
+    dateColId && typeof row.cells[dateColId] === "string"
+      ? (row.cells[dateColId] as string)
+      : "";
+  const descValue =
+    descColId && typeof row.cells[descColId] === "string"
+      ? (row.cells[descColId] as string)
+      : "";
+  const amountValue =
+    amountColId && typeof row.cells[amountColId] === "number"
+      ? (row.cells[amountColId] as number)
+      : null;
+
+  const excluded = override?.excluded === true;
+  const isAdded = isScenarioAddedRowId(row.id);
+  const hasActions = !readOnly && (isAdded || editable);
+  const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(row.id, {
+    disabled: !hasActions,
+  });
+  const displayAmount = excluded ? (baseAmount ?? 0) : amountValue;
+
+  const monthNum = dateValue !== "" ? monthNumberFromKey(dateValue) : null;
+  const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
+
+  function beginEdit(field: "amount" | "description", value: string) {
+    setEditing(field);
+    setDraft(value);
+  }
+
+  function commitEdit() {
+    if (editing === null) return;
+    if (editing === "amount") {
+      const parsed = parseAmount(draft);
+      if (parsed !== null) onCommitAmount(row.id, parsed);
+    } else {
+      const trimmed = draft.trim();
+      if (trimmed !== "") onCommitDescription(row.id, trimmed);
+    }
+    setEditing(null);
+  }
+
+  const actionButton = (
+    label: string,
+    toneClass: string,
+    hoverClass: string,
+    onClick: () => void,
+    icon: React.ReactNode,
+  ) => (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        setSwiped(false);
+        onClick();
+      }}
+      className={`action-btn ${toneClass} inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:h-auto md:flex-none md:rounded md:p-1 md:text-muted md:hover:bg-surface-2 ${hoverClass}`}
+    >
+      {icon}
+    </button>
+  );
+
+  return (
+    <tr
+      className={`border-b border-line last:border-b-0 ${
+        swiped ? "is-swiped" : ""
+      } ${isAdded ? "bg-surface-2/50" : ""}`}
+      data-row-id={row.id}
+      data-swipe-handled
+      onClick={() => {
+        if (swiped) setSwiped(false);
+      }}
+      {...touchHandlers}
+    >
+      <td className="w-px px-1 py-1.5 text-center align-middle whitespace-nowrap md:pr-2 md:pl-3 md:text-left">
+        <span
+          className="font-mono text-xs text-muted tabular-nums"
+          style={monthColor ? { color: monthColor } : undefined}
+        >
+          <span className="md:hidden">
+            {dateValue === "" ? "" : formatDayOnly(dateValue)}
+          </span>
+          <span className="hidden md:inline">
+            {dateValue === ""
+              ? ""
+              : formatDate(dateValue, settings.dateFormat, lang)}
+          </span>
+        </span>
+      </td>
+      <td className="min-w-0 px-2 py-1.5 align-middle">
+        {editing === "description" ? (
+          <input
+            // Inline override editor opened by an explicit tap on the cell —
+            // focusing it IS the expected outcome (same pattern as the admin
+            // rename editors).
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitEdit();
+              if (e.key === "Escape") setEditing(null);
+            }}
+            className="field-input w-full min-w-0 rounded border border-accent bg-surface-2 px-1 py-0.5 text-sm text-fg"
+            aria-label={t("scenarios.editDescriptionAria", {
+              name: descValue,
+            })}
+          />
+        ) : (
+          <span className="flex min-w-0 items-center gap-1.5">
+            {isAdded && (
+              <Plus
+                size={12}
+                className="shrink-0 text-positive"
+                aria-hidden
+                focusable={false}
+              />
+            )}
+            {editable && !excluded ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (swiped) {
+                    setSwiped(false);
+                    return;
+                  }
+                  beginEdit("description", descValue);
+                }}
+                aria-label={t("scenarios.editDescriptionAria", {
+                  name: descValue,
+                })}
+                className={`min-w-0 cursor-text truncate border-0 bg-transparent p-0 text-left text-sm ${
+                  override?.description !== undefined
+                    ? "text-accent"
+                    : "text-fg"
+                }`}
+              >
+                {descValue}
+              </button>
+            ) : (
+              <span
+                className={`min-w-0 truncate ${
+                  excluded ? "text-muted line-through" : "text-fg"
+                }`}
+              >
+                {descValue}
+              </span>
+            )}
+          </span>
+        )}
+      </td>
+      <td className="w-px px-2 py-1.5 text-right align-middle whitespace-nowrap">
+        {editing === "amount" ? (
+          <input
+            // Inline override editor opened by an explicit tap on the cell —
+            // focusing it IS the expected outcome (same pattern as the admin
+            // rename editors).
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitEdit();
+              if (e.key === "Escape") setEditing(null);
+            }}
+            className="field-input w-full min-w-0 rounded border border-accent bg-surface-2 px-1 py-0.5 text-right font-mono text-sm text-fg md:w-24"
+            aria-label={t("scenarios.editAmountAria", { name: descValue })}
+          />
+        ) : editable && !excluded ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (swiped) {
+                setSwiped(false);
+                return;
+              }
+              beginEdit(
+                "amount",
+                displayAmount === null ? "" : String(displayAmount),
+              );
+            }}
+            aria-label={t("scenarios.editAmountAria", { name: descValue })}
+            className={`cursor-text border-0 bg-transparent p-0 text-right font-mono text-sm tabular-nums ${
+              override?.amount !== undefined
+                ? "text-accent"
+                : displayAmount !== null && displayAmount < 0
+                  ? "text-negative"
+                  : "text-positive"
+            }`}
+          >
+            {displayAmount === null
+              ? ""
+              : formatNumber(displayAmount, settings)}
+          </button>
+        ) : (
+          <span
+            className={`font-mono tabular-nums ${
+              excluded
+                ? "text-muted line-through"
+                : displayAmount !== null && displayAmount < 0
+                  ? "text-negative"
+                  : "text-positive"
+            }`}
+          >
+            {displayAmount === null
+              ? ""
+              : formatNumber(displayAmount, settings)}
+          </span>
+        )}
+      </td>
+      <td className="w-px px-2 py-1.5 text-right align-middle whitespace-nowrap">
+        <span
+          className={`font-mono text-xs tabular-nums ${
+            balance !== undefined && balance < 0
+              ? "text-negative"
+              : "text-muted"
+          }`}
+        >
+          {balance !== undefined ? formatRunningBalance(balance, settings) : ""}
+        </span>
+      </td>
+      {!readOnly && (
+        <td
+          // `w-24` mirrors `--swipe-strip-width: 96px` — the width
+          // utility must match the strip width or it wins the cascade
+          // and shrinks the revealed overlay (same scheme as ItemRow's
+          // `w-32` against the default 128px).
+          className="swipe-action-cell w-24 p-0 align-middle whitespace-nowrap md:py-1.5 md:pr-2 md:pl-1"
+        >
+          <span className="flex h-full w-full items-stretch justify-end gap-0.5 md:items-center">
+            {isAdded
+              ? actionButton(
+                  t("scenarios.editAddedRow"),
+                  "action-btn-pen",
+                  "md:hover:text-accent",
+                  () => {
+                    const addedId = scenarioAddedIdFromRowId(row.id);
+                    if (addedId !== undefined) onEditAddedRow(addedId);
+                  },
+                  <Pencil size={14} aria-hidden focusable={false} />,
+                )
+              : editable && (
+                  <>
+                    {override !== undefined &&
+                      !excluded &&
+                      actionButton(
+                        t("scenarios.revertOverride", { name: descValue }),
+                        "action-btn-more",
+                        "md:hover:text-accent",
+                        () => onRevert(row.id),
+                        <RotateCcw size={14} aria-hidden focusable={false} />,
+                      )}
+                    {excluded
+                      ? actionButton(
+                          t("scenarios.includeRow", { name: descValue }),
+                          "action-btn-restore",
+                          "md:hover:text-positive",
+                          () => onToggleExcluded(row.id),
+                          <Undo2 size={14} aria-hidden focusable={false} />,
+                        )
+                      : actionButton(
+                          t("scenarios.excludeRow", { name: descValue }),
+                          "action-btn-delete",
+                          "md:hover:text-danger",
+                          () => onToggleExcluded(row.id),
+                          <CircleMinus
+                            size={14}
+                            aria-hidden
+                            focusable={false}
+                          />,
+                        )}
+                  </>
+                )}
+          </span>
+        </td>
+      )}
+    </tr>
+  );
+}
+
+// Memoised so a swipe / inline edit on one row doesn't re-render every
+// sibling — matches the other sheet rows.
+export const ScenarioRow = memo(ScenarioRowImpl);

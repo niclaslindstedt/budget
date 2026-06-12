@@ -53,7 +53,7 @@ type Result = {
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Cell commit — fires on blur / Enter. For series rows on
   // propagatable columns this stages a `PendingSeriesEdit` so the
-  // BudgetApplySeriesDialog can offer "apply to future entries".
+  // ApplySeriesDialog can offer "apply to future entries".
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Per-row fiscal-month shift. -1 / +1 pull / push the row into the
   // adjacent fiscal month; null clears the override.

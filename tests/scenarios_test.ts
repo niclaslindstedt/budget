@@ -287,6 +287,51 @@ describe("buildScenarioChartPoints", () => {
     expect(points.get("baseline")).toEqual([]);
   });
 
+  it("pins the axis to an explicit range, seeding from pre-range months", () => {
+    const byVariant = new Map<string, Map<string, number>>([
+      [
+        "baseline",
+        new Map([
+          ["2025-11", 700],
+          ["2026-01", 1500],
+        ]),
+      ],
+      ["scn-1", new Map<string, number>()],
+    ]);
+    const points = buildScenarioChartPoints(byVariant, 1000, {
+      from: "2026-01",
+      to: "2026-03",
+    });
+    const baseline = points.get("baseline")!;
+    expect(baseline.map((p) => epochMsToMonthKey(p.x))).toEqual([
+      "2026-01",
+      "2026-02",
+      "2026-03",
+    ]);
+    // Months past the last dated row carry the final balance forward.
+    expect(baseline.map((p) => p.y)).toEqual([1500, 1500, 1500]);
+    // A variant with no data flatlines at the opening balance across
+    // the pinned range instead of coming back empty.
+    expect(points.get("scn-1")!.map((p) => p.y)).toEqual([1000, 1000, 1000]);
+  });
+
+  it("seeds a range starting after the data with the latest prior balance", () => {
+    const byVariant = new Map<string, Map<string, number>>([
+      [
+        "baseline",
+        new Map([
+          ["2025-11", 700],
+          ["2026-01", 1500],
+        ]),
+      ],
+    ]);
+    const points = buildScenarioChartPoints(byVariant, 1000, {
+      from: "2026-02",
+      to: "2026-03",
+    });
+    expect(points.get("baseline")!.map((p) => p.y)).toEqual([1500, 1500]);
+  });
+
   it("round-trips month keys through epoch ms", () => {
     expect(epochMsToMonthKey(monthKeyToEpochMs("2026-12"))).toBe("2026-12");
     expect(epochMsToMonthKey(monthKeyToEpochMs("2027-01"))).toBe("2027-01");
@@ -339,5 +384,27 @@ describe("diffScenario", () => {
     expect(override.baseAmount).toBe(30000);
     expect(override.amount).toBe(0);
     expect(override.newDescription).toBe("No salary");
+  });
+
+  it("skips overrides and fields that re-state the base values", () => {
+    const item = baseItem([
+      row("r1", "2026-01-10", "Streaming", -200),
+      row("r2", "2026-01-25", "Salary", 30000),
+    ]);
+    const scn = scenario({
+      overrides: [
+        // A full no-op (both fields equal the base) emits nothing.
+        { rowId: "r1", amount: -200, description: "Streaming" },
+        // A mixed override only reports the field that actually differs.
+        { rowId: "r2", amount: 0, description: "Salary" },
+      ],
+    });
+    const diff = diffScenario(item, scn);
+    expect(diff).toHaveLength(1);
+    const override = diff[0];
+    if (override.kind !== "override") throw new Error("expected override");
+    expect(override.rowId).toBe("r2");
+    expect(override.amount).toBe(0);
+    expect(override.newDescription).toBeUndefined();
   });
 });

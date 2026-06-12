@@ -194,6 +194,153 @@ describe("scenarios reducer", () => {
     expect(viewOf(state).scenarios[0].addedRows).toEqual([]);
   });
 
+  describe("propagateScenarioOverrideToFuture", () => {
+    // A base budget whose first sheet carries a recurring series
+    // (`ser-1`, monthly at -100 except March's -49) plus one
+    // out-of-series row, with the scenarios sheet bound to it.
+    function seriesBlob(scenarios: Scenario[]): UserData {
+      const fresh = freshUserData();
+      const budget = fresh.sheets[0];
+      const item = budget.items.find((i) => i.type === "accountBudget");
+      if (!item) throw new Error("expected accountBudget");
+      const colId = (type: string) =>
+        item.columns.find((c) => c.type === type)?.id ?? "";
+      const mk = (id: string, date: string, amount: number, series = true) => ({
+        kind: "user" as const,
+        id,
+        cells: {
+          [colId("date")]: date,
+          [colId("description")]: "Spotify",
+          [colId("amount")]: amount,
+        },
+        ...(series ? { seriesId: "ser-1" } : {}),
+      });
+      const rows = [
+        mk("r1", "2026-01-05", -100),
+        mk("r2", "2026-02-05", -100),
+        mk("r3", "2026-03-05", -49),
+        mk("r4", "2026-04-05", -100),
+        mk("solo", "2026-02-10", -100, false),
+      ];
+      return {
+        ...fresh,
+        sheets: [
+          { ...budget, items: [{ ...item, rows }] },
+          scenariosSheet({ baseSheetId: budget.id, scenarios }),
+        ],
+      };
+    }
+
+    it("fans an amount override out to the anchor and future series rows", () => {
+      const state = reducer(seriesBlob([scenario()]), {
+        type: "propagateScenarioOverrideToFuture",
+        ...target,
+        scenarioId: "scn-1",
+        rowId: "r2",
+        field: "amount",
+        value: -49,
+        untilIso: null,
+      });
+      // r1 is earlier than the anchor and `solo` is not in the series;
+      // r3's base already IS -49 so no no-op override is stored for it.
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r2", amount: -49 },
+        { rowId: "r4", amount: -49 },
+      ]);
+    });
+
+    it("clamps the sweep to untilIso", () => {
+      const state = reducer(seriesBlob([scenario()]), {
+        type: "propagateScenarioOverrideToFuture",
+        ...target,
+        scenarioId: "scn-1",
+        rowId: "r1",
+        field: "amount",
+        value: -120,
+        untilIso: "2026-02-28",
+      });
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r1", amount: -120 },
+        { rowId: "r2", amount: -120 },
+      ]);
+    });
+
+    it("sweeping the base value back clears the existing overrides", () => {
+      const state = reducer(
+        seriesBlob([
+          scenario({
+            overrides: [
+              { rowId: "r2", amount: -49 },
+              { rowId: "r4", amount: -49 },
+            ],
+          }),
+        ]),
+        {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r2",
+          field: "amount",
+          value: -100,
+          untilIso: null,
+        },
+      );
+      // r2 / r4 swept back to their own base ⇒ entries removed; r3's
+      // base is -49, so -100 is a real change there.
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r3", amount: -100 },
+      ]);
+    });
+
+    it("propagates description overrides and keeps unrelated fields", () => {
+      const state = reducer(
+        seriesBlob([scenario({ overrides: [{ rowId: "r4", amount: -49 }] })]),
+        {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r2",
+          field: "description",
+          value: "Spotify Family",
+          untilIso: null,
+        },
+      );
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r4", amount: -49, description: "Spotify Family" },
+        { rowId: "r2", description: "Spotify Family" },
+        { rowId: "r3", description: "Spotify Family" },
+      ]);
+    });
+
+    it("degrades to the anchor for a non-series row; no-ops when unbound", () => {
+      const state = reducer(seriesBlob([scenario()]), {
+        type: "propagateScenarioOverrideToFuture",
+        ...target,
+        scenarioId: "scn-1",
+        rowId: "solo",
+        field: "amount",
+        value: -1,
+        untilIso: null,
+      });
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "solo", amount: -1 },
+      ]);
+
+      const unbound = blob({ scenarios: [scenario()] });
+      expect(
+        reducer(unbound, {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r1",
+          field: "amount",
+          value: -1,
+          untilIso: null,
+        }),
+      ).toBe(unbound);
+    });
+  });
+
   it("nulls baseSheetId on every scenarios sheet when the base sheet is deleted", () => {
     const fresh = freshUserData();
     const budgetSheetId = fresh.sheets[0].id;

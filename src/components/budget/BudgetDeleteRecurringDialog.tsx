@@ -23,7 +23,7 @@ type Props = {
 };
 
 // Scope picker for deleting a row that belongs to a recurring series.
-// Modelled on BudgetApplySeriesDialog — the user picks "just this", or
+// Modelled on ApplySeriesDialog — the user picks "just this", or
 // "this and all future", and can optionally clamp the future sweep to
 // an inclusive end date (useful for stopping a salary stream during
 // parental leave and resuming it later).

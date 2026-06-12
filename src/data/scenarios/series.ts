@@ -82,14 +82,21 @@ export function epochMsToMonthKey(x: number): string {
 }
 
 // Align every variant's monthly end balances onto one shared month
-// axis (the union range across all variants, stepped with
-// `nextMonthKey`) and fill the gaps: months before a variant's first
-// data point sit at the opening balance, later empty months carry the
-// previous month's end balance forward. Returns LineChart-ready points
-// keyed by the same variant keys passed in.
+// axis and fill the gaps: months before a variant's first data point
+// sit at the opening balance, later empty months carry the previous
+// month's end balance forward. Returns LineChart-ready points keyed by
+// the same variant keys passed in.
+//
+// The axis defaults to the union range across all variants. An explicit
+// `range` (inclusive `YYYY-MM` keys) pins it instead — the visualize
+// modal uses this for its forward-looking horizon, so the axis can
+// extend past the last dated row (the fill carries the final balance
+// forward) and months before `from` are folded into each variant's
+// starting value rather than drawn.
 export function buildScenarioChartPoints(
   byVariant: ReadonlyMap<string, Map<string, number>>,
   openingBalance: number,
+  range?: { from: string; to: string },
 ): Map<string, { x: number; y: number }[]> {
   let min: string | undefined;
   let max: string | undefined;
@@ -100,14 +107,29 @@ export function buildScenarioChartPoints(
     }
   }
   const out = new Map<string, { x: number; y: number }[]>();
-  if (min === undefined || max === undefined) {
+  if (range !== undefined) {
+    min = range.from;
+    max = range.to;
+  }
+  if (min === undefined || max === undefined || max < min) {
     for (const variant of byVariant.keys()) out.set(variant, []);
     return out;
   }
   const axis: string[] = [];
   for (let key = min; key <= max; key = nextMonthKey(key)) axis.push(key);
   for (const [variant, balances] of byVariant) {
+    // Seed the carry-forward with the latest end balance dated before
+    // the axis starts, so a pinned range doesn't reset pre-range
+    // history to the opening balance.
     let last = openingBalance;
+    let lastKey: string | undefined;
+    for (const [key, balance] of balances) {
+      if (key >= min) continue;
+      if (lastKey === undefined || key > lastKey) {
+        lastKey = key;
+        last = balance;
+      }
+    }
     out.set(
       variant,
       axis.map((key) => {

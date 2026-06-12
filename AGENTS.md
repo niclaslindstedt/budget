@@ -167,6 +167,8 @@ src/
 │   ├── SheetTitleMenu.tsx    # universal: the "…" menu next to a sheet title
 │   ├── BottomBar.tsx         # universal: the sheet tab strip
 │   ├── Modal.tsx             # compound shell for every modal dialog
+│   ├── ApplySeriesDialog.tsx # "apply edit to recurring series?" prompt
+│   │                         #   (budget cell commits + scenario overrides)
 │   ├── FloatingPanel.tsx     # portalled dropdown shell for pickers
 │   ├── ColorPalette.tsx      # circular color-swatch grid
 │   ├── GlyphGrid.tsx         # 8-column icon-button grid
@@ -189,7 +191,7 @@ src/
 │   │   │   BudgetPromoteHistoryForm.tsx, BudgetPromoteToSeriesForm.tsx,
 │   │   │   BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx,
 │   │   │   BudgetComplexEntryModal.tsx, BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx,
-│   │   │   BudgetApplySeriesDialog.tsx, BudgetMatchRuleModal.tsx,
+│   │   │   BudgetMatchRuleModal.tsx,
 │   │   │   BudgetRecurringCandidatesPanel.tsx, BudgetRecurrenceForm.tsx,
 │   │   │   TransactionSearchModal.tsx
 │   │   ├── BudgetFormulaHelpButton.tsx, BudgetFormulaInput.tsx, BudgetFormulaVariableHelper.tsx

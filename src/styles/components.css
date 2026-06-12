@@ -349,9 +349,20 @@
       background: var(--surface-2);
       color: var(--fg-bright);
     }
+    /* Restore-flavoured strip button (the scenario "include row again"
+       undo) — success green so it telegraphs the opposite of the
+       red exclude action it replaces. */
+    .swipe-table > tbody > tr > .swipe-action-cell .action-btn-restore {
+      background: var(--success);
+      color: white;
+    }
     /* Single-button transfer-log strip — half the default width. */
     .transfers-table {
       --swipe-strip-width: 64px;
+    }
+    /* Scenario rows reveal at most two buttons (revert + exclude). */
+    .scenario-table {
+      --swipe-strip-width: 96px;
     }
     /* Budget centres its strip content (the synthesized-row transfer
        button reads as one centred control) rather than stretching the
@@ -686,6 +697,39 @@
     }
     .transfers-table > tbody > tr.transfers-fullspan > td {
       display: block;
+      width: 100%;
+    }
+
+    /* Scenario month tables — the budget-like what-if ledger. Mirrors
+       the budget table's mobile conversion: block + per-row grid so the
+       description column truncates instead of forcing a horizontal
+       overflow, a narrow day-only date track, and amount / balance
+       tracks driven by the same --amount-col-ch / --balance-col-ch
+       vars (set per-sheet from the widest formatted value so every
+       month aligns on one width). The action cell sits outside the
+       grid as the absolute swipe strip, so it reserves no track. */
+    .scenario-table,
+    .scenario-table > tbody {
+      display: block;
+      width: 100%;
+    }
+    .scenario-table > tbody > tr {
+      display: grid;
+      grid-template-columns:
+        40px minmax(0, 1fr)
+        minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 1.5rem))
+        minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem));
+      position: relative;
+      overflow: hidden;
+    }
+    .scenario-table th,
+    .scenario-table td {
+      display: flex;
+      align-items: center;
+      max-width: none;
+    }
+    .scenario-table th > *,
+    .scenario-table td > * {
       width: 100%;
     }
 

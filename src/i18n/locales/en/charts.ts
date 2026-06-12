@@ -1,9 +1,14 @@
 import type { Widen } from "./_widen";
 
 const charts = {
-  // Trailing-window range row (ChartRangeRow) shared by chart surfaces:
-  // the loans visualizer and the Insights net-worth chart.
+  // Window-button rows shared by chart surfaces: the trailing
+  // ChartRangeRow (loans / Insights / investment history) and the
+  // forward ChartHorizonRow (scenarios projection). The month labels
+  // serve the horizon row; the year labels serve both.
   rangeAria: "Time range",
+  range1m: "1M",
+  range3m: "3M",
+  range6m: "6M",
   range1y: "1Y",
   range2y: "2Y",
   range3y: "3Y",

@@ -120,6 +120,8 @@ const actionHistory = {
     updateScenario: "Renamed scenario",
     deleteScenario: "Deleted scenario",
     setScenarioOverride: "Changed scenario row",
+    propagateScenarioOverrideToFuture:
+      "Applied scenario change to upcoming entries",
     addScenarioRow: "Added scenario row",
     updateScenarioRow: "Edited scenario row",
     deleteScenarioRow: "Deleted scenario row",

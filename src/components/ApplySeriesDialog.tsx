@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { Repeat } from "lucide-react";
 
-import { useT } from "../../i18n";
-import { Checkbox } from "../form";
-import { Modal } from "../Modal";
+import { useT } from "../i18n";
+import { Checkbox } from "./form";
+import { Modal } from "./Modal";
+
+// "Apply this edit to the rest of the recurring series?" prompt staged
+// after a description / amount commit on a series row. Universal — the
+// budget page sweeps the real rows (`propagateCellToFuture`) and the
+// scenarios page sweeps that scenario's overrides
+// (`propagateScenarioOverrideToFuture`); this dialog only collects the
+// decision and the optional "stop after" bound.
 
 type Props = {
   open: boolean;
@@ -25,7 +32,7 @@ type Props = {
   onApplyToFuture: (untilIso: string | null) => void;
 };
 
-export function BudgetApplySeriesDialog({
+export function ApplySeriesDialog({
   open,
   fieldLabel,
   anchorDate,
