@@ -11,7 +11,7 @@ export type ScopeKind = "just-this" | "future" | "all";
 
 // Whole BudgetEditEntryFullModal input state in one slice so the
 // reset-on-row-id transition is one dispatch instead of 14 sequential
-// setState calls. Same precedent as `budgetRecurrenceFormReducer` /
+// setState calls. Same precedent as `recurrenceFormReducer` /
 // `reconciliationReducer`: pure reducer, no side effects; the component
 // owns the row-save dispatch and the imperative
 // `onSetSeriesPrimaryIncome` notification.

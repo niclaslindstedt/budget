@@ -113,9 +113,9 @@ const actionHistory: ActionHistoryCatalog = {
     setScenarioOverride: "Ändrade scenariorad",
     propagateScenarioOverrideToFuture:
       "Tillämpade scenarioändring på kommande poster",
-    addScenarioRow: "La till scenariorad",
+    addScenarioRows: "La till scenariorader",
     updateScenarioRow: "Redigerade scenariorad",
-    deleteScenarioRow: "Raderade scenariorad",
+    deleteScenarioRows: "Raderade scenariorader",
     setScenariosMonitors: "Uppdaterade bevakningsdatum",
     addProperty: "Lade till fastighet",
     updateProperty: "Redigerade fastighet",

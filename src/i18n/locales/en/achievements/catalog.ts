@@ -121,6 +121,12 @@ const catalog = {
     learnMore:
       "A Scenarios sheet plays what-if futures against a budget you already track — lose a job, buy a car — without ever changing the real budget. Change values, drop expenses, or add rows in a scenario, watch every variant's monthly end balance on one chart, and add monitor dates to see how much money is left on a day that matters.",
   },
+  recurringDreams: {
+    name: "Recurring Dreams",
+    condition: "Add a recurring row to a scenario.",
+    learnMore:
+      "When you add a row to a scenario, the date field is a full recurrence picker — a gym membership every month, a benefit every 30 days, an annual fee. The whole series lands in the scenario at once, and deleting one occurrence offers to take the rest of the series with it.",
+  },
   payDay: {
     name: "Pay Day",
     condition: "Change Start of month from the default.",

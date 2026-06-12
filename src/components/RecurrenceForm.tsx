@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useReducer } from "react";
 import { Plus, X } from "lucide-react";
 
-import { unlock } from "../../data/achievements";
-import { DEFAULT_RECURRENCE_MONTHS } from "../../data/constants/defaults";
-import { useT } from "../../i18n";
+import { unlock } from "../data/achievements";
+import { DEFAULT_RECURRENCE_MONTHS } from "../data/constants/defaults";
+import { useT } from "../i18n";
 import {
   expandRecurrence,
   isIsoDate,
   type RecurrenceRule,
-} from "../../data/recurrence";
-import { addMonthsIso, todayIso } from "../../utils/date";
-import { ClearableInput } from "../form";
+} from "../data/recurrence";
+import { addMonthsIso, todayIso } from "../utils/date";
+import { ClearableInput } from "./form";
 import {
-  budgetRecurrenceFormReducer,
+  recurrenceFormReducer,
   initialRecurrenceFormState,
   type Mode,
-} from "./budget-recurrence-form-reducer";
+} from "./recurrence-form-reducer";
 
 // Whether a rule reaches past a plain monthly-on-a-day cadence — a
 // day-based interval, a non-monthly stride (quarterly / yearly /
@@ -67,7 +67,7 @@ function endOfMonth(yyyyMm: string): string {
   return `${yyyyMm}-${String(last).padStart(2, "0")}`;
 }
 
-export function BudgetRecurrenceForm({
+export function RecurrenceForm({
   seedDate: rawSeed,
   resetKey,
   includeOnce = true,
@@ -80,7 +80,7 @@ export function BudgetRecurrenceForm({
   const horizonEnd = addMonthsIso(seedDate, DEFAULT_RECURRENCE_MONTHS);
 
   const [state, dispatch] = useReducer(
-    budgetRecurrenceFormReducer,
+    recurrenceFormReducer,
     null,
     // Initialised lazily so we only call the factory on first render; the
     // reset effect below handles all subsequent `resetKey` changes via a

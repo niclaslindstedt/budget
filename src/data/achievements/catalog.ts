@@ -68,6 +68,7 @@ import {
   RefreshCw,
   ReceiptText,
   Repeat,
+  Repeat2,
   Ruler,
   Save,
   Scale,
@@ -182,6 +183,16 @@ const hasScenario = (s: UserData) =>
   s.sheets.some((sheet) =>
     sheet.items.some(
       (item) => item.type === "scenariosView" && item.scenarios.length > 0,
+    ),
+  );
+const hasRecurringScenarioRow = (s: UserData) =>
+  s.sheets.some((sheet) =>
+    sheet.items.some(
+      (item) =>
+        item.type === "scenariosView" &&
+        item.scenarios.some((scn) =>
+          scn.addedRows.some((r) => r.seriesId !== undefined),
+        ),
     ),
   );
 const hasAccount = (s: UserData) => s.accounts.length > 0;
@@ -588,6 +599,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasScenario(prev) && hasScenario(next),
+    },
+  },
+  {
+    // The user added a recurring row to a scenario — a what-if
+    // expense or income that repeats into the modeled future.
+    id: "recurringDreams",
+    tier: "intermediate",
+    glyph: Repeat2,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) =>
+        !hasRecurringScenarioRow(prev) && hasRecurringScenarioRow(next),
     },
   },
   {

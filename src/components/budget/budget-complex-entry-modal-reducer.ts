@@ -49,7 +49,7 @@ export type ComplexEntryState = {
   // fx mode swaps the numeric amount input for a formula textarea.
   formulaMode: boolean;
   formulaText: string;
-  // Bumped on every reset so BudgetRecurrenceForm re-seeds when the modal
+  // Bumped on every reset so RecurrenceForm re-seeds when the modal
   // re-opens; must stay monotonic across resets, so `reset` increments the
   // prior value rather than replacing it.
   resetKey: number;

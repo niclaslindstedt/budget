@@ -48,6 +48,11 @@ const scenarios: ScenariosCatalog = {
   addedRowBadge: "Tillagd i det här scenariot",
   editAddedRow: "Redigera tillagd rad",
 
+  excludeSeriesBody:
+    "Den här posten ({date}) uteslöts ur scenariot. Uteslut även alla följande poster i dess återkommande serie?",
+  includeSeriesBody:
+    "Den här posten ({date}) togs med igen. Ta även med alla följande poster i dess återkommande serie?",
+
   modulateRow: "Justera belopp för {name}",
   modulateTitle: "Justera belopp",
   modulateBody:
@@ -65,7 +70,16 @@ const scenarios: ScenariosCatalog = {
   rowDate: "Datum",
   rowDescription: "Beskrivning",
   rowAmount: "Belopp",
+  rowRecurrence: "Datum",
   rowDelete: "Radera rad",
+  addRowsOne: "Lägg till {n} rad",
+  addRowsOther: "Lägg till {n} rader",
+
+  deleteRecurringTitle: "Radera återkommande rad?",
+  deleteRecurringBody:
+    "Den här raden ingår i en återkommande serie som scenariot lagt till.",
+  deleteJustThis: "Bara den här raden",
+  deleteThisAndFuture: "Den här och alla framtida rader ({n})",
 
   diffAction: "Visa ändringar",
   diffTitle: "Ändringar i {name}",

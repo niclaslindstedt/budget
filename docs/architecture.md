@@ -33,6 +33,8 @@ src/
 │   ├── ConfirmDialog.tsx        # generic confirm prompt with scope options
 │   ├── ApplySeriesDialog.tsx    # "apply edit to recurring series?" prompt
 │   │                            #   (budget cell commits + scenario overrides)
+│   ├── RecurrenceForm.tsx       # recurrence rule picker + preview (budget
+│   │                            #   entry modals + scenario added rows)
 │   ├── DatePickerModal.tsx      # modal calendar (mobile-friendly)
 │   ├── ColorPalette.tsx         # circular color-swatch grid
 │   ├── GlyphGrid.tsx            # 8-column icon-button grid
@@ -88,7 +90,7 @@ src/
 │   │   ├── BudgetEntryActionsMenu.tsx, BudgetEditEntryModal.tsx,
 │   │   │   BudgetEditEntryFullModal.tsx, BudgetEditSeriesForm.tsx,
 │   │   │   BudgetPromoteHistoryForm.tsx, BudgetPromoteToSeriesForm.tsx,
-│   │   │   BudgetComplexEntryModal.tsx, BudgetRecurrenceForm.tsx,
+│   │   │   BudgetComplexEntryModal.tsx,
 │   │   │   BudgetDeleteRecurringDialog.tsx, BudgetSplitEntryModal.tsx,
 │   │   │   BudgetBulkEditModal.tsx,
 │   │   │   BudgetMoveCopyModal.tsx, BudgetMetadataModal.tsx,
@@ -1091,7 +1093,7 @@ Each row has two actions, revealed by swiping the row left on mobile
 (or via the action icons at the right edge on desktop):
 
 - **Repeat icon** opens `BudgetEditEntryModal`. On a non-series row it
-  is a "promote to recurring" form (reuses `BudgetRecurrenceForm`,
+  is a "promote to recurring" form (reuses `RecurrenceForm`,
   dispatches `convertToRecurring`). On a series row it adds a **scope
   chooser** — "Only this entry" or "This entry and all future" with an
   optional "until …" date — dispatched as `editSeries`.

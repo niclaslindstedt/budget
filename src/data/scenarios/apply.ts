@@ -151,6 +151,9 @@ export function applyScenario(
   const added: Row[] = scenario.addedRows.map((r) => ({
     kind: "user",
     id: scenarioAddedRowId(r.id),
+    // Carried onto the clone so recurring added rows render with the
+    // budget table's Repeat glyph.
+    ...(r.seriesId !== undefined ? { seriesId: r.seriesId } : {}),
     cells: {
       [dateCol.id]: r.date,
       [descCol.id]: r.description,

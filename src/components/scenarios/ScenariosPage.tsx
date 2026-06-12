@@ -87,18 +87,30 @@ type RowModalState =
   | { kind: "edit"; row: ScenarioAddedRow };
 
 // "Apply this edit to the rest of the recurring series?" staging slot —
-// set when an amount commit or a live adjustment lands on a base row
-// with a `seriesId` that continues past the anchor date. The
-// ApplySeriesDialog consumes it; confirming dispatches the override
-// sweep.
+// set when an amount commit, a live adjustment, or an exclude /
+// include toggle lands on a base row with a `seriesId` that continues
+// past the anchor date. The ApplySeriesDialog consumes it; confirming
+// dispatches the override sweep.
 type PendingSeriesApply = {
   rowId: string;
   change:
     | { kind: "amount"; amount: number }
-    | { kind: "modulation"; modulation: ScenarioAmountModulation };
+    | { kind: "modulation"; modulation: ScenarioAmountModulation }
+    | { kind: "excluded"; excluded: boolean };
   fieldLabel: string;
+  // Pre-translated dialog body for the exclude / include toggles,
+  // where the default "{field} updated…" copy doesn't fit.
+  promptBody?: string;
   anchorDate: string;
   lastSeriesDate: string | null;
+};
+
+// Delete-scope staging for a recurring scenario-added row: the anchor
+// plus every later occurrence of its series, so the confirm can offer
+// "just this" vs "this and all future".
+type PendingRowDelete = {
+  rowId: string;
+  seriesRowIds: string[];
 };
 
 export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
@@ -127,6 +139,8 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   const [chartOpen, setChartOpen] = useState(false);
   const [pendingSeriesApply, setPendingSeriesApply] =
     useState<PendingSeriesApply | null>(null);
+  const [pendingRowDelete, setPendingRowDelete] =
+    useState<PendingRowDelete | null>(null);
   const [pendingBaseSheetId, setPendingBaseSheetId] = useState<string | null>(
     null,
   );
@@ -392,6 +406,15 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       rowId,
       change,
       fieldLabel: amountCol.label,
+      promptBody:
+        change.kind === "excluded"
+          ? t(
+              change.excluded
+                ? "scenarios.excludeSeriesBody"
+                : "scenarios.includeSeriesBody",
+              { date: anchorDate },
+            )
+          : undefined,
       anchorDate,
       lastSeriesDate,
     });
@@ -437,6 +460,39 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       return;
     patchOverride(rowId, { modulation, amount: undefined });
     maybeStageSeriesApply(rowId, { kind: "modulation", modulation });
+  }
+  // Excluding (or re-including) a recurring row offers the same
+  // apply-to-upcoming sweep as an amount change, so dropping a
+  // recurring expense in one gesture doesn't leave its future
+  // occurrences behind.
+  function handleToggleExcluded(rowId: string) {
+    const excluded = activeOverrides.get(rowId)?.excluded !== true;
+    patchOverride(rowId, { excluded: excluded ? true : undefined });
+    maybeStageSeriesApply(rowId, { kind: "excluded", excluded });
+  }
+  // Deleting a recurring scenario-added row stages a scope confirm
+  // ("just this" / "this and all future"); one-off rows delete
+  // directly.
+  function handleDeleteAddedRow(rowId: string) {
+    if (!view || !activeScenario) return;
+    const anchor = activeScenario.addedRows.find((r) => r.id === rowId);
+    if (anchor?.seriesId !== undefined) {
+      const seriesRowIds = activeScenario.addedRows
+        .filter((r) => r.seriesId === anchor.seriesId && r.date >= anchor.date)
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+        .map((r) => r.id);
+      if (seriesRowIds.length > 1) {
+        setPendingRowDelete({ rowId, seriesRowIds });
+        return;
+      }
+    }
+    dispatch({
+      type: "deleteScenarioRows",
+      sheetId: sheet.id,
+      itemId: view.id,
+      scenarioId: activeScenario.id,
+      rowIds: [rowId],
+    });
   }
 
   const chartVariants: ScenarioChartVariant[] = [
@@ -648,13 +704,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                     settings={settings}
                     onCommitAmount={handleCommitAmount}
                     onModulate={setModulateRowId}
-                    onToggleExcluded={(rowId) =>
-                      patchOverride(rowId, {
-                        excluded: activeOverrides.get(rowId)?.excluded
-                          ? undefined
-                          : true,
-                      })
-                    }
+                    onToggleExcluded={handleToggleExcluded}
                     onRevert={(rowId) => {
                       if (!view || !activeScenario) return;
                       dispatch({
@@ -727,9 +777,11 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         seedDate={rowModal?.kind === "add" ? rowModal.seedDate : ""}
         settings={settings}
         onClose={() => setRowModal(null)}
-        onSave={(row) => {
+        onSave={(rows) => {
           if (!view || !activeScenario) return;
           if (rowModal?.kind === "edit") {
+            const row = rows[0];
+            if (!row) return;
             dispatch({
               type: "updateScenarioRow",
               sheetId: sheet.id,
@@ -744,24 +796,15 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             });
           } else {
             dispatch({
-              type: "addScenarioRow",
+              type: "addScenarioRows",
               sheetId: sheet.id,
               itemId: view.id,
               scenarioId: activeScenario.id,
-              row,
+              rows,
             });
           }
         }}
-        onDelete={(rowId) => {
-          if (!view || !activeScenario) return;
-          dispatch({
-            type: "deleteScenarioRow",
-            sheetId: sheet.id,
-            itemId: view.id,
-            scenarioId: activeScenario.id,
-            rowId,
-          });
-        }}
+        onDelete={handleDeleteAddedRow}
       />
 
       <ScenarioModulateModal
@@ -829,6 +872,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       <ApplySeriesDialog
         open={pendingSeriesApply !== null}
         fieldLabel={pendingSeriesApply?.fieldLabel ?? ""}
+        promptBody={pendingSeriesApply?.promptBody}
         anchorDate={pendingSeriesApply?.anchorDate ?? ""}
         lastSeriesDate={pendingSeriesApply?.lastSeriesDate ?? null}
         onCancel={() => setPendingSeriesApply(null)}
@@ -874,6 +918,47 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
           },
         ]}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingRowDelete !== null}
+        title={t("scenarios.deleteRecurringTitle")}
+        description={t("scenarios.deleteRecurringBody")}
+        actions={[
+          {
+            label: t("scenarios.deleteJustThis"),
+            tone: "danger",
+            onSelect: () => {
+              if (!view || !activeScenario || !pendingRowDelete) return;
+              dispatch({
+                type: "deleteScenarioRows",
+                sheetId: sheet.id,
+                itemId: view.id,
+                scenarioId: activeScenario.id,
+                rowIds: [pendingRowDelete.rowId],
+              });
+              setPendingRowDelete(null);
+            },
+          },
+          {
+            label: t("scenarios.deleteThisAndFuture", {
+              n: pendingRowDelete?.seriesRowIds.length ?? 0,
+            }),
+            tone: "danger",
+            onSelect: () => {
+              if (!view || !activeScenario || !pendingRowDelete) return;
+              dispatch({
+                type: "deleteScenarioRows",
+                sheetId: sheet.id,
+                itemId: view.id,
+                scenarioId: activeScenario.id,
+                rowIds: pendingRowDelete.seriesRowIds,
+              });
+              setPendingRowDelete(null);
+            },
+          },
+        ]}
+        onCancel={() => setPendingRowDelete(null)}
       />
 
       <ConfirmDialog

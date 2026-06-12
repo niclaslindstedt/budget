@@ -19,7 +19,7 @@ export type BulkEditState = {
   transferValue: boolean;
   recurringEnabled: boolean;
   recurringDates: string[];
-  // Bumped on every reset so BudgetRecurrenceForm re-seeds when the modal
+  // Bumped on every reset so RecurrenceForm re-seeds when the modal
   // re-opens; must stay monotonic across resets, so `reset` increments the
   // prior value rather than replacing it.
   recurrenceResetKey: number;

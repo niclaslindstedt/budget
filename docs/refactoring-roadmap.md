@@ -384,7 +384,7 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 - **`useReducer` in remaining modal state machines (opportunistic)** —
   `useReducer` now has **seven** landed hits
-  (`AccountReconciliationModal`, `BudgetRecurrenceForm`,
+  (`AccountReconciliationModal`, `RecurrenceForm`,
   `BudgetEditEntryFullModal`, `AccountTransferModal`,
   `BudgetBulkEditModal`, `BudgetMetadataModal`, `BudgetMatchRuleModal`).
   Re-verified 2026-05: the other named sites have decayed and are

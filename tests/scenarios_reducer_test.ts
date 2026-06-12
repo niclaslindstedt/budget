@@ -167,15 +167,17 @@ describe("scenarios reducer", () => {
   it("adds, edits, and deletes scenario-only rows", () => {
     let state = blob({ scenarios: [scenario()] });
     state = reducer(state, {
-      type: "addScenarioRow",
+      type: "addScenarioRows",
       ...target,
       scenarioId: "scn-1",
-      row: {
-        id: "a1",
-        date: "2026-02-25",
-        description: "A-kassa",
-        amount: 14000,
-      },
+      rows: [
+        {
+          id: "a1",
+          date: "2026-02-25",
+          description: "A-kassa",
+          amount: 14000,
+        },
+      ],
     });
     expect(viewOf(state).scenarios[0].addedRows).toHaveLength(1);
 
@@ -189,12 +191,55 @@ describe("scenarios reducer", () => {
     expect(viewOf(state).scenarios[0].addedRows[0].amount).toBe(15000);
 
     state = reducer(state, {
-      type: "deleteScenarioRow",
+      type: "deleteScenarioRows",
       ...target,
       scenarioId: "scn-1",
-      rowId: "a1",
+      rowIds: ["a1"],
     });
     expect(viewOf(state).scenarios[0].addedRows).toHaveLength(0);
+  });
+
+  it("adds a recurring series of rows in one step and deletes by scope", () => {
+    let state = blob({ scenarios: [scenario()] });
+    const series = (id: string, date: string) => ({
+      id,
+      date,
+      description: "Gym",
+      amount: -400,
+      seriesId: "ser-1",
+    });
+    state = reducer(state, {
+      type: "addScenarioRows",
+      ...target,
+      scenarioId: "scn-1",
+      rows: [
+        series("a1", "2026-03-01"),
+        series("a2", "2026-04-01"),
+        series("a3", "2026-05-01"),
+      ],
+    });
+    expect(viewOf(state).scenarios[0].addedRows).toHaveLength(3);
+    expect(viewOf(state).scenarios[0].addedRows[0].seriesId).toBe("ser-1");
+
+    // Re-dispatching the same ids is a no-op (same reference).
+    const redundant = reducer(state, {
+      type: "addScenarioRows",
+      ...target,
+      scenarioId: "scn-1",
+      rows: [series("a1", "2026-03-01")],
+    });
+    expect(redundant).toBe(state);
+
+    // "This and all future" deletes the anchor plus later occurrences.
+    state = reducer(state, {
+      type: "deleteScenarioRows",
+      ...target,
+      scenarioId: "scn-1",
+      rowIds: ["a2", "a3"],
+    });
+    expect(viewOf(state).scenarios[0].addedRows.map((r) => r.id)).toEqual([
+      "a1",
+    ]);
   });
 
   it("sorts and dedups monitors on set", () => {
@@ -370,6 +415,53 @@ describe("scenarios reducer", () => {
         { rowId: "r2", amount: -77 },
         { rowId: "r3", amount: -77 },
         { rowId: "r4", amount: -77 },
+      ]);
+    });
+
+    it("fans an exclusion out and keeps amount overrides underneath it", () => {
+      const state = reducer(
+        seriesBlob([scenario({ overrides: [{ rowId: "r4", amount: -49 }] })]),
+        {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r2",
+          change: { kind: "excluded", excluded: true },
+          untilIso: null,
+        },
+      );
+      // Every series row from the anchor on is excluded; r4's fixed
+      // amount survives underneath the flag for re-include.
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r4", amount: -49, excluded: true },
+        { rowId: "r2", excluded: true },
+        { rowId: "r3", excluded: true },
+      ]);
+    });
+
+    it("sweeping a re-include clears bare exclusions", () => {
+      const state = reducer(
+        seriesBlob([
+          scenario({
+            overrides: [
+              { rowId: "r2", excluded: true },
+              { rowId: "r3", excluded: true },
+              { rowId: "r4", amount: -49, excluded: true },
+            ],
+          }),
+        ]),
+        {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r2",
+          change: { kind: "excluded", excluded: false },
+          untilIso: null,
+        },
+      );
+      // Bare exclusions collapse away entirely; r4 keeps its amount.
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r4", amount: -49 },
       ]);
     });
 

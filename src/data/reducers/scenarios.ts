@@ -21,9 +21,9 @@ export const SCENARIOS_ITEM_ACTION_TYPES = [
   "deleteScenario",
   "setScenarioOverride",
   "propagateScenarioOverrideToFuture",
-  "addScenarioRow",
+  "addScenarioRows",
   "updateScenarioRow",
-  "deleteScenarioRow",
+  "deleteScenarioRows",
   "setScenariosMonitors",
 ] as const;
 
@@ -199,25 +199,33 @@ export function reduceScenariosItem(
         )) {
           if (target.kind !== "user") continue;
           const existing = next.overrides.find((o) => o.rowId === target.id);
-          // The two amount flavours are mutually exclusive, so the sweep
-          // always drops the one it isn't setting.
           const override: ScenarioRowOverride = {
             ...existing,
             rowId: target.id,
           };
-          delete override.amount;
-          delete override.modulation;
-          if (action.change.kind === "amount") {
-            // A swept value identical to the target's own base cell is
-            // a revert for that row — leave the field off so no no-op
-            // override lingers (and the entry itself collapses when
-            // nothing else remains).
-            if (action.change.amount !== target.cells[amountCol.id])
-              override.amount = action.change.amount;
+          if (action.change.kind === "excluded") {
+            // Exclusion is orthogonal to the amount flavours — any
+            // amount override on the target survives underneath it and
+            // resurfaces on re-include.
+            if (action.change.excluded) override.excluded = true;
+            else delete override.excluded;
           } else {
-            // No-op modulations are dropped by the shared normalizer
-            // inside `upsertOverride`.
-            override.modulation = action.change.modulation;
+            // The two amount flavours are mutually exclusive, so the
+            // sweep always drops the one it isn't setting.
+            delete override.amount;
+            delete override.modulation;
+            if (action.change.kind === "amount") {
+              // A swept value identical to the target's own base cell
+              // is a revert for that row — leave the field off so no
+              // no-op override lingers (and the entry itself collapses
+              // when nothing else remains).
+              if (action.change.amount !== target.cells[amountCol.id])
+                override.amount = action.change.amount;
+            } else {
+              // No-op modulations are dropped by the shared normalizer
+              // inside `upsertOverride`.
+              override.modulation = action.change.modulation;
+            }
           }
           next = upsertOverride(next, override);
         }
@@ -225,13 +233,15 @@ export function reduceScenariosItem(
       }),
     );
   }
-  if (action.type === "addScenarioRow") {
+  if (action.type === "addScenarioRows") {
     return updateScenariosView(state, action.sheetId, action.itemId, (view) =>
-      updateScenarioById(view, action.scenarioId, (s) =>
-        s.addedRows.some((r) => r.id === action.row.id)
+      updateScenarioById(view, action.scenarioId, (s) => {
+        const existingIds = new Set(s.addedRows.map((r) => r.id));
+        const fresh = action.rows.filter((r) => !existingIds.has(r.id));
+        return fresh.length === 0
           ? s
-          : { ...s, addedRows: [...s.addedRows, action.row] },
-      ),
+          : { ...s, addedRows: [...s.addedRows, ...fresh] };
+      }),
     );
   }
   if (action.type === "updateScenarioRow") {
@@ -254,10 +264,11 @@ export function reduceScenariosItem(
       }),
     );
   }
-  if (action.type === "deleteScenarioRow") {
+  if (action.type === "deleteScenarioRows") {
     return updateScenariosView(state, action.sheetId, action.itemId, (view) =>
       updateScenarioById(view, action.scenarioId, (s) => {
-        const addedRows = s.addedRows.filter((r) => r.id !== action.rowId);
+        const drop = new Set(action.rowIds);
+        const addedRows = s.addedRows.filter((r) => !drop.has(r.id));
         if (addedRows.length === s.addedRows.length) return s;
         return { ...s, addedRows };
       }),

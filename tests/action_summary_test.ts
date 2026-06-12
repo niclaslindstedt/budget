@@ -179,10 +179,21 @@ describe("describeActionSubject", () => {
     expect(
       describe2(
         {
-          type: "addScenarioRow",
+          type: "addScenarioRows",
           ...target,
           scenarioId: "scn-1",
-          row: { id: "a1", date: "2026-01-01", description: "X", amount: 1 },
+          rows: [{ id: "a1", date: "2026-01-01", description: "X", amount: 1 }],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Lose my job" });
+    expect(
+      describe2(
+        {
+          type: "deleteScenarioRows",
+          ...target,
+          scenarioId: "scn-1",
+          rowIds: ["a1"],
         },
         prev,
       ),
