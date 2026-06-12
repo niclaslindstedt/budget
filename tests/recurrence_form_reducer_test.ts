@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  budgetRecurrenceFormReducer,
+  recurrenceFormReducer,
   initialRecurrenceFormState,
   type RecurrenceFormState,
-} from "../src/components/budget/budget-recurrence-form-reducer";
+} from "../src/components/recurrence-form-reducer";
 
 const SEED = "2026-03-15";
 const HORIZON = "2026-09-15";
@@ -114,7 +114,7 @@ describe("initialRecurrenceFormState", () => {
   });
 });
 
-describe("budgetRecurrenceFormReducer", () => {
+describe("recurrenceFormReducer", () => {
   it("replaces the whole slice atomically on `reset`", () => {
     const init = makeInitial();
     const next: RecurrenceFormState = {
@@ -123,7 +123,7 @@ describe("budgetRecurrenceFormReducer", () => {
       monthlyStride: "3",
       everyNDays: "30",
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "reset",
       state: next,
     });
@@ -132,7 +132,7 @@ describe("budgetRecurrenceFormReducer", () => {
 
   it("changes the mode without disturbing other fields", () => {
     const init = makeInitial();
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "setMode",
       mode: "monthly",
     });
@@ -146,7 +146,7 @@ describe("budgetRecurrenceFormReducer", () => {
       ...makeInitial(),
       datesList: ["2026-03-01", "2026-03-15", "2026-03-31"],
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "setDateAt",
       index: 1,
       value: "2026-04-10",
@@ -156,7 +156,7 @@ describe("budgetRecurrenceFormReducer", () => {
 
   it("ignores `setDateAt` for an out-of-range index", () => {
     const init = makeInitial();
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "setDateAt",
       index: 99,
       value: "2026-04-10",
@@ -169,7 +169,7 @@ describe("budgetRecurrenceFormReducer", () => {
       ...makeInitial(),
       datesList: ["2026-03-15"],
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "addDate",
       fallback: SEED,
     });
@@ -178,7 +178,7 @@ describe("budgetRecurrenceFormReducer", () => {
 
   it("falls back to `fallback` on `addDate` when the list is somehow empty", () => {
     const init: RecurrenceFormState = { ...makeInitial(), datesList: [] };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "addDate",
       fallback: "2026-05-01",
     });
@@ -190,7 +190,7 @@ describe("budgetRecurrenceFormReducer", () => {
       ...makeInitial(),
       datesList: ["a", "b", "c"],
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "removeDateAt",
       index: 1,
     });
@@ -202,7 +202,7 @@ describe("budgetRecurrenceFormReducer", () => {
       ...makeInitial(),
       datesList: ["a"],
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "removeDateAt",
       index: 0,
     });
@@ -214,7 +214,7 @@ describe("budgetRecurrenceFormReducer", () => {
       ...makeInitial(),
       datesList: ["a", "b"],
     };
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "removeDateAt",
       index: 5,
     });
@@ -223,7 +223,7 @@ describe("budgetRecurrenceFormReducer", () => {
 
   it("updates the simple string fields one at a time", () => {
     const init = makeInitial();
-    const after = budgetRecurrenceFormReducer(init, {
+    const after = recurrenceFormReducer(init, {
       kind: "setEveryNDays",
       value: "30",
     });
@@ -233,35 +233,35 @@ describe("budgetRecurrenceFormReducer", () => {
 
   it("threads all the simple setter arms", () => {
     let state = makeInitial();
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setOnceDate",
       value: "2026-06-01",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setEveryNStart",
       value: "2026-06-02",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setEveryNEnd",
       value: "2026-12-31",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setMonthlyStride",
       value: "12",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setMonthlyDay",
       value: "27",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setMonthlyOffset",
       value: "-1",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setMonthlyStartMonth",
       value: "2026-07",
     });
-    state = budgetRecurrenceFormReducer(state, {
+    state = recurrenceFormReducer(state, {
       kind: "setMonthlyEndMonth",
       value: "2027-01",
     });

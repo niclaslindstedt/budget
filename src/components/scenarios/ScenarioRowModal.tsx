@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import type { ScenarioAddedRow, Settings } from "../../data/types";
@@ -14,6 +14,7 @@ import {
   SignedAmountInput,
 } from "../form";
 import { Modal } from "../Modal";
+import { RecurrenceForm } from "../RecurrenceForm";
 
 type Props = {
   open: boolean;
@@ -22,12 +23,19 @@ type Props = {
   seedDate: string;
   settings: Settings;
   onClose: () => void;
-  onSave: (row: ScenarioAddedRow) => void;
+  // Add mode delivers one row per recurrence date (sharing a fresh
+  // `seriesId` when there is more than one); edit mode delivers the
+  // single edited row.
+  onSave: (rows: ScenarioAddedRow[]) => void;
   onDelete?: (rowId: string) => void;
 };
 
-// Add / edit one scenario-only row (date, description, amount). Not
-// `centered`: the description and amount fields open the soft keyboard.
+// Add / edit a scenario-only row (date, description, amount). Add mode
+// swaps the single date field for the recurrence form, so a what-if
+// expense or income can land on one date or fan out as a recurring
+// series. Edit mode edits one occurrence and keeps the plain date
+// field — series membership is fixed at add time. Not `centered`: the
+// description and amount fields open the soft keyboard.
 export function ScenarioRowModal({
   open,
   row,
@@ -43,6 +51,10 @@ export function ScenarioRowModal({
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
   const [negative, setNegative] = useState(true);
+  const [recurrenceDates, setRecurrenceDates] = useState<string[]>([]);
+  // Bumped on every open so the recurrence form re-seeds from the
+  // month the "+" was pressed in instead of keeping stale state.
+  const [resetKey, setResetKey] = useState(0);
 
   const descriptionRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(descriptionRef, open);
@@ -54,22 +66,43 @@ export function ScenarioRowModal({
     // New rows default to an expense — the most common what-if addition
     // after the income replacement.
     setNegative(row === null ? true : row.amount < 0);
+    setRecurrenceDates([]);
+    setResetKey((k) => k + 1);
   });
+
+  const handleRecurrenceChange = useCallback(
+    (_rule: unknown, dates: string[]) => {
+      setRecurrenceDates(dates);
+    },
+    [],
+  );
 
   const parsedAmount = parseAmount(amountText);
   const canSave =
-    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    (isEdit ? /^\d{4}-\d{2}-\d{2}$/.test(date) : recurrenceDates.length > 0) &&
     description.trim() !== "" &&
     parsedAmount !== null;
 
   function handleSave() {
     if (!canSave || parsedAmount === null) return;
-    onSave({
-      id: row?.id ?? newId(),
-      date,
-      description: description.trim(),
-      amount: negative ? -Math.abs(parsedAmount) : Math.abs(parsedAmount),
-    });
+    const amount = negative ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
+    if (isEdit) {
+      onSave([{ ...row, date, description: description.trim(), amount }]);
+    } else {
+      // Every row minted from one recurring add shares a seriesId so
+      // the tables show the Repeat glyph and the delete flow can offer
+      // a this-and-future sweep. One-off rows stay series-less.
+      const seriesId = recurrenceDates.length > 1 ? newId() : undefined;
+      onSave(
+        recurrenceDates.map((d) => ({
+          id: newId(),
+          date: d,
+          description: description.trim(),
+          amount,
+          ...(seriesId !== undefined ? { seriesId } : {}),
+        })),
+      );
+    }
     onClose();
   }
 
@@ -86,14 +119,16 @@ export function ScenarioRowModal({
       />
       <Modal.Body>
         <div className="flex flex-col gap-4">
-          <FormSection as="label" label={t("scenarios.rowDate")}>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
-          </FormSection>
+          {isEdit && (
+            <FormSection as="label" label={t("scenarios.rowDate")}>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={DATE_INPUT_CLASS}
+              />
+            </FormSection>
+          )}
 
           <FormSection as="label" label={t("scenarios.rowDescription")}>
             <ClearableInput
@@ -121,6 +156,16 @@ export function ScenarioRowModal({
               ariaLabel={t("scenarios.rowAmount")}
             />
           </FormSection>
+
+          {!isEdit && (
+            <FormSection label={t("scenarios.rowRecurrence")}>
+              <RecurrenceForm
+                seedDate={seedDate}
+                resetKey={resetKey}
+                onChange={handleRecurrenceChange}
+              />
+            </FormSection>
+          )}
         </div>
       </Modal.Body>
       <Modal.Footer className="justify-between">
@@ -144,7 +189,13 @@ export function ScenarioRowModal({
             {t("common.cancel")}
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={!canSave}>
-            {isEdit ? t("common.save") : t("scenarios.addRow")}
+            {isEdit
+              ? t("common.save")
+              : recurrenceDates.length === 1
+                ? t("scenarios.addRowsOne", { n: 1 })
+                : recurrenceDates.length > 1
+                  ? t("scenarios.addRowsOther", { n: recurrenceDates.length })
+                  : t("scenarios.addRow")}
           </Button>
         </div>
       </Modal.Footer>

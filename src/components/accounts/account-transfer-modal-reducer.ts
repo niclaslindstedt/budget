@@ -5,7 +5,7 @@ import { formatAmountForInput } from "../../utils/format";
 // open/request transition is one dispatch instead of 9 sequential
 // setState calls, and the pick-account-and-close-panel pair becomes
 // one atomic transition. Same precedent as
-// `budgetEditEntryFullModalReducer` / `budgetRecurrenceFormReducer` /
+// `budgetEditEntryFullModalReducer` / `recurrenceFormReducer` /
 // `reconciliationReducer`: pure reducer, no side effects; the
 // component owns the create/edit dispatch and the imperative
 // `onClose` notification.

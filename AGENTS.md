@@ -169,6 +169,8 @@ src/
 │   ├── Modal.tsx             # compound shell for every modal dialog
 │   ├── ApplySeriesDialog.tsx # "apply edit to recurring series?" prompt
 │   │                         #   (budget cell commits + scenario overrides)
+│   ├── RecurrenceForm.tsx    # recurrence rule picker + preview (budget
+│   │                         #   entry modals + scenario added rows)
 │   ├── FloatingPanel.tsx     # portalled dropdown shell for pickers
 │   ├── ColorPalette.tsx      # circular color-swatch grid
 │   ├── GlyphGrid.tsx         # 8-column icon-button grid
@@ -192,7 +194,7 @@ src/
 │   │   │   BudgetEditEntryFullModal.tsx, BudgetSplitEntryModal.tsx,
 │   │   │   BudgetComplexEntryModal.tsx, BudgetBulkEditModal.tsx, BudgetMoveCopyModal.tsx,
 │   │   │   BudgetMatchRuleModal.tsx,
-│   │   │   BudgetRecurringCandidatesPanel.tsx, BudgetRecurrenceForm.tsx,
+│   │   │   BudgetRecurringCandidatesPanel.tsx,
 │   │   │   TransactionSearchModal.tsx
 │   │   ├── BudgetFormulaHelpButton.tsx, BudgetFormulaInput.tsx, BudgetFormulaVariableHelper.tsx
 │   │   └── cells/               # readonly cell variants for the budget table

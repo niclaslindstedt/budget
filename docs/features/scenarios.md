@@ -35,9 +35,16 @@ of that reality:
   as a typed value.
 - **Drop a row** — exclude an expense you wouldn't keep ("if I lose my
   job, the gym goes"). Excluded rows stay visible, struck through, and
-  contribute nothing to the balances.
+  contribute nothing to the balances. Excluding a recurring entry asks
+  whether the upcoming entries in the same series should go too — and
+  bringing one back offers to restore the rest the same way.
 - **Add a row** — bring in money or costs that don't exist in the real
-  budget, like an unemployment benefit or a new car payment.
+  budget, like an unemployment benefit or a new car payment. The date
+  field is a full recurrence picker, so the addition can be one-off or
+  recurring — a single date, a hand-picked list, every N days, or a
+  monthly / quarterly / yearly cadence — and the whole series lands in
+  the scenario at once. Deleting one occurrence of a recurring
+  addition offers to take the rest of the series with it.
 
 The month tables work like the budget sheet — date, description,
 type, amount, running balance, grouped by fiscal month, with the same

@@ -14,7 +14,7 @@ import { useT } from "../../i18n";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { Button } from "../form";
-import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { RecurrenceForm } from "../RecurrenceForm";
 import { TypePicker } from "../TypePicker";
 import type { HistoryMatchPreview } from "./BudgetPromoteHistoryForm";
 
@@ -139,7 +139,7 @@ export function BudgetPromoteToSeriesForm({
             }
           />
         </div>
-        <BudgetRecurrenceForm
+        <RecurrenceForm
           seedDate={initialDate}
           resetKey={row.id}
           includeOnce={false}

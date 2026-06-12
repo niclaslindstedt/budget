@@ -206,6 +206,27 @@ describe("applyScenario", () => {
     expect(again.rows[1].id).toBe(added.id);
   });
 
+  it("carries a recurring added row's seriesId onto the clone", () => {
+    const item = baseItem([row("r1", "2026-01-25", "Salary", 30000)]);
+    const applied = applyScenario(
+      item,
+      scenario({
+        addedRows: [
+          {
+            id: "a1",
+            date: "2026-02-01",
+            description: "Gym",
+            amount: -400,
+            seriesId: "ser-1",
+          },
+          { id: "a2", date: "2026-03-01", description: "One-off", amount: -1 },
+        ],
+      }),
+    );
+    expect(applied.rows[1].seriesId).toBe("ser-1");
+    expect(applied.rows[2].seriesId).toBeUndefined();
+  });
+
   it("ignores overrides whose base row no longer exists", () => {
     const item = baseItem([row("r1", "2026-01-10", "Rent", -8000)]);
     const applied = applyScenario(

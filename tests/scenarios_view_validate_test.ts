@@ -187,6 +187,20 @@ describe("validateScenariosView via validateUserData", () => {
               { id: "a1", date: "2026-02-01", description: "Dupe", amount: 2 },
               { id: "a2", date: "nope", description: "Bad date", amount: 3 },
               { id: "", date: "2026-01-01", description: "No id", amount: 4 },
+              {
+                id: "a3",
+                date: "2026-03-01",
+                description: "Series",
+                amount: 5,
+                seriesId: "ser-1",
+              },
+              {
+                id: "a4",
+                date: "2026-04-01",
+                description: "Empty series id",
+                amount: 6,
+                seriesId: "",
+              },
             ],
           },
         ],
@@ -194,6 +208,19 @@ describe("validateScenariosView via validateUserData", () => {
     );
     expect(viewOf(result).scenarios[0].addedRows).toEqual([
       { id: "a1", date: "2026-01-01", description: "Keep", amount: 1 },
+      {
+        id: "a3",
+        date: "2026-03-01",
+        description: "Series",
+        amount: 5,
+        seriesId: "ser-1",
+      },
+      {
+        id: "a4",
+        date: "2026-04-01",
+        description: "Empty series id",
+        amount: 6,
+      },
     ]);
   });
 

@@ -15,7 +15,7 @@ import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
 import { Modal } from "../Modal";
 import { Button, Checkbox, ClearableInput } from "../form";
-import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { RecurrenceForm } from "../RecurrenceForm";
 import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
 import {
@@ -74,7 +74,7 @@ export function BudgetBulkEditModal({
     return values.every((v) => v === first) ? first : null;
   }, [rows, amountCol]);
 
-  // Seed BudgetRecurrenceForm with the earliest date in the selection so the
+  // Seed RecurrenceForm with the earliest date in the selection so the
   // generated horizon starts somewhere relevant.
   const seedDate = useMemo<string>(() => {
     if (!dateCol) return "";
@@ -271,7 +271,7 @@ export function BudgetBulkEditModal({
           onToggle={(value) => dispatch({ kind: "setRecurringEnabled", value })}
           hint={t("bulkEdit.makeEachRecurringHint")}
         >
-          <BudgetRecurrenceForm
+          <RecurrenceForm
             seedDate={seedDate}
             resetKey={recurrenceResetKey}
             includeOnce={false}

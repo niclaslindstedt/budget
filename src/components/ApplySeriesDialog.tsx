@@ -17,6 +17,10 @@ type Props = {
   // Human-readable field name for the description ("Description", "Amount",
   // "Category"). Drives the dialog copy so the user knows what propagates.
   fieldLabel: string;
+  // Pre-translated body overriding the default "{field} updated…" copy —
+  // for changes that aren't a field edit (e.g. excluding a row from a
+  // scenario). `fieldLabel` is ignored when this is set.
+  promptBody?: string;
   // ISO date of the row the user just edited — surfaced so the user can
   // see exactly where the "all following" sweep starts from.
   anchorDate: string;
@@ -35,6 +39,7 @@ type Props = {
 export function ApplySeriesDialog({
   open,
   fieldLabel,
+  promptBody,
   anchorDate,
   lastSeriesDate,
   onCancel,
@@ -67,10 +72,11 @@ export function ApplySeriesDialog({
       />
       <div className="border-b border-line px-4 py-3 text-sm text-fg">
         <p className="mb-2">
-          {t("applySeries.promptBody", {
-            field: fieldLabel,
-            date: anchorDate || t("applySeries.noDate"),
-          })}
+          {promptBody ??
+            t("applySeries.promptBody", {
+              field: fieldLabel,
+              date: anchorDate || t("applySeries.noDate"),
+            })}
         </p>
         <Checkbox
           checked={untilEnabled}

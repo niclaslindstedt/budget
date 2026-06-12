@@ -30,7 +30,7 @@ import {
 } from "./BudgetFormulaInput";
 import { BudgetFormulaVariableHelper } from "./BudgetFormulaVariableHelper";
 import { Modal } from "../Modal";
-import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { RecurrenceForm } from "../RecurrenceForm";
 import { CompanyPicker } from "../CompanyPicker";
 import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
@@ -134,7 +134,7 @@ export function BudgetComplexEntryModal({
     // renames don't break the formula.
     formulaMode,
     formulaText,
-    // resetKey bumps when the modal re-opens so BudgetRecurrenceForm re-seeds.
+    // resetKey bumps when the modal re-opens so RecurrenceForm re-seeds.
     resetKey,
   } = state;
 
@@ -482,7 +482,7 @@ export function BudgetComplexEntryModal({
           <div className="mb-2 text-xs text-muted">
             {t("complex.recurrence")}
           </div>
-          <BudgetRecurrenceForm
+          <RecurrenceForm
             seedDate={initialDate}
             resetKey={resetKey}
             seedRule={seed?.rule ?? null}

@@ -496,12 +496,14 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function validateScenarioAddedRow(raw: unknown): ScenarioAddedRow | undefined {
   if (!isObject(raw)) return undefined;
-  const { id, date, description, amount } = raw;
+  const { id, date, description, amount, seriesId } = raw;
   if (typeof id !== "string" || id === "") return undefined;
   if (typeof date !== "string" || !ISO_DATE_RE.test(date)) return undefined;
   if (typeof description !== "string") return undefined;
   if (typeof amount !== "number" || !Number.isFinite(amount)) return undefined;
-  return { id, date, description, amount };
+  const row: ScenarioAddedRow = { id, date, description, amount };
+  if (typeof seriesId === "string" && seriesId !== "") row.seriesId = seriesId;
+  return row;
 }
 
 // Scenarios are best-effort deltas over another sheet's rows, so the

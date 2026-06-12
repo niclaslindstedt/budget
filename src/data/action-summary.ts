@@ -362,9 +362,9 @@ export function describeActionSubject(
     case "updateScenario":
     case "setScenarioOverride":
     case "propagateScenarioOverrideToFuture":
-    case "addScenarioRow":
+    case "addScenarioRows":
     case "updateScenarioRow":
-    case "deleteScenarioRow":
+    case "deleteScenarioRows":
       return name(
         scenarioName(next, action.sheetId, action.itemId, action.scenarioId),
       );

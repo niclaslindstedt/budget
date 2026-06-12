@@ -382,8 +382,9 @@ scissors-button modal).
 
 ### Recurrence form
 
-`BudgetRecurrenceForm.tsx` — the mode-tab / preview UI shared by the
-recurring modals.
+`RecurrenceForm.tsx` (components root) — the mode-tab / preview UI
+shared by the budget page's recurring modals and the scenario
+added-row modal.
 
 ### Entry search modal
 
@@ -2170,7 +2171,8 @@ One named what-if variant (`Scenario` in `src/data/types/sheets.ts`):
 and/or `excluded: true`; a fixed `amount` and a `modulation` are
 mutually exclusive — setting one displaces the other) plus `addedRows`
 (`ScenarioAddedRow` — scenario-only rows with date / description /
-amount, e.g. an unemployment benefit in a lose-my-job scenario). On
+amount and an optional `seriesId`, e.g. an unemployment benefit in a
+lose-my-job scenario). On
 the page, tapping an amount in a scenario's table edits it inline
 (dispatching the upsert-by-rowId `setScenarioOverride` action);
 descriptions are read-only; the minus control excludes a row (struck
@@ -2186,14 +2188,27 @@ change on a row that belongs to a recurring series which continues
 past it stages the shared `ApplySeriesDialog` ("apply to upcoming
 entries too?") — same flow as the budget page — and confirming
 dispatches `propagateScenarioOverrideToFuture`, which fans the change
-(fixed amount or modulation) out to every later occurrence (clamped
-by the optional "stop after" date; per target row a fixed value equal
-to that row's base clears rather than stores, and either flavour
-displaces the other on each target). Added rows are minted into the
+(fixed amount, modulation, or the exclude / re-include flag) out to
+every later occurrence (clamped by the optional "stop after" date;
+per target row a fixed value equal to that row's base clears rather
+than stores, either amount flavour displaces the other on each
+target, and a swept exclusion leaves any amount override in place
+underneath it for re-include). The exclude / re-include toggle stages
+the same dialog with its own copy, so dropping a recurring expense
+takes its future occurrences in one gesture. Added rows are created
+through `ScenarioRowModal`, whose add mode embeds the shared
+`RecurrenceForm` — one date, a list of dates, every-N-days, or
+monthly cadences — and lands every occurrence in one undo step
+(`addScenarioRows`), sharing a fresh `seriesId` when there is more
+than one so the tables show the Repeat glyph; deleting an occurrence
+of such a series offers a "just this" / "this and all future" scope
+(`deleteScenarioRows`). The first recurring added row unlocks the
+**Recurring Dreams** achievement. Added rows are minted into the
 applied clone with deterministic `scn:`-prefixed ids (`applyScenario`
-in `src/data/scenarios/apply.ts`) and edited via `ScenarioRowModal`.
-Overrides whose base row was deleted are inert (ignored at compute
-time, skipped by the diff).
+in `src/data/scenarios/apply.ts`, which also carries the `seriesId`)
+and edited via `ScenarioRowModal` (edit mode is per-occurrence — a
+plain date field, no series move). Overrides whose base row was
+deleted are inert (ignored at compute time, skipped by the diff).
 
 ### Amount adjustment (scenarios)
 

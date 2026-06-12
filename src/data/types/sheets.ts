@@ -195,8 +195,8 @@ export type ScenarioRowOverride = {
 
 // A scenario-only row (e.g. "Unemployment benefit" income in a
 // lose-my-job scenario). Deliberately NOT a budget `Row` — no cells
-// map, no typeId / seriesId — so the validator stays tiny and the row
-// can't grow budget-only semantics by accident. Converted to a real
+// map, no typeId — so the validator stays tiny and the row can't grow
+// budget-only semantics by accident. Converted to a real
 // `UserRow`-shaped clone at compute time (`applyScenario`).
 export type ScenarioAddedRow = {
   id: string;
@@ -204,6 +204,11 @@ export type ScenarioAddedRow = {
   date: string;
   description: string;
   amount: number;
+  // Shared by every row minted from one recurring add (same contract
+  // as `Row.seriesId` on the budget page: marks the row with the
+  // Repeat glyph and lets the delete flow offer a this-and-future
+  // sweep). Absent on one-off rows.
+  seriesId?: string;
 };
 
 // One named what-if variant of the base budget: a set of deltas

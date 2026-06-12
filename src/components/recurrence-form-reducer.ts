@@ -1,8 +1,8 @@
-import { isIsoDate, type RecurrenceRule } from "../../data/recurrence";
+import { isIsoDate, type RecurrenceRule } from "../data/recurrence";
 
 export type Mode = "once" | "dates" | "everyNDays" | "monthly";
 
-// The whole BudgetRecurrenceForm input state lives in one slice so the
+// The whole RecurrenceForm input state lives in one slice so the
 // reset-on-`resetKey` transition is one dispatch instead of 11 sequential
 // setState calls, and so the mode-vs-fields shape is explicit in one
 // place. The rule derivation that consumes this state stays in the
@@ -106,7 +106,7 @@ export function initialRecurrenceFormState(
   }
 }
 
-export function budgetRecurrenceFormReducer(
+export function recurrenceFormReducer(
   state: RecurrenceFormState,
   action: RecurrenceFormAction,
 ): RecurrenceFormState {

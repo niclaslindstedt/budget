@@ -116,6 +116,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Ett Scenarier-blad spelar upp tänk-om-framtider mot en budget du redan för — förlora jobbet, köpa bil — utan att någonsin ändra den riktiga budgeten. Ändra värden, ta bort utgifter eller lägg till rader i ett scenario, följ varje variants saldo vid månadens slut i ett och samma diagram, och lägg till bevakningsdatum för att se hur mycket pengar som finns kvar på ett datum som spelar roll.",
   },
+  recurringDreams: {
+    name: "Återkommande drömmar",
+    condition: "Lägg till en återkommande rad i ett scenario.",
+    learnMore:
+      "När du lägger till en rad i ett scenario är datumfältet en fullständig upprepningsväljare — ett gymkort varje månad, en ersättning var 30:e dag, en årsavgift. Hela serien hamnar i scenariot på en gång, och raderar du en förekomst erbjuds du att ta resten av serien med den.",
+  },
   payDay: {
     name: "Lönedag",
     condition: "Ändra Månadens start från standardvärdet.",

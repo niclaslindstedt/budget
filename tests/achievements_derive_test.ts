@@ -478,6 +478,52 @@ describe("deriveUnlocks", () => {
     expect(deriveUnlocks(prev, next, {})).toContain("whatIf");
   });
 
+  it("fires recurringDreams when a scenario gains a recurring added row", () => {
+    const scenariosSheet = (
+      addedRows: { id: string; seriesId?: string }[],
+    ): Sheet => ({
+      id: "scn-sheet",
+      name: "Scenarios",
+      type: "scenarios",
+      glyph: "compass",
+      color: "var(--color-blue)",
+      description: "",
+      items: [
+        {
+          id: "v1",
+          type: "scenariosView",
+          baseSheetId: null,
+          monitors: [],
+          scenarios: [
+            {
+              id: "scn-1",
+              name: "Lose my job",
+              overrides: [],
+              addedRows: addedRows.map((r) => ({
+                ...r,
+                date: "2026-03-01",
+                description: "Gym",
+                amount: -400,
+              })),
+            },
+          ],
+        },
+      ],
+    });
+    const prev = withItem([]);
+    prev.sheets = [...prev.sheets, scenariosSheet([{ id: "a1" }])];
+    const next = withItem([]);
+    next.sheets = [
+      ...next.sheets,
+      scenariosSheet([{ id: "a1" }, { id: "a2", seriesId: "ser-1" }]),
+    ];
+    // A one-off added row is not enough — the series is.
+    expect(deriveUnlocks(withItem([]), prev, {})).not.toContain(
+      "recurringDreams",
+    );
+    expect(deriveUnlocks(prev, next, {})).toContain("recurringDreams");
+  });
+
   it("ignores unchanged state", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {} }]);

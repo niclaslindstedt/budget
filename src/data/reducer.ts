@@ -421,14 +421,17 @@ export type Action =
       override: ScenarioRowOverride;
     }
   | {
-      // Fan one amount change out to every occurrence of the anchor
-      // row's recurring series dated at or after the anchor (clamped
-      // to `untilIso` when set). For a fixed amount, a value equal to
-      // a target row's own base cell clears the field instead of
+      // Fan one change out to every occurrence of the anchor row's
+      // recurring series dated at or after the anchor (clamped to
+      // `untilIso` when set). For a fixed amount, a value equal to a
+      // target row's own base cell clears the field instead of
       // storing a no-op override — so re-stating the base is a
       // sweep-wide revert; a no-op modulation (+0 / ×1) clears the
-      // same way via the shared normalizer. Setting either flavour
-      // drops the other on each target (they are mutually exclusive).
+      // same way via the shared normalizer. Setting either amount
+      // flavour drops the other on each target (they are mutually
+      // exclusive). The "excluded" flavour sets or clears the
+      // exclusion flag and leaves any amount override on each target
+      // in place underneath it.
       type: "propagateScenarioOverrideToFuture";
       sheetId: string;
       itemId: string;
@@ -436,30 +439,39 @@ export type Action =
       rowId: string;
       change:
         | { kind: "amount"; amount: number }
-        | { kind: "modulation"; modulation: ScenarioAmountModulation };
+        | { kind: "modulation"; modulation: ScenarioAmountModulation }
+        | { kind: "excluded"; excluded: boolean };
       untilIso: string | null;
     }
   | {
-      type: "addScenarioRow";
+      // One modal submit's worth of scenario-only rows — a single row,
+      // or every occurrence of a recurring add (sharing a `seriesId`) —
+      // as one undo step.
+      type: "addScenarioRows";
       sheetId: string;
       itemId: string;
       scenarioId: string;
-      row: ScenarioAddedRow;
+      rows: ScenarioAddedRow[];
     }
   | {
+      // Series membership is fixed at add time — edits never move a
+      // row between series, hence the `seriesId` omission.
       type: "updateScenarioRow";
       sheetId: string;
       itemId: string;
       scenarioId: string;
       rowId: string;
-      patch: Partial<Omit<ScenarioAddedRow, "id">>;
+      patch: Partial<Omit<ScenarioAddedRow, "id" | "seriesId">>;
     }
   | {
-      type: "deleteScenarioRow";
+      // One delete gesture's worth of scenario-only rows — just the
+      // anchor, or the anchor plus the rest of its recurring series —
+      // as one undo step.
+      type: "deleteScenarioRows";
       sheetId: string;
       itemId: string;
       scenarioId: string;
-      rowId: string;
+      rowIds: string[];
     }
   | {
       // Replace the monitor-date list wholesale (the reducer sorts and

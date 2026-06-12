@@ -25,7 +25,7 @@ import {
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
-import { BudgetRecurrenceForm } from "./BudgetRecurrenceForm";
+import { RecurrenceForm } from "../RecurrenceForm";
 import { TypePicker } from "../TypePicker";
 
 // Prior merchant-hint label / type / company shared by past rows that
@@ -298,7 +298,7 @@ export function BudgetPromoteHistoryForm({
           </label>
         </div>
         <div className="mt-4">
-          <BudgetRecurrenceForm
+          <RecurrenceForm
             seedDate={historySeedDate}
             resetKey={row.id}
             includeOnce={false}
