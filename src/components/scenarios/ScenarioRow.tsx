@@ -159,8 +159,15 @@ function ScenarioRowImpl({
   const showCompanyGlyph = !isTransfer && hasDesc && !!company;
 
   const descriptionContent = excluded ? (
+    // Struck-through rows keep their display name: the description,
+    // else the same company / type-name fallback the live rows render
+    // — otherwise an excluded company- or type-labelled row goes
+    // blank.
     <span className="min-w-0 truncate text-muted line-through">
-      {descValue}
+      {hasDesc
+        ? descValue
+        : (company?.name ??
+          (entryType ? displayTypeName(entryType, t) : descValue))}
     </span>
   ) : showCompanyPill ? (
     <CompanyPill name={company!.name} recurring={isRecurring} />

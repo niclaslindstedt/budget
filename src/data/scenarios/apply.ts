@@ -168,13 +168,18 @@ export function applyScenario(
 }
 
 // One line of the "view changes" diff between a scenario and the
-// baseline, date-ascending. Dangling overrides are skipped.
+// baseline, date-ascending. Dangling overrides are skipped. Override
+// and excluded entries carry the base row's taxonomy refs so the diff
+// modal can render the same company / type-name fallback the tables
+// use when the row has no user-authored description.
 export type ScenarioDiffEntry =
   | {
       kind: "override";
       rowId: string;
       date: string;
       description: string;
+      typeId?: string;
+      companyId?: string;
       baseAmount: number;
       // The effective new amount — fixed, or computed from the base
       // amount when the override is a modulation (which is then also
@@ -187,6 +192,8 @@ export type ScenarioDiffEntry =
       rowId: string;
       date: string;
       description: string;
+      typeId?: string;
+      companyId?: string;
       baseAmount: number;
     }
   | { kind: "added"; row: ScenarioAddedRow };
@@ -216,6 +223,8 @@ export function diffScenario(
           rowId: row.id,
           date,
           description,
+          ...(row.typeId !== undefined ? { typeId: row.typeId } : {}),
+          ...(row.companyId !== undefined ? { companyId: row.companyId } : {}),
           baseAmount,
         },
       });
@@ -239,6 +248,8 @@ export function diffScenario(
       rowId: row.id,
       date,
       description,
+      ...(row.typeId !== undefined ? { typeId: row.typeId } : {}),
+      ...(row.companyId !== undefined ? { companyId: row.companyId } : {}),
       baseAmount,
       amount: newAmount,
     };

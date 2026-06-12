@@ -2291,7 +2291,10 @@ rows with a plus marker. Built by `diffScenario` in
 state. Only **actual** changes appear: an override field that re-states
 the base row's own value is skipped (and the commit path never stores
 one — see [Scenario](#scenario)), so the diff never renders a no-op
-"old → old" line.
+"old → old" line. Rows without a user-authored description fall back
+to their company or type name (the diff entries carry the base row's
+`typeId` / `companyId` for the lookup), the same chain the month
+tables render.
 
 ## Data and storage
 
