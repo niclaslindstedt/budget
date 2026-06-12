@@ -2186,8 +2186,12 @@ set, modulated base if adjusted, base otherwise) is a pure no-op —
 nothing is written and no series prompt fires. Committing a genuine
 change on a row that belongs to a recurring series which continues
 past it stages the shared `ApplySeriesDialog` ("apply to upcoming
-entries too?") — same flow as the budget page — and confirming
-dispatches `propagateScenarioOverrideToFuture`, which fans the change
+entries too?") — same flow as the budget page — without writing
+anything yet: "just this entry" applies the staged change to the
+anchor row only, confirming dispatches
+`propagateScenarioOverrideToFuture` (whose sweep starts at the anchor
+itself), and dismissing the dialog (X, Escape, or clicking outside)
+cancels the staged change entirely. The sweep fans the change
 (fixed amount, modulation, or the exclude / re-include flag) out to
 every later occurrence (clamped by the optional "stop after" date;
 per target row a fixed value equal to that row's base clears rather

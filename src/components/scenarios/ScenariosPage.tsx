@@ -89,8 +89,11 @@ type RowModalState =
 // "Apply this edit to the rest of the recurring series?" staging slot —
 // set when an amount commit, a live adjustment, or an exclude /
 // include toggle lands on a base row with a `seriesId` that continues
-// past the anchor date. The ApplySeriesDialog consumes it; confirming
-// dispatches the override sweep.
+// past the anchor date. Nothing is written until the ApplySeriesDialog
+// resolves: "just this entry" applies the change to the anchor only,
+// confirming dispatches the override sweep (which covers the anchor),
+// and dismissing the dialog (X, Escape, backdrop click) cancels the
+// staged change entirely.
 type PendingSeriesApply = {
   rowId: string;
   change:
@@ -379,19 +382,47 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     });
   }
 
-  // When the committed row belongs to a recurring series that continues
-  // past it, stage the "apply to upcoming entries too?" prompt — same
-  // flow as committing a series cell on the budget page.
-  function maybeStageSeriesApply(
+  // Write `change` onto the anchor row's override — the single-row
+  // form of the series sweep, shared by the no-series commit path and
+  // the dialog's "just this entry" choice. Mirrors the per-target
+  // rules of `propagateScenarioOverrideToFuture`: a fixed amount equal
+  // to the base clears instead of storing, and the two amount flavours
+  // displace each other.
+  function applyOverrideChange(
     rowId: string,
     change: PendingSeriesApply["change"],
   ) {
-    if (!baseItem || !activeScenario) return;
+    if (change.kind === "amount") {
+      patchOverride(rowId, {
+        amount:
+          baseAmounts.get(rowId) === change.amount ? undefined : change.amount,
+        modulation: undefined,
+      });
+    } else if (change.kind === "modulation") {
+      patchOverride(rowId, {
+        modulation: change.modulation,
+        amount: undefined,
+      });
+    } else {
+      patchOverride(rowId, { excluded: change.excluded ? true : undefined });
+    }
+  }
+
+  // When the committed row belongs to a recurring series that continues
+  // past it, stage the "apply to upcoming entries too?" prompt — same
+  // flow as committing a series cell on the budget page. Returns true
+  // when the prompt was staged, in which case nothing has been written
+  // yet — the dialog's outcome decides what (if anything) lands.
+  function maybeStageSeriesApply(
+    rowId: string,
+    change: PendingSeriesApply["change"],
+  ): boolean {
+    if (!baseItem || !activeScenario) return false;
     const row = baseUserRowsById.get(rowId);
-    if (!row?.seriesId) return;
+    if (!row?.seriesId) return false;
     const dateCol = baseItem.columns.find((c) => c.type === "date");
     const amountCol = baseItem.columns.find((c) => c.type === "amount");
-    if (!dateCol || !amountCol) return;
+    if (!dateCol || !amountCol) return false;
     const anchorDate =
       typeof row.cells[dateCol.id] === "string"
         ? (row.cells[dateCol.id] as string)
@@ -401,7 +432,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       row.seriesId,
       dateCol.id,
     );
-    if (lastSeriesDate === null || lastSeriesDate <= anchorDate) return;
+    if (lastSeriesDate === null || lastSeriesDate <= anchorDate) return false;
     setPendingSeriesApply({
       rowId,
       change,
@@ -418,6 +449,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       anchorDate,
       lastSeriesDate,
     });
+    return true;
   }
 
   // The amount a row currently shows: fixed override if set, modulated
@@ -445,11 +477,9 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // exclusive.
   function handleCommitAmount(rowId: string, amount: number) {
     if (shownAmount(rowId) === amount) return;
-    patchOverride(rowId, {
-      amount: baseAmounts.get(rowId) === amount ? undefined : amount,
-      modulation: undefined,
-    });
-    maybeStageSeriesApply(rowId, { kind: "amount", amount });
+    const change = { kind: "amount", amount } as const;
+    if (!maybeStageSeriesApply(rowId, change))
+      applyOverrideChange(rowId, change);
   }
   function handleSaveModulation(
     rowId: string,
@@ -458,8 +488,9 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     const existing = activeOverrides.get(rowId)?.modulation;
     if (existing?.op === modulation.op && existing?.value === modulation.value)
       return;
-    patchOverride(rowId, { modulation, amount: undefined });
-    maybeStageSeriesApply(rowId, { kind: "modulation", modulation });
+    const change = { kind: "modulation", modulation } as const;
+    if (!maybeStageSeriesApply(rowId, change))
+      applyOverrideChange(rowId, change);
   }
   // Excluding (or re-including) a recurring row offers the same
   // apply-to-upcoming sweep as an amount change, so dropping a
@@ -467,8 +498,9 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // occurrences behind.
   function handleToggleExcluded(rowId: string) {
     const excluded = activeOverrides.get(rowId)?.excluded !== true;
-    patchOverride(rowId, { excluded: excluded ? true : undefined });
-    maybeStageSeriesApply(rowId, { kind: "excluded", excluded });
+    const change = { kind: "excluded", excluded } as const;
+    if (!maybeStageSeriesApply(rowId, change))
+      applyOverrideChange(rowId, change);
   }
   // Deleting a recurring scenario-added row stages a scope confirm
   // ("just this" / "this and all future"); one-off rows delete
@@ -878,8 +910,18 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         anchorDate={pendingSeriesApply?.anchorDate ?? ""}
         lastSeriesDate={pendingSeriesApply?.lastSeriesDate ?? null}
         onCancel={() => setPendingSeriesApply(null)}
+        onJustThis={() => {
+          if (pendingSeriesApply)
+            applyOverrideChange(
+              pendingSeriesApply.rowId,
+              pendingSeriesApply.change,
+            );
+          setPendingSeriesApply(null);
+        }}
         onApplyToFuture={(untilIso) => {
           if (!view || !activeScenario || !pendingSeriesApply) return;
+          // The sweep starts at the anchor row itself, so this single
+          // dispatch also writes the staged change onto the anchor.
           dispatch({
             type: "propagateScenarioOverrideToFuture",
             sheetId: sheet.id,
