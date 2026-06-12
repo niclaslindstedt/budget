@@ -14,6 +14,15 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-12
+
+### Added
+
+- **Insights sheet** — A new sheet type that rolls everything you track into your net worth — accounts, savings, items, and properties minus mortgages and loans — with a breakdown, a chart over time, and settings to exclude things or set an ownership share for anything co-owned. [Learn more](feature:insights)
+- **Sold properties** — Record a sale date (and price) on a property you no longer own — it stays on the Properties page with all its history, but stops counting toward your net worth and mortgage-payment discovery from the day it was sold.
+- **Investment sheet** — A new sheet type for tracking investments: a holdings table for funds, shares, gold, and crypto whose account type (ISK, KF, or depå) sets the tax, plus a private-stocks table that tracks your shares, average cost, and buy/sell trades — each with a net value after tax and a value-over-time chart. [Learn more](feature:investment)
+- **Scenarios sheet** — A new sheet type for what-if modeling against a budget you already track: create scenarios that change amounts — typed in, or as live adjustments (+5 000, −500, ×2, +300 %) that keep tracking the underlying entry when it changes — with an optional sweep across a recurring entry's upcoming occurrences, drop expenses (recurring ones future-and-all in one gesture), or add one-off or recurring rows without touching the real budget, compare every scenario's projected balance 1 month to 2 years ahead in the Visualize scenarios chart, set monitor dates to see the projected balance on days that matter, and view a scenario's changes as a diff against the unaltered baseline. [Learn more](feature:scenarios)
+
 ## [1.3.0] - 2026-06-11
 
 ### Added
