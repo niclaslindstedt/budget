@@ -27,10 +27,15 @@ type Props = {
   // Last ISO date in the same series; defaults the "stop after" picker
   // and acts as the right-edge clamp the user can pull leftward.
   lastSeriesDate: string | null;
-  // Called when the user dismisses the dialog without propagating. The
-  // already-applied edit on the anchor row stays in place — only the
-  // series-wide sweep is skipped.
+  // Called when the user dismisses the dialog (X, Escape, backdrop
+  // click) without choosing a scope. Dismissal means "never mind" —
+  // callers that stage the change until this dialog resolves drop it
+  // here; the budget page's cell commit (already written by the cell
+  // editor) simply skips the sweep.
   onCancel: () => void;
+  // Called when the user explicitly picks "just this entry": apply the
+  // change to the anchor row only, no series sweep.
+  onJustThis: () => void;
   // Called when the user confirms the sweep. `untilIso` is `null` for
   // "all future" and an ISO date for the bounded "stop after" case.
   onApplyToFuture: (untilIso: string | null) => void;
@@ -43,6 +48,7 @@ export function ApplySeriesDialog({
   anchorDate,
   lastSeriesDate,
   onCancel,
+  onJustThis,
   onApplyToFuture,
 }: Props) {
   const t = useT();
@@ -108,7 +114,7 @@ export function ApplySeriesDialog({
         </button>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={onJustThis}
           className="cursor-pointer rounded border border-line px-3 py-2 text-left text-sm text-fg hover:border-accent hover:text-fg-bright"
         >
           {t("applySeries.justThis")}

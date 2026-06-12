@@ -49,9 +49,9 @@ const scenarios: ScenariosCatalog = {
   editAddedRow: "Redigera tillagd rad",
 
   excludeSeriesBody:
-    "Den här posten ({date}) uteslöts ur scenariot. Uteslut även alla följande poster i dess återkommande serie?",
+    "Den här posten ({date}) utesluts ur scenariot. Uteslut även alla följande poster i dess återkommande serie?",
   includeSeriesBody:
-    "Den här posten ({date}) togs med igen. Ta även med alla följande poster i dess återkommande serie?",
+    "Den här posten ({date}) tas med igen. Ta även med alla följande poster i dess återkommande serie?",
 
   modulateRow: "Justera belopp för {name}",
   modulateTitle: "Justera belopp",

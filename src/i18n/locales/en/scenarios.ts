@@ -53,9 +53,9 @@ const scenarios = {
   // Series sweeps (ApplySeriesDialog bodies for the exclude / include
   // toggles on a recurring base row).
   excludeSeriesBody:
-    "This entry ({date}) was excluded from the scenario. Exclude all following entries in its recurring series too?",
+    "This entry ({date}) will be excluded from the scenario. Exclude all following entries in its recurring series too?",
   includeSeriesBody:
-    "This entry ({date}) was included again. Include all following entries in its recurring series too?",
+    "This entry ({date}) will be included again. Include all following entries in its recurring series too?",
 
   // Adjust-amount modal (live modulation of a base amount).
   modulateRow: "Adjust amount of {name}",

@@ -673,6 +673,7 @@ export function BudgetModalHost(props: Props) {
         anchorDate={pendingSeriesEdit?.anchorDate ?? ""}
         lastSeriesDate={pendingSeriesEdit?.lastSeriesDate ?? null}
         onCancel={onDismissPendingSeriesEdit}
+        onJustThis={onDismissPendingSeriesEdit}
         onApplyToFuture={onApplyPendingToFuture}
       />
       <BudgetBulkEditModal
