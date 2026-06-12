@@ -96,6 +96,21 @@ function transferName(
   return from && to ? `${from} → ${to}` : (from ?? to);
 }
 
+// A scenario's name, resolved off the targeted sheet's scenariosView
+// item. Reads `next` for creates / edits and `prev` for deletes, like
+// every other by-id resolver here.
+function scenarioName(
+  state: UserData,
+  sheetId: string,
+  itemId: string,
+  scenarioId: string,
+): string | undefined {
+  const sheet = byId(state.sheets, sheetId);
+  const item = sheet?.items.find((i) => i.id === itemId);
+  if (!item || item.type !== "scenariosView") return undefined;
+  return byId(item.scenarios, scenarioId)?.name;
+}
+
 // The distinct set of settings fields whose value changed between two
 // persisted-settings snapshots. Compares every common (top-level) field
 // and every device-scoped field across both scopes, deduping by field
@@ -335,6 +350,27 @@ export function describeActionSubject(
     case "setItemAccount":
     case "setInsightsNetWorthSettings":
       return name(byId(next.sheets, action.sheetId)?.name);
+
+    // Scenarios — sheet-level actions (base binding, monitors) name the
+    // sheet; per-scenario actions name the scenario. Deletes read off
+    // `prev` since the scenario is gone in `next`.
+    case "setScenariosBaseSheet":
+    case "setScenariosMonitors":
+      return name(byId(next.sheets, action.sheetId)?.name);
+    case "addScenario":
+      return name(action.scenario.name);
+    case "updateScenario":
+    case "setScenarioOverride":
+    case "addScenarioRow":
+    case "updateScenarioRow":
+    case "deleteScenarioRow":
+      return name(
+        scenarioName(next, action.sheetId, action.itemId, action.scenarioId),
+      );
+    case "deleteScenario":
+      return name(
+        scenarioName(prev, action.sheetId, action.itemId, action.scenarioId),
+      );
 
     // Properties / mortgages — single-target actions name the property
     // (or the mortgage); bulk-added payments report a count. Edits / value

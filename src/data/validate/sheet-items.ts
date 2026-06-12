@@ -15,6 +15,10 @@ import type {
   Row,
   SalaryView,
   SavingsView,
+  Scenario,
+  ScenarioAddedRow,
+  ScenarioRowOverride,
+  ScenariosView,
   UserRow,
 } from "../types";
 import { validateLineItemLinks } from "./account";
@@ -44,6 +48,11 @@ export type SheetItemValidationContext = {
   knownSavingIds: ReadonlySet<string>;
   knownPropertyIds: ReadonlySet<string>;
   knownLoanIds: ReadonlySet<string>;
+  // Every sheet id in the file, collected in a pre-pass over the raw
+  // sheets array BEFORE the per-sheet validation loop — a scenarios
+  // sheet may reference a base budget sheet that appears later in the
+  // array, so forward references must resolve.
+  knownSheetIds: ReadonlySet<string>;
 };
 
 const COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
@@ -424,6 +433,145 @@ export function validateInsightsView(
     }
   }
   return { ok: true, value: view };
+}
+
+// Normalise one raw scenario row override to its minimal persisted
+// form, or `undefined` when nothing survives. Shared by the validator
+// and the `setScenarioOverride` reducer so a round-tripped file and a
+// freshly-dispatched payload normalise identically: `amount` only when
+// finite, `description` only when a non-empty string, `excluded` only
+// when `true`. An override that keeps none of the three is meaningless
+// and collapses away (which is also the revert / re-include path).
+export function normalizeScenarioOverride(
+  raw: unknown,
+): ScenarioRowOverride | undefined {
+  if (!isObject(raw)) return undefined;
+  const { rowId, amount, description } = raw;
+  if (typeof rowId !== "string" || rowId === "") return undefined;
+  const override: ScenarioRowOverride = { rowId };
+  if (typeof amount === "number" && Number.isFinite(amount))
+    override.amount = amount;
+  if (typeof description === "string" && description !== "")
+    override.description = description;
+  if (raw.excluded === true) override.excluded = true;
+  return Object.keys(override).length > 1 ? override : undefined;
+}
+
+// ISO yyyy-mm-dd guard for monitor dates and scenario-row dates. Kept
+// deliberately loose (no calendar math) — the same shape the budget
+// date cells rely on for lexical comparability.
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validateScenarioAddedRow(raw: unknown): ScenarioAddedRow | undefined {
+  if (!isObject(raw)) return undefined;
+  const { id, date, description, amount } = raw;
+  if (typeof id !== "string" || id === "") return undefined;
+  if (typeof date !== "string" || !ISO_DATE_RE.test(date)) return undefined;
+  if (typeof description !== "string") return undefined;
+  if (typeof amount !== "number" || !Number.isFinite(amount))
+    return undefined;
+  return { id, date, description, amount };
+}
+
+// Scenarios are best-effort deltas over another sheet's rows, so the
+// sweep style is drop-malformed rather than fail-the-file: a broken
+// override or added row disappears instead of trapping the workspace.
+// Only a structurally-broken scenario (missing id / name) fails, since
+// silently dropping a whole named scenario would lose user work
+// invisibly. Override `rowId`s are NOT cross-checked against the base
+// budget's rows — the base lives in a different sheet; dangling ids
+// are ignored at compute time instead.
+function validateScenario(raw: unknown, path: string): Result<Scenario> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, name, overrides, addedRows } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (typeof name !== "string")
+    return fail(`${path}.name`, "expected a string");
+  const keptOverrides: ScenarioRowOverride[] = [];
+  const seenRowIds = new Set<string>();
+  if (Array.isArray(overrides)) {
+    for (const rawOverride of overrides) {
+      const override = normalizeScenarioOverride(rawOverride);
+      if (!override || seenRowIds.has(override.rowId)) continue;
+      seenRowIds.add(override.rowId);
+      keptOverrides.push(override);
+    }
+  }
+  const keptRows: ScenarioAddedRow[] = [];
+  const seenAddedIds = new Set<string>();
+  if (Array.isArray(addedRows)) {
+    for (const rawRow of addedRows) {
+      const row = validateScenarioAddedRow(rawRow);
+      if (!row || seenAddedIds.has(row.id)) continue;
+      seenAddedIds.add(row.id);
+      keptRows.push(row);
+    }
+  }
+  return {
+    ok: true,
+    value: { id, name, overrides: keptOverrides, addedRows: keptRows },
+  };
+}
+
+export function validateScenariosView(
+  raw: unknown,
+  path: string,
+  ctx: SheetItemValidationContext,
+): Result<ScenariosView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type, baseSheetId, monitors, scenarios } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "scenariosView")
+    return fail(`${path}.type`, `expected "scenariosView"`);
+  // Coerce a dangling `baseSheetId` to null rather than failing — the
+  // base sheet may have been deleted out from under the file; the page
+  // then falls back to the base picker. (`null` stays null.)
+  const base =
+    typeof baseSheetId === "string" &&
+    baseSheetId !== "" &&
+    ctx.knownSheetIds.has(baseSheetId)
+      ? baseSheetId
+      : null;
+  // Sweep monitors to valid ISO date strings, deduped and sorted — the
+  // same invariant the reducer maintains on every edit.
+  const keptMonitors: string[] = [];
+  const seenMonitors = new Set<string>();
+  if (Array.isArray(monitors)) {
+    for (const m of monitors) {
+      if (typeof m !== "string" || !ISO_DATE_RE.test(m)) continue;
+      if (seenMonitors.has(m)) continue;
+      seenMonitors.add(m);
+      keptMonitors.push(m);
+    }
+  }
+  keptMonitors.sort();
+  const keptScenarios: Scenario[] = [];
+  const seenScenarioIds = new Set<string>();
+  if (Array.isArray(scenarios)) {
+    for (let i = 0; i < scenarios.length; i++) {
+      const r = validateScenario(scenarios[i], `${path}.scenarios[${i}]`);
+      if (!r.ok) return r;
+      if (seenScenarioIds.has(r.value.id))
+        return fail(
+          `${path}.scenarios[${i}].id`,
+          `duplicate id "${r.value.id}"`,
+        );
+      seenScenarioIds.add(r.value.id);
+      keptScenarios.push(r.value);
+    }
+  }
+  return {
+    ok: true,
+    value: {
+      id,
+      type: "scenariosView",
+      baseSheetId: base,
+      monitors: keptMonitors,
+      scenarios: keptScenarios,
+    },
+  };
 }
 
 export function validateSalaryView(

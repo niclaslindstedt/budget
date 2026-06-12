@@ -65,7 +65,33 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
     // but the reducer enforces it too so an externally dispatched
     // action can't strand the user with an empty workspace.
     if (state.sheets.length <= 1) return state;
-    const nextSheets = state.sheets.filter((s) => s.id !== action.sheetId);
+    // Cascade: a scenarios sheet whose base budget was the deleted
+    // sheet falls back to "no base" (the page re-opens its base picker)
+    // rather than carrying a dangling reference. Deltas keep their row
+    // ids — they are only meaningful against the old base, but the
+    // validator tolerates them and `setScenariosBaseSheet` clears them
+    // on the next rebind.
+    const nextSheets = state.sheets
+      .filter((s) => s.id !== action.sheetId)
+      .map((sheet) => {
+        if (
+          !sheet.items.some(
+            (item) =>
+              item.type === "scenariosView" &&
+              item.baseSheetId === action.sheetId,
+          )
+        )
+          return sheet;
+        return {
+          ...sheet,
+          items: sheet.items.map((item) =>
+            item.type === "scenariosView" &&
+            item.baseSheetId === action.sheetId
+              ? { ...item, baseSheetId: null }
+              : item,
+          ),
+        };
+      });
     const nextActive =
       state.activeSheetId === action.sheetId
         ? nextSheets[0].id

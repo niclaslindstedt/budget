@@ -30,6 +30,9 @@ import type {
   Salary,
   Saving,
   SavingBalancePoint,
+  Scenario,
+  ScenarioAddedRow,
+  ScenarioRowOverride,
   SeriesMatchRule,
   Settings,
   Sheet,
@@ -374,6 +377,77 @@ export type Action =
       sheetId: string;
       itemId: string;
       settings: InsightsNetWorthSettings;
+    }
+  // Scenarios — what-if deltas played against a base budget sheet, all
+  // stored inside the targeted sheet's `scenariosView` item. Reduced by
+  // the scenarios descriptor's `reduceItem`
+  // (`src/data/reducers/scenarios.ts`).
+  | {
+      // Bind (or clear) the base budget sheet. Changing the base clears
+      // every scenario's overrides and added rows — they are keyed by
+      // the old base's row ids — so the UI confirms first when any
+      // scenario carries deltas.
+      type: "setScenariosBaseSheet";
+      sheetId: string;
+      itemId: string;
+      baseSheetId: string | null;
+    }
+  | { type: "addScenario"; sheetId: string; itemId: string; scenario: Scenario }
+  | {
+      // Rename a scenario. Patch-shaped so future per-scenario fields
+      // ride the same action.
+      type: "updateScenario";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      patch: Partial<Pick<Scenario, "name">>;
+    }
+  | {
+      type: "deleteScenario";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+    }
+  | {
+      // Upsert one per-row delta (replacement amount / description,
+      // exclusion flag) keyed by the base row's id. An override that
+      // normalises to nothing (a bare `{ rowId }`) REMOVES the entry —
+      // that is the revert / re-include path.
+      type: "setScenarioOverride";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      override: ScenarioRowOverride;
+    }
+  | {
+      type: "addScenarioRow";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      row: ScenarioAddedRow;
+    }
+  | {
+      type: "updateScenarioRow";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      rowId: string;
+      patch: Partial<Omit<ScenarioAddedRow, "id">>;
+    }
+  | {
+      type: "deleteScenarioRow";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      rowId: string;
+    }
+  | {
+      // Replace the monitor-date list wholesale (the reducer sorts and
+      // dedups), so add and remove are each one undo step.
+      type: "setScenariosMonitors";
+      sheetId: string;
+      itemId: string;
+      monitors: string[];
     }
   | { type: "createTransfer"; transfer: Transfer }
   | {

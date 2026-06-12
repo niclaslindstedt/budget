@@ -156,6 +156,76 @@ export type InvestmentView = {
   type: "investmentView";
 };
 
+// One per-row delta inside a Scenario, keyed by the id of a persisted
+// row in the base budget (`AccountBudget.rows`). Synthesized history /
+// transfer rows are not override targets — their balances are pinned by
+// the bank anyway, and scenarios are forward-looking. An override whose
+// optional fields all normalise away is never persisted — the reducer
+// and validator share `normalizeScenarioOverride` so a round-tripped
+// file and a freshly-dispatched payload are identical (same
+// minimal-snapshot contract as `InsightsEntityOverride`).
+export type ScenarioRowOverride = {
+  rowId: string;
+  // Replacement amount. Absent ⇒ the base row's amount is untouched.
+  // When set on a formula row the override wins — the formula is
+  // ignored in this scenario.
+  amount?: number;
+  // Replacement description. Absent ⇒ the base description is untouched.
+  description?: string;
+  // Row dropped from this scenario (it contributes nothing to balances).
+  // Only `true` is persisted — stored `false` is indistinguishable from
+  // "field absent" and just bloats the snapshot.
+  excluded?: boolean;
+};
+
+// A scenario-only row (e.g. "Unemployment benefit" income in a
+// lose-my-job scenario). Deliberately NOT a budget `Row` — no cells
+// map, no typeId / seriesId — so the validator stays tiny and the row
+// can't grow budget-only semantics by accident. Converted to a real
+// `UserRow`-shaped clone at compute time (`applyScenario`).
+export type ScenarioAddedRow = {
+  id: string;
+  // ISO yyyy-mm-dd.
+  date: string;
+  description: string;
+  amount: number;
+};
+
+// One named what-if variant of the base budget: a set of deltas
+// (overrides, exclusions, added rows) applied on top of the live base
+// rows at compute time. The base budget itself is never mutated, and
+// edits to it flow into every scenario automatically.
+export type Scenario = {
+  id: string;
+  name: string;
+  // Deduped by `rowId` (the reducer upserts; the validator keeps the
+  // first occurrence). Entries that normalise to nothing are pruned.
+  overrides: ScenarioRowOverride[];
+  addedRows: ScenarioAddedRow[];
+};
+
+// What-if modeling sheet item. The Scenarios sheet models on ONE base
+// budget sheet (`baseSheetId`, a sheet of type "budget") and renders
+// its rows with the active scenario's deltas applied, plus a line
+// chart of monthly end balances and balance monitors at user-chosen
+// dates. An implicit unaltered Baseline is always present — it is the
+// base budget itself, so it carries no persisted shape here.
+export type ScenariosView = {
+  id: string;
+  type: "scenariosView";
+  // The sheet (type "budget") this scenarios sheet models on. Null
+  // until the user picks one on the page — mirrors
+  // `AccountBudget.accountId`'s null contract ("not yet bound", not
+  // "cleared"). The validator coerces a dangling id to null and the
+  // deleteSheet reducer cascades the same way.
+  baseSheetId: string | null;
+  // Monitor dates (ISO yyyy-mm-dd) — "how much money do I have on this
+  // day?" markers evaluated per scenario. Kept sorted ascending and
+  // deduped by the reducer and validator.
+  monitors: string[];
+  scenarios: Scenario[];
+};
+
 // Discriminated union of everything a sheet can hold. `AccountBudget`
 // is the per-account ledger; `AccountsView` is the workspace-wide
 // dashboard rendered by the Accounts sheet flavour; `ItemsView` is the
@@ -173,7 +243,8 @@ export type SheetItem =
   | SavingsView
   | LoansView
   | InsightsView
-  | InvestmentView;
+  | InvestmentView
+  | ScenariosView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -191,7 +262,8 @@ export type SheetType =
   | "savings"
   | "loans"
   | "insights"
-  | "investment";
+  | "investment"
+  | "scenarios";
 
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,

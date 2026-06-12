@@ -458,6 +458,16 @@ export function validateUserData(raw: unknown): Result<UserData> {
   }
   const knownTaxProfileIds: ReadonlySet<string> = seenTaxProfileIds;
 
+  // Pre-pass over the raw sheets array so per-sheet validators can
+  // resolve references to OTHER sheets (a scenarios sheet's
+  // `baseSheetId`) regardless of array order — forward references are
+  // legal. Duplicate ids are still rejected by the loop below.
+  const knownSheetIds: ReadonlySet<string> = new Set(
+    raw.sheets.flatMap((s: unknown) =>
+      isObject(s) && typeof s.id === "string" && s.id !== "" ? [s.id] : [],
+    ),
+  );
+
   const sheets: Sheet[] = [];
   const seenSheetIds = new Set<string>();
   for (let i = 0; i < raw.sheets.length; i++) {
@@ -471,6 +481,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       knownSavingIds: seenSavingIds,
       knownPropertyIds: seenPropertyIds,
       knownLoanIds: seenLoanIds,
+      knownSheetIds,
     });
     if (!r.ok) return r;
     if (seenSheetIds.has(r.value.id))
