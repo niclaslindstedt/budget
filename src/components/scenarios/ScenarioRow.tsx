@@ -22,7 +22,8 @@ import type {
   ScenarioRowOverride,
   Settings,
 } from "../../data/types";
-import { useLang, useT } from "../../i18n";
+import { useAmountColumns } from "../../hooks";
+import { plural, useLang, useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
 import {
   formatDate,
@@ -58,6 +59,16 @@ type Props = {
   editable: boolean;
   // True on the Baseline tab — no editing affordances at all.
   readOnly: boolean;
+  // Hidden transfers folded behind this row's balance step (same
+  // `Settings.hideTransfers` collapse as the budget table). When > 0
+  // the balance number becomes the expand toggle.
+  hiddenTransferCount: number;
+  transferExpanded: boolean;
+  onToggleTransferAnchor: () => void;
+  // True when this row is itself a hidden transfer revealed inline
+  // above its anchor — renders muted so it reads as "from behind the
+  // collapse", mirroring the budget table.
+  revealedTransfer: boolean;
   settings: Settings;
   onCommitAmount: (rowId: string, amount: number) => void;
   onCommitDescription: (rowId: string, description: string) => void;
@@ -85,6 +96,10 @@ function ScenarioRowImpl({
   company,
   editable,
   readOnly,
+  hiddenTransferCount,
+  transferExpanded,
+  onToggleTransferAnchor,
+  revealedTransfer,
   settings,
   onCommitAmount,
   onCommitDescription,
@@ -94,6 +109,7 @@ function ScenarioRowImpl({
 }: Props) {
   const t = useT();
   const lang = useLang();
+  const { cellClass: amountCellClass } = useAmountColumns();
   const [editing, setEditing] = useState<"amount" | "description" | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -203,11 +219,26 @@ function ScenarioRowImpl({
     </button>
   );
 
+  // One tint per delta state so a scenario's changes read at a glance:
+  // green for rows the scenario added, red for excluded rows, accent
+  // for overridden amounts / descriptions. Revealed hidden transfers
+  // reuse the budget table's muted treatment. Classes live next to the
+  // `.scenario-table` rules in components.css.
+  const stateClass = revealedTransfer
+    ? "is-revealed-transfer"
+    : isAdded
+      ? "scenario-row-added"
+      : excluded
+        ? "scenario-row-excluded"
+        : override !== undefined
+          ? "scenario-row-overridden"
+          : "";
+
   return (
     <tr
       className={`border-b border-line last:border-b-0 ${
         swiped ? "is-swiped" : ""
-      } ${isAdded ? "bg-surface-2/50" : ""}`}
+      } ${stateClass}`}
       data-row-id={row.id}
       data-swipe-handled
       onClick={() => {
@@ -344,7 +375,9 @@ function ScenarioRowImpl({
           <TypeBadge entryType={entryType} />
         </span>
       </td>
-      <td className="w-px px-2 py-1.5 text-right align-middle whitespace-nowrap">
+      <td
+        className={`w-px px-2 py-1.5 ${amountCellClass} align-middle whitespace-nowrap`}
+      >
         {editing === "amount" ? (
           <input
             // Inline override editor opened by an explicit tap on the cell —
@@ -407,16 +440,50 @@ function ScenarioRowImpl({
           </span>
         )}
       </td>
-      <td className="w-px px-2 py-1.5 text-right align-middle whitespace-nowrap">
-        <span
-          className={`font-mono text-xs tabular-nums ${
-            balance !== undefined && balance < 0
-              ? "text-negative"
-              : "text-muted"
-          }`}
-        >
-          {balance !== undefined ? formatRunningBalance(balance, settings) : ""}
-        </span>
+      <td
+        className={`w-px px-2 py-1.5 ${amountCellClass} align-middle whitespace-nowrap`}
+      >
+        {balance !== undefined && hiddenTransferCount > 0 ? (
+          // Hidden transfers contributed to this balance step — the
+          // number itself becomes the expand toggle, italic with a
+          // dotted underline, mirroring the budget table's BalanceCell.
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleTransferAnchor();
+            }}
+            aria-label={plural(
+              t,
+              "budget.hiddenTransferOne",
+              "budget.hiddenTransferOther",
+              hiddenTransferCount,
+            )}
+            title={
+              transferExpanded
+                ? t("budget.collapseHiddenTransfers")
+                : t("budget.expandHiddenTransfers")
+            }
+            aria-expanded={transferExpanded}
+            className={`cursor-pointer border-0 bg-transparent p-0 text-right font-mono text-xs tabular-nums italic underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+              balance < 0 ? "text-negative" : "text-muted"
+            }`}
+          >
+            {formatRunningBalance(balance, settings)}
+          </button>
+        ) : (
+          <span
+            className={`font-mono text-xs tabular-nums ${
+              balance !== undefined && balance < 0
+                ? "text-negative"
+                : "text-muted"
+            }`}
+          >
+            {balance !== undefined
+              ? formatRunningBalance(balance, settings)
+              : ""}
+          </span>
+        )}
       </td>
       {!readOnly && (
         <td

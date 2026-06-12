@@ -3,6 +3,7 @@ import {
   GitCompareArrows,
   LineChart as LineChartIcon,
   Pencil,
+  Plus,
 } from "lucide-react";
 
 import type { Action } from "../../data/reducer";
@@ -58,6 +59,7 @@ import {
   ScenariosChartModal,
   type ScenarioChartVariant,
 } from "./ScenariosChartModal";
+import { ScenariosAddMonitorModal } from "./ScenariosAddMonitorModal";
 import { ScenariosDiffModal } from "./ScenariosDiffModal";
 import { ScenariosMonitorRow } from "./ScenariosMonitorRow";
 
@@ -122,6 +124,25 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   const [pendingBaseSheetId, setPendingBaseSheetId] = useState<string | null>(
     null,
   );
+  const [addMonitorOpen, setAddMonitorOpen] = useState(false);
+  // Anchor rows whose hidden-transfer run is expanded inline — same
+  // per-row reveal the budget table drives via `useBudgetLayoutState`.
+  // Reset when the sheet or the active variant changes (each variant
+  // renders its own row set).
+  const [expandedTransferAnchors, setExpandedTransferAnchors] = useState<
+    Set<string>
+  >(() => new Set());
+  useEffect(() => {
+    setExpandedTransferAnchors(new Set());
+  }, [sheet.id, activeScenarioId]);
+  const toggleTransferAnchor = (rowId: string) => {
+    setExpandedTransferAnchors((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  };
 
   const viewScenarios = view?.scenarios;
   const viewMonitors = view?.monitors;
@@ -508,32 +529,30 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         </section>
       ) : (
         <div className="flex flex-col gap-6" data-sheet-content>
-          <div className="flex flex-col gap-2">
-            <ScenarioPicker
-              scenarios={scenarios}
-              activeScenarioId={activeScenario?.id ?? null}
-              onSelect={setActiveScenarioId}
-              onAdd={() => setEditModal({ kind: "create" })}
-              onRename={(scenario) =>
-                setEditModal({ kind: "rename", scenario })
-              }
-              onDelete={setDeleteTarget}
-            />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-              <span>{t("scenarios.baseLine", { name: base.sheet.name })}</span>
-              <SelectPicker
-                value={base.sheet.id}
-                options={baseOptions}
-                onChange={requestBaseChange}
-                ariaLabel={t("scenarios.changeBaseAction")}
-              />
-            </div>
-          </div>
+          <ScenarioPicker
+            scenarios={scenarios}
+            activeScenarioId={activeScenario?.id ?? null}
+            onSelect={setActiveScenarioId}
+            onAdd={() => setEditModal({ kind: "create" })}
+            onRename={(scenario) => setEditModal({ kind: "rename", scenario })}
+            onDelete={setDeleteTarget}
+          />
 
           <div>
-            <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
-              {t("scenarios.monitorsTitle")}
-            </h3>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="m-0 text-xs font-bold tracking-wider uppercase text-fg-bright">
+                {t("scenarios.monitorsTitle")}
+              </h3>
+              <button
+                type="button"
+                aria-label={t("scenarios.addMonitor")}
+                title={t("scenarios.addMonitor")}
+                onClick={() => setAddMonitorOpen(true)}
+                className="flex size-6 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+              </button>
+            </div>
             <ScenariosMonitorRow
               monitors={monitors}
               scenarios={scenarios}
@@ -591,6 +610,8 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                     baseAmounts={baseAmounts}
                     typesById={typesById}
                     companiesById={companiesById}
+                    expandedTransferAnchors={expandedTransferAnchors}
+                    onToggleTransferAnchor={toggleTransferAnchor}
                     editableRowIds={editableRowIds}
                     readOnly={activeScenario === null}
                     amountChars={activeState.colWidths.amountChars}
@@ -710,6 +731,21 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             itemId: view.id,
             scenarioId: activeScenario.id,
             rowId,
+          });
+        }}
+      />
+
+      <ScenariosAddMonitorModal
+        open={addMonitorOpen}
+        monitors={monitors}
+        onClose={() => setAddMonitorOpen(false)}
+        onAdd={(isoDate) => {
+          if (!view) return;
+          dispatch({
+            type: "setScenariosMonitors",
+            sheetId: sheet.id,
+            itemId: view.id,
+            monitors: [...monitors, isoDate],
           });
         }}
       />

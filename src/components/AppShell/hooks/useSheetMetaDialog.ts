@@ -9,6 +9,7 @@ import type {
   AccountBudget,
   Sheet,
   SalaryView,
+  ScenariosView,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
 import type { useToast } from "../../../hooks";
@@ -118,6 +119,24 @@ export function useSheetMetaDialog({
             taxProfileId: draft.taxProfileId,
           });
         }
+        // Rebind the scenarios sheet's base budget if it changed. The
+        // reducer clears every scenario's deltas on rebind (they key
+        // off the old base's row ids); the modal warns before save.
+        const scenariosItem = target.items.find(
+          (it): it is ScenariosView => it.type === "scenariosView",
+        );
+        if (
+          scenariosItem &&
+          draft.baseSheetId !== null &&
+          (scenariosItem.baseSheetId ?? null) !== draft.baseSheetId
+        ) {
+          dispatch({
+            type: "setScenariosBaseSheet",
+            sheetId: target.id,
+            itemId: scenariosItem.id,
+            baseSheetId: draft.baseSheetId,
+          });
+        }
       } else {
         const sheet = createDefaultSheet(draft.name, finalAccountId, {
           type: draft.type,
@@ -139,6 +158,21 @@ export function useSheetMetaDialog({
               sheetId: sheet.id,
               itemId: salaryItem.id,
               taxProfileId: draft.taxProfileId,
+            });
+          }
+        }
+        // Bind the chosen base budget onto the fresh scenarios sheet's
+        // item so the page lands populated instead of on the picker.
+        if (draft.type === "scenarios" && draft.baseSheetId) {
+          const scenariosItem = sheet.items.find(
+            (it): it is ScenariosView => it.type === "scenariosView",
+          );
+          if (scenariosItem) {
+            dispatch({
+              type: "setScenariosBaseSheet",
+              sheetId: sheet.id,
+              itemId: scenariosItem.id,
+              baseSheetId: draft.baseSheetId,
             });
           }
         }

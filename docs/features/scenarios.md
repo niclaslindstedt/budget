@@ -7,9 +7,10 @@ budget.
 ## How it works
 
 A Scenarios sheet models on **one base budget**: pick any of your
-budget sheets when the page first opens. Everything you then see is
-computed live from that budget — when you edit the real budget, every
-scenario follows along automatically.
+budget sheets when the page first opens (and change it later from the
+sheet's Edit modal). Everything you then see is computed live from
+that budget — when you edit the real budget, every scenario follows
+along automatically.
 
 The **Baseline** is always there: your budget exactly as it is, with
 nothing changed. Every scenario you create is a set of changes on top
@@ -29,10 +30,13 @@ of that reality:
 
 The month tables work like the budget sheet — date, description,
 type, amount, running balance, grouped by fiscal month, with the same
-recurring markers and company / type labels — and start at the
-current month (your bank-covered past can't change anyway); a "Show
-earlier months" line reveals the full history. Types are shown for
-context but can't be changed from a scenario.
+recurring markers, company / type labels, and (when "Hide transfers
+between accounts" is on) the same transfer collapse — and start at
+the current month (your bank-covered past can't change anyway); a
+"Show earlier months" line reveals the full history. Types are shown
+for context but can't be changed from a scenario. Every change is
+color-coded in place: added rows tint green, excluded rows red, and
+overridden values yellow.
 
 ## The chart
 
@@ -48,9 +52,10 @@ handle it?" gets its answer at a glance.
 
 ## Balance monitors
 
-Add a **monitor date** — say 31 December — and a card shows how much
-money each variant projects on that day, with each scenario's
-difference against the Baseline. Add as many dates as matter to you.
+Add a **monitor date** — say 31 December — with the "+" button next
+to the Balance monitors title, and a card shows how much money each
+variant projects on that day, with each scenario's difference against
+the Baseline. Add as many dates as matter to you.
 
 ## Viewing changes
 
@@ -64,6 +69,7 @@ excluded rows struck through, added rows marked with a plus.
   Scenarios sheet only, and deleting a scenario only deletes its
   changes.
 - Changing the base budget clears every scenario's changes (they
-  belong to the old budget's rows) — the app asks first.
+  belong to the old budget's rows) — the Edit-sheet modal warns
+  first.
 - Scenarios are hypothetical, so they never count toward the Insights
   sheet's net worth.

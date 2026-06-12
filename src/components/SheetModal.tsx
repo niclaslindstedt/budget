@@ -24,7 +24,14 @@ import { useT } from "../i18n";
 import { tintBorder, tintFill } from "../utils/tint";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
-import { Button, ClearableInput, ClearableTextarea, FormSection } from "./form";
+import {
+  Button,
+  ClearableInput,
+  ClearableTextarea,
+  FormSection,
+  SelectPicker,
+  type SelectOption,
+} from "./form";
 import { GlyphGrid } from "./GlyphGrid";
 import { Modal } from "./Modal";
 import { TaxProfilePicker } from "./salary/TaxProfilePicker";
@@ -51,6 +58,16 @@ type Props = {
   // The reusable tax-profile library, offered by the picker on salary
   // sheets.
   taxProfiles: TaxProfile[];
+  // The base budget bound to the sheet's scenarios item (or null) —
+  // seeds the base-budget picker on a scenarios sheet so an edit
+  // doesn't appear to wipe the binding on open.
+  currentBaseSheetId: string | null;
+  // Budget sheets offered as base candidates by the scenarios picker.
+  budgetSheets: { id: string; name: string }[];
+  // True when the sheet's scenarios carry deltas — picking a different
+  // base then surfaces a "this clears every scenario's changes"
+  // warning under the picker before save.
+  baseChangeHasDeltas: boolean;
   // Persist a freshly-created profile to the library immediately (so it
   // survives even if the sheet edit is cancelled), mirroring how the
   // employer picker creates an employer on the spot.
@@ -78,6 +95,9 @@ export function SheetModal({
   currentTaxProfileId,
   taxProfiles,
   onCreateTaxProfile,
+  currentBaseSheetId,
+  budgetSheets,
+  baseChangeHasDeltas,
   accounts,
   canDelete,
   accountsSheetTaken = false,
@@ -96,6 +116,7 @@ export function SheetModal({
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [taxProfileId, setTaxProfileId] = useState<string | null>(null);
+  const [baseSheetId, setBaseSheetId] = useState<string | null>(null);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
@@ -116,7 +137,8 @@ export function SheetModal({
     setCreatingAccount(false);
     setNewAccountName("");
     setTaxProfileId(currentTaxProfileId);
-  }, [open, sheet, currentAccountId, currentTaxProfileId]);
+    setBaseSheetId(currentBaseSheetId);
+  }, [open, sheet, currentAccountId, currentTaxProfileId, currentBaseSheetId]);
 
   useEffect(() => {
     if (creatingAccount) newAccountInputRef.current?.focus();
@@ -157,6 +179,7 @@ export function SheetModal({
           ? trimmedNewAccount
           : null,
       taxProfileId: type === "salary" ? taxProfileId : null,
+      baseSheetId: type === "scenarios" ? baseSheetId : null,
     });
     onClose();
   }
@@ -249,9 +272,55 @@ export function SheetModal({
           )}
 
           {type === "scenarios" && (
-            <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-              {t("sheetModal.scenariosHint")}
-            </p>
+            <>
+              <p className="rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+                {t("sheetModal.scenariosHint")}
+              </p>
+              <FormSection label={t("scenarios.pickBaseLabel")}>
+                {budgetSheets.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    {t("scenarios.noBudgetSheets")}
+                  </p>
+                ) : (
+                  <SelectPicker
+                    value={baseSheetId ?? ""}
+                    options={
+                      [
+                        {
+                          value: "",
+                          label: t("scenarios.noBaseOption"),
+                          disabled: true,
+                        },
+                        ...budgetSheets.map((s) => ({
+                          value: s.id,
+                          label: s.name,
+                        })),
+                      ] satisfies SelectOption<string>[]
+                    }
+                    onChange={(next) => {
+                      if (next !== "") setBaseSheetId(next);
+                    }}
+                    // Same rationale as ACCOUNT_PICKER_PLACEMENT below —
+                    // the modal is position: fixed, so the panel must
+                    // anchor in viewport space, not document space.
+                    placement={{ coordinateSpace: "viewport" }}
+                    ariaLabel={t("scenarios.pickBaseLabel")}
+                  />
+                )}
+                {isEdit &&
+                currentBaseSheetId !== null &&
+                baseSheetId !== currentBaseSheetId &&
+                baseChangeHasDeltas ? (
+                  <p className="text-xs text-danger">
+                    {t("sheetModal.baseChangeWarning")}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted">
+                    {t("sheetModal.baseBudgetHint")}
+                  </p>
+                )}
+              </FormSection>
+            </>
           )}
 
           {(type === "budget" || type === "salary") && (

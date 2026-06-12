@@ -11,7 +11,6 @@ const scenarios = {
   changeBaseConfirm:
     "Changing the base budget clears every scenario's changes (they belong to the old budget's rows). Scenario names are kept. Continue?",
   noBudgetSheets: "There are no budget sheets to model on yet.",
-  baseLine: "Based on {name}",
 
   // Scenario tabs.
   baselineTab: "Baseline",

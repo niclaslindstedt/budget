@@ -404,14 +404,35 @@
   /* Hidden transfers revealed inline under their anchor balance row.
      Softer tone + a thin left stripe so the user can tell at a glance
      these rows came from behind the ↔ icon and aren't part of the
-     normal visible stream. */
-  .budget-table > tbody > tr.is-revealed-transfer > td {
+     normal visible stream. Shared with the scenario table, which
+     mirrors the budget table's transfer collapse. */
+  .budget-table > tbody > tr.is-revealed-transfer > td,
+  .scenario-table > tbody > tr.is-revealed-transfer > td {
     background: color-mix(in srgb, var(--muted) 10%, var(--surface));
     color: var(--muted);
     font-style: italic;
   }
-  .budget-table > tbody > tr.is-revealed-transfer > td:first-child {
+  .budget-table > tbody > tr.is-revealed-transfer > td:first-child,
+  .scenario-table > tbody > tr.is-revealed-transfer > td:first-child {
     box-shadow: inset 2px 0 0 0 var(--accent);
+  }
+
+  /* Scenario delta tints — one background per change kind so a
+     scenario's edits read at a glance against the baseline rows:
+     green for rows the scenario added, red for excluded rows, and the
+     meta "edit" yellow (the same tone as the pen action button) for
+     overridden amounts / descriptions — the accent token is green in
+     One Dark, which would collide with the added tint. Painted on the
+     cells (not the row) so the swipe strip's own button colors stay
+     on top. */
+  .scenario-table > tbody > tr.scenario-row-added > td {
+    background: color-mix(in srgb, var(--positive) 12%, var(--surface));
+  }
+  .scenario-table > tbody > tr.scenario-row-excluded > td {
+    background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  }
+  .scenario-table > tbody > tr.scenario-row-overridden > td {
+    background: color-mix(in srgb, var(--meta) 12%, var(--surface));
   }
 
   /* Accounts table — mirrors the budget sheet's swipe affordance for

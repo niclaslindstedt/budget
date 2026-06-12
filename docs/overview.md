@@ -2099,8 +2099,11 @@ buttons sit **below** the graph. Reuses the `LineChart` primitive.
 The Scenarios sheet (`SheetType "scenarios"`, `ScenariosView`,
 `src/components/scenarios/ScenariosPage.tsx`) plays **what-if futures**
 against one existing budget sheet — the **base budget**, bound via
-`ScenariosView.baseSheetId` (picked on the page itself; the empty state
-opens with the picker). Scenarios are **live-linked deltas**, never
+`ScenariosView.baseSheetId`. The empty state opens with an inline base
+picker; once bound, the base is changed from the sheet's **Edit sheet
+modal** (`SheetModal`'s Base budget picker, applied through
+`setScenariosBaseSheet` on save with a clears-your-deltas warning
+under the picker). Scenarios are **live-linked deltas**, never
 copies: each `Scenario` stores only overrides / exclusions / added rows
 keyed against the base budget's row ids, so edits to the real budget
 flow into every scenario automatically and scenario edits never touch
@@ -2109,7 +2112,8 @@ switcher (`ScenarioPicker` — a dropdown listing an implicit
 **Baseline** entry first, then one entry per scenario with its chart
 color dot, then a trailing "New scenario" action; rename / delete
 glyph buttons sit to the right of the dropdown and apply to the
-active scenario, hidden on the Baseline), the balance monitors, and
+active scenario, hidden on the Baseline), the balance monitors (a "+"
+button on the title row opens `ScenariosAddMonitorModal`), and
 budget-like month tables (`ScenarioMonthTable` / `ScenarioRow`); the
 projection chart lives in its own **Visualize scenarios** modal
 opened from the sheet title's "…" menu (see
@@ -2121,7 +2125,17 @@ budget table's visual language: the recurring `Repeat` glyph +
 fallbacks (`CompanyPill` from `src/components/Pills.tsx`), the
 transfer arrow + peer-account prefix, and a **read-only type column**
 (`TypeBadge` — glyph only on mobile, tinted glyph + name pill on
-desktop; types are shown, never editable here). On mobile the tables
+desktop; types are shown, never editable here). A scenario's deltas
+are also tinted per kind — green rows were added by the scenario,
+red rows are excluded, meta-yellow rows carry an overridden amount /
+description (the `scenario-row-*` rules in
+`src/styles/components.css`). With `Settings.hideTransfers` on, the
+tables collapse inter-account transfers exactly like the budget
+table — the same `collectHiddenTransfersByAnchor` /` isTransferRow`
+helpers from `src/data/budget/synthesis.ts` group hidden runs under
+the next visible anchor row, whose balance renders italic with a
+dotted underline and toggles the run's inline reveal (muted
+`is-revealed-transfer` rows). On mobile the tables
 follow the budget table's layout: a block + per-row grid (the
 `.scenario-table` rules in `src/styles/components.css`, plus an
 unlayered cell-width reset in `src/styles/utilities.css` so the
@@ -2133,8 +2147,9 @@ selection is ephemeral component state (not persisted, so switching
 scenarios never mints an undo step). Creating the first scenario
 unlocks the **What If** achievement. Deleting the base sheet cascades
 `baseSheetId` to `null` (the page falls back to the picker); changing
-the base clears every scenario's deltas after a confirm — the row ids
-belong to the old base. The pure math lives in `src/data/scenarios/`
+the base clears every scenario's deltas — the row ids belong to the
+old base — so the Edit-sheet picker warns (and the empty-state picker
+confirms) before the rebind. The pure math lives in `src/data/scenarios/`
 (`apply.ts` for delta application + diff, `series.ts` for the
 per-variant pipeline run, monthly end balances, chart points, and
 monitor lookups); per-variant computation reuses
@@ -2187,12 +2202,16 @@ are read-only.
 
 A user-chosen ISO date ("how much money do I have on 31 December?")
 stored sorted + deduped in `ScenariosView.monitors` (wholesale-replaced
-by the `setScenariosMonitors` action). Each monitor renders as a card
-(`ScenariosMonitorRow`) listing the projected balance per variant at
-that date — `balanceAtDate` in `src/data/scenarios/series.ts`, the
-running balance after every row dated at or before the monitor date
-(inclusive, plain calendar compare) — with each scenario's delta vs the
-Baseline colored positive / negative.
+by the `setScenariosMonitors` action). Added through
+`ScenariosAddMonitorModal` (a centered date-picker modal opened by the
+"+" button on the Balance monitors title row); each monitor renders as
+a card (`ScenariosMonitorRow`) listing the projected balance per
+variant at that date — `balanceAtDate` in
+`src/data/scenarios/series.ts`, the running balance after every row
+dated at or before the monitor date (inclusive, plain calendar
+compare) — with each scenario's delta vs the Baseline colored positive
+/ negative; the name / delta / balance columns share one grid so the
+numbers align down the card.
 
 ### Scenario chart
 
