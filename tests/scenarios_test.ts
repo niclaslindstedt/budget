@@ -463,6 +463,28 @@ describe("diffScenario", () => {
     expect(override.amount).toBe(0);
   });
 
+  it("carries the base row's taxonomy refs so description-less rows stay nameable", () => {
+    const item = baseItem([
+      row("r1", "2026-01-10", "", -200, { typeId: "t1", companyId: "co1" }),
+      row("r2", "2026-01-25", "", -49, { typeId: "t2" }),
+    ]);
+    const scn = scenario({
+      overrides: [
+        { rowId: "r1", excluded: true },
+        { rowId: "r2", amount: -99 },
+      ],
+    });
+    const diff = diffScenario(item, scn);
+    const excluded = diff[0];
+    if (excluded.kind !== "excluded") throw new Error("expected excluded");
+    expect(excluded.typeId).toBe("t1");
+    expect(excluded.companyId).toBe("co1");
+    const override = diff[1];
+    if (override.kind !== "override") throw new Error("expected override");
+    expect(override.typeId).toBe("t2");
+    expect(override.companyId).toBeUndefined();
+  });
+
   it("computes a modulated entry's new amount and carries the modulation", () => {
     const item = baseItem([row("r1", "2026-01-10", "Gas", -500)]);
     const scn = scenario({

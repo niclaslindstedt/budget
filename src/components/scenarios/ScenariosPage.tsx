@@ -864,6 +864,8 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
           open={diffOpen}
           scenarioName={activeScenario.name}
           entries={diffScenario(baseItem, activeScenario)}
+          typesById={typesById}
+          companiesById={companiesById}
           settings={settings}
           onClose={() => setDiffOpen(false)}
         />

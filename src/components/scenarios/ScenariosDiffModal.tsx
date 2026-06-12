@@ -1,8 +1,9 @@
 import { GitCompareArrows, Minus, Plus } from "lucide-react";
 
 import type { ScenarioDiffEntry } from "../../data/scenarios/apply";
-import type { Settings } from "../../data/types";
+import type { Company, EntryType, Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
+import { displayTypeName } from "../../i18n/preset-names";
 import { formatBalance, formatDate } from "../../utils/format";
 import { Modal } from "../Modal";
 import { formatModulation } from "./modulation";
@@ -11,6 +12,11 @@ type Props = {
   open: boolean;
   scenarioName: string;
   entries: ScenarioDiffEntry[];
+  // Taxonomy lookups for the company / type-name fallback on rows
+  // without a user-authored description — same chain the month tables
+  // render.
+  typesById: ReadonlyMap<string, EntryType>;
+  companiesById: ReadonlyMap<string, Company>;
   settings: Settings;
   onClose: () => void;
 };
@@ -23,6 +29,8 @@ export function ScenariosDiffModal({
   open,
   scenarioName,
   entries,
+  typesById,
+  companiesById,
   settings,
   onClose,
 }: Props) {
@@ -32,6 +40,24 @@ export function ScenariosDiffModal({
   const amount = (n: number) => formatBalance(n, settings);
   const date = (iso: string) =>
     iso === "" ? "" : formatDate(iso, settings.dateFormat, lang);
+  // The row's display name: its description, else the company it is
+  // associated with, else its type — the same fallback priority as the
+  // budget and scenario tables.
+  const displayName = (entry: {
+    description: string;
+    typeId?: string;
+    companyId?: string;
+  }) => {
+    if (entry.description !== "") return entry.description;
+    const company =
+      entry.companyId !== undefined
+        ? companiesById.get(entry.companyId)
+        : undefined;
+    if (company) return company.name;
+    const type =
+      entry.typeId !== undefined ? typesById.get(entry.typeId) : undefined;
+    return type ? displayTypeName(type, t) : "";
+  };
 
   return (
     <Modal
@@ -96,7 +122,7 @@ export function ScenariosDiffModal({
                       {date(entry.date)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-muted line-through">
-                      {entry.description}
+                      {displayName(entry)}
                     </span>
                     <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] tracking-wider uppercase text-negative">
                       {t("scenarios.diffExcludedBadge")}
@@ -112,7 +138,7 @@ export function ScenariosDiffModal({
                       {date(entry.date)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-fg-bright">
-                      {entry.description}
+                      {displayName(entry)}
                     </span>
                     <span className="flex shrink-0 items-center gap-1 font-mono tabular-nums">
                       <span className="text-muted line-through">
