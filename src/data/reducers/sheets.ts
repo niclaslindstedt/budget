@@ -85,8 +85,7 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
         return {
           ...sheet,
           items: sheet.items.map((item) =>
-            item.type === "scenariosView" &&
-            item.baseSheetId === action.sheetId
+            item.type === "scenariosView" && item.baseSheetId === action.sheetId
               ? { ...item, baseSheetId: null }
               : item,
           ),

@@ -468,8 +468,7 @@ function validateScenarioAddedRow(raw: unknown): ScenarioAddedRow | undefined {
   if (typeof id !== "string" || id === "") return undefined;
   if (typeof date !== "string" || !ISO_DATE_RE.test(date)) return undefined;
   if (typeof description !== "string") return undefined;
-  if (typeof amount !== "number" || !Number.isFinite(amount))
-    return undefined;
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return undefined;
   return { id, date, description, amount };
 }
 

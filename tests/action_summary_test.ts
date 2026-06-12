@@ -111,7 +111,10 @@ describe("describeActionSubject", () => {
         },
       ],
     };
-    const prev: UserData = { ...fresh, sheets: [...fresh.sheets, scenariosSheet] };
+    const prev: UserData = {
+      ...fresh,
+      sheets: [...fresh.sheets, scenariosSheet],
+    };
     const target = { sheetId: "sheet-scn", itemId: "view-1" } as const;
 
     // Sheet-level actions name the sheet.
@@ -138,7 +141,12 @@ describe("describeActionSubject", () => {
         {
           type: "addScenario",
           ...target,
-          scenario: { id: "scn-2", name: "New car", overrides: [], addedRows: [] },
+          scenario: {
+            id: "scn-2",
+            name: "New car",
+            overrides: [],
+            addedRows: [],
+          },
         },
         prev,
       ),
@@ -168,7 +176,10 @@ describe("describeActionSubject", () => {
 
     // Deletes read the name off prev (the scenario is gone in next).
     expect(
-      describe2({ type: "deleteScenario", ...target, scenarioId: "scn-1" }, prev),
+      describe2(
+        { type: "deleteScenario", ...target, scenarioId: "scn-1" },
+        prev,
+      ),
     ).toEqual({ kind: "name", value: "Lose my job" });
   });
 

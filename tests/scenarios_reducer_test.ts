@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { reducer } from "../src/data/reducer";
 import { freshUserData } from "../src/storage/local";
-import type { Scenario, ScenariosView, Sheet, UserData } from "../src/data/types";
+import type {
+  Scenario,
+  ScenariosView,
+  Sheet,
+  UserData,
+} from "../src/data/types";
 
 function scenariosSheet(view: Partial<ScenariosView> = {}): Sheet {
   return {
@@ -128,7 +133,12 @@ describe("scenarios reducer", () => {
       type: "addScenarioRow",
       ...target,
       scenarioId: "scn-1",
-      row: { id: "a1", date: "2026-02-25", description: "A-kassa", amount: 14000 },
+      row: {
+        id: "a1",
+        date: "2026-02-25",
+        description: "A-kassa",
+        amount: 14000,
+      },
     });
     expect(viewOf(state).scenarios[0].addedRows).toHaveLength(1);
 
@@ -191,7 +201,10 @@ describe("scenarios reducer", () => {
       ...fresh,
       sheets: [...fresh.sheets, scenariosSheet({ baseSheetId: budgetSheetId })],
     };
-    const next = reducer(state, { type: "deleteSheet", sheetId: budgetSheetId });
+    const next = reducer(state, {
+      type: "deleteSheet",
+      sheetId: budgetSheetId,
+    });
     expect(next.sheets).toHaveLength(1);
     expect(viewOf(next).baseSheetId).toBeNull();
   });

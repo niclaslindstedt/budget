@@ -89,7 +89,10 @@ describe("validateScenariosView via validateUserData", () => {
     const fresh = freshUserData();
     const data: UserData = {
       ...fresh,
-      sheets: [scenariosSheet({ baseSheetId: fresh.sheets[0].id }), ...fresh.sheets],
+      sheets: [
+        scenariosSheet({ baseSheetId: fresh.sheets[0].id }),
+        ...fresh.sheets,
+      ],
       activeSheetId: "sheet-scn",
     };
     const result = validateUserData(data);

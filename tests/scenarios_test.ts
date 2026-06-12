@@ -133,7 +133,12 @@ describe("applyScenario", () => {
       item,
       scenario({
         addedRows: [
-          { id: "a1", date: "2026-02-25", description: "A-kassa", amount: 14000 },
+          {
+            id: "a1",
+            date: "2026-02-25",
+            description: "A-kassa",
+            amount: 14000,
+          },
         ],
       }),
     );
@@ -152,7 +157,12 @@ describe("applyScenario", () => {
       item,
       scenario({
         addedRows: [
-          { id: "a1", date: "2026-02-25", description: "A-kassa", amount: 14000 },
+          {
+            id: "a1",
+            date: "2026-02-25",
+            description: "A-kassa",
+            amount: 14000,
+          },
         ],
       }),
     );

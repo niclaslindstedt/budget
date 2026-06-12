@@ -125,7 +125,9 @@ export function reduceScenariosItem(
   }
   if (action.type === "deleteScenario") {
     return updateScenariosView(state, action.sheetId, action.itemId, (view) => {
-      const scenarios = view.scenarios.filter((s) => s.id !== action.scenarioId);
+      const scenarios = view.scenarios.filter(
+        (s) => s.id !== action.scenarioId,
+      );
       if (scenarios.length === view.scenarios.length) return view;
       return { ...view, scenarios };
     });
