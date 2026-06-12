@@ -95,11 +95,12 @@ type Result = {
   // Metadata-mode bulk apply: stamp the labels the user gave one
   // history entry onto every lookalike on the same account whose raw
   // bank description matches `pattern`. Fills blank fields only; tags
-  // union. The source entry is excluded (saved separately).
+  // union. `excludeEntryIds` carries the source entry (saved
+  // separately) plus any lookalikes the user unchecked.
   onApplyMetadataToMatchingHistory: (
     accountId: string,
     pattern: string,
-    excludeEntryId: string,
+    excludeEntryIds: readonly string[],
     patch: {
       userDescription?: string;
       userTypeId?: string;
@@ -299,7 +300,7 @@ export function useRowMutations({
     (
       accountId: string,
       pattern: string,
-      excludeEntryId: string,
+      excludeEntryIds: readonly string[],
       patch: {
         userDescription?: string;
         userTypeId?: string;
@@ -311,7 +312,7 @@ export function useRowMutations({
         type: "applyMetadataToMatchingHistory",
         accountId,
         pattern,
-        excludeEntryId,
+        excludeEntryIds,
         patch,
       }),
     [dispatch],

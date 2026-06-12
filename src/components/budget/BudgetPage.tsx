@@ -177,10 +177,12 @@ type Props = {
   // Metadata-mode bulk apply — stamp the labels the user gave one
   // history entry onto its lookalikes (same account, raw description
   // matches the derived pattern). Fills blank fields only; tags union.
+  // `excludeEntryIds` carries the source entry plus any lookalikes the
+  // user unchecked in the modal's selection list.
   onApplyMetadataToMatchingHistory: (
     accountId: string,
     pattern: string,
-    excludeEntryId: string,
+    excludeEntryIds: readonly string[],
     patch: {
       userDescription?: string;
       userTypeId?: string;

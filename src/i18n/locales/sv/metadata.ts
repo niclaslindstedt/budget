@@ -21,6 +21,7 @@ const metadata: MetadataCatalog = {
   bulkApplyOther: "Använd även på {n} liknande poster",
   bulkApplyHint:
     "Matchar banktexten i äldre poster och fyller bara i de fält som fortfarande saknas.",
+  bulkApplyListHint: "Avmarkera poster som inte ska uppdateras.",
   skip: "Hoppa över",
   back: "Tillbaka",
   forward: "Framåt",

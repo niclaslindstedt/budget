@@ -339,9 +339,9 @@ function lacksCompanyDecision(entry: HistoryEntry): boolean {
 function isMetadataBulkCandidate(
   entry: HistoryEntry,
   compiled: RegExp,
-  excludeEntryId: string,
+  excludeEntryIds: ReadonlySet<string>,
 ): boolean {
-  if (entry.id === excludeEntryId) return false;
+  if (excludeEntryIds.has(entry.id)) return false;
   if (entry.hidden) return false;
   if (entry.collapsedIntoTransferId) return false;
   if (entry.isTransfer) return false;
@@ -386,40 +386,50 @@ function applyMetadataPatch(
   return next ?? entry;
 }
 
-// How many OTHER entries on the account the bank-description pattern
+// The OTHER entries on the account the bank-description pattern
 // matches — the "N similar entries" the modal offers to fan labels out
-// to. Counts every eligible lookalike regardless of what it's already
+// to. Lists every eligible lookalike regardless of what it's already
 // labelled with: the offer surfaces whenever similar entries exist, and
 // `applyMetadataToMatchingEntries` then fills only the blanks (an
 // already-labelled match simply keeps what it has). A bad pattern (or
-// one that compiles to nothing) counts zero rather than throwing.
+// one that compiles to nothing) yields no matches rather than throwing.
+export function matchingBankDescriptionEntries(
+  entries: readonly HistoryEntry[],
+  pattern: string,
+  excludeEntryId: string,
+): HistoryEntry[] {
+  if (pattern.length === 0) return [];
+  let compiled: RegExp;
+  try {
+    compiled = compilePattern(pattern);
+  } catch {
+    return [];
+  }
+  const exclude = new Set([excludeEntryId]);
+  return entries.filter((entry) =>
+    isMetadataBulkCandidate(entry, compiled, exclude),
+  );
+}
+
 export function countMatchingBankDescription(
   entries: readonly HistoryEntry[],
   pattern: string,
   excludeEntryId: string,
 ): number {
-  if (pattern.length === 0) return 0;
-  let compiled: RegExp;
-  try {
-    compiled = compilePattern(pattern);
-  } catch {
-    return 0;
-  }
-  let count = 0;
-  for (const entry of entries) {
-    if (isMetadataBulkCandidate(entry, compiled, excludeEntryId)) count += 1;
-  }
-  return count;
+  return matchingBankDescriptionEntries(entries, pattern, excludeEntryId)
+    .length;
 }
 
-// Apply the fill-blanks stamp to every matching entry. Returns the
-// input array reference unchanged when nothing moves so the reducer can
+// Apply the fill-blanks stamp to every matching entry. `excludeEntryIds`
+// carries the source entry plus any lookalikes the user unchecked in
+// the modal's selection list — both stay untouched. Returns the input
+// array reference unchanged when nothing moves so the reducer can
 // short-circuit a no-op dispatch.
 export function applyMetadataToMatchingEntries(
   entries: readonly HistoryEntry[],
   pattern: string,
   patch: HistoryMetadataPatch,
-  excludeEntryId: string,
+  excludeEntryIds: readonly string[],
 ): HistoryEntry[] {
   if (pattern.length === 0) return entries as HistoryEntry[];
   let compiled: RegExp;
@@ -428,9 +438,10 @@ export function applyMetadataToMatchingEntries(
   } catch {
     return entries as HistoryEntry[];
   }
+  const exclude = new Set(excludeEntryIds);
   let changed = false;
   const next = entries.map((entry) => {
-    if (!isMetadataBulkCandidate(entry, compiled, excludeEntryId)) return entry;
+    if (!isMetadataBulkCandidate(entry, compiled, exclude)) return entry;
     const updated = applyMetadataPatch(entry, patch);
     if (updated !== entry) changed = true;
     return updated;

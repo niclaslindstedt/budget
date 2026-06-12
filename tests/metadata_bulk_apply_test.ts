@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyMetadataToMatchingEntries,
   countMatchingBankDescription,
+  matchingBankDescriptionEntries,
   type HistoryMetadataPatch,
 } from "../src/data/budget/pattern-apply";
 import { derivePatternFromDescription } from "../src/data/budget/pattern-derive";
@@ -47,7 +48,7 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entries,
       pattern,
       { userTypeId: "t" },
-      "src",
+      ["src"],
     );
     const m1 = next.find((e) => e.id === "m1");
     expect(m1?.userTypeId).toBe("t");
@@ -75,7 +76,7 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entries,
       pattern,
       { userTypeId: "type-groceries" },
-      "src",
+      ["src"],
     );
     expect(next.find((e) => e.id === "m1")?.userTypeId).toBe("type-groceries");
   });
@@ -86,7 +87,9 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entry({ id: "m1", date: "2026-03-20" }),
       entry({ id: "m2", date: "2026-02-20" }),
     ];
-    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, "src");
+    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, [
+      "src",
+    ]);
 
     // Source untouched — it's saved separately.
     const src = next.find((e) => e.id === "src");
@@ -101,6 +104,23 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
     }
   });
 
+  it("skips lookalikes the user unchecked in the selection list", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+      entry({ id: "m2", date: "2026-02-20" }),
+    ];
+    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, [
+      "src",
+      "m2",
+    ]);
+    expect(next.find((e) => e.id === "m1")?.userTypeId).toBe(
+      "type-child-benefit",
+    );
+    // The unchecked lookalike is left untouched (same reference).
+    expect(next.find((e) => e.id === "m2")).toBe(entries[2]);
+  });
+
   it("never overwrites a field a match already carries", () => {
     const entries = [
       entry({ id: "src" }),
@@ -111,7 +131,9 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
         userDescription: "Mine",
       }),
     ];
-    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, "src");
+    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, [
+      "src",
+    ]);
     const m1 = next.find((e) => e.id === "m1");
     // Pre-existing type / description preserved; the blank company fills.
     expect(m1?.userTypeId).toBe("type-other");
@@ -124,7 +146,9 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entry({ id: "src" }),
       entry({ id: "m1", date: "2026-03-20", noCompany: true }),
     ];
-    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, "src");
+    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, [
+      "src",
+    ]);
     const m1 = next.find((e) => e.id === "m1");
     expect(m1?.userCompanyId).toBeUndefined();
     // Type / description still fill — only the company is gated.
@@ -150,7 +174,9 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
         ],
       }),
     ];
-    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, "src");
+    const next = applyMetadataToMatchingEntries(entries, PATTERN, PATCH, [
+      "src",
+    ]);
     // No eligible match → input array returned unchanged.
     expect(next).toBe(entries);
   });
@@ -164,7 +190,7 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entries,
       PATTERN,
       { userTagIds: ["add"] },
-      "src",
+      ["src"],
     );
     const m1 = next.find((e) => e.id === "m1");
     expect(m1?.userTagIds).toEqual(["keep", "add"]);
@@ -181,7 +207,7 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entries,
       PATTERN,
       { noCompany: true },
-      "src",
+      ["src"],
     );
     // Only the undecided match takes the omit flag.
     expect(next.find((e) => e.id === "blank")?.noCompany).toBe(true);
@@ -202,7 +228,7 @@ describe("metadata bulk apply — matching + fill-blanks", () => {
       entries,
       PATTERN,
       { userCompanyId: "company-fk", noCompany: true },
-      "src",
+      ["src"],
     );
     const m1 = next.find((e) => e.id === "m1");
     expect(m1?.userCompanyId).toBe("company-fk");
@@ -243,6 +269,18 @@ describe("metadata bulk apply — lookalike count", () => {
   it("counts nothing for an empty pattern", () => {
     const entries = [entry({ id: "src" }), entry({ id: "m1" })];
     expect(countMatchingBankDescription(entries, "", "src")).toBe(0);
+  });
+
+  it("lists the eligible lookalikes the selection list renders", () => {
+    const entries = [
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+      entry({ id: "hidden", date: "2026-03-19", hidden: true }),
+      entry({ id: "other", date: "2026-01-20", description: "ICA Maxi 12/1" }),
+    ];
+    expect(
+      matchingBankDescriptionEntries(entries, PATTERN, "src").map((e) => e.id),
+    ).toEqual(["m1"]);
   });
 });
 
@@ -293,7 +331,7 @@ describe("applyMetadataToMatchingHistory reducer action", () => {
       type: "applyMetadataToMatchingHistory",
       accountId: "acct1",
       pattern: PATTERN,
-      excludeEntryId: "src",
+      excludeEntryIds: ["src"],
       patch: PATCH,
     });
     const m1 = next.history.acct1.find((e) => e.id === "m1");
@@ -303,13 +341,34 @@ describe("applyMetadataToMatchingHistory reducer action", () => {
     );
   });
 
+  it("leaves unchecked lookalikes untouched", () => {
+    const state = workspaceWith([
+      entry({ id: "src" }),
+      entry({ id: "m1", date: "2026-03-20" }),
+      entry({ id: "m2", date: "2026-02-20" }),
+    ]);
+    const next = reducer(state, {
+      type: "applyMetadataToMatchingHistory",
+      accountId: "acct1",
+      pattern: PATTERN,
+      excludeEntryIds: ["src", "m2"],
+      patch: PATCH,
+    });
+    expect(next.history.acct1.find((e) => e.id === "m1")?.userTypeId).toBe(
+      "type-child-benefit",
+    );
+    expect(
+      next.history.acct1.find((e) => e.id === "m2")?.userTypeId,
+    ).toBeUndefined();
+  });
+
   it("is a no-op (same state reference) when nothing matches", () => {
     const state = workspaceWith([entry({ id: "src" })]);
     const next = reducer(state, {
       type: "applyMetadataToMatchingHistory",
       accountId: "acct1",
       pattern: PATTERN,
-      excludeEntryId: "src",
+      excludeEntryIds: ["src"],
       patch: PATCH,
     });
     expect(next).toBe(state);

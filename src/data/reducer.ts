@@ -1034,12 +1034,14 @@ export type Action =
       // same account whose raw bank description matches `pattern` (a
       // glob derived from the source entry, dates / ref numbers
       // stripped). Fills BLANK fields only (a per-entry override on a
-      // match is never overwritten); tags union. The source entry is
-      // excluded — it's saved through `updateHistoryEntry` separately.
+      // match is never overwritten); tags union. `excludeEntryIds`
+      // carries the source entry (saved through `updateHistoryEntry`
+      // separately) plus any lookalikes the user unchecked in the
+      // modal's selection list.
       type: "applyMetadataToMatchingHistory";
       accountId: string;
       pattern: string;
-      excludeEntryId: string;
+      excludeEntryIds: readonly string[];
       patch: {
         userDescription?: string;
         userTypeId?: string;

@@ -191,7 +191,7 @@ export function reduceHistory(
       existing,
       action.pattern,
       action.patch,
-      action.excludeEntryId,
+      action.excludeEntryIds,
     );
     if (next === existing) return state;
     return {

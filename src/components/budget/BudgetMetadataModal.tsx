@@ -11,7 +11,7 @@ import { Split, Tags } from "lucide-react";
 import { resolveEntryLabels } from "../../data/budget/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import {
-  countMatchingBankDescription,
+  matchingBankDescriptionEntries,
   type HistoryMetadataPatch,
 } from "../../data/budget/pattern-apply";
 import { autoTypeForCompany } from "../../data/budget/company-type-hints";
@@ -108,12 +108,14 @@ type Props = {
   ) => void;
   // Stamp the labels the user gave the current entry onto its
   // lookalikes (same account, raw bank description matches the derived
-  // pattern). Fills blank fields only; tags union. The source entry is
-  // excluded — it's saved through `onUpdateHistoryEntry` separately.
+  // pattern). Fills blank fields only; tags union. `excludeEntryIds`
+  // carries the source entry (saved through `onUpdateHistoryEntry`
+  // separately) plus any lookalikes the user unchecked in the
+  // selection list.
   onApplyMetadataToMatchingHistory: (
     accountId: string,
     pattern: string,
-    excludeEntryId: string,
+    excludeEntryIds: readonly string[],
     patch: HistoryMetadataPatch,
   ) => void;
   // Persist a split decomposition for the current entry without leaving
@@ -222,6 +224,25 @@ export function BudgetMetadataModal({
   // so a bulk sweep is never a surprise. Reset when the entry changes
   // (the save / skip handler advances to a new entry) and on close.
   const [bulkApply, setBulkApply] = useState(false);
+  // Lookalikes the user unchecked in the expanded selection list —
+  // everything starts checked, so this only holds the opt-outs. Reset
+  // whenever the bulk checkbox toggles, the entry changes, or the
+  // modal closes, so a fresh offer always starts from "all selected".
+  const [bulkExcluded, setBulkExcluded] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const handleBulkApplyChange = useCallback((checked: boolean) => {
+    setBulkApply(checked);
+    setBulkExcluded(new Set());
+  }, []);
+  const toggleBulkEntry = useCallback((entryId: string, checked: boolean) => {
+    setBulkExcluded((prev) => {
+      const next = new Set(prev);
+      if (checked) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  }, []);
   // Split mode — `splitting` swaps the per-entry form for the inline
   // split builder; `splitState` holds the parts built so far plus the
   // in-progress draft (see `budget-metadata-split-reducer`). Both reset
@@ -240,6 +261,7 @@ export function BudgetMetadataModal({
       setTrail([]);
       setReviewIndex(null);
       setBulkApply(false);
+      setBulkExcluded(new Set());
       setSplitting(false);
     }
   }, [open]);
@@ -421,6 +443,7 @@ export function BudgetMetadataModal({
     dispatchForm({ kind: "reset", fields });
     // Each entry decides afresh whether to fan out to its lookalikes.
     setBulkApply(false);
+    setBulkExcluded(new Set());
     // A split-in-progress belongs to the entry it was started on — drop
     // it when the walk moves on so the builder doesn't reopen pre-filled
     // against an unrelated entry.
@@ -574,14 +597,31 @@ export function BudgetMetadataModal({
   // True once the user has entered at least one field worth fanning out.
   // The bulk offer only makes sense when there's something to apply.
   const hasBulkFields = Object.keys(bulkPatch).length > 0;
-  // How many lookalikes the bank-description pattern matches. The offer
-  // surfaces whenever similar entries exist (not only when they're
-  // missing a field you set) — applying still fills blanks only, so an
-  // already-labelled match just keeps what it has.
-  const lookalikeCount = useMemo(() => {
-    if (!current) return 0;
-    return countMatchingBankDescription(entries, bulkPattern, current.id);
+  // The lookalikes the bank-description pattern matches, newest first
+  // so the list under the checkbox reads like the budget table. The
+  // offer surfaces whenever similar entries exist (not only when
+  // they're missing a field you set) — applying still fills blanks
+  // only, so an already-labelled match just keeps what it has.
+  const lookalikes = useMemo(() => {
+    if (!current) return [];
+    const matches = matchingBankDescriptionEntries(
+      entries,
+      bulkPattern,
+      current.id,
+    );
+    matches.sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return a.id.localeCompare(b.id);
+    });
+    return matches;
   }, [entries, bulkPattern, current]);
+  const lookalikeCount = lookalikes.length;
+  // The lookalikes still selected after the user's unchecks — the set
+  // the sweep will actually touch.
+  const selectedLookalikeCount = useMemo(
+    () => lookalikes.filter((e) => !bulkExcluded.has(e.id)).length,
+    [lookalikes, bulkExcluded],
+  );
   const canBulkApply = hasBulkFields && lookalikeCount > 0;
   // Uncheck the bulk option the moment it would no longer do anything
   // (the user cleared every field, or no lookalikes remain) so a stale
@@ -591,10 +631,12 @@ export function BudgetMetadataModal({
   }, [canBulkApply, bulkApply]);
 
   // Save is reachable when the form changed (stamp the current entry)
-  // OR the user opted into a bulk sweep that has targets (even on an
-  // already-resolved entry the user is reviewing).
+  // OR the user opted into a bulk sweep that still has selected
+  // targets (even on an already-resolved entry the user is reviewing).
   const canSave =
-    !!accountId && !!current && (dirty || (bulkApply && canBulkApply));
+    !!accountId &&
+    !!current &&
+    (dirty || (bulkApply && canBulkApply && selectedLookalikeCount > 0));
 
   // The field that's still blocking this entry from leaving the queue,
   // computed from the current form state. Drives both the hint shown
@@ -623,15 +665,21 @@ export function BudgetMetadataModal({
   const handleSaveClick = useCallback(() => {
     if (canSave) {
       // Stamp the current entry first (no-op when nothing changed), then
-      // fan the same labels out to its lookalikes when the user opted
-      // in. The sweep excludes the current entry, so the two writes
-      // never collide.
+      // fan the same labels out to the lookalikes still selected when
+      // the user opted in. The sweep excludes the current entry (so the
+      // two writes never collide) plus every unchecked lookalike.
       handleSave();
-      if (bulkApply && canBulkApply && accountId && current) {
+      if (
+        bulkApply &&
+        canBulkApply &&
+        selectedLookalikeCount > 0 &&
+        accountId &&
+        current
+      ) {
         onApplyMetadataToMatchingHistory(
           accountId,
           bulkPattern,
-          current.id,
+          [current.id, ...bulkExcluded],
           bulkPatch,
         );
       }
@@ -658,6 +706,8 @@ export function BudgetMetadataModal({
     stillMissingField,
     bulkApply,
     canBulkApply,
+    selectedLookalikeCount,
+    bulkExcluded,
     accountId,
     current,
     bulkPattern,
@@ -971,7 +1021,7 @@ export function BudgetMetadataModal({
                   <div className="mt-4 rounded border border-line bg-surface-3 p-3">
                     <Checkbox
                       checked={bulkApply}
-                      onChange={setBulkApply}
+                      onChange={handleBulkApplyChange}
                       label={
                         lookalikeCount === 1
                           ? t("metadata.bulkApplyOne", { n: lookalikeCount })
@@ -979,6 +1029,47 @@ export function BudgetMetadataModal({
                       }
                       description={t("metadata.bulkApplyHint")}
                     />
+                    {bulkApply && (
+                      <div className="mt-3 flex max-h-48 flex-col gap-2 overflow-y-auto rounded border border-line bg-surface-2 p-2">
+                        <p className="text-xs text-muted">
+                          {t("metadata.bulkApplyListHint")}
+                        </p>
+                        {lookalikes.map((e) => (
+                          <Checkbox
+                            key={e.id}
+                            checked={!bulkExcluded.has(e.id)}
+                            onChange={(checked) =>
+                              toggleBulkEntry(e.id, checked)
+                            }
+                            label={
+                              <span className="flex flex-wrap items-baseline gap-x-2 font-mono text-xs">
+                                <span className="shrink-0 text-muted">
+                                  {formatShortDate(
+                                    e.date,
+                                    settings.shortDateFormat,
+                                    lang,
+                                  )}
+                                </span>
+                                <span
+                                  className={`shrink-0 tabular-nums ${
+                                    e.amount < 0
+                                      ? "text-negative"
+                                      : "text-positive"
+                                  }`}
+                                >
+                                  {formatBalance(e.amount, settings)}
+                                </span>
+                              </span>
+                            }
+                            description={
+                              <span className="font-mono break-words">
+                                {e.description || "—"}
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 <button
