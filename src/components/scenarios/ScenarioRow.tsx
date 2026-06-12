@@ -8,6 +8,7 @@ import {
   Plus,
   Repeat,
   RotateCcw,
+  SlidersHorizontal,
   Undo2,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ import {
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { CompanyPill, TypeBadge } from "../Pills";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
+import { formatModulation } from "./modulation";
 
 type Props = {
   // Display row (already scenario-applied) plus the column ids to read
@@ -57,6 +59,10 @@ type Props = {
   company: Company | null;
   // True when this is a persisted user row a scenario may override.
   editable: boolean;
+  // True when the row's amount can carry a live adjustment — editable
+  // and not a formula row (a modulation of the static cell under a
+  // formula would lie).
+  canModulate: boolean;
   // True on the Baseline tab — no editing affordances at all.
   readOnly: boolean;
   // Hidden transfers folded behind this row's balance step (same
@@ -71,7 +77,7 @@ type Props = {
   revealedTransfer: boolean;
   settings: Settings;
   onCommitAmount: (rowId: string, amount: number) => void;
-  onCommitDescription: (rowId: string, description: string) => void;
+  onModulate: (rowId: string) => void;
   onToggleExcluded: (rowId: string) => void;
   onRevert: (rowId: string) => void;
   onEditAddedRow: (addedId: string) => void;
@@ -79,11 +85,13 @@ type Props = {
 
 // One row of a scenario month table: date / description / amount /
 // running balance plus the per-row affordances when a scenario is
-// active. Desktop keeps the inline action icons; mobile follows the
-// budget table's pattern — the row is a CSS grid (see `.scenario-table`
-// in components.css), the date column narrows to the day-of-month, and
-// the actions live in a swipe-to-reveal strip (`useRowSwipeAndClaim` +
-// `swipe-action-cell`, same as every other sheet row).
+// active. Descriptions are read-only by design — a scenario changes
+// what a row costs, not what it is called. Desktop keeps the inline
+// action icons; mobile follows the budget table's pattern — the row is
+// a CSS grid (see `.scenario-table` in components.css), the date
+// column narrows to the day-of-month, and the actions live in a
+// swipe-to-reveal strip (`useRowSwipeAndClaim` + `swipe-action-cell`,
+// same as every other sheet row).
 function ScenarioRowImpl({
   row,
   dateColId,
@@ -95,6 +103,7 @@ function ScenarioRowImpl({
   entryType,
   company,
   editable,
+  canModulate,
   readOnly,
   hiddenTransferCount,
   transferExpanded,
@@ -102,7 +111,7 @@ function ScenarioRowImpl({
   revealedTransfer,
   settings,
   onCommitAmount,
-  onCommitDescription,
+  onModulate,
   onToggleExcluded,
   onRevert,
   onEditAddedRow,
@@ -110,7 +119,7 @@ function ScenarioRowImpl({
   const t = useT();
   const lang = useLang();
   const { cellClass: amountCellClass } = useAmountColumns();
-  const [editing, setEditing] = useState<"amount" | "description" | null>(null);
+  const [editingAmount, setEditingAmount] = useState(false);
   const [draft, setDraft] = useState("");
 
   const dateValue =
@@ -180,21 +189,16 @@ function ScenarioRowImpl({
   const monthNum = dateValue !== "" ? monthNumberFromKey(dateValue) : null;
   const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
 
-  function beginEdit(field: "amount" | "description", value: string) {
-    setEditing(field);
+  function beginEditAmount(value: string) {
+    setEditingAmount(true);
     setDraft(value);
   }
 
   function commitEdit() {
-    if (editing === null) return;
-    if (editing === "amount") {
-      const parsed = parseAmount(draft);
-      if (parsed !== null) onCommitAmount(row.id, parsed);
-    } else {
-      const trimmed = draft.trim();
-      if (trimmed !== "") onCommitDescription(row.id, trimmed);
-    }
-    setEditing(null);
+    if (!editingAmount) return;
+    const parsed = parseAmount(draft);
+    if (parsed !== null) onCommitAmount(row.id, parsed);
+    setEditingAmount(false);
   }
 
   const actionButton = (
@@ -262,106 +266,54 @@ function ScenarioRowImpl({
         </span>
       </td>
       <td className="min-w-0 px-2 py-1.5 align-middle">
-        {editing === "description" ? (
-          <input
-            // Inline override editor opened by an explicit tap on the cell —
-            // focusing it IS the expected outcome (same pattern as the admin
-            // rename editors).
-            // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitEdit();
-              if (e.key === "Escape") setEditing(null);
-            }}
-            className="field-input w-full min-w-0 rounded border border-accent bg-surface-2 px-1 py-0.5 text-sm text-fg"
-            aria-label={t("scenarios.editDescriptionAria", {
-              name: descValue,
-            })}
-          />
-        ) : (
-          <span className="flex min-w-0 items-center gap-1.5">
-            {isAdded && (
-              <Plus
-                size={12}
-                className="shrink-0 text-positive"
-                aria-hidden
-                focusable={false}
-              />
-            )}
-            {isRecurring && !excluded && !showCompanyPill && (
-              <Repeat
-                size={14}
-                className="shrink-0 text-flag"
-                aria-hidden
-                focusable={false}
-              />
-            )}
-            {isTransfer && !excluded && (
-              <>
-                {typeof amountValue === "number" && amountValue < 0 ? (
-                  <ArrowRight
-                    size={12}
-                    aria-hidden
-                    focusable={false}
-                    className="shrink-0 text-flag"
-                  />
-                ) : (
-                  <ArrowLeftRight
-                    size={12}
-                    aria-hidden
-                    focusable={false}
-                    className="shrink-0 text-flag"
-                  />
-                )}
-                <span className="shrink-0 truncate text-muted">
-                  {row.peerAccountName || "—"}
-                </span>
-                {descValue && <span className="text-muted">·</span>}
-              </>
-            )}
-            {editable && !excluded ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (swiped) {
-                    setSwiped(false);
-                    return;
-                  }
-                  beginEdit("description", descValue);
-                }}
-                aria-label={t("scenarios.editDescriptionAria", {
-                  name: descValue,
-                })}
-                className={`flex min-w-0 cursor-text items-center gap-1 border-0 bg-transparent p-0 text-left text-sm ${
-                  override?.description !== undefined
-                    ? "text-accent"
-                    : isRecurring
-                      ? "text-flag"
-                      : "text-fg"
-                }`}
-              >
-                {descriptionContent}
-              </button>
-            ) : (
-              <span
-                className={`flex min-w-0 items-center gap-1 ${
-                  excluded
-                    ? "text-muted"
-                    : isRecurring
-                      ? "text-flag"
-                      : "text-fg"
-                }`}
-              >
-                {descriptionContent}
+        <span className="flex min-w-0 items-center gap-1.5">
+          {isAdded && (
+            <Plus
+              size={12}
+              className="shrink-0 text-positive"
+              aria-hidden
+              focusable={false}
+            />
+          )}
+          {isRecurring && !excluded && !showCompanyPill && (
+            <Repeat
+              size={14}
+              className="shrink-0 text-flag"
+              aria-hidden
+              focusable={false}
+            />
+          )}
+          {isTransfer && !excluded && (
+            <>
+              {typeof amountValue === "number" && amountValue < 0 ? (
+                <ArrowRight
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="shrink-0 text-flag"
+                />
+              ) : (
+                <ArrowLeftRight
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="shrink-0 text-flag"
+                />
+              )}
+              <span className="shrink-0 truncate text-muted">
+                {row.peerAccountName || "—"}
               </span>
-            )}
+              {descValue && <span className="text-muted">·</span>}
+            </>
+          )}
+          <span
+            className={`flex min-w-0 items-center gap-1 ${
+              excluded ? "text-muted" : isRecurring ? "text-flag" : "text-fg"
+            }`}
+          >
+            {descriptionContent}
           </span>
-        )}
+        </span>
       </td>
       <td
         className="w-px px-1 py-1.5 text-center align-middle whitespace-nowrap md:px-2"
@@ -378,7 +330,7 @@ function ScenarioRowImpl({
       <td
         className={`w-px px-2 py-1.5 ${amountCellClass} align-middle whitespace-nowrap`}
       >
-        {editing === "amount" ? (
+        {editingAmount ? (
           <input
             // Inline override editor opened by an explicit tap on the cell —
             // focusing it IS the expected outcome (same pattern as the admin
@@ -392,7 +344,7 @@ function ScenarioRowImpl({
             onBlur={commitEdit}
             onKeyDown={(e) => {
               if (e.key === "Enter") commitEdit();
-              if (e.key === "Escape") setEditing(null);
+              if (e.key === "Escape") setEditingAmount(false);
             }}
             className="field-input w-full min-w-0 rounded border border-accent bg-surface-2 px-1 py-0.5 text-right font-mono text-sm text-fg md:w-24"
             aria-label={t("scenarios.editAmountAria", { name: descValue })}
@@ -406,20 +358,25 @@ function ScenarioRowImpl({
                 setSwiped(false);
                 return;
               }
-              beginEdit(
-                "amount",
+              beginEditAmount(
                 displayAmount === null ? "" : String(displayAmount),
               );
             }}
             aria-label={t("scenarios.editAmountAria", { name: descValue })}
             className={`cursor-text border-0 bg-transparent p-0 text-right font-mono text-sm tabular-nums ${
-              override?.amount !== undefined
+              override?.amount !== undefined ||
+              override?.modulation !== undefined
                 ? "text-accent"
                 : displayAmount !== null && displayAmount < 0
                   ? "text-negative"
                   : "text-positive"
             }`}
           >
+            {override?.modulation !== undefined && (
+              <span className="mr-1.5 text-xs text-meta">
+                {formatModulation(override.modulation, settings)}
+              </span>
+            )}
             {displayAmount === null
               ? ""
               : formatNumber(displayAmount, settings)}
@@ -487,11 +444,11 @@ function ScenarioRowImpl({
       </td>
       {!readOnly && (
         <td
-          // `w-24` mirrors `--swipe-strip-width: 96px` — the width
-          // utility must match the strip width or it wins the cascade
-          // and shrinks the revealed overlay (same scheme as ItemRow's
-          // `w-32` against the default 128px).
-          className="swipe-action-cell w-24 p-0 align-middle whitespace-nowrap md:py-1.5 md:pr-2 md:pl-1"
+          // `w-32` mirrors the default `--swipe-strip-width: 128px` —
+          // the width utility must match the strip width or it wins
+          // the cascade and shrinks the revealed overlay (same scheme
+          // as ItemRow).
+          className="swipe-action-cell w-32 p-0 align-middle whitespace-nowrap md:py-1.5 md:pr-2 md:pl-1"
         >
           <span className="flex h-full w-full items-stretch justify-end gap-0.5 md:items-center">
             {isAdded
@@ -515,6 +472,19 @@ function ScenarioRowImpl({
                         "md:hover:text-accent",
                         () => onRevert(row.id),
                         <RotateCcw size={14} aria-hidden focusable={false} />,
+                      )}
+                    {canModulate &&
+                      !excluded &&
+                      actionButton(
+                        t("scenarios.modulateRow", { name: descValue }),
+                        "action-btn-pen",
+                        "md:hover:text-accent",
+                        () => onModulate(row.id),
+                        <SlidersHorizontal
+                          size={14}
+                          aria-hidden
+                          focusable={false}
+                        />,
                       )}
                     {excluded
                       ? actionButton(

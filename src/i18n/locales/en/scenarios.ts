@@ -46,10 +46,21 @@ const scenarios = {
   includeRow: "Include {name} again",
   revertOverride: "Revert change to {name}",
   editAmountAria: "Change amount of {name} in this scenario",
-  editDescriptionAria: "Change description of {name} in this scenario",
   addRow: "Add row",
   addedRowBadge: "Added in this scenario",
   editAddedRow: "Edit added row",
+
+  // Adjust-amount modal (live modulation of a base amount).
+  modulateRow: "Adjust amount of {name}",
+  modulateTitle: "Adjust amount",
+  modulateBody:
+    "The adjustment stays linked to your budget — if the entry's amount changes there, this scenario follows automatically.",
+  modulateOpLabel: "Adjustment",
+  modulateOpAdd: "Add amount",
+  modulateOpMultiply: "Multiply by",
+  modulateOpPercent: "Change by percent",
+  modulateValueLabel: "Value",
+  modulateRemove: "Remove adjustment",
 
   // Added-row modal.
   rowModalTitleAdd: "New scenario row",

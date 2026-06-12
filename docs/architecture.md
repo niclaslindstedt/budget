@@ -176,6 +176,9 @@ src/
 │       ├── ScenarioMonthTable.tsx # one month — header + rows + add-row footer
 │       ├── ScenarioRow.tsx       # one row — inline override/exclude, swipe strip
 │       ├── ScenarioRowModal.tsx  # add/edit a scenario-only row
+│       ├── ScenarioModulateModal.tsx # attach a live amount adjustment
+│       │                         #   (+5000 / ×2 / +300 %) with preview
+│       ├── modulation.ts         # formatModulation — the ×2 / +5000 token
 │       ├── ScenarioEditModal.tsx # create/rename a scenario
 │       ├── ScenariosMonitorRow.tsx # monitor-date cards + remove
 │       ├── ScenariosAddMonitorModal.tsx # add a monitor date ("+" on title row)
@@ -421,7 +424,8 @@ src/
 │   │                           #   time line behind "Visualize value" (gross/net)
 │   ├── scenarios/          # scenarios page — what-if math over a base budget
 │   │   ├── apply.ts            # findBaseBudget, applyScenario (clone with
-│   │   │                       #   overrides / exclusions / scn:-id added rows),
+│   │   │                       #   overrides / modulations / exclusions /
+│   │   │                       #   scn:-id added rows), modulateAmount,
 │   │   │                       #   overridesByRowId, diffScenario
 │   │   └── series.ts           # computeScenarioState (applyScenario +
 │   │                           #   computeBudgetState), monthlyEndBalances,

@@ -49,6 +49,7 @@ import type {
   RenamePattern,
   Salary,
   Saving,
+  ScenarioRowOverride,
   SeriesMetadata,
   Sheet,
   StockPosition,
@@ -1399,9 +1400,11 @@ export function buildSeedUserData(): UserData {
   };
 
   // ---- Scenarios sheet bound to the Checking budget ----------------
-  // Two worked what-ifs so the page lands populated: "Lose my job"
+  // Three worked what-ifs so the page lands populated: "Lose my job"
   // zeroes the salary in the future months, drops the gym, and adds an
-  // unemployment-benefit income; "New car" just adds costs. The deltas
+  // unemployment-benefit income; "New car" just adds costs; "Pay
+  // raise" carries live amount adjustments (+3000 on every upcoming
+  // salary) so the modulation surfaces render seeded. The deltas
   // deliberately target the months PAST the bank-history window —
   // inside covered months the per-entry balance pins absorb edits, so
   // only uncovered months make the chart lines diverge. Overrides
@@ -1447,6 +1450,17 @@ export function buildSeedUserData(): UserData {
               description: "A-kassa",
               amount: 14500,
             })),
+          },
+          {
+            id: mkId("scn"),
+            name: "Pay raise",
+            overrides: futureRowsOf(salarySeries).map(
+              (r): ScenarioRowOverride => ({
+                rowId: r.id,
+                modulation: { op: "add", value: 3000 },
+              }),
+            ),
+            addedRows: [],
           },
           {
             id: mkId("scn"),

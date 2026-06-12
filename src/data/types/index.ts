@@ -61,6 +61,7 @@ export type {
   SavingsView,
   Scenario,
   ScenarioAddedRow,
+  ScenarioAmountModulation,
   ScenarioRowOverride,
   ScenariosView,
   Sheet,

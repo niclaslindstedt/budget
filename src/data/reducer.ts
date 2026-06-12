@@ -32,6 +32,7 @@ import type {
   SavingBalancePoint,
   Scenario,
   ScenarioAddedRow,
+  ScenarioAmountModulation,
   ScenarioRowOverride,
   SeriesMatchRule,
   Settings,
@@ -409,7 +410,7 @@ export type Action =
       scenarioId: string;
     }
   | {
-      // Upsert one per-row delta (replacement amount / description,
+      // Upsert one per-row delta (replacement or modulated amount,
       // exclusion flag) keyed by the base row's id. An override that
       // normalises to nothing (a bare `{ rowId }`) REMOVES the entry —
       // that is the revert / re-include path.
@@ -420,18 +421,22 @@ export type Action =
       override: ScenarioRowOverride;
     }
   | {
-      // Fan one override field out to every occurrence of the anchor
+      // Fan one amount change out to every occurrence of the anchor
       // row's recurring series dated at or after the anchor (clamped
-      // to `untilIso` when set). Per target row, a value equal to that
-      // row's own base cell clears the field instead of storing a
-      // no-op override — so re-stating the base is a sweep-wide revert.
+      // to `untilIso` when set). For a fixed amount, a value equal to
+      // a target row's own base cell clears the field instead of
+      // storing a no-op override — so re-stating the base is a
+      // sweep-wide revert; a no-op modulation (+0 / ×1) clears the
+      // same way via the shared normalizer. Setting either flavour
+      // drops the other on each target (they are mutually exclusive).
       type: "propagateScenarioOverrideToFuture";
       sheetId: string;
       itemId: string;
       scenarioId: string;
       rowId: string;
-      field: "amount" | "description";
-      value: number | string;
+      change:
+        | { kind: "amount"; amount: number }
+        | { kind: "modulation"; modulation: ScenarioAmountModulation };
       untilIso: string | null;
     }
   | {

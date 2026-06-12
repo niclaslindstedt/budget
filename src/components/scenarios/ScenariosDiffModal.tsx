@@ -5,6 +5,7 @@ import type { Settings } from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatDate } from "../../utils/format";
 import { Modal } from "../Modal";
+import { formatModulation } from "./modulation";
 
 type Props = {
   open: boolean;
@@ -111,35 +112,23 @@ export function ScenariosDiffModal({
                       {date(entry.date)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-fg-bright">
-                      {entry.newDescription !== undefined ? (
-                        <>
-                          <span className="text-muted line-through">
-                            {entry.description}
-                          </span>{" "}
-                          {entry.newDescription}
-                        </>
-                      ) : (
-                        entry.description
-                      )}
+                      {entry.description}
                     </span>
                     <span className="flex shrink-0 items-center gap-1 font-mono tabular-nums">
-                      {entry.amount !== undefined ? (
-                        <>
-                          <span className="text-muted line-through">
-                            {amount(entry.baseAmount)}
-                          </span>
-                          <span aria-hidden className="text-muted">
-                            →
-                          </span>
-                          <span className="text-accent">
-                            {amount(entry.amount)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-fg-bright">
-                          {amount(entry.baseAmount)}
+                      <span className="text-muted line-through">
+                        {amount(entry.baseAmount)}
+                      </span>
+                      <span aria-hidden className="text-muted">
+                        →
+                      </span>
+                      {entry.modulation !== undefined && (
+                        <span className="text-xs text-meta">
+                          {formatModulation(entry.modulation, settings)}
                         </span>
                       )}
+                      <span className="text-accent">
+                        {amount(entry.amount)}
+                      </span>
                     </span>
                   </>
                 )}

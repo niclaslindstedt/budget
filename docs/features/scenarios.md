@@ -16,12 +16,22 @@ The **Baseline** is always there: your budget exactly as it is, with
 nothing changed. Every scenario you create is a set of changes on top
 of that reality:
 
-- **Change a value** — tap an amount (or a description) in the
-  scenario's table and type a new one. Only that row, only in that
-  scenario. An overridden row shows in the accent color, with a revert
-  control to undo the change. Editing a recurring entry asks whether
-  the upcoming entries in the same series should change too — apply to
-  all of them, stop after a date, or keep it to just this one.
+- **Change a value** — tap an amount in the scenario's table and type
+  a new one. Only that row, only in that scenario. An overridden row
+  shows in the accent color, with a revert control to undo the change.
+  Editing a recurring entry asks whether the upcoming entries in the
+  same series should change too — apply to all of them, stop after a
+  date, or keep it to just this one. (Descriptions stay as they are —
+  a scenario changes what a row costs, not what it's called.)
+- **Adjust a value** — instead of typing a fixed number, attach a live
+  adjustment from the row's action strip: add an amount ("what if I
+  get a 5 000 kr raise?"), multiply ("what if rent doubles?"), or
+  change by percent ("what if gas goes up 300 %?"). The adjustment
+  stays linked to the real budget: when the underlying entry changes
+  there, the scenario recomputes from the new amount automatically. A
+  small ×2 / +5 000 token next to the amount shows the rule that's in
+  effect, and recurring entries offer the same apply-to-upcoming sweep
+  as a typed value.
 - **Drop a row** — exclude an expense you wouldn't keep ("if I lose my
   job, the gym goes"). Excluded rows stay visible, struck through, and
   contribute nothing to the balances.

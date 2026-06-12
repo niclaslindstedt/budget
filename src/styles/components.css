@@ -360,10 +360,8 @@
     .transfers-table {
       --swipe-strip-width: 64px;
     }
-    /* Scenario rows reveal at most two buttons (revert + exclude). */
-    .scenario-table {
-      --swipe-strip-width: 96px;
-    }
+    /* Scenario rows reveal up to three buttons (revert + adjust +
+       exclude) and ride the 128px default — no override needed. */
     /* Budget centres its strip content (the synthesized-row transfer
        button reads as one centred control) rather than stretching the
        buttons edge to edge. */

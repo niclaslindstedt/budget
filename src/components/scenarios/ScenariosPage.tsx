@@ -20,6 +20,7 @@ import {
 import {
   diffScenario,
   findBaseBudget,
+  modulateAmount,
   overridesByRowId,
 } from "../../data/scenarios/apply";
 import {
@@ -31,6 +32,7 @@ import { newId } from "../../data/sheet";
 import type {
   Scenario,
   ScenarioAddedRow,
+  ScenarioAmountModulation,
   ScenarioRowOverride,
   ScenariosView,
   Settings,
@@ -52,6 +54,7 @@ import {
 } from "../SheetTitleMenu";
 import { BASELINE_COLOR_VAR, scenarioColorVar } from "./scenario-colors";
 import { ScenarioEditModal } from "./ScenarioEditModal";
+import { ScenarioModulateModal } from "./ScenarioModulateModal";
 import { ScenarioMonthTable } from "./ScenarioMonthTable";
 import { ScenarioPicker } from "./ScenarioPicker";
 import { ScenarioRowModal } from "./ScenarioRowModal";
@@ -84,13 +87,15 @@ type RowModalState =
   | { kind: "edit"; row: ScenarioAddedRow };
 
 // "Apply this edit to the rest of the recurring series?" staging slot —
-// set when an amount / description commit lands on a base row with a
-// `seriesId` that continues past the anchor date. The ApplySeriesDialog
-// consumes it; confirming dispatches the override sweep.
+// set when an amount commit or a live adjustment lands on a base row
+// with a `seriesId` that continues past the anchor date. The
+// ApplySeriesDialog consumes it; confirming dispatches the override
+// sweep.
 type PendingSeriesApply = {
   rowId: string;
-  field: "amount" | "description";
-  value: number | string;
+  change:
+    | { kind: "amount"; amount: number }
+    | { kind: "modulation"; modulation: ScenarioAmountModulation };
   fieldLabel: string;
   anchorDate: string;
   lastSeriesDate: string | null;
@@ -113,6 +118,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const [showEarlierMonths, setShowEarlierMonths] = useState(false);
   const [rowModal, setRowModal] = useState<RowModalState | null>(null);
+  const [modulateRowId, setModulateRowId] = useState<string | null>(null);
   const [editModal, setEditModal] = useState<
     { kind: "create" } | { kind: "rename"; scenario: Scenario } | null
   >(null);
@@ -287,32 +293,40 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         : new Map<string, ScenarioRowOverride>(),
     [activeScenario],
   );
-  const { editableRowIds, baseUserRowsById, baseAmounts, baseDescriptions } =
-    useMemo(() => {
-      const ids = new Set<string>();
-      const byId = new Map<string, UserRow>();
-      const amounts = new Map<string, number>();
-      const descriptions = new Map<string, string>();
-      if (baseItem) {
-        const amountCol = baseItem.columns.find((c) => c.type === "amount");
-        const descCol = baseItem.columns.find((c) => c.type === "description");
-        for (const row of baseItem.rows) {
-          if (row.kind !== "user") continue;
-          ids.add(row.id);
-          byId.set(row.id, row);
-          const v = amountCol ? row.cells[amountCol.id] : undefined;
-          if (typeof v === "number") amounts.set(row.id, v);
-          const d = descCol ? row.cells[descCol.id] : undefined;
-          if (typeof d === "string") descriptions.set(row.id, d);
-        }
+  const {
+    editableRowIds,
+    formulaRowIds,
+    baseUserRowsById,
+    baseAmounts,
+    baseDescriptions,
+  } = useMemo(() => {
+    const ids = new Set<string>();
+    const formulaIds = new Set<string>();
+    const byId = new Map<string, UserRow>();
+    const amounts = new Map<string, number>();
+    const descriptions = new Map<string, string>();
+    if (baseItem) {
+      const amountCol = baseItem.columns.find((c) => c.type === "amount");
+      const descCol = baseItem.columns.find((c) => c.type === "description");
+      for (const row of baseItem.rows) {
+        if (row.kind !== "user") continue;
+        ids.add(row.id);
+        if (row.amountFormula !== undefined) formulaIds.add(row.id);
+        byId.set(row.id, row);
+        const v = amountCol ? row.cells[amountCol.id] : undefined;
+        if (typeof v === "number") amounts.set(row.id, v);
+        const d = descCol ? row.cells[descCol.id] : undefined;
+        if (typeof d === "string") descriptions.set(row.id, d);
       }
-      return {
-        editableRowIds: ids,
-        baseUserRowsById: byId,
-        baseAmounts: amounts,
-        baseDescriptions: descriptions,
-      };
-    }, [baseItem]);
+    }
+    return {
+      editableRowIds: ids,
+      formulaRowIds: formulaIds,
+      baseUserRowsById: byId,
+      baseAmounts: amounts,
+      baseDescriptions: descriptions,
+    };
+  }, [baseItem]);
 
   // Month list for the tables: ascending, current fiscal month onward
   // by default — scenarios are forward-looking, and the bank-covered
@@ -356,15 +370,14 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // flow as committing a series cell on the budget page.
   function maybeStageSeriesApply(
     rowId: string,
-    field: "amount" | "description",
-    value: number | string,
+    change: PendingSeriesApply["change"],
   ) {
     if (!baseItem || !activeScenario) return;
     const row = baseUserRowsById.get(rowId);
     if (!row?.seriesId) return;
     const dateCol = baseItem.columns.find((c) => c.type === "date");
-    const valueCol = baseItem.columns.find((c) => c.type === field);
-    if (!dateCol || !valueCol) return;
+    const amountCol = baseItem.columns.find((c) => c.type === "amount");
+    if (!dateCol || !amountCol) return;
     const anchorDate =
       typeof row.cells[dateCol.id] === "string"
         ? (row.cells[dateCol.id] as string)
@@ -377,38 +390,53 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     if (lastSeriesDate === null || lastSeriesDate <= anchorDate) return;
     setPendingSeriesApply({
       rowId,
-      field,
-      value,
-      fieldLabel: valueCol.label,
+      change,
+      fieldLabel: amountCol.label,
       anchorDate,
       lastSeriesDate,
     });
   }
 
+  // The amount a row currently shows: fixed override if set, modulated
+  // base when a live adjustment applies, the base amount otherwise.
+  function shownAmount(rowId: string): number | undefined {
+    const override = activeOverrides.get(rowId);
+    const base = baseAmounts.get(rowId);
+    if (override?.amount !== undefined) return override.amount;
+    if (
+      override?.modulation !== undefined &&
+      base !== undefined &&
+      !formulaRowIds.has(rowId)
+    )
+      return modulateAmount(base, override.modulation);
+    return base;
+  }
+
   // Commits route through a base-value comparison so a value typed (or
-  // typed back) equal to the base row CLEARS that override field instead
-  // of storing a no-op "change" — the diff modal then only ever shows
-  // actual changes. A commit equal to the value already on screen
-  // (override if set, base otherwise) is a pure no-op: no override
-  // write, and crucially no "apply to the rest of the series?" prompt
-  // for an edit that didn't change anything.
+  // typed back) equal to the base row CLEARS the override instead of
+  // storing a no-op "change" — the diff modal then only ever shows
+  // actual changes. A commit equal to the value already on screen is a
+  // pure no-op: no override write, and crucially no "apply to the rest
+  // of the series?" prompt for an edit that didn't change anything. A
+  // fixed amount always displaces a live adjustment — they are mutually
+  // exclusive.
   function handleCommitAmount(rowId: string, amount: number) {
-    const prev = activeOverrides.get(rowId)?.amount ?? baseAmounts.get(rowId);
-    if (prev === amount) return;
+    if (shownAmount(rowId) === amount) return;
     patchOverride(rowId, {
       amount: baseAmounts.get(rowId) === amount ? undefined : amount,
+      modulation: undefined,
     });
-    maybeStageSeriesApply(rowId, "amount", amount);
+    maybeStageSeriesApply(rowId, { kind: "amount", amount });
   }
-  function handleCommitDescription(rowId: string, description: string) {
-    const prev =
-      activeOverrides.get(rowId)?.description ?? baseDescriptions.get(rowId);
-    if (prev === description) return;
-    patchOverride(rowId, {
-      description:
-        baseDescriptions.get(rowId) === description ? undefined : description,
-    });
-    maybeStageSeriesApply(rowId, "description", description);
+  function handleSaveModulation(
+    rowId: string,
+    modulation: ScenarioAmountModulation,
+  ) {
+    const existing = activeOverrides.get(rowId)?.modulation;
+    if (existing?.op === modulation.op && existing?.value === modulation.value)
+      return;
+    patchOverride(rowId, { modulation, amount: undefined });
+    maybeStageSeriesApply(rowId, { kind: "modulation", modulation });
   }
 
   const chartVariants: ScenarioChartVariant[] = [
@@ -613,12 +641,13 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                     expandedTransferAnchors={expandedTransferAnchors}
                     onToggleTransferAnchor={toggleTransferAnchor}
                     editableRowIds={editableRowIds}
+                    formulaRowIds={formulaRowIds}
                     readOnly={activeScenario === null}
                     amountChars={activeState.colWidths.amountChars}
                     balanceChars={activeState.colWidths.balanceChars}
                     settings={settings}
                     onCommitAmount={handleCommitAmount}
-                    onCommitDescription={handleCommitDescription}
+                    onModulate={setModulateRowId}
                     onToggleExcluded={(rowId) =>
                       patchOverride(rowId, {
                         excluded: activeOverrides.get(rowId)?.excluded
@@ -735,6 +764,34 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         }}
       />
 
+      <ScenarioModulateModal
+        open={modulateRowId !== null}
+        rowId={modulateRowId}
+        rowName={
+          modulateRowId === null
+            ? ""
+            : (baseDescriptions.get(modulateRowId) ?? "")
+        }
+        baseAmount={
+          modulateRowId === null ? 0 : (baseAmounts.get(modulateRowId) ?? 0)
+        }
+        modulation={
+          modulateRowId === null
+            ? null
+            : (activeOverrides.get(modulateRowId)?.modulation ?? null)
+        }
+        settings={settings}
+        onClose={() => setModulateRowId(null)}
+        onSave={(modulation) => {
+          if (modulateRowId !== null)
+            handleSaveModulation(modulateRowId, modulation);
+        }}
+        onRemove={() => {
+          if (modulateRowId !== null)
+            patchOverride(modulateRowId, { modulation: undefined });
+        }}
+      />
+
       <ScenariosAddMonitorModal
         open={addMonitorOpen}
         monitors={monitors}
@@ -783,8 +840,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             itemId: view.id,
             scenarioId: activeScenario.id,
             rowId: pendingSeriesApply.rowId,
-            field: pendingSeriesApply.field,
-            value: pendingSeriesApply.value,
+            change: pendingSeriesApply.change,
             untilIso,
           });
           setPendingSeriesApply(null);

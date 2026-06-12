@@ -2125,11 +2125,13 @@ budget table's visual language: the recurring `Repeat` glyph +
 fallbacks (`CompanyPill` from `src/components/Pills.tsx`), the
 transfer arrow + peer-account prefix, and a **read-only type column**
 (`TypeBadge` — glyph only on mobile, tinted glyph + name pill on
-desktop; types are shown, never editable here). A scenario's deltas
-are also tinted per kind — green rows were added by the scenario,
-red rows are excluded, meta-yellow rows carry an overridden amount /
-description (the `scenario-row-*` rules in
-`src/styles/components.css`). With `Settings.hideTransfers` on, the
+desktop; types are shown, never editable here). Descriptions are
+**read-only** — a scenario changes what a row costs, never what it is
+called. A scenario's deltas are also tinted per kind — green rows
+were added by the scenario, red rows are excluded, meta-yellow rows
+carry an overridden amount (fixed or [adjusted](#amount-adjustment-scenarios),
+the latter with its ×2 / +5000 token rendered before the number; the
+`scenario-row-*` rules in `src/styles/components.css`). With `Settings.hideTransfers` on, the
 tables collapse inter-account transfers exactly like the budget
 table — the same `collectHiddenTransfersByAnchor` /` isTransferRow`
 helpers from `src/data/budget/synthesis.ts` group hidden runs under
@@ -2163,32 +2165,60 @@ net-worth roll-up.
 
 One named what-if variant (`Scenario` in `src/data/types/sheets.ts`):
 `overrides` (per-row deltas keyed by base row id —
-`ScenarioRowOverride` with replacement `amount`, replacement
-`description`, and/or `excluded: true`) plus `addedRows`
+`ScenarioRowOverride` with a replacement `amount`, a live amount
+`modulation` (see [Amount adjustment](#amount-adjustment-scenarios)),
+and/or `excluded: true`; a fixed `amount` and a `modulation` are
+mutually exclusive — setting one displaces the other) plus `addedRows`
 (`ScenarioAddedRow` — scenario-only rows with date / description /
 amount, e.g. an unemployment benefit in a lose-my-job scenario). On
-the page, tapping an amount or description in a scenario's table edits
-it inline (dispatching the upsert-by-rowId `setScenarioOverride`
-action); the minus control excludes a row (struck through, contributes
-nothing to balances); the revert control clears an override (a bare
-`{ rowId }` payload normalises to nothing and removes the entry — the
-shared `normalizeScenarioOverride` contract between the reducer and
-validator). A committed value equal to the base row's own clears that
-field instead of storing a no-op override, and a commit equal to the
-value already on screen (override if set, base otherwise) is a pure
-no-op — nothing is written and no series prompt fires. Committing a
-genuine change on a row that belongs to a recurring series which
-continues past it stages the shared `ApplySeriesDialog` ("apply to
-upcoming entries too?") — same flow as the budget page — and
-confirming dispatches
-`propagateScenarioOverrideToFuture`, which fans the override field out
-to every later occurrence (clamped by the optional "stop after" date;
-per target row a value equal to that row's base clears rather than
-stores). Added rows are minted into the applied clone with
-deterministic `scn:`-prefixed ids (`applyScenario` in
-`src/data/scenarios/apply.ts`) and edited via `ScenarioRowModal`.
+the page, tapping an amount in a scenario's table edits it inline
+(dispatching the upsert-by-rowId `setScenarioOverride` action);
+descriptions are read-only; the minus control excludes a row (struck
+through, contributes nothing to balances); the revert control clears
+an override (a bare `{ rowId }` payload normalises to nothing and
+removes the entry — the shared `normalizeScenarioOverride` contract
+between the reducer and validator). A committed amount equal to the
+base row's own clears that field instead of storing a no-op override,
+and a commit equal to the value already on screen (fixed override if
+set, modulated base if adjusted, base otherwise) is a pure no-op —
+nothing is written and no series prompt fires. Committing a genuine
+change on a row that belongs to a recurring series which continues
+past it stages the shared `ApplySeriesDialog` ("apply to upcoming
+entries too?") — same flow as the budget page — and confirming
+dispatches `propagateScenarioOverrideToFuture`, which fans the change
+(fixed amount or modulation) out to every later occurrence (clamped
+by the optional "stop after" date; per target row a fixed value equal
+to that row's base clears rather than stores, and either flavour
+displaces the other on each target). Added rows are minted into the
+applied clone with deterministic `scn:`-prefixed ids (`applyScenario`
+in `src/data/scenarios/apply.ts`) and edited via `ScenarioRowModal`.
 Overrides whose base row was deleted are inert (ignored at compute
 time, skipped by the diff).
+
+### Amount adjustment (scenarios)
+
+A live modulation of a base row's amount
+(`ScenarioRowOverride.modulation`, `ScenarioAmountModulation` in
+`src/data/types/sheets.ts`): **Add amount** (+5000 — a pay raise),
+**Multiply by** (×2), or **Change by percent** (+300 % — gas bills
+quadruple; the amount becomes base × (1 + value / 100)). Unlike a
+typed-in fixed amount, the adjustment is recomputed from the base
+amount on every apply (`modulateAmount` in
+`src/data/scenarios/apply.ts`, rounded to cents), so editing the
+underlying budget entry flows straight through the scenario. Attached
+from the **Adjust amount** action in the row's action strip (the
+swipe-to-reveal strip on mobile, inline icons on desktop — sliders
+glyph), which opens `ScenarioModulateModal`: an operation picker, a
+value field, and a live base → result preview; saving on a recurring
+row offers the same apply-to-upcoming sweep as a fixed amount, and
+the modal's Remove button clears just the adjustment. The adjusted
+amount renders accent-tinted with a meta-coloured notation token
+(`formatModulation` in `src/components/scenarios/modulation.ts` —
+"+5 000", "×2", "−50 %") before the number, in both the month table
+and the scenario diff. No-op adjustments (+0 / ×1 / +0 %) normalise
+away as a revert. Formula-driven rows can't be adjusted — the static
+cell under a formula is not the row's real amount — so the action is
+hidden there and a persisted modulation on such a row is inert.
 
 ### Baseline (scenarios)
 

@@ -87,7 +87,8 @@ function upsertOverride(
   if (
     existing !== undefined &&
     existing.amount === normalized.amount &&
-    existing.description === normalized.description &&
+    existing.modulation?.op === normalized.modulation?.op &&
+    existing.modulation?.value === normalized.modulation?.value &&
     existing.excluded === normalized.excluded
   )
     return scenario;
@@ -185,13 +186,10 @@ export function reduceScenariosItem(
       updateScenarioById(view, action.scenarioId, (s) => {
         const base = findBaseBudget(state.sheets, view.baseSheetId ?? null);
         if (!base) return s;
-        const { dateCol, descCol, amountCol } = getStandardColumns(
-          base.item.columns,
-        );
-        if (!dateCol || !descCol || !amountCol) return s;
+        const { dateCol, amountCol } = getStandardColumns(base.item.columns);
+        if (!dateCol || !amountCol) return s;
         const anchor = base.item.rows.find((r) => r.id === action.rowId);
         if (!anchor || anchor.kind !== "user") return s;
-        const valueCol = action.field === "amount" ? amountCol : descCol;
         let next = s;
         for (const target of rowsInSeriesFrom(
           base.item.rows,
@@ -201,20 +199,25 @@ export function reduceScenariosItem(
         )) {
           if (target.kind !== "user") continue;
           const existing = next.overrides.find((o) => o.rowId === target.id);
+          // The two amount flavours are mutually exclusive, so the sweep
+          // always drops the one it isn't setting.
           const override: ScenarioRowOverride = {
             ...existing,
             rowId: target.id,
           };
-          // A swept value identical to the target's own base cell is a
-          // revert for that row — drop the field so no no-op override
-          // lingers (and the entry itself when nothing else remains).
-          if (action.value === target.cells[valueCol.id]) {
-            delete override[action.field];
-          } else if (action.field === "amount") {
-            if (typeof action.value === "number")
-              override.amount = action.value;
-          } else if (typeof action.value === "string") {
-            override.description = action.value;
+          delete override.amount;
+          delete override.modulation;
+          if (action.change.kind === "amount") {
+            // A swept value identical to the target's own base cell is
+            // a revert for that row — leave the field off so no no-op
+            // override lingers (and the entry itself collapses when
+            // nothing else remains).
+            if (action.change.amount !== target.cells[amountCol.id])
+              override.amount = action.change.amount;
+          } else {
+            // No-op modulations are dropped by the shared normalizer
+            // inside `upsertOverride`.
+            override.modulation = action.change.modulation;
           }
           next = upsertOverride(next, override);
         }

@@ -17,10 +17,12 @@ import type {
   SavingsView,
   Scenario,
   ScenarioAddedRow,
+  ScenarioAmountModulation,
   ScenarioRowOverride,
   ScenariosView,
   UserRow,
 } from "../types";
+import { isNoopModulation } from "../scenarios/apply";
 import { validateLineItemLinks } from "./account";
 import { fail, isCellValue, isObject, type Result } from "./helpers";
 
@@ -435,24 +437,54 @@ export function validateInsightsView(
   return { ok: true, value: view };
 }
 
+const MODULATION_OPS: readonly ScenarioAmountModulation["op"][] = [
+  "add",
+  "multiply",
+  "percent",
+];
+
+function normalizeModulation(
+  raw: unknown,
+): ScenarioAmountModulation | undefined {
+  if (!isObject(raw)) return undefined;
+  const { op, value } = raw;
+  if (
+    typeof op !== "string" ||
+    !(MODULATION_OPS as readonly string[]).includes(op)
+  )
+    return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const modulation: ScenarioAmountModulation = {
+    op: op as ScenarioAmountModulation["op"],
+    value,
+  };
+  // A modulation that cannot change anything (+0 / ×1) is the revert
+  // shape, not a delta — drop it like an amount equal to the base.
+  return isNoopModulation(modulation) ? undefined : modulation;
+}
+
 // Normalise one raw scenario row override to its minimal persisted
 // form, or `undefined` when nothing survives. Shared by the validator
 // and the `setScenarioOverride` reducer so a round-tripped file and a
 // freshly-dispatched payload normalise identically: `amount` only when
-// finite, `description` only when a non-empty string, `excluded` only
-// when `true`. An override that keeps none of the three is meaningless
-// and collapses away (which is also the revert / re-include path).
+// finite, `modulation` only when well-formed, not a no-op, and not
+// shadowed by a fixed `amount` (the two are mutually exclusive —
+// fixed wins), `excluded` only when `true`. An override that keeps
+// none of the three is meaningless and collapses away (which is also
+// the revert / re-include path).
 export function normalizeScenarioOverride(
   raw: unknown,
 ): ScenarioRowOverride | undefined {
   if (!isObject(raw)) return undefined;
-  const { rowId, amount, description } = raw;
+  const { rowId, amount, modulation } = raw;
   if (typeof rowId !== "string" || rowId === "") return undefined;
   const override: ScenarioRowOverride = { rowId };
   if (typeof amount === "number" && Number.isFinite(amount))
     override.amount = amount;
-  if (typeof description === "string" && description !== "")
-    override.description = description;
+  if (override.amount === undefined) {
+    const normalized = normalizeModulation(modulation);
+    if (normalized !== undefined) override.modulation = normalized;
+  }
   if (raw.excluded === true) override.excluded = true;
   return Object.keys(override).length > 1 ? override : undefined;
 }

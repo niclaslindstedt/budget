@@ -4,6 +4,7 @@ import type {
   Row,
   Scenario,
   ScenarioAddedRow,
+  ScenarioAmountModulation,
   ScenarioRowOverride,
   Sheet,
   UserRow,
@@ -33,6 +34,28 @@ export function scenarioAddedIdFromRowId(rowId: string): string | undefined {
   return isScenarioAddedRowId(rowId)
     ? rowId.slice(ADDED_ROW_ID_PREFIX.length)
     : undefined;
+}
+
+// Apply a live amount adjustment to a base amount. Rounded to cents so
+// percent / multiply factors don't leak float noise into balances.
+export function modulateAmount(
+  base: number,
+  modulation: ScenarioAmountModulation,
+): number {
+  const raw =
+    modulation.op === "add"
+      ? base + modulation.value
+      : modulation.op === "multiply"
+        ? base * modulation.value
+        : base * (1 + modulation.value / 100);
+  return Math.round(raw * 100) / 100;
+}
+
+// True when a modulation cannot change any amount — the normalizer
+// drops these so a "+0" / "×1" commit reads as a revert, mirroring how
+// a fixed amount equal to the base clears instead of storing a no-op.
+export function isNoopModulation(m: ScenarioAmountModulation): boolean {
+  return m.op === "multiply" ? m.value === 1 : m.value === 0;
 }
 
 // Resolve the base budget a scenarios sheet models on: the first
@@ -68,7 +91,10 @@ export function overridesByRowId(
 //
 // - An overridden amount replaces the amount cell (and strips
 //   `amountFormula` so the override wins over the formula).
-// - An overridden description replaces the description cell.
+// - A modulation rewrites the amount cell FROM the base amount at apply
+//   time — that is what keeps it live: a base-row edit flows straight
+//   through (+5000 on whatever the salary is now). Skipped on formula
+//   rows, where the static cell is not the row's real amount.
 // - An EXCLUDED row stays in the array — the month table still renders
 //   it, struck through — but its amount cell is zeroed (formula
 //   stripped) so it contributes nothing to balances or month
@@ -108,9 +134,17 @@ export function applyScenario(
           } else if (override.amount !== undefined) {
             next.cells[amountCol.id] = override.amount;
             delete next.amountFormula;
+          } else if (
+            override.modulation !== undefined &&
+            row.amountFormula === undefined
+          ) {
+            const baseAmount = row.cells[amountCol.id];
+            if (typeof baseAmount === "number")
+              next.cells[amountCol.id] = modulateAmount(
+                baseAmount,
+                override.modulation,
+              );
           }
-          if (override.description !== undefined && override.excluded !== true)
-            next.cells[descCol.id] = override.description;
           return next;
         });
 
@@ -139,9 +173,11 @@ export type ScenarioDiffEntry =
       date: string;
       description: string;
       baseAmount: number;
-      // Only the fields the override actually changes are present.
-      amount?: number;
-      newDescription?: string;
+      // The effective new amount — fixed, or computed from the base
+      // amount when the override is a modulation (which is then also
+      // carried so the diff can render its ×2 / +5000 notation).
+      amount: number;
+      modulation?: ScenarioAmountModulation;
     }
   | {
       kind: "excluded";
@@ -182,25 +218,28 @@ export function diffScenario(
       });
       continue;
     }
-    // Only fields that actually differ from the base row count as
-    // changes — an override re-stating the base value (committed
-    // without editing, or edited back by hand) must not surface a
-    // no-op "old → old" line.
-    const amountChanged =
-      override.amount !== undefined && override.amount !== baseAmount;
-    const descriptionChanged =
-      override.description !== undefined &&
-      override.description !== description;
-    if (!amountChanged && !descriptionChanged) continue;
+    // Only changes that actually differ from the base row count — an
+    // override re-stating the base value (committed without editing,
+    // or edited back by hand) must not surface a no-op "old → old"
+    // line. Modulations on formula rows are inert at apply time, so
+    // they are inert here too.
+    const isModulated =
+      override.amount === undefined &&
+      override.modulation !== undefined &&
+      row.amountFormula === undefined;
+    const newAmount = isModulated
+      ? modulateAmount(baseAmount, override.modulation!)
+      : override.amount;
+    if (newAmount === undefined || newAmount === baseAmount) continue;
     const entry: ScenarioDiffEntry = {
       kind: "override",
       rowId: row.id,
       date,
       description,
       baseAmount,
+      amount: newAmount,
     };
-    if (amountChanged) entry.amount = override.amount;
-    if (descriptionChanged) entry.newDescription = override.description;
+    if (isModulated) entry.modulation = override.modulation;
     entries.push({ date, entry });
   }
   for (const row of scenario.addedRows) {

@@ -4,7 +4,9 @@ import {
   applyScenario,
   diffScenario,
   findBaseBudget,
+  isNoopModulation,
   isScenarioAddedRowId,
+  modulateAmount,
   scenarioAddedRowId,
 } from "../src/data/scenarios/apply";
 import {
@@ -102,14 +104,49 @@ describe("applyScenario", () => {
     expect(item.rows[0].amountFormula).toBe("income");
   });
 
-  it("rewrites the description cell on a description override", () => {
-    const item = baseItem([row("r1", "2026-01-25", "Salary", 30000)]);
+  it("rewrites the amount cell from the base amount on a modulation", () => {
+    const item = baseItem([
+      row("r1", "2026-01-25", "Salary", 30000),
+      row("r2", "2026-01-10", "Gas", -500),
+      row("r3", "2026-01-12", "Rent", -8000),
+    ]);
     const applied = applyScenario(
       item,
-      scenario({ overrides: [{ rowId: "r1", description: "A-kassa" }] }),
+      scenario({
+        overrides: [
+          { rowId: "r1", modulation: { op: "add", value: 5000 } },
+          { rowId: "r2", modulation: { op: "percent", value: 300 } },
+          { rowId: "r3", modulation: { op: "multiply", value: 1.5 } },
+        ],
+      }),
     );
-    expect(applied.rows[0].cells["c-desc"]).toBe("A-kassa");
+    expect(applied.rows[0].cells["c-amount"]).toBe(35000);
+    expect(applied.rows[1].cells["c-amount"]).toBe(-2000);
+    expect(applied.rows[2].cells["c-amount"]).toBe(-12000);
+    // The base is never mutated — a later base edit re-modulates.
+    expect(item.rows[0].cells["c-amount"]).toBe(30000);
+    const raised = baseItem([row("r1", "2026-01-25", "Salary", 32000)]);
+    const reapplied = applyScenario(
+      raised,
+      scenario({
+        overrides: [{ rowId: "r1", modulation: { op: "add", value: 5000 } }],
+      }),
+    );
+    expect(reapplied.rows[0].cells["c-amount"]).toBe(37000);
+  });
+
+  it("leaves formula rows alone on a modulation — the static cell is not the real amount", () => {
+    const item = baseItem([
+      row("r1", "2026-01-25", "Salary", 30000, { amountFormula: "income" }),
+    ]);
+    const applied = applyScenario(
+      item,
+      scenario({
+        overrides: [{ rowId: "r1", modulation: { op: "multiply", value: 2 } }],
+      }),
+    );
     expect(applied.rows[0].cells["c-amount"]).toBe(30000);
+    expect(applied.rows[0].amountFormula).toBe("income");
   });
 
   it("keeps an excluded row in place but zeroes its amount", () => {
@@ -177,6 +214,26 @@ describe("applyScenario", () => {
     );
     expect(applied.rows).toHaveLength(1);
     expect(applied.rows[0].cells["c-amount"]).toBe(-8000);
+  });
+});
+
+describe("modulateAmount", () => {
+  it("applies the three ops and rounds to cents", () => {
+    expect(modulateAmount(30000, { op: "add", value: 5000 })).toBe(35000);
+    expect(modulateAmount(-500, { op: "multiply", value: 3 })).toBe(-1500);
+    expect(modulateAmount(-500, { op: "percent", value: 300 })).toBe(-2000);
+    expect(modulateAmount(-500, { op: "percent", value: -50 })).toBe(-250);
+    expect(modulateAmount(-333, { op: "multiply", value: 1.333 })).toBe(
+      -443.89,
+    );
+  });
+
+  it("knows which modulations cannot change anything", () => {
+    expect(isNoopModulation({ op: "multiply", value: 1 })).toBe(true);
+    expect(isNoopModulation({ op: "add", value: 0 })).toBe(true);
+    expect(isNoopModulation({ op: "percent", value: 0 })).toBe(true);
+    expect(isNoopModulation({ op: "multiply", value: 0 })).toBe(false);
+    expect(isNoopModulation({ op: "add", value: -1 })).toBe(false);
   });
 });
 
@@ -365,7 +422,7 @@ describe("diffScenario", () => {
     ]);
     const scn = scenario({
       overrides: [
-        { rowId: "r1", amount: 0, description: "No salary" },
+        { rowId: "r1", amount: 0 },
         { rowId: "r2", excluded: true },
         { rowId: "gone", amount: 5 },
       ],
@@ -383,20 +440,35 @@ describe("diffScenario", () => {
     if (override.kind !== "override") throw new Error("expected override");
     expect(override.baseAmount).toBe(30000);
     expect(override.amount).toBe(0);
-    expect(override.newDescription).toBe("No salary");
   });
 
-  it("skips overrides and fields that re-state the base values", () => {
+  it("computes a modulated entry's new amount and carries the modulation", () => {
+    const item = baseItem([row("r1", "2026-01-10", "Gas", -500)]);
+    const scn = scenario({
+      overrides: [{ rowId: "r1", modulation: { op: "percent", value: 300 } }],
+    });
+    const diff = diffScenario(item, scn);
+    expect(diff).toHaveLength(1);
+    const override = diff[0];
+    if (override.kind !== "override") throw new Error("expected override");
+    expect(override.baseAmount).toBe(-500);
+    expect(override.amount).toBe(-2000);
+    expect(override.modulation).toEqual({ op: "percent", value: 300 });
+  });
+
+  it("skips overrides that re-state the base values", () => {
     const item = baseItem([
       row("r1", "2026-01-10", "Streaming", -200),
       row("r2", "2026-01-25", "Salary", 30000),
+      // A modulation on a zero base can be a no-op too (×n of 0).
+      row("r3", "2026-01-30", "Placeholder", 0),
     ]);
     const scn = scenario({
       overrides: [
-        // A full no-op (both fields equal the base) emits nothing.
-        { rowId: "r1", amount: -200, description: "Streaming" },
-        // A mixed override only reports the field that actually differs.
-        { rowId: "r2", amount: 0, description: "Salary" },
+        // An amount equal to the base emits nothing.
+        { rowId: "r1", amount: -200 },
+        { rowId: "r2", amount: 0 },
+        { rowId: "r3", modulation: { op: "multiply", value: 3 } },
       ],
     });
     const diff = diffScenario(item, scn);
@@ -405,6 +477,5 @@ describe("diffScenario", () => {
     if (override.kind !== "override") throw new Error("expected override");
     expect(override.rowId).toBe("r2");
     expect(override.amount).toBe(0);
-    expect(override.newDescription).toBeUndefined();
   });
 });
