@@ -164,14 +164,29 @@ export type InvestmentView = {
 // and validator share `normalizeScenarioOverride` so a round-tripped
 // file and a freshly-dispatched payload are identical (same
 // minimal-snapshot contract as `InsightsEntityOverride`).
+// A live adjustment of a base row's amount, recomputed every time the
+// scenario is applied — so "what if my salary is +5000" or "what if
+// gas bills triple" keeps tracking the base budget when the underlying
+// entry changes. `percent` is a relative change: the amount becomes
+// base × (1 + value / 100), so +300 quadruples a bill and −50 halves
+// it.
+export type ScenarioAmountModulation = {
+  op: "add" | "multiply" | "percent";
+  value: number;
+};
+
 export type ScenarioRowOverride = {
   rowId: string;
   // Replacement amount. Absent ⇒ the base row's amount is untouched.
   // When set on a formula row the override wins — the formula is
   // ignored in this scenario.
   amount?: number;
-  // Replacement description. Absent ⇒ the base description is untouched.
-  description?: string;
+  // Live amount adjustment relative to the base amount. Mutually
+  // exclusive with `amount` (a fixed replacement) — the reducer keeps
+  // at most one, and the normalizer drops the modulation when a raw
+  // file carries both. Inert on formula rows (the static cell under a
+  // formula is not the row's real amount).
+  modulation?: ScenarioAmountModulation;
   // Row dropped from this scenario (it contributes nothing to balances).
   // Only `true` is persisted — stored `false` is indistinguishable from
   // "field absent" and just bloats the snapshot.

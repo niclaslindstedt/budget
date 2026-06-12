@@ -114,6 +114,43 @@ describe("scenarios reducer", () => {
     expect(viewOf(state).scenarios[0].overrides).toEqual([]);
   });
 
+  it("stores modulations, drops no-ops, and lets a fixed amount win", () => {
+    let state = blob({ scenarios: [scenario()] });
+    state = reducer(state, {
+      type: "setScenarioOverride",
+      ...target,
+      scenarioId: "scn-1",
+      override: { rowId: "r1", modulation: { op: "add", value: 5000 } },
+    });
+    expect(viewOf(state).scenarios[0].overrides).toEqual([
+      { rowId: "r1", modulation: { op: "add", value: 5000 } },
+    ]);
+
+    // Fixed amount and modulation are mutually exclusive — fixed wins.
+    state = reducer(state, {
+      type: "setScenarioOverride",
+      ...target,
+      scenarioId: "scn-1",
+      override: {
+        rowId: "r1",
+        amount: 7,
+        modulation: { op: "add", value: 5000 },
+      },
+    });
+    expect(viewOf(state).scenarios[0].overrides).toEqual([
+      { rowId: "r1", amount: 7 },
+    ]);
+
+    // A no-op modulation (×1) normalises to nothing ⇒ entry removed.
+    state = reducer(state, {
+      type: "setScenarioOverride",
+      ...target,
+      scenarioId: "scn-1",
+      override: { rowId: "r1", modulation: { op: "multiply", value: 1 } },
+    });
+    expect(viewOf(state).scenarios[0].overrides).toEqual([]);
+  });
+
   it("returns the same state reference for a redundant override dispatch", () => {
     const state = blob({
       scenarios: [scenario({ overrides: [{ rowId: "r1", amount: 5 }] })],
@@ -237,8 +274,7 @@ describe("scenarios reducer", () => {
         ...target,
         scenarioId: "scn-1",
         rowId: "r2",
-        field: "amount",
-        value: -49,
+        change: { kind: "amount", amount: -49 },
         untilIso: null,
       });
       // r1 is earlier than the anchor and `solo` is not in the series;
@@ -255,8 +291,7 @@ describe("scenarios reducer", () => {
         ...target,
         scenarioId: "scn-1",
         rowId: "r1",
-        field: "amount",
-        value: -120,
+        change: { kind: "amount", amount: -120 },
         untilIso: "2026-02-28",
       });
       expect(viewOf(state).scenarios[0].overrides).toEqual([
@@ -280,8 +315,7 @@ describe("scenarios reducer", () => {
           ...target,
           scenarioId: "scn-1",
           rowId: "r2",
-          field: "amount",
-          value: -100,
+          change: { kind: "amount", amount: -100 },
           untilIso: null,
         },
       );
@@ -292,7 +326,7 @@ describe("scenarios reducer", () => {
       ]);
     });
 
-    it("propagates description overrides and keeps unrelated fields", () => {
+    it("fans a modulation out and displaces fixed amounts on the targets", () => {
       const state = reducer(
         seriesBlob([scenario({ overrides: [{ rowId: "r4", amount: -49 }] })]),
         {
@@ -300,15 +334,42 @@ describe("scenarios reducer", () => {
           ...target,
           scenarioId: "scn-1",
           rowId: "r2",
-          field: "description",
-          value: "Spotify Family",
+          change: {
+            kind: "modulation",
+            modulation: { op: "multiply", value: 3 },
+          },
+          untilIso: null,
+        },
+      );
+      // The same modulation lands on every series row from the anchor
+      // on; r4's prior fixed amount is dropped (mutually exclusive).
+      expect(viewOf(state).scenarios[0].overrides).toEqual([
+        { rowId: "r4", modulation: { op: "multiply", value: 3 } },
+        { rowId: "r2", modulation: { op: "multiply", value: 3 } },
+        { rowId: "r3", modulation: { op: "multiply", value: 3 } },
+      ]);
+    });
+
+    it("sweeping a fixed amount displaces existing modulations", () => {
+      const state = reducer(
+        seriesBlob([
+          scenario({
+            overrides: [{ rowId: "r2", modulation: { op: "add", value: -20 } }],
+          }),
+        ]),
+        {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r2",
+          change: { kind: "amount", amount: -77 },
           untilIso: null,
         },
       );
       expect(viewOf(state).scenarios[0].overrides).toEqual([
-        { rowId: "r4", amount: -49, description: "Spotify Family" },
-        { rowId: "r2", description: "Spotify Family" },
-        { rowId: "r3", description: "Spotify Family" },
+        { rowId: "r2", amount: -77 },
+        { rowId: "r3", amount: -77 },
+        { rowId: "r4", amount: -77 },
       ]);
     });
 
@@ -318,8 +379,7 @@ describe("scenarios reducer", () => {
         ...target,
         scenarioId: "scn-1",
         rowId: "solo",
-        field: "amount",
-        value: -1,
+        change: { kind: "amount", amount: -1 },
         untilIso: null,
       });
       expect(viewOf(state).scenarios[0].overrides).toEqual([
@@ -333,8 +393,7 @@ describe("scenarios reducer", () => {
           ...target,
           scenarioId: "scn-1",
           rowId: "r1",
-          field: "amount",
-          value: -1,
+          change: { kind: "amount", amount: -1 },
           untilIso: null,
         }),
       ).toBe(unbound);

@@ -46,6 +46,10 @@ type Props = {
   // rows). Synthesized history / transfer rows and correction rows get
   // no affordances.
   editableRowIds: ReadonlySet<string>;
+  // Base rows whose amount is formula-driven — live adjustments are
+  // hidden for these (the static cell under a formula is not the
+  // row's real amount).
+  formulaRowIds: ReadonlySet<string>;
   // True on the Baseline tab — no editing affordances at all.
   readOnly: boolean;
   // Widest formatted amount / balance across the whole sheet, driving
@@ -55,7 +59,7 @@ type Props = {
   balanceChars: number;
   settings: Settings;
   onCommitAmount: (rowId: string, amount: number) => void;
-  onCommitDescription: (rowId: string, description: string) => void;
+  onModulate: (rowId: string) => void;
   onToggleExcluded: (rowId: string) => void;
   onRevert: (rowId: string) => void;
   onEditAddedRow: (addedId: string) => void;
@@ -64,9 +68,11 @@ type Props = {
 
 // One fiscal month of the scenario's budget-like table: date /
 // description / amount / running balance, with per-row affordances when
-// a scenario is active — tap a description or amount to override it
-// inline, exclude / re-include a row, revert an override, edit a
-// scenario-added row. The mobile layout mirrors the budget table:
+// a scenario is active — tap an amount to override it inline, attach a
+// live adjustment (+5000 / ×2) from the action strip, exclude /
+// re-include a row, revert an override, edit a scenario-added row.
+// Descriptions are read-only. The mobile layout mirrors the budget
+// table:
 // block + per-row grid (`.scenario-table` in components.css), day-only
 // dates, ch-var-sized amount / balance columns, and a swipe-to-reveal
 // action strip.
@@ -84,12 +90,13 @@ export function ScenarioMonthTable({
   expandedTransferAnchors,
   onToggleTransferAnchor,
   editableRowIds,
+  formulaRowIds,
   readOnly,
   amountChars,
   balanceChars,
   settings,
   onCommitAmount,
-  onCommitDescription,
+  onModulate,
   onToggleExcluded,
   onRevert,
   onEditAddedRow,
@@ -129,6 +136,9 @@ export function ScenarioMonthTable({
         row.companyId ? (companiesById.get(row.companyId) ?? null) : null
       }
       editable={!readOnly && editableRowIds.has(row.id)}
+      canModulate={
+        !readOnly && editableRowIds.has(row.id) && !formulaRowIds.has(row.id)
+      }
       readOnly={readOnly}
       hiddenTransferCount={extra?.hiddenRun?.length ?? 0}
       transferExpanded={expandedTransferAnchors.has(row.id)}
@@ -136,7 +146,7 @@ export function ScenarioMonthTable({
       revealedTransfer={extra?.revealedTransfer ?? false}
       settings={settings}
       onCommitAmount={onCommitAmount}
-      onCommitDescription={onCommitDescription}
+      onModulate={onModulate}
       onToggleExcluded={onToggleExcluded}
       onRevert={onRevert}
       onEditAddedRow={onEditAddedRow}

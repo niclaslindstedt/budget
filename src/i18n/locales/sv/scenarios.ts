@@ -44,10 +44,20 @@ const scenarios: ScenariosCatalog = {
   includeRow: "Ta med {name} igen",
   revertOverride: "Ångra ändring av {name}",
   editAmountAria: "Ändra belopp för {name} i det här scenariot",
-  editDescriptionAria: "Ändra beskrivning för {name} i det här scenariot",
   addRow: "Lägg till rad",
   addedRowBadge: "Tillagd i det här scenariot",
   editAddedRow: "Redigera tillagd rad",
+
+  modulateRow: "Justera belopp för {name}",
+  modulateTitle: "Justera belopp",
+  modulateBody:
+    "Justeringen är länkad till din budget — ändras postens belopp där följer scenariot med automatiskt.",
+  modulateOpLabel: "Justering",
+  modulateOpAdd: "Lägg till belopp",
+  modulateOpMultiply: "Multiplicera med",
+  modulateOpPercent: "Ändra med procent",
+  modulateValueLabel: "Värde",
+  modulateRemove: "Ta bort justering",
 
   rowModalTitleAdd: "Ny scenariorad",
   rowModalTitleEdit: "Redigera scenariorad",

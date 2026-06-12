@@ -54,7 +54,7 @@ describe("validateScenariosView via validateUserData", () => {
           overrides: [
             { rowId: "r1", amount: 0 },
             { rowId: "r2", excluded: true },
-            { rowId: "r3", description: "Renamed" },
+            { rowId: "r3", modulation: { op: "add", value: 5000 } },
           ],
           addedRows: [
             {
@@ -137,6 +137,40 @@ describe("validateScenariosView via validateUserData", () => {
     );
     expect(viewOf(result).scenarios[0].overrides).toEqual([
       { rowId: "r4", amount: 5 },
+    ]);
+  });
+
+  it("normalises modulations: bad ops, non-finite values, no-ops, fixed-amount shadowing", () => {
+    const result = validateUserData(
+      blob({
+        scenarios: [
+          {
+            id: "scn-1",
+            name: "S",
+            overrides: [
+              { rowId: "r1", modulation: { op: "add", value: 5000 } },
+              { rowId: "r2", modulation: { op: "divide", value: 2 } } as never,
+              {
+                rowId: "r3",
+                modulation: { op: "multiply", value: Number.NaN },
+              },
+              { rowId: "r4", modulation: { op: "multiply", value: 1 } },
+              { rowId: "r5", modulation: { op: "percent", value: 0 } },
+              // Fixed amount wins — the modulation is dropped.
+              {
+                rowId: "r6",
+                amount: 7,
+                modulation: { op: "add", value: 1 },
+              },
+            ],
+            addedRows: [],
+          },
+        ],
+      }),
+    );
+    expect(viewOf(result).scenarios[0].overrides).toEqual([
+      { rowId: "r1", modulation: { op: "add", value: 5000 } },
+      { rowId: "r6", amount: 7 },
     ]);
   });
 
