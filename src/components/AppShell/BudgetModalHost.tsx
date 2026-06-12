@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { BudgetApplySeriesDialog } from "../budget/BudgetApplySeriesDialog";
+import { ApplySeriesDialog } from "../ApplySeriesDialog";
 import { BudgetBulkEditModal } from "../budget/BudgetBulkEditModal";
 import { BudgetComplexEntryModal } from "../budget/BudgetComplexEntryModal";
 import { BudgetDeleteRecurringDialog } from "../budget/BudgetDeleteRecurringDialog";
@@ -667,7 +667,7 @@ export function BudgetModalHost(props: Props) {
         onCreateCompany={onCreateCompany}
         onCreateTag={onCreateTag}
       />
-      <BudgetApplySeriesDialog
+      <ApplySeriesDialog
         open={pendingSeriesEdit !== null}
         fieldLabel={pendingSeriesEdit?.fieldLabel ?? ""}
         anchorDate={pendingSeriesEdit?.anchorDate ?? ""}

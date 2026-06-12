@@ -165,6 +165,20 @@ describe("describeActionSubject", () => {
     expect(
       describe2(
         {
+          type: "propagateScenarioOverrideToFuture",
+          ...target,
+          scenarioId: "scn-1",
+          rowId: "r1",
+          field: "amount",
+          value: 0,
+          untilIso: null,
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Lose my job" });
+    expect(
+      describe2(
+        {
           type: "addScenarioRow",
           ...target,
           scenarioId: "scn-1",

@@ -111,6 +111,8 @@ const actionHistory: ActionHistoryCatalog = {
     updateScenario: "Bytte namn på scenario",
     deleteScenario: "Raderade scenario",
     setScenarioOverride: "Ändrade scenariorad",
+    propagateScenarioOverrideToFuture:
+      "Tillämpade scenarioändring på kommande poster",
     addScenarioRow: "La till scenariorad",
     updateScenarioRow: "Redigerade scenariorad",
     deleteScenarioRow: "Raderade scenariorad",

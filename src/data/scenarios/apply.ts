@@ -182,6 +182,16 @@ export function diffScenario(
       });
       continue;
     }
+    // Only fields that actually differ from the base row count as
+    // changes — an override re-stating the base value (committed
+    // without editing, or edited back by hand) must not surface a
+    // no-op "old → old" line.
+    const amountChanged =
+      override.amount !== undefined && override.amount !== baseAmount;
+    const descriptionChanged =
+      override.description !== undefined &&
+      override.description !== description;
+    if (!amountChanged && !descriptionChanged) continue;
     const entry: ScenarioDiffEntry = {
       kind: "override",
       rowId: row.id,
@@ -189,9 +199,8 @@ export function diffScenario(
       description,
       baseAmount,
     };
-    if (override.amount !== undefined) entry.amount = override.amount;
-    if (override.description !== undefined)
-      entry.newDescription = override.description;
+    if (amountChanged) entry.amount = override.amount;
+    if (descriptionChanged) entry.newDescription = override.description;
     entries.push({ date, entry });
   }
   for (const row of scenario.addedRows) {

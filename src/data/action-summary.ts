@@ -361,6 +361,7 @@ export function describeActionSubject(
       return name(action.scenario.name);
     case "updateScenario":
     case "setScenarioOverride":
+    case "propagateScenarioOverrideToFuture":
     case "addScenarioRow":
     case "updateScenarioRow":
     case "deleteScenarioRow":

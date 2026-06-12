@@ -21,7 +21,7 @@ const scenarios: ScenariosCatalog = {
   scenarioName: "Namn",
   scenarioTabsLabel: "Scenarier",
 
-  chartTitle: "Saldo vid månadens slut",
+  visualizeAction: "Visualisera scenarier",
   chartEmpty:
     "Inte tillräckligt med daterade rader i basbudgeten att rita ännu.",
   legendLabel: "Växla serier",

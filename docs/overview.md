@@ -282,7 +282,8 @@ via `amountWithinSpan` in `src/data/reconciliation.ts`).
 ### Bulk edit modal
 
 `BudgetBulkEditModal.tsx`, `BudgetMoveCopyModal.tsx`,
-`BudgetApplySeriesDialog.tsx` — the toolbars / dialogs that fire on
+`ApplySeriesDialog.tsx` (at `src/components/` root — shared with the
+scenarios page's override sweep) — the toolbars / dialogs that fire on
 selected rows (bulk edit, move-copy, apply-series).
 
 ### Bulk action bar
@@ -1589,10 +1590,14 @@ window. The component owns only the buttons and their copy (the
 `charts.*` i18n group); the caller keeps the `ChartRange` state and
 filters its sample points by `chartRangeCutoffMs(range, today)`
 (`"all"` maps to `-Infinity`, so every sample passes). Used by the
-loans visualizer (`LoansChartModal.tsx`) and the Insights net-worth
-chart (`InsightsPage.tsx`); both show a "pick a longer range" notice
-when the selected window holds fewer than two samples, with the
-buttons staying live.
+loans visualizer (`LoansChartModal.tsx`), the Insights net-worth
+chart (`InsightsPage.tsx`), and the investment value chart; the first
+two show a "pick a longer range" notice when the selected window holds
+fewer than two samples, with the buttons staying live. The same file
+exports the forward-looking sibling `ChartHorizonRow` (1M / 3M / 6M /
+1Y / 2Y, default 6M via `DEFAULT_CHART_HORIZON`) used by projection
+charts — the scenarios visualizer — where the window extends months
+**ahead** instead of trailing back; both flavours share one pill row.
 
 ### Location
 
@@ -2101,12 +2106,18 @@ keyed against the base budget's row ids, so edits to the real budget
 flow into every scenario automatically and scenario edits never touch
 the real budget. The page renders, top to bottom: the scenario tab
 strip (`ScenarioTabs` — an implicit **Baseline** chip first, then one
-chip per scenario with its chart color, then "+"), the monthly
-end-balance chart, the balance monitors, and budget-like month tables
-(`ScenarioMonthTable`, modeled on the read-only viewer table). The
-month tables start at the current fiscal month — scenarios are
-forward-looking — with a "Show earlier months" expander for the full
-history. The active tab is ephemeral component state (not persisted, so
+chip per scenario with its chart color, then "+"), the balance
+monitors, and budget-like month tables (`ScenarioMonthTable` /
+`ScenarioRow`); the projection chart lives in its own **Visualize
+scenarios** modal opened from the sheet title's "…" menu (see
+[Scenario chart](#scenario-chart)). The month tables start at the
+current fiscal month — scenarios are forward-looking — with a "Show
+earlier months" expander for the full history. On mobile the tables
+follow the budget table's layout: a block + per-row grid (the
+`.scenario-table` rules in `src/styles/components.css`) with a
+day-only date track, ch-var-sized amount / balance columns, and the
+per-row actions in a swipe-to-reveal strip (`useRowSwipeAndClaim` +
+`swipe-action-cell`). The active tab is ephemeral component state (not persisted, so
 switching tabs never mints an undo step). Creating the first scenario
 unlocks the **What If** achievement. Deleting the base sheet cascades
 `baseSheetId` to `null` (the page falls back to the picker); changing
@@ -2135,7 +2146,15 @@ action); the minus control excludes a row (struck through, contributes
 nothing to balances); the revert control clears an override (a bare
 `{ rowId }` payload normalises to nothing and removes the entry — the
 shared `normalizeScenarioOverride` contract between the reducer and
-validator). Added rows are minted into the applied clone with
+validator). A committed value equal to the base row's own clears that
+field instead of storing a no-op override. Committing on a row that
+belongs to a recurring series which continues past it stages the
+shared `ApplySeriesDialog` ("apply to upcoming entries too?") — same
+flow as the budget page — and confirming dispatches
+`propagateScenarioOverrideToFuture`, which fans the override field out
+to every later occurrence (clamped by the optional "stop after" date;
+per target row a value equal to that row's base clears rather than
+stores). Added rows are minted into the applied clone with
 deterministic `scn:`-prefixed ids (`applyScenario` in
 `src/data/scenarios/apply.ts`) and edited via `ScenarioRowModal`.
 Overrides whose base row was deleted are inert (ignored at compute
@@ -2161,15 +2180,22 @@ Baseline colored positive / negative.
 
 ### Scenario chart
 
-The multi-series `LineChart` of **monthly end balances** — one line
-per scenario plus the dashed Baseline, all drawn at once on a shared
-month axis (`monthlyEndBalances` + `buildScenarioChartPoints` in
-`src/data/scenarios/series.ts`; empty months carry the previous
-month's end balance forward, months before a variant's data sit at the
-opening balance). A legend chip row above the chart toggles individual
-series in and out (ephemeral state, all on by default, independent of
-the active tab). Scenario series colors derive from the scenario's
-index via `scenario-colors.ts` — theme tokens, never persisted.
+The **Visualize scenarios** modal (`ScenariosChartModal`, opened from
+the sheet title's "…" menu): a multi-series `LineChart` of **monthly
+end balances** — one line per scenario plus the dashed Baseline, all
+drawn at once on a shared month axis. The view is strictly
+forward-looking: a `ChartHorizonRow` (the forward sibling of the
+trailing `ChartRangeRow`, both in
+`src/components/charts/ChartRangeRow.tsx`) picks how far past the
+current fiscal month the axis runs — 1M / 3M / 6M (default) / 1Y /
+2Y — and `buildScenarioChartPoints` (in
+`src/data/scenarios/series.ts`) pins the axis to that range, seeding
+each variant's starting value from the latest pre-range balance and
+carrying the final balance forward past the last dated row. A legend
+chip row above the chart toggles individual series in and out
+(ephemeral state, all on by default, independent of the active tab).
+Scenario series colors derive from the scenario's index via
+`scenario-colors.ts` — theme tokens, never persisted.
 
 ### Scenario diff
 
@@ -2179,7 +2205,10 @@ deltas vs the Baseline as a date-sorted diff — overridden rows as
 "old → new", excluded rows struck through with a minus marker, added
 rows with a plus marker. Built by `diffScenario` in
 `src/data/scenarios/apply.ts`; a delta-free scenario shows an empty
-state.
+state. Only **actual** changes appear: an override field that re-states
+the base row's own value is skipped (and the commit path never stores
+one — see [Scenario](#scenario)), so the diff never renders a no-op
+"old → old" line.
 
 ## Data and storage
 
@@ -2605,7 +2634,7 @@ default (iOS soft-keyboard math); pass `centered` for input-free modals.
 ### Dialog
 
 A lighter modal-like confirm / choose UI. Examples: `ConfirmDialog.tsx`,
-`BudgetApplySeriesDialog.tsx`, `CloudLinkDialog.tsx`.
+`ApplySeriesDialog.tsx`, `CloudLinkDialog.tsx`.
 
 ### Panel
 

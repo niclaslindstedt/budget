@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { GitCompareArrows, Pencil } from "lucide-react";
+import {
+  GitCompareArrows,
+  LineChart as LineChartIcon,
+  Pencil,
+} from "lucide-react";
 
 import type { Action } from "../../data/reducer";
 import { allTypes } from "../../data/presets/merge";
-import { buildSynthesizedRows } from "../../data/budget/rows";
+import {
+  buildSynthesizedRows,
+  getLastSeriesDate,
+} from "../../data/budget/rows";
 import {
   currentFiscalMonthKey,
   fiscalMonthSeedIso,
@@ -16,9 +23,7 @@ import {
 } from "../../data/scenarios/apply";
 import {
   balanceAtDate,
-  buildScenarioChartPoints,
   computeScenarioState,
-  epochMsToMonthKey,
   monthlyEndBalances,
 } from "../../data/scenarios/series";
 import { newId } from "../../data/sheet";
@@ -30,16 +35,12 @@ import type {
   Settings,
   Sheet,
   UserData,
+  UserRow,
 } from "../../data/types";
-import { useIsMobile } from "../../hooks";
-import { useLang, useT } from "../../i18n";
+import { useT } from "../../i18n";
 import { indexById } from "../../utils/indexById";
-import {
-  formatMonthYearShort,
-  formatNumber,
-  withCurrency,
-} from "../../utils/format";
-import { LineChart, type ChartSeries } from "../charts/LineChart";
+import { ActiveRowProvider } from "../ActiveRowProvider";
+import { ApplySeriesDialog } from "../ApplySeriesDialog";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { SelectPicker, type SelectOption } from "../form";
 import { useModalDispatch } from "../modal-dispatch";
@@ -52,6 +53,10 @@ import { BASELINE_COLOR_VAR, scenarioColorVar } from "./scenario-colors";
 import { ScenarioEditModal } from "./ScenarioEditModal";
 import { ScenarioMonthTable } from "./ScenarioMonthTable";
 import { ScenarioRowModal } from "./ScenarioRowModal";
+import {
+  ScenariosChartModal,
+  type ScenarioChartVariant,
+} from "./ScenariosChartModal";
 import { ScenariosDiffModal } from "./ScenariosDiffModal";
 import { ScenariosMonitorRow } from "./ScenariosMonitorRow";
 import { ScenarioTabs } from "./ScenarioTabs";
@@ -76,10 +81,21 @@ type RowModalState =
   | { kind: "add"; seedDate: string }
   | { kind: "edit"; row: ScenarioAddedRow };
 
+// "Apply this edit to the rest of the recurring series?" staging slot —
+// set when an amount / description commit lands on a base row with a
+// `seriesId` that continues past the anchor date. The ApplySeriesDialog
+// consumes it; confirming dispatches the override sweep.
+type PendingSeriesApply = {
+  rowId: string;
+  field: "amount" | "description";
+  value: number | string;
+  fieldLabel: string;
+  anchorDate: string;
+  lastSeriesDate: string | null;
+};
+
 export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   const t = useT();
-  const lang = useLang();
-  const isMobile = useIsMobile();
   const dispatchModal = useModalDispatch();
 
   const view = sheet.items.find(
@@ -93,9 +109,6 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // Ephemeral UI state — deliberately not persisted (a tab switch must
   // not mint an undo step or a storage write).
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
-  const [hiddenSeries, setHiddenSeries] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
   const [showEarlierMonths, setShowEarlierMonths] = useState(false);
   const [rowModal, setRowModal] = useState<RowModalState | null>(null);
   const [editModal, setEditModal] = useState<
@@ -103,6 +116,9 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   >(null);
   const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
   const [diffOpen, setDiffOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
+  const [pendingSeriesApply, setPendingSeriesApply] =
+    useState<PendingSeriesApply | null>(null);
   const [pendingBaseSheetId, setPendingBaseSheetId] = useState<string | null>(
     null,
   );
@@ -217,12 +233,14 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     synthesizedRows,
   ]);
 
-  const chartPointsByVariant = useMemo(() => {
-    const byVariant = new Map<string, Map<string, number>>();
+  // Monthly end balances per variant — the visualize modal clips them
+  // to its forward horizon itself.
+  const endBalancesByVariant = useMemo(() => {
+    const out = new Map<string, Map<string, number>>();
     for (const [key, state] of variantStates)
-      byVariant.set(key, monthlyEndBalances(state));
-    return buildScenarioChartPoints(byVariant, openingBalance);
-  }, [variantStates, openingBalance]);
+      out.set(key, monthlyEndBalances(state));
+    return out;
+  }, [variantStates]);
 
   const monitorValues = useMemo(() => {
     const out = new Map<string, ReadonlyMap<string, number>>();
@@ -244,20 +262,32 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         : new Map<string, ScenarioRowOverride>(),
     [activeScenario],
   );
-  const { editableRowIds, baseAmounts } = useMemo(() => {
-    const ids = new Set<string>();
-    const amounts = new Map<string, number>();
-    if (baseItem) {
-      const amountCol = baseItem.columns.find((c) => c.type === "amount");
-      for (const row of baseItem.rows) {
-        if (row.kind !== "user") continue;
-        ids.add(row.id);
-        const v = amountCol ? row.cells[amountCol.id] : undefined;
-        if (typeof v === "number") amounts.set(row.id, v);
+  const { editableRowIds, baseUserRowsById, baseAmounts, baseDescriptions } =
+    useMemo(() => {
+      const ids = new Set<string>();
+      const byId = new Map<string, UserRow>();
+      const amounts = new Map<string, number>();
+      const descriptions = new Map<string, string>();
+      if (baseItem) {
+        const amountCol = baseItem.columns.find((c) => c.type === "amount");
+        const descCol = baseItem.columns.find((c) => c.type === "description");
+        for (const row of baseItem.rows) {
+          if (row.kind !== "user") continue;
+          ids.add(row.id);
+          byId.set(row.id, row);
+          const v = amountCol ? row.cells[amountCol.id] : undefined;
+          if (typeof v === "number") amounts.set(row.id, v);
+          const d = descCol ? row.cells[descCol.id] : undefined;
+          if (typeof d === "string") descriptions.set(row.id, d);
+        }
       }
-    }
-    return { editableRowIds: ids, baseAmounts: amounts };
-  }, [baseItem]);
+      return {
+        editableRowIds: ids,
+        baseUserRowsById: byId,
+        baseAmounts: amounts,
+        baseDescriptions: descriptions,
+      };
+    }, [baseItem]);
 
   // Month list for the tables: ascending, current fiscal month onward
   // by default — scenarios are forward-looking, and the bank-covered
@@ -296,11 +326,64 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     });
   }
 
-  const chartVariants: { key: string; label: string; colorVar: string }[] = [
+  // When the committed row belongs to a recurring series that continues
+  // past it, stage the "apply to upcoming entries too?" prompt — same
+  // flow as committing a series cell on the budget page.
+  function maybeStageSeriesApply(
+    rowId: string,
+    field: "amount" | "description",
+    value: number | string,
+  ) {
+    if (!baseItem || !activeScenario) return;
+    const row = baseUserRowsById.get(rowId);
+    if (!row?.seriesId) return;
+    const dateCol = baseItem.columns.find((c) => c.type === "date");
+    const valueCol = baseItem.columns.find((c) => c.type === field);
+    if (!dateCol || !valueCol) return;
+    const anchorDate =
+      typeof row.cells[dateCol.id] === "string"
+        ? (row.cells[dateCol.id] as string)
+        : "";
+    const lastSeriesDate = getLastSeriesDate(
+      baseItem.rows,
+      row.seriesId,
+      dateCol.id,
+    );
+    if (lastSeriesDate === null || lastSeriesDate <= anchorDate) return;
+    setPendingSeriesApply({
+      rowId,
+      field,
+      value,
+      fieldLabel: valueCol.label,
+      anchorDate,
+      lastSeriesDate,
+    });
+  }
+
+  // Commits route through a base-value comparison so a value typed (or
+  // typed back) equal to the base row CLEARS that override field instead
+  // of storing a no-op "change" — the diff modal then only ever shows
+  // actual changes.
+  function handleCommitAmount(rowId: string, amount: number) {
+    patchOverride(rowId, {
+      amount: baseAmounts.get(rowId) === amount ? undefined : amount,
+    });
+    maybeStageSeriesApply(rowId, "amount", amount);
+  }
+  function handleCommitDescription(rowId: string, description: string) {
+    patchOverride(rowId, {
+      description:
+        baseDescriptions.get(rowId) === description ? undefined : description,
+    });
+    maybeStageSeriesApply(rowId, "description", description);
+  }
+
+  const chartVariants: ScenarioChartVariant[] = [
     {
       key: BASELINE_KEY,
       label: t("scenarios.baselineTab"),
       colorVar: BASELINE_COLOR_VAR,
+      dashed: true,
     },
     ...scenarios.map((s, i) => ({
       key: s.id,
@@ -308,28 +391,6 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       colorVar: scenarioColorVar(i),
     })),
   ];
-  const chartSeries: ChartSeries[] = chartVariants
-    .filter((v) => !hiddenSeries.has(v.key))
-    .map((v) => ({
-      id: v.key,
-      label: v.label,
-      colorVar: v.colorVar,
-      dashed: v.key === BASELINE_KEY,
-      points: chartPointsByVariant.get(v.key) ?? [],
-    }));
-  const hasChart = chartSeries.some((s) => s.points.length >= 2);
-
-  const formatX = (x: number) =>
-    formatMonthYearShort(epochMsToMonthKey(x), lang);
-  const formatY = (y: number) =>
-    withCurrency(
-      formatNumber(
-        y,
-        isMobile ? { ...settings, showDecimals: true } : settings,
-        isMobile ? { forceAbbreviate: true } : {},
-      ),
-      settings,
-    );
 
   const budgetSheets = data.sheets.filter((s) => s.type === "budget");
   const baseOptions: SelectOption<string>[] = budgetSheets.map((s) => ({
@@ -356,6 +417,16 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
+    ...(base
+      ? [
+          {
+            key: "visualize",
+            icon: <LineChartIcon size={16} aria-hidden focusable={false} />,
+            label: t("scenarios.visualizeAction"),
+            onClick: () => setChartOpen(true),
+          },
+        ]
+      : []),
     ...(activeScenario
       ? [
           {
@@ -449,68 +520,6 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
 
           <div>
             <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
-              {t("scenarios.chartTitle")}
-            </h3>
-            {hasChart ? (
-              <div className="flex flex-col gap-2">
-                <div
-                  role="group"
-                  aria-label={t("scenarios.legendLabel")}
-                  className="flex flex-wrap items-center gap-1.5"
-                >
-                  {chartVariants.map((variant) => {
-                    const hidden = hiddenSeries.has(variant.key);
-                    return (
-                      <button
-                        key={variant.key}
-                        type="button"
-                        aria-pressed={!hidden}
-                        aria-label={t("scenarios.legendToggleAria", {
-                          name: variant.label,
-                        })}
-                        onClick={() =>
-                          setHiddenSeries((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(variant.key)) next.delete(variant.key);
-                            else next.add(variant.key);
-                            return next;
-                          })
-                        }
-                        className={`flex cursor-pointer items-center gap-1.5 rounded border border-line px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-                          hidden
-                            ? "bg-transparent text-muted opacity-60"
-                            : "bg-surface text-fg"
-                        }`}
-                      >
-                        <span
-                          aria-hidden
-                          className="size-2 shrink-0 rounded-full"
-                          style={{ background: `var(${variant.colorVar})` }}
-                        />
-                        <span className={hidden ? "line-through" : undefined}>
-                          {variant.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="rounded border border-line bg-surface p-2">
-                  <LineChart
-                    series={chartSeries}
-                    formatX={formatX}
-                    formatY={formatY}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">
-                {t("scenarios.chartEmpty")}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-fg-bright">
               {t("scenarios.monitorsTitle")}
             </h3>
             <ScenariosMonitorRow
@@ -529,87 +538,88 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             />
           </div>
 
-          <div className="flex flex-col gap-3">
-            {activeScenario === null && (
-              <p className="m-0 rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
-                {t("scenarios.baselineReadOnly")}
-              </p>
-            )}
-            {hasEarlierMonths && (
-              <button
-                type="button"
-                onClick={() => setShowEarlierMonths((v) => !v)}
-                className="group flex cursor-pointer items-center gap-2 border-0 bg-transparent px-0 py-1 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-              >
-                <span aria-hidden className="h-px flex-1 bg-line" />
-                <span className="whitespace-nowrap">
-                  {showEarlierMonths
-                    ? t("scenarios.hideEarlierMonths")
-                    : t("scenarios.showEarlierMonths")}
-                </span>
-                <span aria-hidden className="h-px flex-1 bg-line" />
-              </button>
-            )}
-            {activeState &&
-              monthKeys.map((monthKey) => (
-                <ScenarioMonthTable
-                  key={monthKey}
-                  monthKey={monthKey}
-                  rows={activeState.sortedMonthGroups.get(monthKey) ?? []}
-                  balances={activeState.balances}
-                  dateColId={activeState.dateCol?.id}
-                  descColId={
-                    baseItem?.columns.find((c) => c.type === "description")?.id
-                  }
-                  amountColId={
-                    baseItem?.columns.find((c) => c.type === "amount")?.id
-                  }
-                  overrides={activeOverrides}
-                  baseAmounts={baseAmounts}
-                  editableRowIds={editableRowIds}
-                  readOnly={activeScenario === null}
-                  settings={settings}
-                  onCommitAmount={(rowId, amount) =>
-                    patchOverride(rowId, { amount })
-                  }
-                  onCommitDescription={(rowId, description) =>
-                    patchOverride(rowId, { description })
-                  }
-                  onToggleExcluded={(rowId) =>
-                    patchOverride(rowId, {
-                      excluded: activeOverrides.get(rowId)?.excluded
-                        ? undefined
-                        : true,
-                    })
-                  }
-                  onRevert={(rowId) => {
-                    if (!view || !activeScenario) return;
-                    dispatch({
-                      type: "setScenarioOverride",
-                      sheetId: sheet.id,
-                      itemId: view.id,
-                      scenarioId: activeScenario.id,
-                      override: { rowId },
-                    });
-                  }}
-                  onEditAddedRow={(addedId) => {
-                    const added = activeScenario?.addedRows.find(
-                      (r) => r.id === addedId,
-                    );
-                    if (added) setRowModal({ kind: "edit", row: added });
-                  }}
-                  onAddRow={() =>
-                    setRowModal({
-                      kind: "add",
-                      seedDate: fiscalMonthSeedIso(
-                        monthKey,
-                        settings.startOfMonth,
-                      ),
-                    })
-                  }
-                />
-              ))}
-          </div>
+          <ActiveRowProvider>
+            <div className="flex flex-col gap-3">
+              {activeScenario === null && (
+                <p className="m-0 rounded border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+                  {t("scenarios.baselineReadOnly")}
+                </p>
+              )}
+              {hasEarlierMonths && (
+                <button
+                  type="button"
+                  onClick={() => setShowEarlierMonths((v) => !v)}
+                  className="group flex cursor-pointer items-center gap-2 border-0 bg-transparent px-0 py-1 text-xs text-muted hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span aria-hidden className="h-px flex-1 bg-line" />
+                  <span className="whitespace-nowrap">
+                    {showEarlierMonths
+                      ? t("scenarios.hideEarlierMonths")
+                      : t("scenarios.showEarlierMonths")}
+                  </span>
+                  <span aria-hidden className="h-px flex-1 bg-line" />
+                </button>
+              )}
+              {activeState &&
+                monthKeys.map((monthKey) => (
+                  <ScenarioMonthTable
+                    key={monthKey}
+                    monthKey={monthKey}
+                    rows={activeState.sortedMonthGroups.get(monthKey) ?? []}
+                    balances={activeState.balances}
+                    dateColId={activeState.dateCol?.id}
+                    descColId={
+                      baseItem?.columns.find((c) => c.type === "description")
+                        ?.id
+                    }
+                    amountColId={
+                      baseItem?.columns.find((c) => c.type === "amount")?.id
+                    }
+                    overrides={activeOverrides}
+                    baseAmounts={baseAmounts}
+                    editableRowIds={editableRowIds}
+                    readOnly={activeScenario === null}
+                    amountChars={activeState.colWidths.amountChars}
+                    balanceChars={activeState.colWidths.balanceChars}
+                    settings={settings}
+                    onCommitAmount={handleCommitAmount}
+                    onCommitDescription={handleCommitDescription}
+                    onToggleExcluded={(rowId) =>
+                      patchOverride(rowId, {
+                        excluded: activeOverrides.get(rowId)?.excluded
+                          ? undefined
+                          : true,
+                      })
+                    }
+                    onRevert={(rowId) => {
+                      if (!view || !activeScenario) return;
+                      dispatch({
+                        type: "setScenarioOverride",
+                        sheetId: sheet.id,
+                        itemId: view.id,
+                        scenarioId: activeScenario.id,
+                        override: { rowId },
+                      });
+                    }}
+                    onEditAddedRow={(addedId) => {
+                      const added = activeScenario?.addedRows.find(
+                        (r) => r.id === addedId,
+                      );
+                      if (added) setRowModal({ kind: "edit", row: added });
+                    }}
+                    onAddRow={() =>
+                      setRowModal({
+                        kind: "add",
+                        seedDate: fiscalMonthSeedIso(
+                          monthKey,
+                          settings.startOfMonth,
+                        ),
+                      })
+                    }
+                  />
+                ))}
+            </div>
+          </ActiveRowProvider>
         </div>
       )}
 
@@ -690,6 +700,15 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         }}
       />
 
+      <ScenariosChartModal
+        open={chartOpen}
+        variants={chartVariants}
+        endBalancesByVariant={endBalancesByVariant}
+        openingBalance={openingBalance}
+        settings={settings}
+        onClose={() => setChartOpen(false)}
+      />
+
       {activeScenario && baseItem && (
         <ScenariosDiffModal
           open={diffOpen}
@@ -699,6 +718,28 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
           onClose={() => setDiffOpen(false)}
         />
       )}
+
+      <ApplySeriesDialog
+        open={pendingSeriesApply !== null}
+        fieldLabel={pendingSeriesApply?.fieldLabel ?? ""}
+        anchorDate={pendingSeriesApply?.anchorDate ?? ""}
+        lastSeriesDate={pendingSeriesApply?.lastSeriesDate ?? null}
+        onCancel={() => setPendingSeriesApply(null)}
+        onApplyToFuture={(untilIso) => {
+          if (!view || !activeScenario || !pendingSeriesApply) return;
+          dispatch({
+            type: "propagateScenarioOverrideToFuture",
+            sheetId: sheet.id,
+            itemId: view.id,
+            scenarioId: activeScenario.id,
+            rowId: pendingSeriesApply.rowId,
+            field: pendingSeriesApply.field,
+            value: pendingSeriesApply.value,
+            untilIso,
+          });
+          setPendingSeriesApply(null);
+        }}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

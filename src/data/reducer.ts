@@ -420,6 +420,21 @@ export type Action =
       override: ScenarioRowOverride;
     }
   | {
+      // Fan one override field out to every occurrence of the anchor
+      // row's recurring series dated at or after the anchor (clamped
+      // to `untilIso` when set). Per target row, a value equal to that
+      // row's own base cell clears the field instead of storing a
+      // no-op override — so re-stating the base is a sweep-wide revert.
+      type: "propagateScenarioOverrideToFuture";
+      sheetId: string;
+      itemId: string;
+      scenarioId: string;
+      rowId: string;
+      field: "amount" | "description";
+      value: number | string;
+      untilIso: string | null;
+    }
+  | {
       type: "addScenarioRow";
       sheetId: string;
       itemId: string;

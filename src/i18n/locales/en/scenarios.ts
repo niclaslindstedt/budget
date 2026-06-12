@@ -23,8 +23,8 @@ const scenarios = {
   scenarioName: "Name",
   scenarioTabsLabel: "Scenarios",
 
-  // Chart.
-  chartTitle: "Monthly end balance",
+  // Visualize modal (the chart).
+  visualizeAction: "Visualize scenarios",
   chartEmpty: "Not enough dated rows in the base budget to chart yet.",
   legendLabel: "Toggle series",
   legendToggleAria: "Toggle {name} in the chart",
