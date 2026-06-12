@@ -18,6 +18,8 @@ const sheetModal: SheetModalCatalog = {
     "Lånebladet håller koll på pengarna du är skyldig — studielån, billån, bolån, lånade pengar — och betalningarna på varje lån. Lägg till lån därifrån; ett bolån kan länka en fastighets bolån så att de två bladen alltid stämmer överens.",
   insightsHint:
     "Insiktsbladet läser allt du redan håller koll på — konton, sparande, saker, fastigheter, lån — och visar helheten, med din nettoförmögenhet först. Inget att lägga till här; det följer de andra bladen.",
+  scenariosHint:
+    "Scenariobladet spelar upp tänk-om-framtider mot en budget du redan för — förlora jobbet, köpa bil — utan att någonsin ändra den riktiga budgeten. Välj basbudget på själva bladet.",
   salaryAccountHint:
     "Kontot din lön betalas in på. ”Hitta löner” söker igenom det här kontots bankhistorik efter löner. Använd ett löneblad per person, vart och ett kopplat till den personens lönekonto.",
   color: "Färg",

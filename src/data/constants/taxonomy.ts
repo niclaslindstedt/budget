@@ -342,6 +342,26 @@ export const INSIGHTS_GLYPH_NAMES: readonly CategoryIcon[] = [
   "gem",
 ] as const;
 
+// Scenarios sheets stand for what-if exploration — alternate futures
+// played out against a real budget — so the palette leans toward
+// navigation, chance, and foresight rather than any one money store.
+// The SheetModal picks this set when the selected sheet type is
+// "scenarios" via the descriptor's `glyphNames`.
+export const SCENARIOS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "compass",
+  "dice-5",
+  "line-chart",
+  "trending-up",
+  "lightbulb",
+  "sparkles",
+  "umbrella",
+  "shield",
+  "scale",
+  "calendar-days",
+  "wallet",
+  "star",
+] as const;
+
 // Savings sheets stand for money set aside toward a goal, so beyond the
 // money-store glyphs the palette covers the things people save for —
 // vacations, clothing, kids' toys, a home, a car, electronics, pets,

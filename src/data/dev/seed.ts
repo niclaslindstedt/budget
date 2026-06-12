@@ -1225,7 +1225,19 @@ export function buildSeedUserData(): UserData {
     if (row) rows.push({ ...row, id: mkId("row"), ...extra });
   };
 
-  for (const { year, month } of MONTHS) {
+  // The recurring rows extend three months past the bank-history window
+  // (which ends with MONTHS) — the budget is forward-looking, so the
+  // future months exercise `showFutureEntries` AND give the Scenarios
+  // sheet uncovered months where what-if deltas actually move the
+  // balance (inside bank-covered months the per-entry balance pins
+  // absorb any edit, by design).
+  const BUDGET_MONTHS = [
+    ...MONTHS,
+    { year: 2026, month: 6 },
+    { year: 2026, month: 7 },
+    { year: 2026, month: 8 },
+  ];
+  for (const { year, month } of BUDGET_MONTHS) {
     pushRow({
       date: iso(year, month, 25),
       description: "Lön",
@@ -1386,6 +1398,80 @@ export function buildSeedUserData(): UserData {
     items: [{ id: mkId("item"), type: "investmentView" }],
   };
 
+  // ---- Scenarios sheet bound to the Checking budget ----------------
+  // Two worked what-ifs so the page lands populated: "Lose my job"
+  // zeroes the salary in the future months, drops the gym, and adds an
+  // unemployment-benefit income; "New car" just adds costs. The deltas
+  // deliberately target the months PAST the bank-history window —
+  // inside covered months the per-entry balance pins absorb edits, so
+  // only uncovered months make the chart lines diverge. Overrides
+  // reference the seeded budget rows by id (resolved off the `rows`
+  // array so the references survive id-minting changes), and two
+  // monitor dates exercise the balance-monitor cards.
+  const futureRowsOf = (seriesId: string) =>
+    rows.filter((r) => {
+      if (r.seriesId !== seriesId) return false;
+      const date = r.cells[columns[0].id];
+      return typeof date === "string" && date >= "2026-06-01";
+    });
+  const scenariosSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Scenarios",
+    type: "scenarios",
+    glyph: "compass",
+    color: CATEGORY_COLORS[11],
+    description: "",
+    items: [
+      {
+        id: mkId("item"),
+        type: "scenariosView",
+        baseSheetId: budgetSheet.id,
+        monitors: ["2026-06-30", "2026-08-31"],
+        scenarios: [
+          {
+            id: mkId("scn"),
+            name: "Lose my job",
+            overrides: [
+              ...futureRowsOf(salarySeries).map((r) => ({
+                rowId: r.id,
+                amount: 0,
+              })),
+              ...futureRowsOf(gymSeries).map((r) => ({
+                rowId: r.id,
+                excluded: true,
+              })),
+            ],
+            addedRows: [6, 7, 8].map((month) => ({
+              id: mkId("scnrow"),
+              date: iso(2026, month, 26),
+              description: "A-kassa",
+              amount: 14500,
+            })),
+          },
+          {
+            id: mkId("scn"),
+            name: "New car",
+            overrides: [],
+            addedRows: [
+              {
+                id: mkId("scnrow"),
+                date: "2026-06-10",
+                description: "Car down payment",
+                amount: -40000,
+              },
+              ...[6, 7, 8].map((month) => ({
+                id: mkId("scnrow"),
+                date: iso(2026, month, 27),
+                description: "Car loan + insurance",
+                amount: -3450,
+              })),
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
   // Broad holdings across the three wrappers so every tax treatment is
   // reachable: an ISK index fund (untaxed on sale), a KF global fund, a
   // depå gold position (capital-gains taxed), and a depå crypto wallet.
@@ -1513,6 +1599,7 @@ export function buildSeedUserData(): UserData {
       loansSheet,
       investmentSheet,
       insightsSheet,
+      scenariosSheet,
     ],
     activeSheetId: budgetSheet.id,
     accounts,

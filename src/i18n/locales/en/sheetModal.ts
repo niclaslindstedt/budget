@@ -18,6 +18,8 @@ const sheetModal = {
     "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, borrowed money — and the payments made on each. Add loans from there; a mortgage can link a property's mortgage so the two sheets always agree.",
   insightsHint:
     "The Insights sheet reads everything you already track — accounts, savings, items, properties, loans — and turns it into the big picture, starting with your net worth. Nothing to add here; it follows the other sheets.",
+  scenariosHint:
+    "The Scenarios sheet plays what-if futures against a budget you already track — lose a job, buy a car — without ever changing the real budget. Pick the base budget on the sheet itself.",
   salaryAccountHint:
     "The account your salary is paid into. “Find salaries” scans this account’s bank history for paychecks. Use one salary sheet per person, each bound to that person’s pay account.",
   color: "Color",

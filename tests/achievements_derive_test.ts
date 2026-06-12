@@ -442,6 +442,42 @@ describe("deriveUnlocks", () => {
     expect(fresh).not.toContain("fineSieve");
   });
 
+  it("fires whatIf when the first scenario appears on a scenarios sheet", () => {
+    const scenariosSheet = (
+      scenarios: { id: string; name: string }[],
+    ): Sheet => ({
+      id: "scn-sheet",
+      name: "Scenarios",
+      type: "scenarios",
+      glyph: "compass",
+      color: "var(--color-blue)",
+      description: "",
+      items: [
+        {
+          id: "v1",
+          type: "scenariosView",
+          baseSheetId: null,
+          monitors: [],
+          scenarios: scenarios.map((s) => ({
+            ...s,
+            overrides: [],
+            addedRows: [],
+          })),
+        },
+      ],
+    });
+    const prev = withItem([]);
+    prev.sheets = [...prev.sheets, scenariosSheet([])];
+    const next = withItem([]);
+    next.sheets = [
+      ...next.sheets,
+      scenariosSheet([{ id: "scn-1", name: "Lose my job" }]),
+    ];
+    // Adding the empty sheet alone is not enough — the first Scenario is.
+    expect(deriveUnlocks(withItem([]), prev, {})).not.toContain("whatIf");
+    expect(deriveUnlocks(prev, next, {})).toContain("whatIf");
+  });
+
   it("ignores unchanged state", () => {
     const prev = withItem([{ id: "r1", cells: {} }]);
     const next = withItem([{ id: "r1", cells: {} }]);

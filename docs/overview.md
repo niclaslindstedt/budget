@@ -2087,6 +2087,100 @@ and stock over time as one line, via the pure `buildInvestmentTotalSeries`
 value for after-sale-tax value, and the `ChartRangeRow` trailing-window
 buttons sit **below** the graph. Reuses the `LineChart` primitive.
 
+## Scenarios page
+
+### Scenarios page
+
+The Scenarios sheet (`SheetType "scenarios"`, `ScenariosView`,
+`src/components/scenarios/ScenariosPage.tsx`) plays **what-if futures**
+against one existing budget sheet — the **base budget**, bound via
+`ScenariosView.baseSheetId` (picked on the page itself; the empty state
+opens with the picker). Scenarios are **live-linked deltas**, never
+copies: each `Scenario` stores only overrides / exclusions / added rows
+keyed against the base budget's row ids, so edits to the real budget
+flow into every scenario automatically and scenario edits never touch
+the real budget. The page renders, top to bottom: the scenario tab
+strip (`ScenarioTabs` — an implicit **Baseline** chip first, then one
+chip per scenario with its chart color, then "+"), the monthly
+end-balance chart, the balance monitors, and budget-like month tables
+(`ScenarioMonthTable`, modeled on the read-only viewer table). The
+month tables start at the current fiscal month — scenarios are
+forward-looking — with a "Show earlier months" expander for the full
+history. The active tab is ephemeral component state (not persisted, so
+switching tabs never mints an undo step). Creating the first scenario
+unlocks the **What If** achievement. Deleting the base sheet cascades
+`baseSheetId` to `null` (the page falls back to the picker); changing
+the base clears every scenario's deltas after a confirm — the row ids
+belong to the old base. The pure math lives in `src/data/scenarios/`
+(`apply.ts` for delta application + diff, `series.ts` for the
+per-variant pipeline run, monthly end balances, chart points, and
+monitor lookups); per-variant computation reuses
+`computeBudgetState`, so the Baseline is identical to what the budget
+page shows (synthesized transfer / history rows, formula resolution,
+bank balance pins, fiscal-month grouping). Scenario data is
+hypothetical by design and deliberately excluded from the Insights
+net-worth roll-up.
+
+### Scenario
+
+One named what-if variant (`Scenario` in `src/data/types/sheets.ts`):
+`overrides` (per-row deltas keyed by base row id —
+`ScenarioRowOverride` with replacement `amount`, replacement
+`description`, and/or `excluded: true`) plus `addedRows`
+(`ScenarioAddedRow` — scenario-only rows with date / description /
+amount, e.g. an unemployment benefit in a lose-my-job scenario). On
+the page, tapping an amount or description in a scenario's table edits
+it inline (dispatching the upsert-by-rowId `setScenarioOverride`
+action); the minus control excludes a row (struck through, contributes
+nothing to balances); the revert control clears an override (a bare
+`{ rowId }` payload normalises to nothing and removes the entry — the
+shared `normalizeScenarioOverride` contract between the reducer and
+validator). Added rows are minted into the applied clone with
+deterministic `scn:`-prefixed ids (`applyScenario` in
+`src/data/scenarios/apply.ts`) and edited via `ScenarioRowModal`.
+Overrides whose base row was deleted are inert (ignored at compute
+time, skipped by the diff).
+
+### Baseline (scenarios)
+
+The implicit unaltered variant: the base budget exactly as the budget
+page computes it. Always present — first chip in the tab strip, dashed
+`--muted` series on the chart, first line on every monitor card — and
+never user-created, edited, or deleted. Its tables are read-only.
+
+### Monitor date
+
+A user-chosen ISO date ("how much money do I have on 31 December?")
+stored sorted + deduped in `ScenariosView.monitors` (wholesale-replaced
+by the `setScenariosMonitors` action). Each monitor renders as a card
+(`ScenariosMonitorRow`) listing the projected balance per variant at
+that date — `balanceAtDate` in `src/data/scenarios/series.ts`, the
+running balance after every row dated at or before the monitor date
+(inclusive, plain calendar compare) — with each scenario's delta vs the
+Baseline colored positive / negative.
+
+### Scenario chart
+
+The multi-series `LineChart` of **monthly end balances** — one line
+per scenario plus the dashed Baseline, all drawn at once on a shared
+month axis (`monthlyEndBalances` + `buildScenarioChartPoints` in
+`src/data/scenarios/series.ts`; empty months carry the previous
+month's end balance forward, months before a variant's data sit at the
+opening balance). A legend chip row above the chart toggles individual
+series in and out (ephemeral state, all on by default, independent of
+the active tab). Scenario series colors derive from the scenario's
+index via `scenario-colors.ts` — theme tokens, never persisted.
+
+### Scenario diff
+
+The "View changes" view (`ScenariosDiffModal`, opened from the sheet
+title's "…" menu while a scenario is active): the active scenario's
+deltas vs the Baseline as a date-sorted diff — overridden rows as
+"old → new", excluded rows struck through with a minus marker, added
+rows with a plus marker. Built by `diffScenario` in
+`src/data/scenarios/apply.ts`; a delta-free scenario shows an empty
+state.
+
 ## Data and storage
 
 ### User data
@@ -2102,8 +2196,10 @@ page marker), `SalaryView` (salary page marker), `PropertiesView`
 (properties page marker), `SavingsView` (savings page marker),
 `LoansView` (loans page marker), `InsightsView` (insights page —
 carries the per-mode settings, see [Net worth
-settings](#net-worth-settings)), or `InvestmentView` (investment page
-marker).
+settings](#net-worth-settings)), `InvestmentView` (investment page
+marker), or `ScenariosView` (scenarios page — carries the base-budget
+binding, monitor dates, and the scenarios themselves, see [Scenarios
+page](#scenarios-page)).
 
 ### Account budget
 

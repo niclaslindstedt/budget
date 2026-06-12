@@ -57,6 +57,7 @@ import savingsSheet from "./savingsSheet";
 import loansSheet from "./loansSheet";
 import insightsSheet from "./insightsSheet";
 import investment from "./investment";
+import scenarios from "./scenarios";
 import salary from "./salary";
 import properties from "./properties";
 import tax from "./tax";
@@ -140,6 +141,7 @@ export const en = {
   loansSheet,
   insightsSheet,
   investment,
+  scenarios,
   salary,
   properties,
   tax,

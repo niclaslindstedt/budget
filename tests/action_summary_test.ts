@@ -92,6 +92,97 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Insights" });
   });
 
+  it("names scenarios actions by scenario or sheet", () => {
+    const fresh = freshUserData();
+    const scenariosSheet: UserData["sheets"][number] = {
+      ...fresh.sheets[0],
+      id: "sheet-scn",
+      name: "What if",
+      type: "scenarios",
+      items: [
+        {
+          id: "view-1",
+          type: "scenariosView",
+          baseSheetId: null,
+          monitors: [],
+          scenarios: [
+            { id: "scn-1", name: "Lose my job", overrides: [], addedRows: [] },
+          ],
+        },
+      ],
+    };
+    const prev: UserData = {
+      ...fresh,
+      sheets: [...fresh.sheets, scenariosSheet],
+    };
+    const target = { sheetId: "sheet-scn", itemId: "view-1" } as const;
+
+    // Sheet-level actions name the sheet.
+    expect(
+      describe2(
+        { type: "setScenariosMonitors", ...target, monitors: ["2026-12-31"] },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "What if" });
+    expect(
+      describe2(
+        {
+          type: "setScenariosBaseSheet",
+          ...target,
+          baseSheetId: fresh.sheets[0].id,
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "What if" });
+
+    // Creates name the payload; per-scenario edits resolve off next.
+    expect(
+      describe2(
+        {
+          type: "addScenario",
+          ...target,
+          scenario: {
+            id: "scn-2",
+            name: "New car",
+            overrides: [],
+            addedRows: [],
+          },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "New car" });
+    expect(
+      describe2(
+        {
+          type: "setScenarioOverride",
+          ...target,
+          scenarioId: "scn-1",
+          override: { rowId: "r1", amount: 0 },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Lose my job" });
+    expect(
+      describe2(
+        {
+          type: "addScenarioRow",
+          ...target,
+          scenarioId: "scn-1",
+          row: { id: "a1", date: "2026-01-01", description: "X", amount: 1 },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Lose my job" });
+
+    // Deletes read the name off prev (the scenario is gone in next).
+    expect(
+      describe2(
+        { type: "deleteScenario", ...target, scenarioId: "scn-1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Lose my job" });
+  });
+
   it("names the sheet when toggling its favorite flag", () => {
     const fresh = freshUserData();
     const [first] = fresh.sheets;
