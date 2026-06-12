@@ -33,6 +33,7 @@ import type { Action } from "../../data/reducer";
 import type {
   AccountBudget,
   SalaryView,
+  ScenariosView,
   Settings,
   StoredUser,
   UserData,
@@ -366,6 +367,25 @@ export function UniversalModalHost(props: Props) {
         taxProfiles={data.taxProfiles}
         onCreateTaxProfile={(profile) =>
           dispatch({ type: "createTaxProfile", profile })
+        }
+        currentBaseSheetId={
+          sheetModal?.sheet
+            ? (sheetModal.sheet.items.find(
+                (it): it is ScenariosView => it.type === "scenariosView",
+              )?.baseSheetId ?? null)
+            : null
+        }
+        budgetSheets={data.sheets
+          .filter((s) => s.type === "budget")
+          .map((s) => ({ id: s.id, name: s.name }))}
+        baseChangeHasDeltas={
+          sheetModal?.sheet?.items.some(
+            (it) =>
+              it.type === "scenariosView" &&
+              it.scenarios.some(
+                (s) => s.overrides.length > 0 || s.addedRows.length > 0,
+              ),
+          ) ?? false
         }
         accounts={data.accounts}
         canDelete={data.sheets.length > 1}

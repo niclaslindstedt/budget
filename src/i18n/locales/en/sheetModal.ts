@@ -19,7 +19,11 @@ const sheetModal = {
   insightsHint:
     "The Insights sheet reads everything you already track — accounts, savings, items, properties, loans — and turns it into the big picture, starting with your net worth. Nothing to add here; it follows the other sheets.",
   scenariosHint:
-    "The Scenarios sheet plays what-if futures against a budget you already track — lose a job, buy a car — without ever changing the real budget. Pick the base budget on the sheet itself.",
+    "The Scenarios sheet plays what-if futures against a budget you already track — lose a job, buy a car — without ever changing the real budget.",
+  baseBudgetHint:
+    "The budget sheet the scenarios model on. Your real budget is never changed.",
+  baseChangeWarning:
+    "Changing the base budget clears every scenario's changes (they belong to the old budget's rows). Scenario names are kept.",
   salaryAccountHint:
     "The account your salary is paid into. “Find salaries” scans this account’s bank history for paychecks. Use one salary sheet per person, each bound to that person’s pay account.",
   color: "Color",

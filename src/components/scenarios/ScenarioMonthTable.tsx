@@ -1,5 +1,10 @@
+import { Fragment, useMemo } from "react";
 import { Plus } from "lucide-react";
 
+import {
+  collectHiddenTransfersByAnchor,
+  isTransferRow,
+} from "../../data/budget/synthesis";
 import type {
   Company,
   EntryType,
@@ -32,6 +37,11 @@ type Props = {
   // name).
   typesById: ReadonlyMap<string, EntryType>;
   companiesById: ReadonlyMap<string, Company>;
+  // Anchor rows whose hidden-transfer run is expanded inline — same
+  // `Settings.hideTransfers` collapse the budget table does. Owned by
+  // the page so the reveal survives a month re-render.
+  expandedTransferAnchors: ReadonlySet<string>;
+  onToggleTransferAnchor: (rowId: string) => void;
   // Ids of base budget rows a scenario may override (persisted user
   // rows). Synthesized history / transfer rows and correction rows get
   // no affordances.
@@ -71,6 +81,8 @@ export function ScenarioMonthTable({
   baseAmounts,
   typesById,
   companiesById,
+  expandedTransferAnchors,
+  onToggleTransferAnchor,
   editableRowIds,
   readOnly,
   amountChars,
@@ -88,6 +100,48 @@ export function ScenarioMonthTable({
 
   const monthNum = monthNumberFromKey(monthKey);
   const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
+
+  // Same transfer collapse as the budget table: with
+  // `Settings.hideTransfers` on, runs of hidden transfer rows group
+  // under the next visible anchor row, whose balance cell becomes the
+  // expand toggle.
+  const hideTransfers = settings.hideTransfers;
+  const hiddenBefore = useMemo(
+    () => collectHiddenTransfersByAnchor(rows, hideTransfers),
+    [rows, hideTransfers],
+  );
+
+  const renderRow = (
+    row: Row,
+    extra?: { hiddenRun?: readonly Row[]; revealedTransfer?: boolean },
+  ) => (
+    <ScenarioRow
+      key={row.id}
+      row={row}
+      dateColId={dateColId}
+      descColId={descColId}
+      amountColId={amountColId}
+      balance={balances.get(row.id)}
+      override={overrides.get(row.id)}
+      baseAmount={baseAmounts.get(row.id)}
+      entryType={row.typeId ? (typesById.get(row.typeId) ?? null) : null}
+      company={
+        row.companyId ? (companiesById.get(row.companyId) ?? null) : null
+      }
+      editable={!readOnly && editableRowIds.has(row.id)}
+      readOnly={readOnly}
+      hiddenTransferCount={extra?.hiddenRun?.length ?? 0}
+      transferExpanded={expandedTransferAnchors.has(row.id)}
+      onToggleTransferAnchor={() => onToggleTransferAnchor(row.id)}
+      revealedTransfer={extra?.revealedTransfer ?? false}
+      settings={settings}
+      onCommitAmount={onCommitAmount}
+      onCommitDescription={onCommitDescription}
+      onToggleExcluded={onToggleExcluded}
+      onRevert={onRevert}
+      onEditAddedRow={onEditAddedRow}
+    />
+  );
 
   return (
     <section
@@ -107,34 +161,28 @@ export function ScenarioMonthTable({
       </header>
       <table className="swipe-table scenario-table w-full border-collapse text-sm">
         <tbody>
-          {rows.map((row) => (
-            <ScenarioRow
-              key={row.id}
-              row={row}
-              dateColId={dateColId}
-              descColId={descColId}
-              amountColId={amountColId}
-              balance={balances.get(row.id)}
-              override={overrides.get(row.id)}
-              baseAmount={baseAmounts.get(row.id)}
-              entryType={
-                row.typeId ? (typesById.get(row.typeId) ?? null) : null
-              }
-              company={
-                row.companyId
-                  ? (companiesById.get(row.companyId) ?? null)
-                  : null
-              }
-              editable={!readOnly && editableRowIds.has(row.id)}
-              readOnly={readOnly}
-              settings={settings}
-              onCommitAmount={onCommitAmount}
-              onCommitDescription={onCommitDescription}
-              onToggleExcluded={onToggleExcluded}
-              onRevert={onRevert}
-              onEditAddedRow={onEditAddedRow}
-            />
-          ))}
+          {rows.map((row) => {
+            // Skip hidden transfers — they render inline above their
+            // anchor when the anchor's expand toggle is on.
+            if (
+              hideTransfers &&
+              row.kind !== "correction" &&
+              isTransferRow(row)
+            )
+              return null;
+            const hiddenRun = hiddenBefore.get(row.id);
+            const expanded =
+              hiddenRun !== undefined && expandedTransferAnchors.has(row.id);
+            return (
+              <Fragment key={row.id}>
+                {expanded &&
+                  hiddenRun.map((hidden) =>
+                    renderRow(hidden, { revealedTransfer: true }),
+                  )}
+                {renderRow(row, { hiddenRun })}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
       {!readOnly && (

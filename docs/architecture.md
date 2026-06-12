@@ -177,7 +177,8 @@ src/
 │       ├── ScenarioRow.tsx       # one row — inline override/exclude, swipe strip
 │       ├── ScenarioRowModal.tsx  # add/edit a scenario-only row
 │       ├── ScenarioEditModal.tsx # create/rename a scenario
-│       ├── ScenariosMonitorRow.tsx # monitor-date cards + add/remove
+│       ├── ScenariosMonitorRow.tsx # monitor-date cards + remove
+│       ├── ScenariosAddMonitorModal.tsx # add a monitor date ("+" on title row)
 │       ├── ScenariosChartModal.tsx # "Visualize scenarios" — forward-horizon chart
 │       ├── ScenariosDiffModal.tsx # "View changes" — scenario vs baseline diff
 │       └── scenario-colors.ts    # index → theme-token series colors

@@ -19,7 +19,11 @@ const sheetModal: SheetModalCatalog = {
   insightsHint:
     "Insiktsbladet läser allt du redan håller koll på — konton, sparande, saker, fastigheter, lån — och visar helheten, med din nettoförmögenhet först. Inget att lägga till här; det följer de andra bladen.",
   scenariosHint:
-    "Scenariobladet spelar upp tänk-om-framtider mot en budget du redan för — förlora jobbet, köpa bil — utan att någonsin ändra den riktiga budgeten. Välj basbudget på själva bladet.",
+    "Scenariobladet spelar upp tänk-om-framtider mot en budget du redan för — förlora jobbet, köpa bil — utan att någonsin ändra den riktiga budgeten.",
+  baseBudgetHint:
+    "Budgetbladet som scenarierna utgår ifrån. Din riktiga budget ändras aldrig.",
+  baseChangeWarning:
+    "Att byta basbudget rensar varje scenarios ändringar (de hör till den gamla budgetens rader). Scenarionamnen behålls.",
   salaryAccountHint:
     "Kontot din lön betalas in på. ”Hitta löner” söker igenom det här kontots bankhistorik efter löner. Använd ett löneblad per person, vart och ett kopplat till den personens lönekonto.",
   color: "Färg",

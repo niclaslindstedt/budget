@@ -10,7 +10,6 @@ const scenarios: ScenariosCatalog = {
   changeBaseConfirm:
     "Byter du basbudget rensas alla scenariers ändringar (de hör till den gamla budgetens rader). Scenarionamnen behålls. Fortsätta?",
   noBudgetSheets: "Det finns inga budgetblad att utgå ifrån ännu.",
-  baseLine: "Baserad på {name}",
 
   baselineTab: "Grundlinje",
   addScenario: "Nytt scenario",

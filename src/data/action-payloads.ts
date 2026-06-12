@@ -20,6 +20,12 @@ export type SheetDraft = {
   // The tax profile bound to a salary sheet's `salaryView` item. `null`
   // = no profile (don't estimate gross). Ignored for non-salary sheets.
   taxProfileId: string | null;
+  // The base budget bound to a scenarios sheet's `scenariosView` item.
+  // `null` = no base yet (the page opens its picker). Ignored for
+  // non-scenarios sheets. Applying a change goes through the
+  // `setScenariosBaseSheet` action, which clears every scenario's
+  // deltas — the modal warns before save.
+  baseSheetId: string | null;
   // When set, the parent should mint a new Account by this name and
   // attach it to the budget. Lets the user create both a sheet and
   // the account it lives on in a single round-trip through the
