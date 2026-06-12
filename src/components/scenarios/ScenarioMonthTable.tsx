@@ -1,6 +1,12 @@
 import { Plus } from "lucide-react";
 
-import type { Row, ScenarioRowOverride, Settings } from "../../data/types";
+import type {
+  Company,
+  EntryType,
+  Row,
+  ScenarioRowOverride,
+  Settings,
+} from "../../data/types";
 import { useLang, useT } from "../../i18n";
 import { formatMonthKey } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
@@ -21,6 +27,11 @@ type Props = {
   // already rewritten (or zeroed) the cell, so the strikethrough /
   // tooltip rendering reads the original from here.
   baseAmounts: ReadonlyMap<string, number>;
+  // Taxonomy lookups so each row can render its type badge and the
+  // budget-style description fallbacks (company pill, type-coloured
+  // name).
+  typesById: ReadonlyMap<string, EntryType>;
+  companiesById: ReadonlyMap<string, Company>;
   // Ids of base budget rows a scenario may override (persisted user
   // rows). Synthesized history / transfer rows and correction rows get
   // no affordances.
@@ -58,6 +69,8 @@ export function ScenarioMonthTable({
   amountColId,
   overrides,
   baseAmounts,
+  typesById,
+  companiesById,
   editableRowIds,
   readOnly,
   amountChars,
@@ -104,6 +117,14 @@ export function ScenarioMonthTable({
               balance={balances.get(row.id)}
               override={overrides.get(row.id)}
               baseAmount={baseAmounts.get(row.id)}
+              entryType={
+                row.typeId ? (typesById.get(row.typeId) ?? null) : null
+              }
+              company={
+                row.companyId
+                  ? (companiesById.get(row.companyId) ?? null)
+                  : null
+              }
               editable={!readOnly && editableRowIds.has(row.id)}
               readOnly={readOnly}
               settings={settings}

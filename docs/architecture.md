@@ -169,9 +169,10 @@ src/
 │       └── InvestmentValueChartModal.tsx  # "Visualize value" — combined value
 │                                 #   over time, net-value toggle, range buttons
 │   └── scenarios/            # scenarios page — what-ifs against a base budget
-│       ├── ScenariosPage.tsx     # page root — base picker, tabs, monitors,
+│       ├── ScenariosPage.tsx     # page root — base picker, switcher, monitors,
 │       │                         #   month tables, delta dispatch + series sweep
-│       ├── ScenarioTabs.tsx      # Baseline chip + per-scenario chips + "+"
+│       ├── ScenarioPicker.tsx    # scenario dropdown (Baseline + scenarios +
+│       │                         #   "New scenario") + rename/delete glyphs
 │       ├── ScenarioMonthTable.tsx # one month — header + rows + add-row footer
 │       ├── ScenarioRow.tsx       # one row — inline override/exclude, swipe strip
 │       ├── ScenarioRowModal.tsx  # add/edit a scenario-only row
