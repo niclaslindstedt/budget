@@ -1,8 +1,5 @@
 import type { Category, CellValue, EntryType } from "../../../data/types";
-import { useT } from "../../../i18n";
-import { displayTypeName } from "../../../i18n/preset-names";
-import { tintBorder, tintFill } from "../../../utils/tint";
-import { CategoryIconGlyph } from "../../icons";
+import { TypeBadge } from "../../Pills";
 import { TypePicker } from "../../TypePicker";
 import { CELL_BASE } from "./constants";
 
@@ -14,34 +11,10 @@ export function ReadonlyTypeCell({
 }: {
   entryType: EntryType | null;
 }) {
-  const t = useT();
   return (
     <td className={`${CELL_BASE} p-0`} aria-readonly="true">
       <span className="flex h-full min-h-9 w-full items-center justify-center px-2 py-1 font-mono text-xs md:justify-start">
-        {entryType ? (
-          <>
-            <span
-              className="inline-flex items-center justify-center md:hidden"
-              style={{ color: entryType.color }}
-              aria-hidden
-            >
-              <CategoryIconGlyph name={entryType.glyph} size={18} />
-            </span>
-            <span
-              className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
-              style={{
-                backgroundColor: tintFill(entryType.color),
-                borderColor: tintBorder(entryType.color),
-                color: entryType.color,
-              }}
-            >
-              <CategoryIconGlyph name={entryType.glyph} size={12} />
-              <span className="truncate">{displayTypeName(entryType, t)}</span>
-            </span>
-          </>
-        ) : (
-          <span className="text-muted">—</span>
-        )}
+        <TypeBadge entryType={entryType} />
       </span>
     </td>
   );

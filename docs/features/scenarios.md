@@ -28,16 +28,19 @@ of that reality:
   budget, like an unemployment benefit or a new car payment.
 
 The month tables work like the budget sheet — date, description,
-amount, running balance, grouped by fiscal month — and start at the
+type, amount, running balance, grouped by fiscal month, with the same
+recurring markers and company / type labels — and start at the
 current month (your bank-covered past can't change anyway); a "Show
-earlier months" line reveals the full history.
+earlier months" line reveals the full history. Types are shown for
+context but can't be changed from a scenario.
 
 ## The chart
 
 Open **Visualize scenarios** from the sheet's "…" menu. One line chart
 draws the **monthly end balance** of the Baseline and every scenario
 at once — the dashed line is the Baseline, and each scenario gets its
-own color (the same dot shown on its tab). The chart looks strictly
+own color (the same dot shown next to its name in the scenario
+dropdown). The chart looks strictly
 forward: pick how far into the future it runs with the 1M / 3M / 6M /
 1Y / 2Y buttons, counted from the current month. Click a name in the
 legend to hide or show that line. This is where "can the economy

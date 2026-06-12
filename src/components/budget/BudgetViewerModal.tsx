@@ -46,8 +46,8 @@ import { indexById } from "../../utils/indexById";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { tintFill } from "../../utils/tint";
 import { CategoryIconGlyph, ColumnIcon } from "../icons";
-import { CompanyPill, LineItemPill } from "./cells/DescriptionCell";
 import { Modal } from "../Modal";
+import { CompanyPill, LineItemPill } from "../Pills";
 import { ModalSearchBar } from "../ModalSearchBar";
 import { ModalSearchControls } from "../ModalSearchControls";
 

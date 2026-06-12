@@ -9,7 +9,6 @@ import {
   ArrowLeftRight,
   ArrowRight,
   Ban,
-  Boxes,
   Building2,
   Landmark,
   Package,
@@ -24,6 +23,7 @@ import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
 import { FloatingPanel } from "../../FloatingPanel";
 import { useModalDispatch } from "../../modal-dispatch";
+import { CompanyPill, LineItemPill } from "../../Pills";
 import { CELL_BASE } from "./constants";
 
 // One owned-item line on a row, resolved + pre-formatted by `BudgetRow`
@@ -596,76 +596,6 @@ function OmittedGlyph() {
         className="absolute inset-0"
         strokeWidth={1.25}
       />
-    </span>
-  );
-}
-
-// Outlined pill with the company glyph + name, shown inside the
-// description cell when the row has a `companyId` but no user-authored
-// description. Uses theme tokens so the pill stays high-contrast in
-// both dark (white-on-dark) and light (dark-on-light) themes. When the
-// row is recurring the leading glyph becomes the orange recurring
-// symbol instead of the company glyph — it stands in for the external
-// Repeat icon (suppressed at the call site) so the pill saves the
-// horizontal space the separate icon would have cost.
-export function CompanyPill({
-  name,
-  recurring,
-}: {
-  name: string;
-  recurring: boolean;
-}) {
-  return (
-    <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
-      style={{
-        borderColor: "var(--fg-bright)",
-        color: "var(--fg-bright)",
-      }}
-    >
-      {recurring ? (
-        <Repeat
-          size={12}
-          aria-hidden
-          focusable={false}
-          className="shrink-0 text-flag"
-        />
-      ) : (
-        <Building2
-          size={12}
-          aria-hidden
-          focusable={false}
-          className="shrink-0"
-        />
-      )}
-      <span className="truncate">{name}</span>
-    </span>
-  );
-}
-
-// Outlined pill with the item glyph + the first line's item name,
-// shown inside the description cell whenever the row has line items
-// (the user description, if any, stays editable in the popover).
-// Mirrors `CompanyPill`'s outlined shape but reads in the blue `--link`
-// token so item pills are visually distinct from the bright company
-// pill at a glance. The leading glyph encodes the count: a `Package`
-// for a single line item, `Boxes` for many (the name shown is the
-// first added line item).
-export function LineItemPill({ name, many }: { name: string; many: boolean }) {
-  return (
-    <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
-      style={{
-        borderColor: "var(--link)",
-        color: "var(--link)",
-      }}
-    >
-      {many ? (
-        <Boxes size={12} aria-hidden focusable={false} className="shrink-0" />
-      ) : (
-        <Package size={12} aria-hidden focusable={false} className="shrink-0" />
-      )}
-      <span className="truncate">{name}</span>
     </span>
   );
 }

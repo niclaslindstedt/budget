@@ -1,12 +1,29 @@
 import { memo, useState } from "react";
-import { CircleMinus, Pencil, Plus, RotateCcw, Undo2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Building2,
+  CircleMinus,
+  Pencil,
+  Plus,
+  Repeat,
+  RotateCcw,
+  Undo2,
+} from "lucide-react";
 
 import {
   isScenarioAddedRowId,
   scenarioAddedIdFromRowId,
 } from "../../data/scenarios/apply";
-import type { Row, ScenarioRowOverride, Settings } from "../../data/types";
+import type {
+  Company,
+  EntryType,
+  Row,
+  ScenarioRowOverride,
+  Settings,
+} from "../../data/types";
 import { useLang, useT } from "../../i18n";
+import { displayTypeName } from "../../i18n/preset-names";
 import {
   formatDate,
   formatDayOnly,
@@ -15,6 +32,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { CompanyPill, TypeBadge } from "../Pills";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 
 type Props = {
@@ -30,6 +48,12 @@ type Props = {
   // The base budget's amount — the applied clone has already rewritten
   // (or zeroed) the cell, so excluded rows read the original from here.
   baseAmount: number | undefined;
+  // Resolved taxonomy refs (`row.typeId` / `row.companyId`), pre-looked
+  // up by the month table. Drive the read-only type badge and the
+  // budget-style description fallbacks (company pill, type-coloured
+  // name).
+  entryType: EntryType | null;
+  company: Company | null;
   // True when this is a persisted user row a scenario may override.
   editable: boolean;
   // True on the Baseline tab — no editing affordances at all.
@@ -57,6 +81,8 @@ function ScenarioRowImpl({
   balance,
   override,
   baseAmount,
+  entryType,
+  company,
   editable,
   readOnly,
   settings,
@@ -91,6 +117,49 @@ function ScenarioRowImpl({
     disabled: !hasActions,
   });
   const displayAmount = excluded ? (baseAmount ?? 0) : amountValue;
+
+  // Budget-style description annotations: the recurring Repeat glyph,
+  // the company pill / type-coloured name fallback when the row has no
+  // user-authored description, the Building2 prefix when it has both a
+  // description and a company, and the transfer arrow + peer name on
+  // synthesized transfer rows. Mirrors `DescriptionCell` so the
+  // scenario table reads like the budget table it models.
+  const isRecurring = !!row.seriesId;
+  const isTransfer = row.kind === "transfer";
+  const isFallback =
+    row.kind === "historic" && row.descriptionPlaceholder !== undefined;
+  const hasDesc = descValue.length > 0 && !isFallback;
+  const showCompanyPill = !isTransfer && !hasDesc && !!company;
+  const showTypeName = !isTransfer && !hasDesc && !company && !!entryType;
+  const showCompanyGlyph = !isTransfer && hasDesc && !!company;
+
+  const descriptionContent = excluded ? (
+    <span className="min-w-0 truncate text-muted line-through">
+      {descValue}
+    </span>
+  ) : showCompanyPill ? (
+    <CompanyPill name={company!.name} recurring={isRecurring} />
+  ) : showTypeName ? (
+    <span
+      className="min-w-0 truncate"
+      style={{ color: entryType!.color }}
+      title={displayTypeName(entryType!, t)}
+    >
+      {displayTypeName(entryType!, t)}
+    </span>
+  ) : (
+    <>
+      {showCompanyGlyph && (
+        <Building2
+          size={12}
+          aria-hidden
+          focusable={false}
+          className="shrink-0"
+        />
+      )}
+      <span className="min-w-0 truncate">{descValue}</span>
+    </>
+  );
 
   const monthNum = dateValue !== "" ? monthNumberFromKey(dateValue) : null;
   const monthColor = monthNum !== null ? monthColorVar(monthNum) : undefined;
@@ -192,6 +261,37 @@ function ScenarioRowImpl({
                 focusable={false}
               />
             )}
+            {isRecurring && !excluded && !showCompanyPill && (
+              <Repeat
+                size={14}
+                className="shrink-0 text-flag"
+                aria-hidden
+                focusable={false}
+              />
+            )}
+            {isTransfer && !excluded && (
+              <>
+                {typeof amountValue === "number" && amountValue < 0 ? (
+                  <ArrowRight
+                    size={12}
+                    aria-hidden
+                    focusable={false}
+                    className="shrink-0 text-flag"
+                  />
+                ) : (
+                  <ArrowLeftRight
+                    size={12}
+                    aria-hidden
+                    focusable={false}
+                    className="shrink-0 text-flag"
+                  />
+                )}
+                <span className="shrink-0 truncate text-muted">
+                  {row.peerAccountName || "—"}
+                </span>
+                {descValue && <span className="text-muted">·</span>}
+              </>
+            )}
             {editable && !excluded ? (
               <button
                 type="button"
@@ -206,25 +306,43 @@ function ScenarioRowImpl({
                 aria-label={t("scenarios.editDescriptionAria", {
                   name: descValue,
                 })}
-                className={`min-w-0 cursor-text truncate border-0 bg-transparent p-0 text-left text-sm ${
+                className={`flex min-w-0 cursor-text items-center gap-1 border-0 bg-transparent p-0 text-left text-sm ${
                   override?.description !== undefined
                     ? "text-accent"
-                    : "text-fg"
+                    : isRecurring
+                      ? "text-flag"
+                      : "text-fg"
                 }`}
               >
-                {descValue}
+                {descriptionContent}
               </button>
             ) : (
               <span
-                className={`min-w-0 truncate ${
-                  excluded ? "text-muted line-through" : "text-fg"
+                className={`flex min-w-0 items-center gap-1 ${
+                  excluded
+                    ? "text-muted"
+                    : isRecurring
+                      ? "text-flag"
+                      : "text-fg"
                 }`}
               >
-                {descValue}
+                {descriptionContent}
               </span>
             )}
           </span>
         )}
+      </td>
+      <td
+        className="w-px px-1 py-1.5 text-center align-middle whitespace-nowrap md:px-2"
+        aria-readonly="true"
+      >
+        <span
+          className={`flex items-center justify-center font-mono text-xs md:justify-start ${
+            excluded ? "opacity-50" : ""
+          }`}
+        >
+          <TypeBadge entryType={entryType} />
+        </span>
       </td>
       <td className="w-px px-2 py-1.5 text-right align-middle whitespace-nowrap">
         {editing === "amount" ? (

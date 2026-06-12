@@ -52,6 +52,7 @@ import {
 import { BASELINE_COLOR_VAR, scenarioColorVar } from "./scenario-colors";
 import { ScenarioEditModal } from "./ScenarioEditModal";
 import { ScenarioMonthTable } from "./ScenarioMonthTable";
+import { ScenarioPicker } from "./ScenarioPicker";
 import { ScenarioRowModal } from "./ScenarioRowModal";
 import {
   ScenariosChartModal,
@@ -59,7 +60,6 @@ import {
 } from "./ScenariosChartModal";
 import { ScenariosDiffModal } from "./ScenariosDiffModal";
 import { ScenariosMonitorRow } from "./ScenariosMonitorRow";
-import { ScenarioTabs } from "./ScenarioTabs";
 
 // The Scenarios page plays what-if variants against ONE base budget
 // sheet. Everything on screen derives from live data: the implicit
@@ -141,6 +141,10 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
     [data.hiddenPresetTypeIds, data.presetTypeKindOverrides, data.types],
   );
   const typesById = useMemo(() => indexById(typesMerged), [typesMerged]);
+  const companiesById = useMemo(
+    () => indexById(data.companies),
+    [data.companies],
+  );
   const accountsById = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of data.accounts) m.set(a.id, a.name);
@@ -363,14 +367,22 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // Commits route through a base-value comparison so a value typed (or
   // typed back) equal to the base row CLEARS that override field instead
   // of storing a no-op "change" — the diff modal then only ever shows
-  // actual changes.
+  // actual changes. A commit equal to the value already on screen
+  // (override if set, base otherwise) is a pure no-op: no override
+  // write, and crucially no "apply to the rest of the series?" prompt
+  // for an edit that didn't change anything.
   function handleCommitAmount(rowId: string, amount: number) {
+    const prev = activeOverrides.get(rowId)?.amount ?? baseAmounts.get(rowId);
+    if (prev === amount) return;
     patchOverride(rowId, {
       amount: baseAmounts.get(rowId) === amount ? undefined : amount,
     });
     maybeStageSeriesApply(rowId, "amount", amount);
   }
   function handleCommitDescription(rowId: string, description: string) {
+    const prev =
+      activeOverrides.get(rowId)?.description ?? baseDescriptions.get(rowId);
+    if (prev === description) return;
     patchOverride(rowId, {
       description:
         baseDescriptions.get(rowId) === description ? undefined : description,
@@ -497,7 +509,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       ) : (
         <div className="flex flex-col gap-6" data-sheet-content>
           <div className="flex flex-col gap-2">
-            <ScenarioTabs
+            <ScenarioPicker
               scenarios={scenarios}
               activeScenarioId={activeScenario?.id ?? null}
               onSelect={setActiveScenarioId}
@@ -577,6 +589,8 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                     }
                     overrides={activeOverrides}
                     baseAmounts={baseAmounts}
+                    typesById={typesById}
+                    companiesById={companiesById}
                     editableRowIds={editableRowIds}
                     readOnly={activeScenario === null}
                     amountChars={activeState.colWidths.amountChars}

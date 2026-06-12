@@ -2104,21 +2104,33 @@ opens with the picker). Scenarios are **live-linked deltas**, never
 copies: each `Scenario` stores only overrides / exclusions / added rows
 keyed against the base budget's row ids, so edits to the real budget
 flow into every scenario automatically and scenario edits never touch
-the real budget. The page renders, top to bottom: the scenario tab
-strip (`ScenarioTabs` — an implicit **Baseline** chip first, then one
-chip per scenario with its chart color, then "+"), the balance
-monitors, and budget-like month tables (`ScenarioMonthTable` /
-`ScenarioRow`); the projection chart lives in its own **Visualize
-scenarios** modal opened from the sheet title's "…" menu (see
+the real budget. The page renders, top to bottom: the scenario
+switcher (`ScenarioPicker` — a dropdown listing an implicit
+**Baseline** entry first, then one entry per scenario with its chart
+color dot, then a trailing "New scenario" action; rename / delete
+glyph buttons sit to the right of the dropdown and apply to the
+active scenario, hidden on the Baseline), the balance monitors, and
+budget-like month tables (`ScenarioMonthTable` / `ScenarioRow`); the
+projection chart lives in its own **Visualize scenarios** modal
+opened from the sheet title's "…" menu (see
 [Scenario chart](#scenario-chart)). The month tables start at the
 current fiscal month — scenarios are forward-looking — with a "Show
-earlier months" expander for the full history. On mobile the tables
+earlier months" expander for the full history. Rows render with the
+budget table's visual language: the recurring `Repeat` glyph +
+`--flag` color, the company-pill / type-coloured-name description
+fallbacks (`CompanyPill` from `src/components/Pills.tsx`), the
+transfer arrow + peer-account prefix, and a **read-only type column**
+(`TypeBadge` — glyph only on mobile, tinted glyph + name pill on
+desktop; types are shown, never editable here). On mobile the tables
 follow the budget table's layout: a block + per-row grid (the
-`.scenario-table` rules in `src/styles/components.css`) with a
-day-only date track, ch-var-sized amount / balance columns, and the
-per-row actions in a swipe-to-reveal strip (`useRowSwipeAndClaim` +
-`swipe-action-cell`). The active tab is ephemeral component state (not persisted, so
-switching tabs never mints an undo step). Creating the first scenario
+`.scenario-table` rules in `src/styles/components.css`, plus an
+unlayered cell-width reset in `src/styles/utilities.css` so the
+desktop `w-px` shrink-to-fit cells fill their grid tracks) with a
+day-only date track, a glyph-only type track, ch-var-sized amount /
+balance columns, and the per-row actions in a swipe-to-reveal strip
+(`useRowSwipeAndClaim` + `swipe-action-cell`). The active scenario
+selection is ephemeral component state (not persisted, so switching
+scenarios never mints an undo step). Creating the first scenario
 unlocks the **What If** achievement. Deleting the base sheet cascades
 `baseSheetId` to `null` (the page falls back to the picker); changing
 the base clears every scenario's deltas after a confirm — the row ids
@@ -2147,10 +2159,13 @@ nothing to balances); the revert control clears an override (a bare
 `{ rowId }` payload normalises to nothing and removes the entry — the
 shared `normalizeScenarioOverride` contract between the reducer and
 validator). A committed value equal to the base row's own clears that
-field instead of storing a no-op override. Committing on a row that
-belongs to a recurring series which continues past it stages the
-shared `ApplySeriesDialog` ("apply to upcoming entries too?") — same
-flow as the budget page — and confirming dispatches
+field instead of storing a no-op override, and a commit equal to the
+value already on screen (override if set, base otherwise) is a pure
+no-op — nothing is written and no series prompt fires. Committing a
+genuine change on a row that belongs to a recurring series which
+continues past it stages the shared `ApplySeriesDialog` ("apply to
+upcoming entries too?") — same flow as the budget page — and
+confirming dispatches
 `propagateScenarioOverrideToFuture`, which fans the override field out
 to every later occurrence (clamped by the optional "stop after" date;
 per target row a value equal to that row's base clears rather than
@@ -2163,9 +2178,10 @@ time, skipped by the diff).
 ### Baseline (scenarios)
 
 The implicit unaltered variant: the base budget exactly as the budget
-page computes it. Always present — first chip in the tab strip, dashed
-`--muted` series on the chart, first line on every monitor card — and
-never user-created, edited, or deleted. Its tables are read-only.
+page computes it. Always present — first entry in the scenario
+dropdown, dashed `--muted` series on the chart, first line on every
+monitor card — and never user-created, edited, or deleted. Its tables
+are read-only.
 
 ### Monitor date
 
@@ -2430,7 +2446,7 @@ line items renders a line-item pill in its description cell.
 ### Line-item pill
 
 The description-cell rendering for a row that has line items
-(`LineItemPill` in `src/components/budget/cells/DescriptionCell.tsx`). On
+(`LineItemPill` in `src/components/Pills.tsx`). On
 a row with no user-authored description it shows an outlined pill —
 `Package` glyph for one line item, `Boxes` glyph for many — captioned
 with the first added line item's name. With a description present it
@@ -2469,12 +2485,13 @@ category (which groups rows through their type, not merchants).
 The outlined Building2 + name chip a budget row's `DescriptionCell`
 renders when the row has a `companyId`, no user-authored description,
 and no line items (the line-item pill wins that slot — `CompanyPill` in
-`src/components/budget/cells/DescriptionCell.tsx`). A tap opens the
-description popover; a long-press / right-click opens the
-`CompanyEditorModal` for that merchant via the `open-edit-company` modal
-command (owned by `UniversalModalHost`). The read-only
-`BudgetViewerModal` reuses the exported `CompanyPill` for the same
-fallback, without the interactive affordances.
+`src/components/Pills.tsx`, the universal pill module shared with the
+scenarios table). A tap opens the description popover; a long-press /
+right-click opens the `CompanyEditorModal` for that merchant via the
+`open-edit-company` modal command (owned by `UniversalModalHost`). The
+read-only `BudgetViewerModal` and the scenario rows reuse the exported
+`CompanyPill` for the same fallback, without the interactive
+affordances.
 
 ### Tag
 
@@ -2728,8 +2745,9 @@ There is no single Pill component. The shared renderer for entities
 that carry `{ name, color, icon }` is `EntityChip`
 (`src/components/EntityChip.tsx`, wrapped by `CategoryChip` /
 `TypeChip`); each other surface keeps its own variant: the line-item
-pill and company pill in a budget row's description cell
-(`DescriptionCell.tsx`), the orange / cyan token pills inside
+pill, company pill, and read-only type badge shared by the budget and
+scenarios tables (`src/components/Pills.tsx`), the orange / cyan token
+pills inside
 `BudgetFormulaInput`, the Today pill that jumps the budget back to the
 current month (`useScrollToToday.ts`), and the rate-reset cadence pill
 in a property card (`PropertyCard.tsx`, `properties.rateResetPill*`

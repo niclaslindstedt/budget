@@ -703,11 +703,12 @@
     /* Scenario month tables — the budget-like what-if ledger. Mirrors
        the budget table's mobile conversion: block + per-row grid so the
        description column truncates instead of forcing a horizontal
-       overflow, a narrow day-only date track, and amount / balance
-       tracks driven by the same --amount-col-ch / --balance-col-ch
-       vars (set per-sheet from the widest formatted value so every
-       month aligns on one width). The action cell sits outside the
-       grid as the absolute swipe strip, so it reserves no track. */
+       overflow, a narrow day-only date track, a 40px glyph-only type
+       track, and amount / balance tracks driven by the same
+       --amount-col-ch / --balance-col-ch vars (set per-sheet from the
+       widest formatted value so every month aligns on one width). The
+       action cell sits outside the grid as the absolute swipe strip,
+       so it reserves no track. */
     .scenario-table,
     .scenario-table > tbody {
       display: block;
@@ -716,7 +717,7 @@
     .scenario-table > tbody > tr {
       display: grid;
       grid-template-columns:
-        40px minmax(0, 1fr)
+        40px minmax(0, 1fr) 40px
         minmax(64px, calc(var(--amount-col-ch, 7) * 1ch + 1.5rem))
         minmax(40px, calc(var(--balance-col-ch, 8) * 1ch + 1.5rem));
       position: relative;
