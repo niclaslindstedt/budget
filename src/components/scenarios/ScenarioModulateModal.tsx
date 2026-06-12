@@ -31,12 +31,19 @@ type Props = {
   onRemove: () => void;
 };
 
-// Attach a live amount adjustment (+5000, ×2, +300 %) to a base budget
-// row inside the active scenario. Unlike a typed-in fixed amount, the
-// adjustment is re-applied against the base amount on every compute,
-// so a base-row edit (a raise lands, a bill changes) flows straight
-// through the scenario. Not `centered`: the value field opens the soft
-// keyboard.
+// The op picker's choices. "subtract" is picker-level sugar over the
+// persisted `add` op: the mobile decimal keyboard has no minus key, so
+// deducting an amount must not require typing a sign. Saving subtract
+// stores `{ op: "add", value: -|v| }`, and a stored negative add
+// presents as subtract with the positive figure.
+type OpChoice = ScenarioAmountModulation["op"] | "subtract";
+
+// Attach a live amount adjustment (+5000, −500, ×2, +300 %) to a base
+// budget row inside the active scenario. Unlike a typed-in fixed
+// amount, the adjustment is re-applied against the base amount on
+// every compute, so a base-row edit (a raise lands, a bill changes)
+// flows straight through the scenario. Not `centered`: the value field
+// opens the soft keyboard.
 export function ScenarioModulateModal({
   open,
   rowId,
@@ -49,26 +56,39 @@ export function ScenarioModulateModal({
   onRemove,
 }: Props) {
   const t = useT();
-  const [op, setOp] = useState<ScenarioAmountModulation["op"]>("add");
+  const [op, setOp] = useState<OpChoice>("add");
   const [valueText, setValueText] = useState("");
 
   const valueRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(valueRef, open);
 
   useResetOnOpen(open, rowId, () => {
-    setOp(modulation?.op ?? "add");
-    setValueText(modulation === null ? "" : String(modulation.value));
+    if (modulation === null) {
+      setOp("add");
+      setValueText("");
+    } else if (modulation.op === "add" && modulation.value < 0) {
+      setOp("subtract");
+      setValueText(String(Math.abs(modulation.value)));
+    } else {
+      setOp(modulation.op);
+      setValueText(String(modulation.value));
+    }
   });
 
-  const opOptions: SelectOption<ScenarioAmountModulation["op"]>[] = [
+  const opOptions: SelectOption<OpChoice>[] = [
     { value: "add", label: t("scenarios.modulateOpAdd") },
+    { value: "subtract", label: t("scenarios.modulateOpSubtract") },
     { value: "multiply", label: t("scenarios.modulateOpMultiply") },
     { value: "percent", label: t("scenarios.modulateOpPercent") },
   ];
 
   const parsed = parseAmount(valueText);
   const draft: ScenarioAmountModulation | null =
-    parsed === null ? null : { op, value: parsed };
+    parsed === null
+      ? null
+      : op === "subtract"
+        ? { op: "add", value: -Math.abs(parsed) }
+        : { op, value: parsed };
   const canSave = draft !== null;
 
   function handleSave() {

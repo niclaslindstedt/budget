@@ -25,8 +25,9 @@ of that reality:
   a scenario changes what a row costs, not what it's called.)
 - **Adjust a value** — instead of typing a fixed number, attach a live
   adjustment from the row's action strip: add an amount ("what if I
-  get a 5 000 kr raise?"), multiply ("what if rent doubles?"), or
-  change by percent ("what if gas goes up 300 %?"). The adjustment
+  get a 5 000 kr raise?"), subtract an amount ("what if I cut 500 kr
+  off groceries?"), multiply ("what if rent doubles?"), or change by
+  percent ("what if gas goes up 300 %?"). The adjustment
   stays linked to the real budget: when the underlying entry changes
   there, the scenario recomputes from the new amount automatically. A
   small ×2 / +5 000 token next to the amount shows the rule that's in

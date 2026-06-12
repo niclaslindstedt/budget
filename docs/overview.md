@@ -2200,8 +2200,11 @@ time, skipped by the diff).
 A live modulation of a base row's amount
 (`ScenarioRowOverride.modulation`, `ScenarioAmountModulation` in
 `src/data/types/sheets.ts`): **Add amount** (+5000 — a pay raise),
-**Multiply by** (×2), or **Change by percent** (+300 % — gas bills
-quadruple; the amount becomes base × (1 + value / 100)). Unlike a
+**Subtract amount** (−500 — picker-level sugar that persists as a
+negative add, because the mobile decimal keyboard has no minus key;
+the modal re-presents a negative add as Subtract with the positive
+figure), **Multiply by** (×2), or **Change by percent** (+300 % — gas
+bills quadruple; the amount becomes base × (1 + value / 100)). Unlike a
 typed-in fixed amount, the adjustment is recomputed from the base
 amount on every apply (`modulateAmount` in
 `src/data/scenarios/apply.ts`, rounded to cents), so editing the

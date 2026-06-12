@@ -57,6 +57,7 @@ const scenarios = {
     "The adjustment stays linked to your budget — if the entry's amount changes there, this scenario follows automatically.",
   modulateOpLabel: "Adjustment",
   modulateOpAdd: "Add amount",
+  modulateOpSubtract: "Subtract amount",
   modulateOpMultiply: "Multiply by",
   modulateOpPercent: "Change by percent",
   modulateValueLabel: "Value",
