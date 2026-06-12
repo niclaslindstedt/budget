@@ -35,6 +35,7 @@ import {
   Filter,
   FolderTree,
   FunctionSquare,
+  GitCompareArrows,
   GitMerge,
   Hammer,
   HandCoins,
@@ -177,6 +178,12 @@ const hasEstimateRow = (s: UserData) =>
     (r) => typeof r.amountMin === "number" && typeof r.amountMax === "number",
   );
 const hasMultipleSheetTabs = (s: UserData) => s.sheets.length > 1;
+const hasScenario = (s: UserData) =>
+  s.sheets.some((sheet) =>
+    sheet.items.some(
+      (item) => item.type === "scenariosView" && item.scenarios.length > 0,
+    ),
+  );
 const hasAccount = (s: UserData) => s.accounts.length > 0;
 const hasTaxProfile = (s: UserData) => s.taxProfiles.length > 0;
 const hasLinkedSheet = (s: UserData) =>
@@ -567,6 +574,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         !prev.sheets.some((sheet) => sheet.type === "insights") &&
         next.sheets.some((sheet) => sheet.type === "insights"),
+    },
+  },
+  {
+    // The user created their first what-if scenario on a Scenarios
+    // sheet (an unaltered baseline is implicit, so the first Scenario
+    // entry is the first real what-if).
+    id: "whatIf",
+    tier: "intermediate",
+    glyph: GitCompareArrows,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) => !hasScenario(prev) && hasScenario(next),
     },
   },
   {

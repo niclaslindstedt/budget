@@ -110,6 +110,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Insiktsbladet läser allt du håller koll på — konton, sparande, saker, fastigheter, lån — och samlar det till din nettoförmögenhet, med en fördelning och ett diagram över tid. I inställningarna kan du utesluta saker och ange en ägarandel för det som samägs, som ett hus delat med en partner.",
   },
+  whatIf: {
+    name: "Tänk om",
+    condition: "Skapa ditt första scenario på ett Scenarier-blad.",
+    learnMore:
+      "Ett Scenarier-blad spelar upp tänk-om-framtider mot en budget du redan för — förlora jobbet, köpa bil — utan att någonsin ändra den riktiga budgeten. Ändra värden, ta bort utgifter eller lägg till rader i ett scenario, följ varje variants saldo vid månadens slut i ett och samma diagram, och lägg till bevakningsdatum för att se hur mycket pengar som finns kvar på ett datum som spelar roll.",
+  },
   payDay: {
     name: "Lönedag",
     condition: "Ändra Månadens start från standardvärdet.",

@@ -115,6 +115,12 @@ const catalog = {
     learnMore:
       "The Insights sheet reads everything you track — accounts, savings, items, properties, loans — and rolls it into your net worth, with a breakdown and a chart over time. Its settings let you exclude things and set an ownership share for anything co-owned, like a house split with a spouse.",
   },
+  whatIf: {
+    name: "What If",
+    condition: "Create your first scenario on a Scenarios sheet.",
+    learnMore:
+      "A Scenarios sheet plays what-if futures against a budget you already track — lose a job, buy a car — without ever changing the real budget. Change values, drop expenses, or add rows in a scenario, watch every variant's monthly end balance on one chart, and add monitor dates to see how much money is left on a day that matters.",
+  },
   payDay: {
     name: "Pay Day",
     condition: "Change Start of month from the default.",

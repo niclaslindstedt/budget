@@ -1,0 +1,61 @@
+# Scenarios sheet
+
+Play what-if futures against a budget you already track — lose a job,
+buy a car, drop a subscription — without ever changing the real
+budget.
+
+## How it works
+
+A Scenarios sheet models on **one base budget**: pick any of your
+budget sheets when the page first opens. Everything you then see is
+computed live from that budget — when you edit the real budget, every
+scenario follows along automatically.
+
+The **Baseline** is always there: your budget exactly as it is, with
+nothing changed. Every scenario you create is a set of changes on top
+of that reality:
+
+- **Change a value** — tap an amount (or a description) in the
+  scenario's table and type a new one. Only that row, only in that
+  scenario. An overridden row shows in the accent color, with a revert
+  control to undo the change.
+- **Drop a row** — exclude an expense you wouldn't keep ("if I lose my
+  job, the gym goes"). Excluded rows stay visible, struck through, and
+  contribute nothing to the balances.
+- **Add a row** — bring in money or costs that don't exist in the real
+  budget, like an unemployment benefit or a new car payment.
+
+The month tables work like the budget sheet — date, description,
+amount, running balance, grouped by fiscal month — and start at the
+current month (your bank-covered past can't change anyway); a "Show
+earlier months" line reveals the full history.
+
+## The chart
+
+One line chart draws the **monthly end balance** of the Baseline and
+every scenario at once — the dashed line is the Baseline, and each
+scenario gets its own color (the same dot shown on its tab). Click a
+name in the legend to hide or show that line. This is where "can the
+economy handle it?" gets its answer at a glance.
+
+## Balance monitors
+
+Add a **monitor date** — say 31 December — and a card shows how much
+money each variant projects on that day, with each scenario's
+difference against the Baseline. Add as many dates as matter to you.
+
+## Viewing changes
+
+Open **View changes** from the sheet's "…" menu to see the active
+scenario as a diff against the Baseline: changed rows as old → new,
+excluded rows struck through, added rows marked with a plus.
+
+## Good to know
+
+- The real budget is never touched. Scenario changes live on the
+  Scenarios sheet only, and deleting a scenario only deletes its
+  changes.
+- Changing the base budget clears every scenario's changes (they
+  belong to the old budget's rows) — the app asks first.
+- Scenarios are hypothetical, so they never count toward the Insights
+  sheet's net worth.

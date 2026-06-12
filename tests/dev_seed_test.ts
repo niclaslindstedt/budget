@@ -102,7 +102,37 @@ describe("buildSeedUserData", () => {
       "properties",
       "salary",
       "savings",
+      "scenarios",
     ]);
+  });
+
+  it("seeds a scenarios sheet bound to the budget with worked what-ifs", () => {
+    const seed = buildSeedUserData();
+    const sheet = seed.sheets.find((s) => s.type === "scenarios");
+    expect(sheet).toBeDefined();
+    const view = sheet!.items[0];
+    if (view.type !== "scenariosView")
+      throw new Error("expected scenariosView");
+    // Bound to the seeded budget sheet, with monitors and two scenarios
+    // carrying overrides / exclusions / added rows so every affordance
+    // on the page has something to show.
+    const budgetSheet = seed.sheets.find((s) => s.id === view.baseSheetId);
+    expect(budgetSheet?.type).toBe("budget");
+    expect(view.monitors.length).toBeGreaterThanOrEqual(2);
+    expect(view.scenarios.length).toBeGreaterThanOrEqual(2);
+    const loseJob = view.scenarios[0];
+    expect(loseJob.overrides.some((o) => o.amount === 0)).toBe(true);
+    expect(loseJob.overrides.some((o) => o.excluded === true)).toBe(true);
+    expect(loseJob.addedRows.length).toBeGreaterThan(0);
+    // Every override references a real row in the base budget.
+    const budgetRows = new Set(
+      budgetSheet!.items.flatMap((i) =>
+        i.type === "accountBudget" ? i.rows.map((r) => r.id) : [],
+      ),
+    );
+    for (const scenario of view.scenarios)
+      for (const override of scenario.overrides)
+        expect(budgetRows.has(override.rowId)).toBe(true);
   });
 
   it("leaves loan-payment candidates for the Import payments walk", () => {

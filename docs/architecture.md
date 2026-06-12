@@ -166,6 +166,16 @@ src/
 │       │                         #   total ÷ shares)
 │       └── InvestmentValueChartModal.tsx  # "Visualize value" — combined value
 │                                 #   over time, net-value toggle, range buttons
+│   └── scenarios/            # scenarios page — what-ifs against a base budget
+│       ├── ScenariosPage.tsx     # page root — base picker, tabs, chart + legend,
+│       │                         #   monitors, month tables, delta dispatch
+│       ├── ScenarioTabs.tsx      # Baseline chip + per-scenario chips + "+"
+│       ├── ScenarioMonthTable.tsx # one month, inline override/exclude/add
+│       ├── ScenarioRowModal.tsx  # add/edit a scenario-only row
+│       ├── ScenarioEditModal.tsx # create/rename a scenario
+│       ├── ScenariosMonitorRow.tsx # monitor-date cards + add/remove
+│       ├── ScenariosDiffModal.tsx # "View changes" — scenario vs baseline diff
+│       └── scenario-colors.ts    # index → theme-token series colors
 ├── data/
 │   ├── types/              # persisted data model, split by topic
 │   │   ├── index.ts            # re-exports every public type
@@ -177,7 +187,8 @@ src/
 │   │   │                       #   ItemsView, SalaryView, PropertiesView,
 │   │   │                       #   SavingsView, LoansView, InsightsView (+ mode
 │   │   │                       #   + net-worth settings), InvestmentView,
-│   │   │                       #   SheetType, SheetGlyph
+│   │   │                       #   ScenariosView (+ Scenario, ScenarioRowOverride,
+│   │   │                       #   ScenarioAddedRow), SheetType, SheetGlyph
 │   │   ├── investments.ts      # InvestmentHolding (wrapper ISK/KF/depå, dated
 │   │   │                       #   valueHistory), StockPosition (signed-share
 │   │   │                       #   transactions + dated priceHistory),
@@ -236,6 +247,7 @@ src/
 │   │   ├── savings.ts          # SAVINGS_SHEET_DESCRIPTOR + createDefaultSavingsView
 │   │   ├── loans.ts            # LOANS_SHEET_DESCRIPTOR + createDefaultLoansView
 │   │   ├── investment.ts       # INVESTMENT_SHEET_DESCRIPTOR + createDefaultInvestmentView
+│   │   ├── scenarios.ts        # SCENARIOS_SHEET_DESCRIPTOR + createDefaultScenariosView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -401,6 +413,14 @@ src/
 │   │   │                       #   stockTaxTreatment + stockNetValue
 │   │   └── series.ts           # buildInvestmentTotalSeries — combined value-over-
 │   │                           #   time line behind "Visualize value" (gross/net)
+│   ├── scenarios/          # scenarios page — what-if math over a base budget
+│   │   ├── apply.ts            # findBaseBudget, applyScenario (clone with
+│   │   │                       #   overrides / exclusions / scn:-id added rows),
+│   │   │                       #   overridesByRowId, diffScenario
+│   │   └── series.ts           # computeScenarioState (applyScenario +
+│   │                           #   computeBudgetState), monthlyEndBalances,
+│   │                           #   buildScenarioChartPoints (union month axis,
+│   │                           #   carry-forward fill), balanceAtDate (monitors)
 │   ├── insights/           # insights page — cross-area aggregation
 │   │   └── networth.ts         # computeNetWorthSnapshot (assets − liabilities
 │   │                           #   per entity + per category, exclusion +
@@ -451,13 +471,14 @@ src/
 │   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, loans.ts,
 │   │   │   sheets.ts, transfers.ts, history.ts, history-primary-income.ts,
 │   │   │   categories-and-types.ts, items.ts, match-rules.ts, recurring.ts,
-│   │   │   series-metadata.ts, settings.ts, achievements.ts
+│   │   │   series-metadata.ts, settings.ts, achievements.ts, scenarios.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
 │   │   │                       #   accountsView/itemsView/salaryView/
-│   │   │                       #   propertiesView/savingsView/loansView) —
+│   │   │                       #   propertiesView/savingsView/loansView/
+│   │   │                       #   scenariosView) —
 │   │   │                       #   cycle-free so the sheet-type descriptors can
 │   │   │                       #   import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
