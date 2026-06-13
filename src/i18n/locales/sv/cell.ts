@@ -38,6 +38,8 @@ const cell: CellCatalog = {
   descriptionWith: "Beskrivning: {value}",
   addDescription: "Lägg till beskrivning",
   originalFromBank: "Original från banken",
+  copyBankText: "Kopiera banktext",
+  copiedBankText: "Kopierad",
   pushToNextMonth: "Skjut till nästa budgetmånad",
   pushToNextMonthTitle:
     "Behandla posten — och alla andra poster samma dag — som om de tillhörde nästa budgetmånad",

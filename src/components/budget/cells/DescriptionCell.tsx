@@ -10,6 +10,8 @@ import {
   ArrowRight,
   Ban,
   Building2,
+  Check,
+  Copy,
   Landmark,
   Package,
   Repeat,
@@ -437,6 +439,9 @@ function DescriptionPopover({
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Transient "copied" tick on the bank-memo copy button, cleared after
+  // a beat so the glyph reverts to the copy icon.
+  const [bankTextCopied, setBankTextCopied] = useState(false);
 
   // Keep the draft synced from `editValue` while the popover is closed
   // so external updates land cleanly on the next open.
@@ -462,6 +467,18 @@ function DescriptionPopover({
   function handleDraftChange(next: string) {
     setDraft(next);
     onChange(next);
+  }
+
+  async function handleCopyBankText() {
+    if (!bankDescription) return;
+    try {
+      await navigator.clipboard.writeText(bankDescription);
+      setBankTextCopied(true);
+      setTimeout(() => setBankTextCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (insecure context / denied permission) — leave
+      // the glyph untouched rather than flashing a false success.
+    }
   }
 
   return (
@@ -515,19 +532,43 @@ function DescriptionPopover({
           className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
         />
         {bankDescription && (
-          <div
-            className="flex items-start gap-1.5 border-t border-line bg-surface-3 px-2 py-1.5 text-xs text-muted"
-            title={t("cell.originalFromBank")}
-          >
+          <div className="flex items-start gap-1.5 border-t border-line bg-surface-3 px-2 py-1.5 text-xs text-muted">
             <Landmark
               size={12}
               aria-hidden
               focusable={false}
               className="mt-0.5 shrink-0"
+              aria-label={t("cell.originalFromBank")}
             />
-            <span className="min-w-0 font-mono break-words whitespace-pre-wrap">
+            <span className="min-w-0 flex-1 font-mono break-words whitespace-pre-wrap">
               {bankDescription}
             </span>
+            <button
+              type="button"
+              onClick={handleCopyBankText}
+              aria-label={
+                bankTextCopied
+                  ? t("cell.copiedBankText")
+                  : t("cell.copyBankText")
+              }
+              title={
+                bankTextCopied
+                  ? t("cell.copiedBankText")
+                  : t("cell.copyBankText")
+              }
+              className="-my-0.5 -mr-0.5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              {bankTextCopied ? (
+                <Check
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="text-success"
+                />
+              ) : (
+                <Copy size={12} aria-hidden focusable={false} />
+              )}
+            </button>
           </div>
         )}
         {lineItems && lineItems.length > 0 && (
