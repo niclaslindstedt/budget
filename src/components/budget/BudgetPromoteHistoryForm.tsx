@@ -155,8 +155,17 @@ export function BudgetPromoteHistoryForm({
     dateCol && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
       : "";
-  const initialTypeId: string | null = hintPrefill?.typeId ?? null;
-  const initialCompanyId: string | null = hintPrefill?.companyId ?? null;
+  // Seed the type / company pickers from the row's already-resolved
+  // taxonomy first (synthesis folds the entry's own `userTypeId` /
+  // `userCompanyId`, then any match rule, then the merchant hint into
+  // `row.typeId` / `row.companyId`), so editing a historic item that
+  // already has a company and type connected opens with them pre-chosen.
+  // Fall back to the bare merchant-hint prefill when the row carries
+  // nothing resolved.
+  const initialTypeId: string | null =
+    row.typeId ?? hintPrefill?.typeId ?? null;
+  const initialCompanyId: string | null =
+    row.companyId ?? hintPrefill?.companyId ?? null;
 
   // Default seed for the recurrence form on history-row promotions:
   // first month on or after today whose day-of-month matches the
