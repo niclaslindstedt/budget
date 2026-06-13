@@ -387,8 +387,10 @@ The "Split into parts…" button
 enters the inline split builder (`budget-metadata-split-reducer.ts`):
 fill an amount + type / company / tags / description per part, press
 Split again to commit it and start the next on the remaining sum, or
-Next to let the final part absorb the remainder. Saves via
-`splitHistoryEntry` (writes the entry's `splits` array, same as the
+Next to let the final part absorb the remainder. The per-part company
+picker offers the same "Omit company" option as the single-entry form;
+an omitted part persists as `HistoryEntrySplit.companyId = null`. Saves
+via `splitHistoryEntry` (writes the entry's `splits` array, same as the
 scissors-button modal).
 
 ### Recurring candidates panel

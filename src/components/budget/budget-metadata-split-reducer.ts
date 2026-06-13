@@ -23,6 +23,13 @@ export type MetadataSplitDraft = {
   negative: boolean;
   typeId: string | null;
   companyId: string | null;
+  // Explicit "this part has no merchant" opt-out, mirroring the entry
+  // form's `noCompany`. Mutually exclusive with `companyId` — picking a
+  // company clears it and enabling it clears the company. When set,
+  // `buildSplit` persists `companyId: null` (the explicit "no company"
+  // the `HistoryEntrySplit.companyId` type reserves) so the saved split
+  // records the deliberate choice rather than an unset field.
+  noCompany: boolean;
   tagIds: string[];
   description: string;
 };
@@ -57,6 +64,10 @@ export type MetadataSplitAction =
       companyId: string | null;
       autoTypeId: string | undefined;
     }
+  // Toggle the "no company" opt-out. Enabling it clears any picked
+  // company; the picker fires `pickCompany` for the clear separately,
+  // but the reducer keeps the two consistent on its own too.
+  | { kind: "setNoCompany"; value: boolean }
   | { kind: "setTags"; value: string[] }
   | { kind: "setDescription"; value: string }
   // Commit the draft as a part and start a fresh one sized to the new
@@ -72,6 +83,7 @@ function emptyDraft(remaining: number, settings: Settings): MetadataSplitDraft {
     negative: remaining < 0,
     typeId: null,
     companyId: null,
+    noCompany: false,
     tagIds: [],
     description: "",
   };
@@ -87,6 +99,7 @@ export function makeInitialSplitState(): MetadataSplitState {
       negative: true,
       typeId: null,
       companyId: null,
+      noCompany: false,
       tagIds: [],
       description: "",
     },
@@ -121,7 +134,10 @@ function buildSplit(
     amount: signedAmount,
   };
   if (draft.typeId) split.typeId = draft.typeId;
-  if (draft.companyId) split.companyId = draft.companyId;
+  // An explicit opt-out persists as `null`; a real pick persists its id;
+  // an untouched draft leaves the field absent.
+  if (draft.noCompany) split.companyId = null;
+  else if (draft.companyId) split.companyId = draft.companyId;
   if (draft.tagIds.length > 0) split.tagIds = [...draft.tagIds];
   return split;
 }
@@ -185,10 +201,23 @@ export function budgetMetadataSplitReducer(
       const draft: MetadataSplitDraft = {
         ...state.draft,
         companyId: action.companyId,
+        // A real pick contradicts an active opt-out — clear it so the
+        // two states never disagree.
+        noCompany: action.companyId !== null ? false : state.draft.noCompany,
       };
       if (action.autoTypeId !== undefined) draft.typeId = action.autoTypeId;
       return { ...state, draft };
     }
+    case "setNoCompany":
+      return {
+        ...state,
+        draft: {
+          ...state.draft,
+          noCompany: action.value,
+          // Enabling the opt-out clears any picked company.
+          companyId: action.value ? null : state.draft.companyId,
+        },
+      };
     case "setTags":
       return { ...state, draft: { ...state.draft, tagIds: action.value } };
     case "setDescription":

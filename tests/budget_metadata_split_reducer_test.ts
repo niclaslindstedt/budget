@@ -134,6 +134,23 @@ describe("budgetMetadataSplitReducer · commit", () => {
     expect(state.committed[0].description).toBe("Autogiro K* Klarna");
   });
 
+  it("persists companyId: null for a part the user omits a company on", () => {
+    let state = begin();
+    state = budgetMetadataSplitReducer(state, {
+      kind: "setAmount",
+      value: "2000",
+    });
+    state = budgetMetadataSplitReducer(state, {
+      kind: "setNoCompany",
+      value: true,
+    });
+    state = budgetMetadataSplitReducer(state, {
+      kind: "commit",
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(state.committed[0].companyId).toBeNull();
+  });
+
   it("carries per-part tags only when present", () => {
     let state = begin();
     state = budgetMetadataSplitReducer(state, {
@@ -149,6 +166,39 @@ describe("budgetMetadataSplitReducer · commit", () => {
       settings: DEFAULT_SETTINGS,
     });
     expect(state.committed[0].tagIds).toEqual(["tag-a", "tag-b"]);
+  });
+});
+
+describe("budgetMetadataSplitReducer · company opt-out", () => {
+  it("clears a picked company when the opt-out is enabled", () => {
+    let state = begin();
+    state = budgetMetadataSplitReducer(state, {
+      kind: "pickCompany",
+      companyId: "co-acme",
+      autoTypeId: undefined,
+    });
+    expect(state.draft.companyId).toBe("co-acme");
+    state = budgetMetadataSplitReducer(state, {
+      kind: "setNoCompany",
+      value: true,
+    });
+    expect(state.draft.noCompany).toBe(true);
+    expect(state.draft.companyId).toBeNull();
+  });
+
+  it("clears the opt-out when a real company is picked", () => {
+    let state = begin();
+    state = budgetMetadataSplitReducer(state, {
+      kind: "setNoCompany",
+      value: true,
+    });
+    state = budgetMetadataSplitReducer(state, {
+      kind: "pickCompany",
+      companyId: "co-acme",
+      autoTypeId: undefined,
+    });
+    expect(state.draft.noCompany).toBe(false);
+    expect(state.draft.companyId).toBe("co-acme");
   });
 });
 
