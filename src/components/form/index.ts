@@ -15,6 +15,12 @@ export {
   type MenuItem,
 } from "./menu";
 export { Radio, RadioGroup } from "./Radio";
+export {
+  RangeBoundsEditor,
+  type RangeEditIO,
+  amountRangeIO,
+  monthRangeIO,
+} from "./RangeBoundsEditor";
 export { RangeSlider } from "./RangeSlider";
 export { SelectPicker, type SelectOption } from "./SelectPicker";
 export { SignedAmountInput } from "./SignedAmountInput";

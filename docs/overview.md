@@ -412,8 +412,14 @@ sheets; clicking a result jumps to the row (the visible label is
 modal"). The filter popover lives in `BudgetTransferSearchFilterMenu.tsx`;
 the filter / search / ranking primitives (`SearchFilter`, `runSearch`,
 `searchBounds`, `matchingEntries`) live in `src/data/search.ts`.
-Supports filter-only browsing, select-many → `BulkActionBar`, and a
-result cap tuned in Settings → Search.
+The amount / date bands each show a `RangeSlider` whose `from – to`
+readout is a click-to-edit `RangeBoundsEditor` (`src/components/form/`)
+— clicking a bound swaps it to a typed field (a decimal input for
+amounts, a native `<input type="month">` for dates) so an exact value
+can be pinned instead of dragged; the same editor backs the history /
+viewer search via `ModalSearchControls`. Supports filter-only browsing,
+select-many → `BulkActionBar`, and a result cap tuned in Settings →
+Search.
 
 ### Search settings
 
