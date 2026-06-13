@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildNetWorthCategorySeries,
   buildNetWorthSeries,
   computeNetWorthSnapshot,
+  type NetWorthCategory,
 } from "../src/data/insights/networth";
 import { freshUserData } from "../src/storage/local";
 import type {
@@ -327,5 +329,77 @@ describe("buildNetWorthSeries", () => {
     const points = buildNetWorthSeries(data, undefined, TODAY);
     expect(points).toHaveLength(1);
     expect(points[0].y).toBe(1_000);
+  });
+});
+
+describe("buildNetWorthCategorySeries", () => {
+  const CATEGORIES: readonly NetWorthCategory[] = [
+    "accounts",
+    "savings",
+    "items",
+    "investments",
+    "properties",
+    "mortgages",
+    "loans",
+  ];
+
+  it("returns one band per category over the shared sample window", () => {
+    const series = buildNetWorthCategorySeries(
+      workspace(),
+      undefined,
+      TODAY,
+      CATEGORIES,
+    );
+    expect(series.map((s) => s.category)).toEqual(CATEGORIES);
+    // Every band shares the same 6-sample x array (Jan..Jun).
+    const xs = series[0].points.map((p) => p.x);
+    expect(xs).toHaveLength(6);
+    for (const band of series) {
+      expect(band.points.map((p) => p.x)).toEqual(xs);
+    }
+  });
+
+  it("stacks liabilities negative and sums to the net-worth line", () => {
+    const data = workspace();
+    const series = buildNetWorthCategorySeries(
+      data,
+      undefined,
+      TODAY,
+      CATEGORIES,
+    );
+    const byCategory = new Map(series.map((s) => [s.category, s.points]));
+    // Last sample: assets positive, mortgages and loans negative.
+    const last = (category: NetWorthCategory) =>
+      byCategory.get(category)!.at(-1)!.y;
+    expect(last("accounts")).toBe(1_000);
+    expect(last("properties")).toBe(3_000_000);
+    expect(last("mortgages")).toBe(-1_000_000);
+    expect(last("loans")).toBe(-120_000);
+
+    // The per-sample algebraic sum matches the single net-worth line.
+    const total = buildNetWorthSeries(data, undefined, TODAY);
+    total.forEach((point, i) => {
+      const sum = series.reduce((acc, s) => acc + s.points[i].y, 0);
+      expect(sum).toBeCloseTo(point.y, 6);
+    });
+  });
+
+  it("honours exclusions and shares per category", () => {
+    const settings: InsightsNetWorthSettings = {
+      overrides: {
+        "acc-1": { excluded: true },
+        "prop-1": { sharePct: 50 },
+      },
+    };
+    const series = buildNetWorthCategorySeries(
+      workspace(),
+      settings,
+      TODAY,
+      CATEGORIES,
+    );
+    const byCategory = new Map(series.map((s) => [s.category, s.points]));
+    expect(byCategory.get("accounts")!.at(-1)!.y).toBe(0);
+    expect(byCategory.get("properties")!.at(-1)!.y).toBe(1_500_000);
+    expect(byCategory.get("mortgages")!.at(-1)!.y).toBe(-500_000);
   });
 });

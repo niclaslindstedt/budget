@@ -3,7 +3,7 @@ import { Pencil, Settings2 } from "lucide-react";
 
 import type { Action } from "../../data/reducer";
 import {
-  buildNetWorthSeries,
+  buildNetWorthCategorySeries,
   computeNetWorthSnapshot,
   type NetWorthCategory,
 } from "../../data/insights/networth";
@@ -29,7 +29,10 @@ import {
   DEFAULT_CHART_RANGE,
   type ChartRange,
 } from "../charts/ChartRangeRow";
-import { LineChart, type ChartSeries } from "../charts/LineChart";
+import {
+  StackedAreaChart,
+  type StackedChartSeries,
+} from "../charts/StackedAreaChart";
 import { useModalDispatch } from "../modal-dispatch";
 import {
   SheetTitleMenu,
@@ -72,6 +75,19 @@ const CATEGORY_LABEL_KEY = {
   loans: "insightsSheet.categoryLoans",
 } as const;
 
+// Band colour per category — distinct accent tokens for the assets that
+// stack upward, two reds for the liabilities that stack below zero. The
+// net-worth total line rides on top in `--fg-bright`.
+const CATEGORY_COLOR: Record<NetWorthCategory, string> = {
+  accounts: "--accent",
+  savings: "--link",
+  items: "--path",
+  investments: "--pipe",
+  properties: "--flag",
+  mortgages: "--negative",
+  loans: "--danger",
+};
+
 export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
   const t = useT();
   const lang = useLang();
@@ -88,8 +104,14 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
     () => computeNetWorthSnapshot(data, view?.networth, today),
     [data, view?.networth, today],
   );
-  const seriesPoints = useMemo(
-    () => buildNetWorthSeries(data, view?.networth, today),
+  const categorySeries = useMemo(
+    () =>
+      buildNetWorthCategorySeries(
+        data,
+        view?.networth,
+        today,
+        BREAKDOWN_CATEGORIES,
+      ),
     [data, view?.networth, today],
   );
 
@@ -117,24 +139,37 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
     },
   ];
 
-  // Clip the series to the trailing window picked on the shared range row
-  // (same buttons as the loans visualizer). The series has chartable data
-  // at all vs. the selected window actually containing ≥ 2 samples.
+  // Only categories with at least one entity behind them render a
+  // breakdown row / chart band — a workspace without properties shouldn't
+  // list a zero "Mortgages" line. Mortgages ride with properties.
+  const presentCategories = BREAKDOWN_CATEGORIES.filter((category) =>
+    snapshot.entities.some((e) =>
+      category === "mortgages"
+        ? e.category === "properties" && e.liabilityGross !== undefined
+        : e.category === category,
+    ),
+  );
+
+  // Stack one band per present category — assets first so they pile upward,
+  // liabilities last so they hang below the zero baseline — and trace the
+  // net total through them. Clip each band to the trailing window picked on
+  // the shared range row (same buttons as the loans visualizer); the bands
+  // share one x array so the same cutoff keeps them aligned. "chartable data
+  // at all" vs. "the selected window holds ≥ 2 samples" are distinct gates.
   const cutoffMs = chartRangeCutoffMs(range, today);
-  const visiblePoints =
-    range === "all"
-      ? seriesPoints
-      : seriesPoints.filter((p) => p.x >= cutoffMs);
-  const hasAnyData = seriesPoints.length >= 2;
-  const hasChart = visiblePoints.length >= 2;
-  const chartSeries: ChartSeries[] = [
-    {
-      id: "total",
-      label: t("insightsSheet.netWorthSeries"),
-      colorVar: "--accent",
-      points: visiblePoints,
-    },
-  ];
+  const presentSeries = categorySeries.filter((s) =>
+    presentCategories.includes(s.category),
+  );
+  const sampleCount = presentSeries[0]?.points.length ?? 0;
+  const chartSeries: StackedChartSeries[] = presentSeries.map((s) => ({
+    id: s.category,
+    label: t(CATEGORY_LABEL_KEY[s.category]),
+    color: CATEGORY_COLOR[s.category],
+    points:
+      range === "all" ? s.points : s.points.filter((p) => p.x >= cutoffMs),
+  }));
+  const hasAnyData = sampleCount >= 2;
+  const hasChart = (chartSeries[0]?.points.length ?? 0) >= 2;
   const formatX = (x: number) =>
     formatMonthYearShort(new Date(x).toISOString().slice(0, 10), lang);
   // Mirrors `SavingsValueChartModal`: desktop renders the full grouped
@@ -149,17 +184,6 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
       ),
       settings,
     );
-
-  // Only categories with at least one entity behind them render a
-  // breakdown row — a workspace without properties shouldn't list a
-  // zero "Mortgages" line. Mortgages ride with properties.
-  const presentCategories = BREAKDOWN_CATEGORIES.filter((category) =>
-    snapshot.entities.some((e) =>
-      category === "mortgages"
-        ? e.category === "properties" && e.liabilityGross !== undefined
-        : e.category === category,
-    ),
-  );
 
   return (
     <section>
@@ -234,12 +258,38 @@ export function InsightsPage({ sheet, data, settings, dispatch }: Props) {
                 {hasAnyData ? (
                   <div className="flex flex-col gap-3">
                     {hasChart ? (
-                      <div className="rounded border border-line bg-surface p-2">
-                        <LineChart
-                          series={chartSeries}
-                          formatX={formatX}
-                          formatY={formatY}
-                        />
+                      <div className="flex flex-col gap-2">
+                        <div className="rounded border border-line bg-surface p-2">
+                          <StackedAreaChart
+                            series={chartSeries}
+                            formatX={formatX}
+                            formatY={formatY}
+                            totalLabel={t("insightsSheet.netWorthSeries")}
+                            totalLine={{ color: "--fg-bright" }}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              aria-hidden
+                              className="h-2 w-2 shrink-0 rounded-full bg-fg-bright"
+                            />
+                            {t("insightsSheet.netWorthSeries")}
+                          </span>
+                          {chartSeries.map((s) => (
+                            <span
+                              key={s.id}
+                              className="inline-flex items-center gap-1.5"
+                            >
+                              <span
+                                aria-hidden
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{ background: `var(${s.color})` }}
+                              />
+                              {s.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ) : (
                       <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">

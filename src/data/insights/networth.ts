@@ -315,6 +315,14 @@ export function computeNetWorthSnapshot(
 
 export type NetWorthSeriesPoint = { x: number; y: number };
 
+// One category's contribution sampled over the same monthly window as
+// `buildNetWorthSeries`. Liability categories (`mortgages`, `loans`)
+// carry negative values, so a stacked chart can diverge them below zero.
+export type NetWorthCategorySeries = {
+  category: NetWorthCategory;
+  points: NetWorthSeriesPoint[];
+};
+
 // The earliest date any included entity knows about, considering only
 // dates on or before `today`. Drives the series window so the chart
 // starts where the data does instead of prepending years of zero.
@@ -393,19 +401,16 @@ function earliestRelevantDate(
   return earliest;
 }
 
-// Net worth sampled monthly from the earliest relevant date through
-// today. Each month samples at its last day, except the current month
-// which samples at `todayIso` — so the line's last point equals
-// `computeNetWorthSnapshot(...).total`. Currently-owned items enter the
-// series at `acquiredAt` (undated items count from the window start);
-// a disposed item's historical value isn't reconstructible, so it never
-// appears — a documented approximation. A workspace with no dated data
-// collapses to a single point at today.
-export function buildNetWorthSeries(
+// The monthly sample dates the net-worth series walk over: from the
+// earliest relevant date through today, each month at its last day,
+// except the current month which samples at `todayIso` — so the last
+// point equals `computeNetWorthSnapshot(...).total`. A workspace with no
+// dated data collapses to a single point at today.
+function seriesSampleDates(
   data: UserData,
   settings: InsightsNetWorthSettings | undefined,
   todayIso: string,
-): NetWorthSeriesPoint[] {
+): { iso: string; ms: number }[] {
   const earliest = earliestRelevantDate(data, settings, todayIso);
   const startMonth = isoToMonthNum(earliest ?? todayIso);
   const endMonth = isoToMonthNum(todayIso);
@@ -416,50 +421,119 @@ export function buildNetWorthSeries(
     const ms = Date.parse(iso);
     if (Number.isFinite(ms)) dates.push({ iso, ms });
   }
+  return dates;
+}
 
+// Each category's share-adjusted contribution at one sample date. Mirrors
+// `computeNetWorthSnapshot`'s per-category math: properties contribute
+// their value only (mortgages are their own category), and the two
+// liability categories come back negative. Currently-owned items enter at
+// `acquiredAt` (undated items count from the window start); a disposed
+// item's historical value isn't reconstructible, so it never appears — a
+// documented approximation.
+function perCategoryAt(
+  data: UserData,
+  settings: InsightsNetWorthSettings | undefined,
+  loans: Loan[],
+  iso: string,
+): Record<NetWorthCategory, number> {
+  const per: Record<NetWorthCategory, number> = {
+    accounts: 0,
+    savings: 0,
+    items: 0,
+    investments: 0,
+    properties: 0,
+    mortgages: 0,
+    loans: 0,
+  };
+  const balances = computeAccountBalances(data, iso);
+  for (const account of data.accounts) {
+    const { excluded, sharePct } = resolveOverride(settings, account.id);
+    if (excluded) continue;
+    per.accounts += (balances.get(account.id) ?? 0) * (sharePct / 100);
+  }
+  for (const saving of data.savings) {
+    const { excluded, sharePct } = resolveOverride(settings, saving.id);
+    if (excluded) continue;
+    per.savings += (savingBalanceAt(saving, iso) ?? 0) * (sharePct / 100);
+  }
+  for (const item of data.items) {
+    if (!isItemOwned(item)) continue;
+    const { excluded, sharePct } = resolveOverride(settings, item.id);
+    if (excluded) continue;
+    if (item.acquiredAt !== undefined && item.acquiredAt > iso) continue;
+    per.items += computeItemCurrentValue(item, iso) * (sharePct / 100);
+  }
+  for (const holding of data.investmentHoldings) {
+    const { excluded, sharePct } = resolveOverride(settings, holding.id);
+    if (excluded) continue;
+    per.investments +=
+      (holdingNetWorthValue(holding, iso) ?? 0) * (sharePct / 100);
+  }
+  for (const position of data.investmentStocks) {
+    const { excluded, sharePct } = resolveOverride(settings, position.id);
+    if (excluded) continue;
+    per.investments +=
+      (stockNetWorthValue(position, iso) ?? 0) * (sharePct / 100);
+  }
+  for (const property of data.properties) {
+    const { excluded, sharePct } = resolveOverride(settings, property.id);
+    if (excluded) continue;
+    const share = sharePct / 100;
+    per.properties += (propertyValueAt(property, iso) ?? 0) * share;
+    per.mortgages -= (propertyMortgageBalanceAt(property, iso) ?? 0) * share;
+  }
+  for (const loan of loans) {
+    const { excluded, sharePct } = resolveOverride(settings, loan.id);
+    if (excluded) continue;
+    per.loans -= (loanBalanceAt(loan, iso) ?? 0) * (sharePct / 100);
+  }
+  return per;
+}
+
+// Net worth sampled monthly (see `seriesSampleDates`). Each point is the
+// algebraic sum of every category's contribution, so the line's last
+// point equals `computeNetWorthSnapshot(...).total`.
+export function buildNetWorthSeries(
+  data: UserData,
+  settings: InsightsNetWorthSettings | undefined,
+  todayIso: string,
+): NetWorthSeriesPoint[] {
   const loans = standaloneLoans(data);
-  return dates.map(({ iso, ms }) => {
-    let total = 0;
-    const balances = computeAccountBalances(data, iso);
-    for (const account of data.accounts) {
-      const { excluded, sharePct } = resolveOverride(settings, account.id);
-      if (excluded) continue;
-      total += (balances.get(account.id) ?? 0) * (sharePct / 100);
-    }
-    for (const saving of data.savings) {
-      const { excluded, sharePct } = resolveOverride(settings, saving.id);
-      if (excluded) continue;
-      total += (savingBalanceAt(saving, iso) ?? 0) * (sharePct / 100);
-    }
-    for (const item of data.items) {
-      if (!isItemOwned(item)) continue;
-      const { excluded, sharePct } = resolveOverride(settings, item.id);
-      if (excluded) continue;
-      if (item.acquiredAt !== undefined && item.acquiredAt > iso) continue;
-      total += computeItemCurrentValue(item, iso) * (sharePct / 100);
-    }
-    for (const holding of data.investmentHoldings) {
-      const { excluded, sharePct } = resolveOverride(settings, holding.id);
-      if (excluded) continue;
-      total += (holdingNetWorthValue(holding, iso) ?? 0) * (sharePct / 100);
-    }
-    for (const position of data.investmentStocks) {
-      const { excluded, sharePct } = resolveOverride(settings, position.id);
-      if (excluded) continue;
-      total += (stockNetWorthValue(position, iso) ?? 0) * (sharePct / 100);
-    }
-    for (const property of data.properties) {
-      const { excluded, sharePct } = resolveOverride(settings, property.id);
-      if (excluded) continue;
-      const share = sharePct / 100;
-      total += (propertyValueAt(property, iso) ?? 0) * share;
-      total -= (propertyMortgageBalanceAt(property, iso) ?? 0) * share;
-    }
-    for (const loan of loans) {
-      const { excluded, sharePct } = resolveOverride(settings, loan.id);
-      if (excluded) continue;
-      total -= (loanBalanceAt(loan, iso) ?? 0) * (sharePct / 100);
-    }
+  return seriesSampleDates(data, settings, todayIso).map(({ iso, ms }) => {
+    const per = perCategoryAt(data, settings, loans, iso);
+    const total =
+      per.accounts +
+      per.savings +
+      per.items +
+      per.investments +
+      per.properties +
+      per.mortgages +
+      per.loans;
     return { x: ms, y: total };
   });
+}
+
+// One series per net-worth category, sampled over the same monthly window
+// as `buildNetWorthSeries` and sharing one ascending x array (every
+// category has a point at every sample, 0 where it contributes nothing) so
+// a stacked chart can tile the bands. Liability categories come back
+// negative; the caller stacks them below zero. Returned in `categories`
+// order — the page passes assets first, liabilities last.
+export function buildNetWorthCategorySeries(
+  data: UserData,
+  settings: InsightsNetWorthSettings | undefined,
+  todayIso: string,
+  categories: readonly NetWorthCategory[],
+): NetWorthCategorySeries[] {
+  const loans = standaloneLoans(data);
+  const dates = seriesSampleDates(data, settings, todayIso);
+  const samples = dates.map(({ iso, ms }) => ({
+    ms,
+    per: perCategoryAt(data, settings, loans, iso),
+  }));
+  return categories.map((category) => ({
+    category,
+    points: samples.map(({ ms, per }) => ({ x: ms, y: per[category] })),
+  }));
 }

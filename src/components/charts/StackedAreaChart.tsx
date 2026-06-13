@@ -12,13 +12,19 @@ import { useTooltip, TooltipWithBounds } from "@visx/tooltip";
 import { useThemeTokens } from "../../hooks";
 
 // A theme-aware stacked area chart — `LineChart`'s sibling for "how does
-// each part contribute to the total" questions. Bands stack bottom-up in
-// array order; the top edge of the stack is the total. Like `LineChart` it
-// owns no domain knowledge and ships no user-facing copy: the caller passes
-// the series, tick formatters, and the tooltip's total-row label. Every
-// chrome colour, the font, and the tooltip surface read through
-// `useThemeTokens`; no animation is introduced, so reduce-motion is
-// respected by construction.
+// each part contribute to the total" questions. Like `LineChart` it owns no
+// domain knowledge and ships no user-facing copy: the caller passes the
+// series, tick formatters, and the tooltip's total-row label. Every chrome
+// colour, the font, and the tooltip surface read through `useThemeTokens`;
+// no animation is introduced, so reduce-motion is respected by construction.
+//
+// Bands stack around zero per sample: a positive value stacks upward on the
+// running positive offset, a negative value downward on the running negative
+// offset. With all-positive data this collapses to a plain bottom-up stack
+// anchored at 0 (the top edge is the total). With mixed signs the stack
+// diverges — assets above the baseline, liabilities below — and the optional
+// `totalLine` traces the algebraic sum (e.g. net worth). A zero baseline is
+// drawn whenever any band dips negative.
 //
 // Every series MUST share one ascending x array (a band that doesn't exist
 // yet at some x contributes y = 0 there) — stacking offsets are computed
@@ -50,6 +56,12 @@ type Props = {
   formatY: (y: number) => string;
   // Label for the tooltip's bold total row (already translated).
   totalLabel: string;
+  // When set, overlay a line tracing the algebraic sum of every band at
+  // each sample (assets minus liabilities) in the given colour — a "—"
+  // prefixed CSS custom property or a literal colour, like a band's
+  // `color`. Use it when the stack diverges around zero so the net figure
+  // (e.g. net worth) reads as one line through the bands.
+  totalLine?: { color: string };
   // Chart height in px (width fills the container).
   height?: number;
 };
@@ -85,6 +97,9 @@ const CHROME_TOKENS = [
 // top edges at each shared sample.
 type StackedPoint = { x: number; y0: number; y1: number; own: number };
 
+// The algebraic per-sample sum traced by `totalLine`.
+type TotalPoint = { x: number; y: number };
+
 type Tooltip = {
   x: number;
   // Top band first (matching the visual stacking), each row carrying the
@@ -99,14 +114,19 @@ export function StackedAreaChart({
   formatX,
   formatY,
   totalLabel,
+  totalLine,
   height = 280,
 }: Props) {
   const colorVars = useMemo(
     () =>
       Array.from(
-        new Set(series.map((s) => s.color).filter((c) => c.startsWith("--"))),
+        new Set(
+          [...series.map((s) => s.color), totalLine?.color]
+            .filter((c): c is string => c !== undefined)
+            .filter((c) => c.startsWith("--")),
+        ),
       ),
-    [series],
+    [series, totalLine],
   );
   const tokens = useThemeTokens([...CHROME_TOKENS, ...colorVars]);
   const fontFamily = tokens["--app-font-family"] || "monospace";
@@ -131,6 +151,7 @@ export function StackedAreaChart({
               formatX={formatX}
               formatY={formatY}
               totalLabel={totalLabel}
+              totalLine={totalLine}
               fontFamily={fontFamily}
               lineColor={lineColor}
               mutedColor={mutedColor}
@@ -169,6 +190,7 @@ function Chart({
   formatX,
   formatY,
   totalLabel,
+  totalLine,
   fontFamily,
   lineColor,
   mutedColor,
@@ -180,32 +202,53 @@ function Chart({
 }: ChartProps) {
   const innerH = Math.max(0, height - MARGIN.top - MARGIN.bottom);
 
-  // Cumulative offsets per shared sample index: band k sits on the summed
-  // tops of bands 0..k-1. Also the x domain and the per-x stack totals the
-  // tooltip reads.
-  const { stacked, xDomain, yDomain, sortedXs } = useMemo(() => {
+  // Diverging offsets per shared sample index: a positive value stacks on
+  // the running positive offset (upward), a negative on the running negative
+  // offset (downward). Also the x domain, the per-x stack extents the scale
+  // spans, and the algebraic per-sample totals `totalLine` traces.
+  const { stacked, totals, xDomain, yDomain, sortedXs } = useMemo(() => {
     const stacked: StackedPoint[][] = [];
     const sampleCount = series.reduce(
       (max, s) => Math.max(max, s.points.length),
       0,
     );
-    const offsets = new Array<number>(sampleCount).fill(0);
+    const posOffsets = new Array<number>(sampleCount).fill(0);
+    const negOffsets = new Array<number>(sampleCount).fill(0);
+    const algebraic = new Array<number>(sampleCount).fill(0);
+    const xByIndex = new Array<number | undefined>(sampleCount).fill(undefined);
     let minX = Infinity;
     let maxX = -Infinity;
     let maxTotal = 0;
+    let minTotal = 0;
     const xs = new Set<number>();
     for (const s of series) {
       const band: StackedPoint[] = s.points.map((p, i) => {
-        const y0 = offsets[i];
-        const y1 = y0 + Math.max(0, p.y);
-        offsets[i] = y1;
+        let y0: number;
+        let y1: number;
+        if (p.y >= 0) {
+          y0 = posOffsets[i];
+          y1 = y0 + p.y;
+          posOffsets[i] = y1;
+        } else {
+          y1 = negOffsets[i];
+          y0 = y1 + p.y;
+          negOffsets[i] = y0;
+        }
+        algebraic[i] += p.y;
+        xByIndex[i] = p.x;
         if (p.x < minX) minX = p.x;
         if (p.x > maxX) maxX = p.x;
         if (y1 > maxTotal) maxTotal = y1;
+        if (y0 < minTotal) minTotal = y0;
         xs.add(p.x);
         return { x: p.x, y0, y1, own: p.y };
       });
       stacked.push(band);
+    }
+    const totals: TotalPoint[] = [];
+    for (let i = 0; i < sampleCount; i++) {
+      const x = xByIndex[i];
+      if (x !== undefined) totals.push({ x, y: algebraic[i] });
     }
     if (!Number.isFinite(minX)) {
       minX = 0;
@@ -215,13 +258,17 @@ function Chart({
       minX -= 1;
       maxX += 1;
     }
-    // The stack is anchored at 0; pad only the top so the tallest point
-    // doesn't graze the edge (and keep an all-zero stack from collapsing
-    // the scale).
+    // Pad the occupied side(s) so the tallest / deepest point doesn't graze
+    // the edge; keep the zero baseline pinned and don't let an all-zero
+    // stack collapse the scale.
     return {
       stacked,
+      totals,
       xDomain: [minX, maxX] as [number, number],
-      yDomain: [0, maxTotal * 1.08 || 1] as [number, number],
+      yDomain: [
+        minTotal < 0 ? minTotal * 1.08 : 0,
+        maxTotal > 0 ? maxTotal * 1.08 : minTotal < 0 ? 0 : 1,
+      ] as [number, number],
       sortedXs: Array.from(xs).sort((a, b) => a - b),
     };
   }, [series]);
@@ -370,6 +417,31 @@ function Chart({
               strokeLinecap="round"
             />
           ))}
+
+          {/* Zero baseline — only when the stack dips below it, so the
+              all-positive case is visually unchanged. */}
+          {yDomain[0] < 0 && (
+            <Line
+              from={{ x: 0, y: yScale(0) }}
+              to={{ x: innerW, y: yScale(0) }}
+              stroke={lineColor}
+              strokeWidth={1}
+            />
+          )}
+
+          {/* Net total traced through the diverging bands. */}
+          {totalLine && (
+            <LinePath<TotalPoint>
+              data={totals}
+              x={(p) => xScale(p.x)}
+              y={(p) => yScale(p.y)}
+              curve={curveMonotoneX}
+              stroke={colorFor(totalLine.color)}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )}
 
           {tooltipOpen && tooltipData && (
             <>

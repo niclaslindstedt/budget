@@ -1975,8 +1975,13 @@ the reusable `StackedAreaChart` / `StackedBarChart` primitives
 chrome and crosshair tooltip (per-layer values plus a bold total row),
 with layers stacked by manual cumulative offsets over one shared
 monthly x array (the area chart adds monotone smoothing; the bar chart
-thins its month labels instead). `centered` (only toggles — no soft
-keyboard). Opening it unlocks the **Debt Mapper** achievement
+thins its month labels instead). `StackedAreaChart` stacks each sample
+around zero — positive values pile up, negative values hang below a
+zero baseline — so it diverges when a band goes negative (all-positive
+data, like the loan balances, is visually unchanged); an optional
+`totalLine` prop overlays the algebraic per-sample sum, which the
+Insights net-worth chart uses for its net-worth line. `centered` (only
+toggles — no soft keyboard). Opening it unlocks the **Debt Mapper** achievement
 (`loansChart`, a manual trigger).
 
 ## Insights page
@@ -2018,10 +2023,17 @@ mortgages already counted with its property, so it contributes nothing
 and gets no settings row. The page renders the headline total, a
 per-category breakdown (Accounts / Savings / Items / Properties /
 −Mortgages / −Other loans; categories with no entities are omitted),
-and a net-worth-over-time `LineChart` built by `buildNetWorthSeries`:
-monthly samples from the earliest dated data any included entity knows
-about through today, the current month sampled at today so the line's
-last point equals the snapshot total. The shared time-range buttons
+and a net-worth-over-time **diverging `StackedAreaChart`** built by
+`buildNetWorthCategorySeries`: one band per present category sampled
+monthly from the earliest dated data any included entity knows about
+through today (the current month sampled at today). Assets stack
+upward from a zero baseline, liabilities (mortgages / other loans)
+stack downward below it, and an overlaid `--fg-bright` total line
+traces the algebraic sum — so each part's contribution to net worth
+is legible and the line's last point equals the snapshot total
+(`buildNetWorthSeries`, retained for that algebraic series, is the
+sum of the same per-category math). A colour legend sits beneath the
+chart. The shared time-range buttons
 (`ChartRangeRow`, 1Y / 2Y / 3Y / 5Y / All, default 3Y — the same row
 as the loans visualizer) sit below the chart and clip the series to a
 trailing window; a window with fewer than two samples shows a "pick a
