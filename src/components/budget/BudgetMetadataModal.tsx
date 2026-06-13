@@ -630,18 +630,10 @@ export function BudgetMetadataModal({
     if (!canBulkApply && bulkApply) setBulkApply(false);
   }, [canBulkApply, bulkApply]);
 
-  // Save is reachable when the form changed (stamp the current entry)
-  // OR the user opted into a bulk sweep that still has selected
-  // targets (even on an already-resolved entry the user is reviewing).
-  const canSave =
-    !!accountId &&
-    !!current &&
-    (dirty || (bulkApply && canBulkApply && selectedLookalikeCount > 0));
-
   // The field that's still blocking this entry from leaving the queue,
-  // computed from the current form state. Drives both the hint shown
-  // next to the Save button when it's gated and the one-shot ring on
-  // the field when the user taps Save anyway. Type comes before
+  // computed from the current form state. Drives the `canSave` gate, the
+  // hint shown next to the Save button when it's gated, and the one-shot
+  // ring on the field when the user taps Save anyway. Type comes before
   // company because the company picker is only meaningful once a type
   // has been chosen — the resolver's description fallback also walks
   // company → type, so this matches the priority the user already sees
@@ -658,6 +650,24 @@ export function BudgetMetadataModal({
     if (!companyId && !noCompany) return "company";
     return null;
   }, [current, typeId, companyId, noCompany, isTransfer]);
+
+  // Save is reachable when the form changed into a *complete* entry — one
+  // that will actually leave the queue (type set, and a company picked,
+  // omitted, or the entry marked a transfer; `stillMissingField === null`
+  // captures exactly that). Gating on `dirty` alone let a type-only edit
+  // enable Save even though the entry still owed a company, so pressing
+  // it stamped the type but left the same entry sitting in the walk with
+  // no explanation — whereas a rule-seeded type with the same gap kept
+  // Save greyed and showed the "add or omit company" hint. Requiring
+  // completeness makes both paths behave the same: a missing company
+  // always keeps Save gated until you pick one or choose "Omit company".
+  // The bulk-sweep branch stays independent so fanning labels out to
+  // lookalikes still works while reviewing an already-resolved entry.
+  const canSave =
+    !!accountId &&
+    !!current &&
+    ((dirty && stillMissingField === null) ||
+      (bulkApply && canBulkApply && selectedLookalikeCount > 0));
 
   const typeFieldRef = useRef<HTMLDivElement | null>(null);
   const companyFieldRef = useRef<HTMLDivElement | null>(null);
