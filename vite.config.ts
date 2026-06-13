@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import tailwindcss from "@tailwindcss/vite";
@@ -453,6 +453,80 @@ function emitVersionJson(): Plugin {
   };
 }
 
+// Emit a `precache-manifest.json` listing every asset the service
+// worker precaches and its on-disk byte size, plus the total. The
+// running app fetches it (cache-bypassed, like `version.json`) when a
+// new SW starts installing, so it can turn "files added to the precache
+// cache so far" into a real percentage and fill the "budget" header
+// like a glass of water while the update downloads. See
+// `src/hooks/usePwaUpdate.ts` for the consumer.
+//
+// The list is read back out of the generated `dist/sw.js`
+// (vite-plugin-pwa inlines the workbox precache manifest there as
+// `precacheAndRoute([{url,revision},...])`) rather than re-globbing
+// `dist/` ourselves, so the denominator matches exactly what workbox
+// actually precaches — globIgnores, the SW files, and on-demand chunks
+// all already filtered out. Keys are the request *pathnames* the
+// browser stores in the precache cache (`<base><url>`); the consumer
+// compares cache entries by pathname, which sidesteps the
+// `?__WB_REVISION__=` query workbox appends to revisioned entries.
+//
+// Runs in `closeBundle` after `pwaPlugin()` has written `sw.js`, and
+// the emitted JSON lands after the workbox glob ran, so it is itself
+// left out of precache — exactly like `version.json`.
+function emitPrecacheManifest(): Plugin {
+  return {
+    name: "emit-precache-manifest",
+    apply: "build",
+    // `vite-plugin-pwa` is `enforce: "post"` and writes `dist/sw.js` in
+    // its own `closeBundle`; match its enforce and sit last in the
+    // plugins array so this runs after the SW exists.
+    enforce: "post",
+    closeBundle() {
+      const outRoot = resolve(__dirname, "dist");
+      const swPath = resolve(outRoot, "sw.js");
+      let sw: string;
+      try {
+        sw = readFileSync(swPath, "utf8");
+      } catch {
+        // No generated SW (e.g. PWA disabled) — nothing to measure.
+        return;
+      }
+      const callIdx = sw.indexOf("precacheAndRoute([");
+      if (callIdx === -1) return;
+      const arrStart = sw.indexOf("[", callIdx);
+      const arrEnd = sw.indexOf("}]", arrStart);
+      if (arrStart === -1 || arrEnd === -1) return;
+      const arr = sw.slice(arrStart, arrEnd + 2);
+      const urls = [...arr.matchAll(/url:"([^"]+)"/g)].map((m) => m[1]);
+
+      // Assets in `includeAssets` (icons / favicons) appear twice in the
+      // precache manifest — once explicitly, once via `globPatterns` —
+      // but resolve to a single cache entry, so key by pathname and let
+      // the map dedupe both the entry and its byte contribution.
+      const assets: Record<string, number> = {};
+      for (const url of urls) {
+        // Cache keys resolve `url` against the SW scope (`BASE_PATH`),
+        // so the stored pathname is `<base><url>` with no double slash.
+        const path = BASE_PATH + url.replace(/^\//, "");
+        if (path in assets) continue;
+        try {
+          assets[path] = statSync(resolve(outRoot, url)).size;
+        } catch {
+          // Listed in the manifest but absent on disk — skip it.
+        }
+      }
+      const totalBytes = Object.values(assets).reduce((a, b) => a + b, 0);
+
+      writeFileSync(
+        resolve(outRoot, "precache-manifest.json"),
+        `${JSON.stringify({ totalBytes, assets })}\n`,
+        "utf8",
+      );
+    },
+  };
+}
+
 function pwaPlugin(): Plugin[] {
   // W3C app identity is BASE_PATH — distinct per slot ("/",
   // "/preview/", "/branch/") so each install registers as its own
@@ -601,6 +675,8 @@ export default defineConfig({
     emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE], {
       noindex: IS_PREVIEW,
     }),
+    // After pwaPlugin so `dist/sw.js` exists to be measured.
+    emitPrecacheManifest(),
   ],
   base: BASE_PATH,
   build: {

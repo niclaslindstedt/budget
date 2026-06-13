@@ -191,6 +191,38 @@
   }
 }
 
+/* PWA download progress fill for the header "budget" wordmark. While a
+   new build's service worker downloads (see `usePwaUpdate`), the text
+   fills gold from the bottom — like a glass of water — and the toast
+   surfaces once it is full. `--pwa-fill` is a 0..100 number set inline
+   by `AppShell`; this rule reads it.
+
+   Technique: a two-stop gradient (top half = normal title colour, bottom
+   half = the logo gold `--meta`) painted at 200% box height and clipped
+   to the glyphs. `background-position-y` slides the gold edge up as the
+   fill rises — 0% shows only the top (empty) half, 100% shows only the
+   bottom (gold) half — and the position transition animates the rise
+   smoothly. The reduce-motion guard in theme.css zeroes the
+   transition-duration when the user opts in, so the fill snaps in steps
+   instead of gliding. `--meta` is the gold token mirrored across every
+   palette, so the fill tracks the user's theme rather than a hardcoded
+   hue. */
+.pwa-title-fill {
+  background-image: linear-gradient(
+    to bottom,
+    var(--fg-bright) 0 50%,
+    var(--meta) 50% 100%
+  );
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
+  background-position: center calc(var(--pwa-fill, 0) * 1%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 250ms linear;
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the

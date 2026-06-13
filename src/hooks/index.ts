@@ -33,6 +33,11 @@ export { useIsStandalone } from "./useIsStandalone";
 export { type UseLongPressOptions, useLongPress } from "./useLongPress";
 export { useNearViewport } from "./useNearViewport";
 export { usePointerOutside } from "./usePointerOutside";
+export {
+  type PwaUpdate,
+  type PwaUpdateState,
+  usePwaUpdate,
+} from "./usePwaUpdate";
 export { type PullToRefreshState, usePullToRefresh } from "./usePullToRefresh";
 export { useRefIdentity } from "./useRefIdentity";
 export { useResetOnOpen } from "./useResetOnOpen";
