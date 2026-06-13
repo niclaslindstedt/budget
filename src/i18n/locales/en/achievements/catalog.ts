@@ -248,6 +248,12 @@ const catalog = {
     learnMore:
       "When a single bank charge bundles different categories (groceries + household + gift), split so each part gets its own type.",
   },
+  quickMaths: {
+    name: "Quick Maths",
+    condition: "Use the calculator button to work out a split amount.",
+    learnMore:
+      "Tap the calculator next to a split's amount and type a sum like 100 + 30 + 50 — the result drops straight into the field. Handy when a credit-card bill lumps several charges from the same shop together and you just want them added up.",
+  },
   bulkOps: {
     name: "Bulk Ops",
     condition: "Bulk-edit two or more rows in one action.",

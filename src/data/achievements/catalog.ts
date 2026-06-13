@@ -826,6 +826,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "quickMaths",
+    tier: "intermediate",
+    glyph: Sigma,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "estimateRange",
     tier: "intermediate",
     glyph: Ruler,

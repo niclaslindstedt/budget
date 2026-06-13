@@ -244,6 +244,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "När ett enskilt bankuttag buntar ihop olika kategorier (mat + hushåll + present), dela så varje del får sin egen typ.",
   },
+  quickMaths: {
+    name: "Snabbräkning",
+    condition: "Använd miniräknarknappen för att räkna ut ett delbelopp.",
+    learnMore:
+      "Tryck på miniräknaren bredvid en dels belopp och skriv en summa som 100 + 30 + 50 — resultatet hamnar direkt i fältet. Smidigt när en kreditkortsräkning klumpar ihop flera köp från samma butik och du bara vill lägga ihop dem.",
+  },
   bulkOps: {
     name: "Massåtgärd",
     condition: "Massredigera två eller fler rader i en åtgärd.",
