@@ -12,7 +12,12 @@ import type { FloatingPlacement } from "../hooks";
 import { usePointerOutside } from "../hooks";
 import { useT, type TFunction } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
-import { Checkbox, RangeSlider } from "./form";
+import {
+  Checkbox,
+  RangeBoundsEditor,
+  RangeSlider,
+  type RangeEditIO,
+} from "./form";
 
 const FILTER_MENU_PLACEMENT: FloatingPlacement = {
   width: { kind: "min", minPx: 240 },
@@ -72,6 +77,10 @@ export type ModalSearchRange = {
   // Human label for a thumb value (currency, a month name) — drives both
   // the readout above the slider and each thumb's `aria-valuetext`.
   format: (value: number) => string;
+  // When set, the `from – to` readout becomes click-to-edit so the user
+  // can type an exact bound instead of dragging a thumb to it. Omit to
+  // keep the readout static.
+  io?: RangeEditIO;
 };
 
 type Props = {
@@ -233,9 +242,22 @@ function RangeSection({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2 text-xs">
         <span className="font-medium text-fg-bright">{label}</span>
-        <span className="font-mono text-muted">
-          {range.format(range.value[0])} – {range.format(range.value[1])}
-        </span>
+        {range.io ? (
+          <RangeBoundsEditor
+            value={range.value}
+            min={range.min}
+            max={range.max}
+            onChange={range.onChange}
+            format={range.format}
+            io={range.io}
+            ariaLabelMin={ariaLabelMin}
+            ariaLabelMax={ariaLabelMax}
+          />
+        ) : (
+          <span className="font-mono text-muted">
+            {range.format(range.value[0])} – {range.format(range.value[1])}
+          </span>
+        )}
       </div>
       <div className="px-2">
         <RangeSlider

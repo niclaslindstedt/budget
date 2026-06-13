@@ -25,7 +25,13 @@ import {
   useTransferSearchFilter,
 } from "./useTransferSearchFilter";
 import { FloatingPanel } from "../FloatingPanel";
-import { Checkbox, RangeSlider } from "../form";
+import {
+  Checkbox,
+  RangeBoundsEditor,
+  RangeSlider,
+  amountRangeIO,
+  monthRangeIO,
+} from "../form";
 import { CategoryIconGlyph } from "../icons";
 
 // Leading glyph for a type / category option — the same pictogram the
@@ -354,6 +360,8 @@ export function BudgetTransferSearchFilterMenu({
     withCurrency(formatNumber(v, settings), settings);
   const dateLabel = (month: number) =>
     formatMonthLabel(monthNumToKey(month), lang);
+  const amountIO = useMemo(() => amountRangeIO(settings), [settings]);
+  const monthIO = useMemo(() => monthRangeIO(), []);
 
   return (
     <div ref={triggerRef} className="relative shrink-0">
@@ -520,10 +528,16 @@ export function BudgetTransferSearchFilterMenu({
                   {t("searchTransaction.filterAmount")}
                 </span>
                 {hasAmount && (
-                  <span className="font-mono text-muted">
-                    {amountLabel(amountValue[0])} –{" "}
-                    {amountLabel(amountValue[1])}
-                  </span>
+                  <RangeBoundsEditor
+                    value={amountValue}
+                    min={amountSliderMin}
+                    max={amountSliderMax}
+                    onChange={commitAmount}
+                    format={amountLabel}
+                    io={amountIO}
+                    ariaLabelMin={t("searchTransaction.filterAmountMin")}
+                    ariaLabelMax={t("searchTransaction.filterAmountMax")}
+                  />
                 )}
               </div>
               {hasAmount ? (
@@ -555,9 +569,16 @@ export function BudgetTransferSearchFilterMenu({
                   <span className="font-medium text-fg-bright">
                     {t("searchTransaction.filterDates")}
                   </span>
-                  <span className="font-mono text-muted">
-                    {dateLabel(dateValue[0])} – {dateLabel(dateValue[1])}
-                  </span>
+                  <RangeBoundsEditor
+                    value={dateValue}
+                    min={dateSliderMin}
+                    max={dateSliderMax}
+                    onChange={commitDate}
+                    format={dateLabel}
+                    io={monthIO}
+                    ariaLabelMin={t("searchTransaction.filterDateMin")}
+                    ariaLabelMax={t("searchTransaction.filterDateMax")}
+                  />
                 </div>
                 <div className="px-2">
                   <RangeSlider

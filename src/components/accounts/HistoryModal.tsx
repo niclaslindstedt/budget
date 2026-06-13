@@ -27,6 +27,7 @@ import {
   withCurrency,
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
+import { amountRangeIO, monthRangeIO } from "../form";
 import { ColumnIcon } from "../icons";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
@@ -209,6 +210,11 @@ export function HistoryModal({
     (monthNum: number) => formatMonthLabel(monthNumToKey(monthNum), lang),
     [lang],
   );
+  const amountIO = useMemo(
+    () => amountRangeIO(accountSettings),
+    [accountSettings],
+  );
+  const monthIO = useMemo(() => monthRangeIO(), []);
 
   const filteredEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -334,6 +340,7 @@ export function HistoryModal({
                     value: amountValue,
                     onChange: commitAmount,
                     format: amountLabel,
+                    io: amountIO,
                   }
                 : undefined
             }
@@ -345,6 +352,7 @@ export function HistoryModal({
                     value: dateValue,
                     onChange: commitDate,
                     format: dateLabel,
+                    io: monthIO,
                   }
                 : undefined
             }
