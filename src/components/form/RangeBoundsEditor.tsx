@@ -42,9 +42,12 @@ type Props = {
 // bound renders as a button that swaps to an input on click, so the user
 // can type an exact amount / month instead of dragging a thumb to it —
 // pinning down a precise value the lever can't reliably hit. Commit on
-// Enter / blur (and on selection for the month picker), cancel on Escape;
-// the typed value is clamped to the domain and kept from crossing the
-// other thumb, mirroring the slider's own guard.
+// Enter / blur, cancel on Escape; the typed value is clamped to the
+// domain and kept from crossing the other thumb, mirroring the slider's
+// own guard. The month input deliberately waits for blur rather than
+// committing on each `change`: the native picker fires an intermediate
+// `change` as the year wheel moves, and committing there would close the
+// editor before the user finished choosing the month.
 export function RangeBoundsEditor({
   value,
   min,
@@ -102,12 +105,7 @@ export function RangeBoundsEditor({
           aria-label={label}
           min={io.kind === "month" ? io.seed(min) : undefined}
           max={io.kind === "month" ? io.seed(max) : undefined}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            // The native month picker emits a complete value per pick, so
-            // apply it straight away; a free-text amount waits for commit.
-            if (io.kind === "month") commit(bound, e.target.value);
-          }}
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             // Keep Enter / Escape from bubbling to the surrounding
             // FloatingPanel, which closes the whole filter dropdown on
