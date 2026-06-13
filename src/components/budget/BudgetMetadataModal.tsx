@@ -877,7 +877,11 @@ export function BudgetMetadataModal({
                     variant="field"
                     companies={companies}
                     selectedId={splitState.draft.companyId}
+                    noCompany={splitState.draft.noCompany}
                     onSelect={handleSplitPickCompany}
+                    onOmitChange={(value) =>
+                      dispatchSplit({ kind: "setNoCompany", value })
+                    }
                     onCreate={onCreateCompany}
                   />
                 </div>
