@@ -17,6 +17,7 @@ import type { PropertyExportLookups } from "../../data/property-transfer/export"
 import type { ManifestTag } from "../../data/property-transfer/manifest";
 import type { PropertyAttachments } from "./usePropertyAttachments";
 import type { Action } from "../../data/reducer";
+import type { ImportedPoint } from "../../data/import/value-import";
 import { newId } from "../../data/sheet";
 import type {
   Account,
@@ -441,6 +442,10 @@ export function PropertiesPage({
     dispatch({ type: "addPropertyValue", propertyId, point });
   }
 
+  function handleImportValues(propertyId: string, points: ImportedPoint[]) {
+    dispatch({ type: "importPropertyValues", propertyId, points });
+  }
+
   function handleDeleteValue(propertyId: string, pointId: string) {
     dispatch({ type: "deletePropertyValue", propertyId, pointId });
   }
@@ -704,6 +709,7 @@ export function PropertiesPage({
           settings={settings}
           onClose={() => setModal(null)}
           onAddValue={handleAddValue}
+          onImportValues={handleImportValues}
           onDeleteValue={handleDeleteValue}
         />
 

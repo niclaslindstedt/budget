@@ -34,6 +34,7 @@ export function LoansModalHost({ data, effectiveSettings, loanDialog }: Props) {
     updateBalanceLoan,
     setUpdateBalanceForId,
     onAddLoanBalance,
+    onImportLoanBalances,
     onDeleteLoanBalance,
     paymentsLoan,
     setPaymentsForId,
@@ -76,6 +77,7 @@ export function LoansModalHost({ data, effectiveSettings, loanDialog }: Props) {
         settings={effectiveSettings}
         onClose={() => setUpdateBalanceForId(null)}
         onAddBalance={onAddLoanBalance}
+        onImportBalances={onImportLoanBalances}
         onDeleteBalance={onDeleteLoanBalance}
       />
       <LoanPaymentsModal

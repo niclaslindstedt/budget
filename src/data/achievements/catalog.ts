@@ -267,6 +267,23 @@ const hasItemValue = (s: UserData) =>
   s.items.some(
     (it) => Array.isArray(it.valueHistory) && it.valueHistory.length > 0,
   );
+// Total dated value / balance / price points across every "value over
+// time" history — the surfaces the file importer feeds. A jump of two or
+// more in a single reducer transition is the signature of a batch CSV /
+// Excel import (manual "Update value" adds land one point at a time).
+const countValuePoints = (s: UserData) =>
+  (s.items ?? []).reduce((n, it) => n + (it.valueHistory?.length ?? 0), 0) +
+  (s.properties ?? []).reduce((n, p) => n + (p.valueHistory?.length ?? 0), 0) +
+  (s.savings ?? []).reduce((n, sv) => n + (sv.balanceHistory?.length ?? 0), 0) +
+  (s.loans ?? []).reduce((n, l) => n + (l.balanceHistory?.length ?? 0), 0) +
+  (s.investmentHoldings ?? []).reduce(
+    (n, h) => n + (h.valueHistory?.length ?? 0),
+    0,
+  ) +
+  (s.investmentStocks ?? []).reduce(
+    (n, p) => n + (p.priceHistory?.length ?? 0),
+    0,
+  );
 const hasMultipartItem = (s: UserData) =>
   eachAccountBudget(s, (i) => {
     const corrections = i.rows.filter((r) => r.kind === "correction").length;
@@ -1462,6 +1479,25 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.items],
       predicate: (prev, next) => !hasItemValue(prev) && hasItemValue(next),
+    },
+  },
+  {
+    id: "bulkImporter",
+    tier: "pro",
+    glyph: FileUp,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [
+        s.items,
+        s.properties,
+        s.savings,
+        s.loans,
+        s.investmentHoldings,
+        s.investmentStocks,
+      ],
+      predicate: (prev, next) =>
+        countValuePoints(next) - countValuePoints(prev) >= 2,
     },
   },
   {

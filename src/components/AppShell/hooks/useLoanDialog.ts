@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { ConfirmAction } from "../../ConfirmDialog";
+import type { ImportedPoint } from "../../../data/import/value-import";
 import type { Action, LoanImportEntryOverride } from "../../../data/reducer";
 import { resolveLinkedMortgages } from "../../../data/loans/balance";
 import { splitPaymentAcrossMortgages } from "../../../data/finance/payment";
@@ -61,6 +62,7 @@ type Result = {
   setUpdateBalanceForId: (next: string | null) => void;
   onOpenUpdateBalance: (loanId: string) => void;
   onAddLoanBalance: (loanId: string, point: LoanBalancePoint) => void;
+  onImportLoanBalances: (loanId: string, points: ImportedPoint[]) => void;
   onDeleteLoanBalance: (loanId: string, pointId: string) => void;
 
   // Payments list modal.
@@ -240,6 +242,12 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
   const onAddLoanBalance = useCallback(
     (loanId: string, point: LoanBalancePoint) => {
       dispatch({ type: "addLoanBalance", loanId, point });
+    },
+    [dispatch],
+  );
+  const onImportLoanBalances = useCallback(
+    (loanId: string, points: ImportedPoint[]) => {
+      dispatch({ type: "importLoanBalances", loanId, points });
     },
     [dispatch],
   );
@@ -443,6 +451,7 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
     setUpdateBalanceForId,
     onOpenUpdateBalance,
     onAddLoanBalance,
+    onImportLoanBalances,
     onDeleteLoanBalance,
     paymentsLoan,
     setPaymentsForId,

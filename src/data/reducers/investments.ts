@@ -1,3 +1,5 @@
+import { mergeImportedPoints } from "../import/value-import";
+import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { InvestmentHolding, StockPosition, UserData } from "../types";
@@ -70,6 +72,17 @@ export function reduceInvestments(
       valueHistory: [...h.valueHistory, action.point],
     }));
   }
+  if (action.type === "importInvestmentHoldingValues") {
+    return updateHoldingById(state, action.holdingId, (h) => ({
+      ...h,
+      valueHistory: mergeImportedPoints(
+        h.valueHistory,
+        action.points,
+        newId,
+        (p) => ({ id: p.id, date: p.date, value: p.value }),
+      ),
+    }));
+  }
   if (action.type === "deleteInvestmentHoldingValue") {
     return updateHoldingById(state, action.holdingId, (h) => ({
       ...h,
@@ -115,6 +128,27 @@ export function reduceInvestments(
     return updateStockById(state, action.positionId, (p) => ({
       ...p,
       priceHistory: [...p.priceHistory, action.point],
+    }));
+  }
+  if (action.type === "importStockPrices") {
+    // The imported value maps onto `pricePerShare`; a price per share is a
+    // magnitude, so clamp the sign defensively.
+    return updateStockById(state, action.positionId, (p) => ({
+      ...p,
+      priceHistory: mergeImportedPoints(
+        p.priceHistory.map((pt) => ({
+          id: pt.id,
+          date: pt.date,
+          value: pt.pricePerShare,
+        })),
+        action.points,
+        newId,
+        (pt) => ({ id: pt.id, date: pt.date, value: pt.value }),
+      ).map((pt) => ({
+        id: pt.id,
+        date: pt.date,
+        pricePerShare: Math.abs(pt.value),
+      })),
     }));
   }
   if (action.type === "deleteStockPrice") {

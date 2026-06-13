@@ -48,6 +48,7 @@ import type {
   UserData,
 } from "./types";
 import type { SheetDraft } from "./action-payloads";
+import type { ImportedPoint } from "./import/value-import";
 import type { ParsedBankEntry } from "../storage/banks";
 import { type ItemAction } from "./reducers/item";
 import { SHEET_TYPE_REGISTRY } from "./sheet-types";
@@ -208,6 +209,15 @@ export type Action =
       type: "deleteItemValue";
       itemId: string;
       pointId: string;
+    }
+  | {
+      // Bulk-import dated values from a CSV / Excel file (one undo entry).
+      // Each point merges into `valueHistory` one-per-date, replacing any
+      // prior point on a covered date. Mirrors the other value-history
+      // imports.
+      type: "importItemValues";
+      itemId: string;
+      points: ImportedPoint[];
     }
   | {
       // Replace the inline line-item links on a single bank-imported
@@ -530,6 +540,13 @@ export type Action =
       patch: Partial<Omit<PropertyValuePoint, "id">>;
     }
   | { type: "deletePropertyValue"; propertyId: string; pointId: string }
+  | {
+      // Bulk-import dated market values from a CSV / Excel file (one undo
+      // entry); merges into `valueHistory` one-per-date.
+      type: "importPropertyValues";
+      propertyId: string;
+      points: ImportedPoint[];
+    }
   // Savings — the savings accounts the user sets money aside in, rendered by
   // the Savings sheet. Each mutates `UserData.savings`; the balance-point
   // actions append / edit / delete a dated snapshot under one account
@@ -557,6 +574,13 @@ export type Action =
       patch: Partial<Omit<SavingBalancePoint, "id">>;
     }
   | { type: "deleteSavingBalance"; savingId: string; pointId: string }
+  | {
+      // Bulk-import dated balances from a CSV / Excel file (one undo
+      // entry); merges into `balanceHistory` one-per-date.
+      type: "importSavingBalances";
+      savingId: string;
+      points: ImportedPoint[];
+    }
   // Loans — the money the user owes, rendered by the Loans sheet. Each
   // mutates `UserData.loans`. A mortgage loan links a property's mortgage
   // by carrying `propertyId` + `mortgageId` in the loan itself, so there
@@ -593,6 +617,13 @@ export type Action =
       point: LoanBalancePoint;
     }
   | { type: "deleteLoanBalance"; loanId: string; pointId: string }
+  | {
+      // Bulk-import dated outstanding balances from a CSV / Excel file
+      // (one undo entry); merges into `balanceHistory` one-per-date.
+      type: "importLoanBalances";
+      loanId: string;
+      points: ImportedPoint[];
+    }
   // Investments — the holdings catalog + private stocks rendered by the
   // Investment sheet. Holdings mutate `UserData.investmentHoldings`
   // (value points nest one level deep); stock positions mutate
@@ -619,6 +650,13 @@ export type Action =
       type: "deleteInvestmentHoldingValue";
       holdingId: string;
       pointId: string;
+    }
+  | {
+      // Bulk-import dated market values from a CSV / Excel file (one undo
+      // entry); merges into `valueHistory` one-per-date.
+      type: "importInvestmentHoldingValues";
+      holdingId: string;
+      points: ImportedPoint[];
     }
   | { type: "addStockPosition"; position: StockPosition }
   | {
@@ -652,6 +690,14 @@ export type Action =
       point: StockPricePoint;
     }
   | { type: "deleteStockPrice"; positionId: string; pointId: string }
+  | {
+      // Bulk-import dated prices per share from a CSV / Excel file (one
+      // undo entry); merges into `priceHistory` one-per-date. The imported
+      // value maps onto `pricePerShare`.
+      type: "importStockPrices";
+      positionId: string;
+      points: ImportedPoint[];
+    }
   | { type: "addMortgage"; propertyId: string; mortgage: Mortgage }
   | {
       type: "updateMortgage";

@@ -312,6 +312,10 @@ src/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
+│   ├── import/
+│   │   └── value-import.ts     # CSV/xlsx → dated points for the shared
+│   │                           #   "Import from file" modal: readTabularFile,
+│   │                           #   suggestColumns, buildPoints, mergeImportedPoints
 │   ├── items/
 │   │   ├── value.ts            # computeItemCurrentValue / isItemOwned for the
 │   │   │                       #   Items page (resale value + depreciation)

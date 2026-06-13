@@ -422,6 +422,13 @@ export function InvestmentPage({ sheet, data, settings, dispatch }: Props) {
         onAddValue={(holdingId, point) =>
           dispatch({ type: "addInvestmentHoldingValue", holdingId, point })
         }
+        onImportValues={(holdingId, points) =>
+          dispatch({
+            type: "importInvestmentHoldingValues",
+            holdingId,
+            points,
+          })
+        }
         onDeleteValue={(holdingId, pointId) =>
           dispatch({ type: "deleteInvestmentHoldingValue", holdingId, pointId })
         }
@@ -460,6 +467,9 @@ export function InvestmentPage({ sheet, data, settings, dispatch }: Props) {
         onClose={() => setModal(null)}
         onAddPrice={(positionId, point) =>
           dispatch({ type: "addStockPrice", positionId, point })
+        }
+        onImportPrices={(positionId, points) =>
+          dispatch({ type: "importStockPrices", positionId, points })
         }
         onDeletePrice={(positionId, pointId) =>
           dispatch({ type: "deleteStockPrice", positionId, pointId })

@@ -580,6 +580,13 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna prylens ”…”-meny på Prylar-bladet och välj Uppdatera värde för att logga vad den är värd idag. Vissa saker stiger i värde — konst, samlarobjekt, antikviteter — så registrera ett värde då och då; varje sådant syns i förmögenhetsgrafen och låter en pryl som ökar i värde stiga i stället för att ligga kvar på vad du betalade.",
   },
+  bulkImporter: {
+    name: "Massimportör",
+    condition:
+      "Importera en omgång daterade värden från en CSV- eller Excel-fil.",
+    learnMore:
+      "Varje ”Uppdatera värde / saldo”-dialog — prylar, fastighet, sparande, lån, innehav, aktiepriser — har en knapp för att importera från fil. Släpp in en CSV- eller Excel-export, klicka på kolumnen med datumen och den med värdena, så hamnar varje rad som en daterad punkt på en gång. Dialogen förhandsvisar exakt vilka datum och värden den läste (och flaggar rader den inte kunde tolka), så flera års historik tar sekunder i stället för en ögonblicksbild i taget.",
+  },
   completionist: {
     name: "Komplettist",
     condition: "Lås upp alla andra bedrifter.",

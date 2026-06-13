@@ -2,6 +2,8 @@ import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
 } from "../description-normaliser";
+import { mergeImportedPoints } from "../import/value-import";
+import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { UserData } from "../types";
@@ -89,6 +91,24 @@ export function reduceItems(state: UserData, action: Action): UserData | null {
       items: state.items.map((it) =>
         it.id === action.itemId
           ? { ...it, valueHistory: [...(it.valueHistory ?? []), action.point] }
+          : it,
+      ),
+    };
+  }
+  if (action.type === "importItemValues") {
+    return {
+      ...state,
+      items: state.items.map((it) =>
+        it.id === action.itemId
+          ? {
+              ...it,
+              valueHistory: mergeImportedPoints(
+                it.valueHistory ?? [],
+                action.points,
+                newId,
+                (p) => ({ id: p.id, date: p.date, value: p.value }),
+              ),
+            }
           : it,
       ),
     };
