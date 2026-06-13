@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { computeItemCurrentValue, isItemOwned } from "../src/data/items/value";
+import {
+  computeItemCurrentValue,
+  isItemOwned,
+  resolveItemValueHistory,
+} from "../src/data/items/value";
 import type { Item } from "../src/data/types";
 
 function item(overrides: Partial<Item>): Item {
@@ -145,6 +149,79 @@ describe("computeItemCurrentValue", () => {
         "2026-06-01",
       ),
     ).toBe(0);
+  });
+
+  it("uses the latest recorded value snapshot on or before the date", () => {
+    const art = item({
+      purchasePrice: 10000,
+      acquiredAt: "2020-01-01",
+      valueHistory: [
+        { id: "v1", date: "2023-01-01", value: 15000 },
+        { id: "v2", date: "2025-01-01", value: 22000 },
+      ],
+    });
+    // Before the first appraisal it sits at its purchase price…
+    expect(computeItemCurrentValue(art, "2021-06-01")).toBe(10000);
+    // …then steps up to each recorded value as time passes.
+    expect(computeItemCurrentValue(art, "2024-01-01")).toBe(15000);
+    expect(computeItemCurrentValue(art, "2026-01-01")).toBe(22000);
+  });
+
+  it("lets a recorded value win over a depreciation curve", () => {
+    const value = computeItemCurrentValue(
+      item({
+        purchasePrice: 1000,
+        acquiredAt: "2020-01-01",
+        depreciation: { method: "percentPerYear", ratePerYear: 20 },
+        valueHistory: [{ id: "v1", date: "2025-01-01", value: 5000 }],
+      }),
+      "2026-01-01",
+    );
+    expect(value).toBe(5000);
+  });
+
+  it("ignores a future-dated recorded value", () => {
+    const value = computeItemCurrentValue(
+      item({
+        purchasePrice: 1000,
+        valueHistory: [{ id: "v1", date: "2027-01-01", value: 5000 }],
+      }),
+      "2026-01-01",
+    );
+    expect(value).toBe(1000);
+  });
+});
+
+describe("resolveItemValueHistory", () => {
+  it("folds the purchase in as the first point", () => {
+    const history = resolveItemValueHistory(
+      item({
+        purchasePrice: 10000,
+        acquiredAt: "2020-01-01",
+        valueHistory: [{ id: "v1", date: "2023-01-01", value: 15000 }],
+      }),
+    );
+    expect(history).toHaveLength(2);
+    expect(history[0]).toMatchObject({ date: "2020-01-01", value: 10000 });
+  });
+
+  it("does not duplicate a recorded snapshot on the purchase date", () => {
+    const history = resolveItemValueHistory(
+      item({
+        purchasePrice: 10000,
+        acquiredAt: "2020-01-01",
+        valueHistory: [{ id: "v1", date: "2020-01-01", value: 10000 }],
+      }),
+    );
+    expect(history).toHaveLength(1);
+  });
+
+  it("returns just the recorded points when there is no dated purchase", () => {
+    const history = resolveItemValueHistory(
+      item({ valueHistory: [{ id: "v1", date: "2023-01-01", value: 15000 }] }),
+    );
+    expect(history).toHaveLength(1);
+    expect(history[0].id).toBe("v1");
   });
 });
 

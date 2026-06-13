@@ -373,6 +373,10 @@ function earliestRelevantDate(
   for (const item of data.items) {
     if (!isItemOwned(item) || !included(item.id)) continue;
     consider(item.acquiredAt);
+    // A recorded value snapshot can predate (or stand in for a missing)
+    // acquisition date, so the series window starts where the value data
+    // does — otherwise an appreciating item's history would be clipped.
+    for (const point of item.valueHistory ?? []) consider(point.date);
   }
   for (const holding of data.investmentHoldings) {
     if (!included(holding.id)) continue;

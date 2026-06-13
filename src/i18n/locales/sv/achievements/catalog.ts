@@ -574,6 +574,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna radens ”…”-meny och välj Prylar för att koppla en del av beloppet till något du äger — 15 000 av ett köp på 20 000 var telefonen, resten är bara rest. Bygg upp en katalog över prylar (och klassificera dem gärna med en underkategori), grunden för att hålla koll på vad du äger och vad det är värt över tid.",
   },
+  appreciated: {
+    name: "Värdestegring",
+    condition: "Registrera ett värde för en pryl du äger.",
+    learnMore:
+      "Öppna prylens ”…”-meny på Prylar-bladet och välj Uppdatera värde för att logga vad den är värd idag. Vissa saker stiger i värde — konst, samlarobjekt, antikviteter — så registrera ett värde då och då; varje sådant syns i förmögenhetsgrafen och låter en pryl som ökar i värde stiga i stället för att ligga kvar på vad du betalade.",
+  },
   completionist: {
     name: "Komplettist",
     condition: "Lås upp alla andra bedrifter.",

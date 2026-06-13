@@ -35,6 +35,7 @@ import {
   Filter,
   FolderTree,
   FunctionSquare,
+  Gem,
   GitCompareArrows,
   GitMerge,
   Hammer,
@@ -258,6 +259,13 @@ const hasLineItem = (s: UserData) =>
   eachRow(s, (r) => Array.isArray(r.lineItems) && r.lineItems.length > 0) ||
   Object.values(s.history).some((arr) =>
     arr.some((e) => Array.isArray(e.lineItems) && e.lineItems.length > 0),
+  );
+// An owned item carries at least one recorded value snapshot — the payoff
+// of the Items sheet's "Update value" modal, used to track an item that
+// appreciates (art, collectibles) as its value climbs over time.
+const hasItemValue = (s: UserData) =>
+  s.items.some(
+    (it) => Array.isArray(it.valueHistory) && it.valueHistory.length > 0,
   );
 const hasMultipartItem = (s: UserData) =>
   eachAccountBudget(s, (i) => {
@@ -1443,6 +1451,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.sheets, s.history],
       predicate: (prev, next) => !hasLineItem(prev) && hasLineItem(next),
+    },
+  },
+  {
+    id: "appreciated",
+    tier: "expert",
+    glyph: Gem,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.items],
+      predicate: (prev, next) => !hasItemValue(prev) && hasItemValue(next),
     },
   },
   {

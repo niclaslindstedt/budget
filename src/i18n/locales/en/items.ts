@@ -80,6 +80,17 @@ const items = {
   deleteItem: "Delete item",
   editItemAria: "Edit {name}",
   save: "Save",
+  // Update value modal — record dated value snapshots (appreciation /
+  // re-appraisal) from the item row "…" menu.
+  updateValue: "Update value",
+  updateValueTitle: "Update value",
+  valueLabel: "Value",
+  valuePlaceholder: "Current value",
+  asOfLabel: "As of",
+  valueHistoryHeading: "Recorded values",
+  noValueHistory: "No values recorded yet.",
+  purchaseValueTag: "Purchase",
+  deleteValue: "Delete value",
   // Receipt attachment — shared modal opened from the item row "…" menu.
   receipt: "Receipt",
   receiptUpload: "Upload receipt",

@@ -48,6 +48,17 @@ export type ItemDepreciation =
       floor?: number;
     };
 
+// One manually-recorded value snapshot for an item — "this painting was
+// appraised at 45 000 on 2025-03-01". Each carries its own `id` (rather
+// than being keyed by `date`) so two snapshots taken on the same day can
+// be edited / deleted independently. Mirrors `PropertyValuePoint` /
+// `InvestmentValuePoint`.
+export type ItemValuePoint = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd the value was recorded for
+  value: number; // the value at that date, in the user's currency
+};
+
 // The shape grows as the seed for the future Item sheet: it now carries the
 // inputs that sheet needs to compute tied-up capital and recoverable value
 // — what the item cost, how it depreciates, what it would resell for, and
@@ -80,6 +91,16 @@ export type Item = {
   // computed depreciation figure — the user's own estimate of what they
   // could get for it today.
   resaleValue?: number;
+  // Dated value snapshots recorded over time via the "Update value" modal.
+  // Lets an item that appreciates (art, collectibles, antiques) track a
+  // rising value across the net-worth series instead of sitting flat at
+  // its purchase price. The latest point on or before a date is the item's
+  // value at that date (see `computeItemCurrentValue`); it wins over both a
+  // static `resaleValue` and a `depreciation` curve. Absent / empty means
+  // the item has never had a value recorded this way. The item's purchase
+  // (`purchasePrice` at `acquiredAt`) is folded in as a read-only first
+  // point at display time, so it isn't stored here.
+  valueHistory?: ItemValuePoint[];
   // ISO date the item was sold or given away. Once set, the item is no
   // longer "owned" capital; the future Item sheet stops counting it as
   // tied up.

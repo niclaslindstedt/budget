@@ -9,6 +9,7 @@ import type {
   FileCategory,
   Item,
   ItemDepreciation,
+  ItemValuePoint,
   LineItemLink,
   Subtype,
   Tag,
@@ -268,7 +269,33 @@ export function validateItem(
     item.lifetimeYears = raw.lifetimeYears;
   const depreciation = validateItemDepreciation(raw.depreciation);
   if (depreciation) item.depreciation = depreciation;
+  const valueHistory = validateItemValueHistory(raw.valueHistory);
+  if (valueHistory.length > 0) item.valueHistory = valueHistory;
   return { ok: true, value: item };
+}
+
+// Parse an item's recorded value snapshots. Advisory display data — a
+// malformed point is dropped rather than rejecting the whole item (mirrors
+// `validateValuePoint` for properties). Duplicate ids are swept so a
+// later delete-by-id stays unambiguous. Returns the cleaned array (possibly
+// empty); the caller stores it only when non-empty.
+function validateItemValueHistory(raw: unknown): ItemValuePoint[] {
+  if (!Array.isArray(raw)) return [];
+  const points: ItemValuePoint[] = [];
+  const seen = new Set<string>();
+  const isIsoDate = (v: unknown): v is string =>
+    typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v);
+  for (const entry of raw) {
+    if (!isObject(entry)) continue;
+    const { id, date, value } = entry;
+    if (typeof id !== "string" || id === "") continue;
+    if (seen.has(id)) continue;
+    if (!isIsoDate(date)) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    seen.add(id);
+    points.push({ id, date, value });
+  }
+  return points;
 }
 
 // Parse a persisted depreciation rule, returning the cleaned value or

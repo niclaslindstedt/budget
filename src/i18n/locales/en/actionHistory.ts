@@ -60,6 +60,8 @@ const actionHistory = {
     addItem: "Added item",
     updateItem: "Edited item",
     deleteItem: "Deleted item",
+    addItemValue: "Recorded item value",
+    deleteItemValue: "Deleted item value",
     linkLineItemsToHistoryEntry: "Edited line items",
     ignoreItemEntry: "Ignored a transaction",
     clearIgnoredItemEntries: "Cleared ignored transactions",

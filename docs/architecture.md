@@ -226,7 +226,8 @@ src/
 │   │   ├── categories.ts       # Category, EntryType, EntryTypeKind, Subtype,
 │   │   │                       #   Company, CompanyCategory, Tag, CategoryIcon
 │   │   │                       #   allowlist
-│   │   ├── items.ts            # Item (owned things), LineItemLink (entry↔item)
+│   │   ├── items.ts            # Item (owned things, + valueHistory),
+│   │   │                       #   ItemValuePoint, LineItemLink (entry↔item)
 │   │   ├── accounts.ts         # Account, HistoryEntry (+ lineItems),
 │   │   │                       #   HistoryEntrySplit, HistoryImport, Transfer
 │   │   ├── rules.ts            # MatchRule, MerchantHint, RenamePattern,

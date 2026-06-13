@@ -47,6 +47,7 @@ export type ModalCommand =
   | { kind: "open-edit-company"; companyId: string }
   | { kind: "open-edit-item"; itemId: string }
   | { kind: "open-create-item" }
+  | { kind: "open-update-item-value"; itemId: string }
   | { kind: "open-find-items" };
 
 export type ModalDispatch = (command: ModalCommand) => void;
@@ -97,6 +98,10 @@ export type ModalCommandHandlers = {
   // user can grow the owned-items catalog directly from its page rather
   // than only via a line-item link on a budget row.
   createItem: () => void;
+  // Open the "Update value" modal for an owned item — record a dated value
+  // snapshot (appreciation / re-appraisal). Fired from a single item row's
+  // "…" overflow menu on the Items sheet.
+  updateItemValue: (itemId: string) => void;
   // Open the "Find items" modal, which scans bank history for likely
   // item purchases and walks the user through cataloguing them. Fired
   // from the Items sheet title "…" menu.
@@ -187,6 +192,9 @@ export function applyModalCommand(
     case "open-create-item":
       handlers.createItem();
       return;
+    case "open-update-item-value":
+      handlers.updateItemValue(command.itemId);
+      return;
     case "open-find-items":
       handlers.findItems();
       return;
@@ -227,6 +235,7 @@ const COMMAND_TARGET: Record<ModalCommand["kind"], keyof ModalCommandHandlers> =
     "open-edit-company": "editCompany",
     "open-edit-item": "editItem",
     "open-create-item": "createItem",
+    "open-update-item-value": "updateItemValue",
     "open-find-items": "findItems",
   };
 

@@ -133,15 +133,16 @@ The workspace dashboard. Sheet type `"accounts"`. Files live in
 The owned-items catalog. Sheet type `"items"`. Files live in
 `src/components/items/`.
 
-| Term                                                 | Refers to                                                                                                                                                           |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Items page** / **Items sheet** / **items catalog** | `ItemsPage.tsx`; `ItemsView`, `UserData.items`. [→](overview.md#items-page)                                                                                         |
-| **Item row**                                         | `ItemRow.tsx`; `computeItemCurrentValue` (`src/data/items/value.ts`). [→](overview.md#item-row)                                                                     |
-| **Current value** / **resale value**                 | `computeItemCurrentValue`, `isItemOwned` (`src/data/items/value.ts`). [→](overview.md#current-value-item)                                                           |
-| **Depreciation** / **steady** / **accelerated**      | `ItemDepreciation` (`src/data/types/items.ts`); decay math in `src/data/items/value.ts`; model toggle in `ItemEditorModal.tsx`. [→](overview.md#current-value-item) |
-| **Find items modal** / **find items**                | `ItemFinderModal.tsx`; `findItemPurchaseCandidates` (`src/data/items/find.ts`), `open-find-items`. [→](overview.md#find-items-modal)                                |
-| **Exclude similar** (find items)                     | `excludeSimilarItemEntries`, `UserData.itemFindExclusionPatterns`. [→](overview.md#exclude-similar)                                                                 |
-| **Items settings tab**                               | `SettingsModal/tabs/items.tsx` (`ItemsTab`). [→](overview.md#items-settings-tab)                                                                                    |
+| Term                                                                | Refers to                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Items page** / **Items sheet** / **items catalog**                | `ItemsPage.tsx`; `ItemsView`, `UserData.items`. [→](overview.md#items-page)                                                                                                                                                  |
+| **Item row**                                                        | `ItemRow.tsx`; `computeItemCurrentValue` (`src/data/items/value.ts`). [→](overview.md#item-row)                                                                                                                              |
+| **Current value** / **resale value**                                | `computeItemCurrentValue`, `isItemOwned` (`src/data/items/value.ts`). [→](overview.md#current-value-item)                                                                                                                    |
+| **Depreciation** / **steady** / **accelerated**                     | `ItemDepreciation` (`src/data/types/items.ts`); decay math in `src/data/items/value.ts`; model toggle in `ItemEditorModal.tsx`. [→](overview.md#current-value-item)                                                          |
+| **Update value** (item) / **item value history** / **appreciation** | `UpdateItemValueModal.tsx` (`open-update-item-value`); `Item.valueHistory` / `ItemValuePoint` (`src/data/types/items.ts`); `resolveItemValueHistory`, `addItemValue` / `deleteItemValue`. [→](overview.md#update-value-item) |
+| **Find items modal** / **find items**                               | `ItemFinderModal.tsx`; `findItemPurchaseCandidates` (`src/data/items/find.ts`), `open-find-items`. [→](overview.md#find-items-modal)                                                                                         |
+| **Exclude similar** (find items)                                    | `excludeSimilarItemEntries`, `UserData.itemFindExclusionPatterns`. [→](overview.md#exclude-similar)                                                                                                                          |
+| **Items settings tab**                                              | `SettingsModal/tabs/items.tsx` (`ItemsTab`). [→](overview.md#items-settings-tab)                                                                                                                                             |
 
 ## Salary page
 

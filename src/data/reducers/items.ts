@@ -80,6 +80,36 @@ export function reduceItems(state: UserData, action: Action): UserData | null {
       ),
     };
   }
+  if (action.type === "addItemValue") {
+    // Append one dated value snapshot to the item's `valueHistory` (the
+    // current value is the latest point on or before today). Mirrors
+    // `addInvestmentHoldingValue`.
+    return {
+      ...state,
+      items: state.items.map((it) =>
+        it.id === action.itemId
+          ? { ...it, valueHistory: [...(it.valueHistory ?? []), action.point] }
+          : it,
+      ),
+    };
+  }
+  if (action.type === "deleteItemValue") {
+    // Drop one recorded value snapshot by id; the field empties to absent
+    // so a freshly-cleared item matches the never-recorded shape.
+    return {
+      ...state,
+      items: state.items.map((it) => {
+        if (it.id !== action.itemId) return it;
+        const next = (it.valueHistory ?? []).filter(
+          (pt) => pt.id !== action.pointId,
+        );
+        if (next.length > 0) return { ...it, valueHistory: next };
+        const { valueHistory: _drop, ...rest } = it;
+        void _drop;
+        return rest;
+      }),
+    };
+  }
   if (action.type === "deleteItem") {
     // Deleting an item sweeps every inline line-item link that pointed at
     // it — across all budget rows AND all history entries — dropping the
