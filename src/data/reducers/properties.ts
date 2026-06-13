@@ -1,3 +1,5 @@
+import { mergeImportedPoints } from "../import/value-import";
+import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { Mortgage, Property, UserData } from "../types";
@@ -80,6 +82,17 @@ export function reduceProperties(
     return updatePropertyById(state, action.propertyId, (p) => ({
       ...p,
       valueHistory: [...p.valueHistory, action.point],
+    }));
+  }
+  if (action.type === "importPropertyValues") {
+    return updatePropertyById(state, action.propertyId, (p) => ({
+      ...p,
+      valueHistory: mergeImportedPoints(
+        p.valueHistory,
+        action.points,
+        newId,
+        (pt) => ({ id: pt.id, date: pt.date, value: pt.value }),
+      ),
     }));
   }
   if (action.type === "updatePropertyValue") {

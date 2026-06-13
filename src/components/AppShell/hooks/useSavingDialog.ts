@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { ConfirmAction } from "../../ConfirmDialog";
+import type { ImportedPoint } from "../../../data/import/value-import";
 import type { Action } from "../../../data/reducer";
 import { newId } from "../../../data/sheet";
 import type { Saving, SavingBalancePoint, UserData } from "../../../data/types";
@@ -42,6 +43,7 @@ type Result = {
   updateBalanceSaving: Saving | null;
   onOpenUpdateBalance: (savingId: string) => void;
   onAddSavingBalance: (savingId: string, point: SavingBalancePoint) => void;
+  onImportSavingBalances: (savingId: string, points: ImportedPoint[]) => void;
   onDeleteSavingBalance: (savingId: string, pointId: string) => void;
 };
 
@@ -167,6 +169,12 @@ export function useSavingDialog({ data, dispatch, toast }: Params): Result {
     },
     [dispatch],
   );
+  const onImportSavingBalances = useCallback(
+    (savingId: string, points: ImportedPoint[]) => {
+      dispatch({ type: "importSavingBalances", savingId, points });
+    },
+    [dispatch],
+  );
   const onDeleteSavingBalance = useCallback(
     (savingId: string, pointId: string) => {
       dispatch({ type: "deleteSavingBalance", savingId, pointId });
@@ -190,6 +198,7 @@ export function useSavingDialog({ data, dispatch, toast }: Params): Result {
     updateBalanceSaving,
     onOpenUpdateBalance,
     onAddSavingBalance,
+    onImportSavingBalances,
     onDeleteSavingBalance,
   };
 }

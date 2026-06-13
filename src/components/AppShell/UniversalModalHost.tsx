@@ -664,6 +664,9 @@ export function UniversalModalHost(props: Props) {
         onAddValue={(itemId, point) =>
           dispatch({ type: "addItemValue", itemId, point })
         }
+        onImportValues={(itemId, points) =>
+          dispatch({ type: "importItemValues", itemId, points })
+        }
         onDeleteValue={(itemId, pointId) =>
           dispatch({ type: "deleteItemValue", itemId, pointId })
         }

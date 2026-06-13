@@ -1,3 +1,5 @@
+import { mergeImportedPoints } from "../import/value-import";
+import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action, LoanImportEntryOverride } from "../reducer";
 import type { Loan, UserData } from "../types";
@@ -118,6 +120,20 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
     return updateLoanById(state, action.loanId, (l) => ({
       ...l,
       balanceHistory: [...l.balanceHistory, action.point],
+    }));
+  }
+  if (action.type === "importLoanBalances") {
+    // Loan balances are outstanding debt — always a non-negative
+    // magnitude. The modal already imports `Math.abs`, but guard here too
+    // so a hand-dispatched action can't seed a negative balance.
+    return updateLoanById(state, action.loanId, (l) => ({
+      ...l,
+      balanceHistory: mergeImportedPoints(
+        l.balanceHistory,
+        action.points,
+        newId,
+        (p) => ({ id: p.id, date: p.date, value: Math.abs(p.value) }),
+      ),
     }));
   }
   if (action.type === "deleteLoanBalance") {

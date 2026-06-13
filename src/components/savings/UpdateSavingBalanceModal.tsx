@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { Scale } from "lucide-react";
 
+import type { ImportedPoint } from "../../data/import/value-import";
 import { newId } from "../../data/sheet";
 import type { Saving, SavingBalancePoint, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
+import { BatchValueImportModal } from "../BatchValueImportModal";
 import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
 import { Modal } from "../Modal";
 
@@ -27,6 +29,7 @@ type Props = {
   settings: Settings;
   onClose: () => void;
   onAddBalance: (savingId: string, point: SavingBalancePoint) => void;
+  onImportBalances: (savingId: string, points: ImportedPoint[]) => void;
   onDeleteBalance: (savingId: string, pointId: string) => void;
 };
 
@@ -36,12 +39,14 @@ export function UpdateSavingBalanceModal({
   settings,
   onClose,
   onAddBalance,
+  onImportBalances,
   onDeleteBalance,
 }: Props) {
   const t = useT();
   const lang = useLang();
   const [value, setValue] = useState("");
   const [date, setDate] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const valueInputRef = useRef<HTMLInputElement | null>(null);
 
   useResetOnOpen(open, saving?.id, () => {
@@ -72,104 +77,125 @@ export function UpdateSavingBalanceModal({
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      labelledBy="update-saving-balance-title"
-      size="max-w-sm"
-    >
-      <Modal.Header
-        icon={<Scale size={14} aria-hidden focusable={false} />}
-        title={t("savingsSheet.updateBalanceTitle")}
+    <>
+      <Modal
+        open
         onClose={onClose}
-      />
-      <Modal.Body>
-        <div className="flex flex-col gap-3">
-          <p className="m-0 text-sm font-bold text-fg-bright">{saving.name}</p>
+        labelledBy="update-saving-balance-title"
+        size="max-w-sm"
+      >
+        <Modal.Header
+          icon={<Scale size={14} aria-hidden focusable={false} />}
+          title={t("savingsSheet.updateBalanceTitle")}
+          onClose={onClose}
+        />
+        <Modal.Body>
+          <div className="flex flex-col gap-3">
+            <p className="m-0 text-sm font-bold text-fg-bright">
+              {saving.name}
+            </p>
 
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAdd();
-            }}
-          >
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">
-                {t("savingsSheet.balanceLabel")}
-              </span>
-              <ClearableInput
-                ref={valueInputRef}
-                value={value}
-                onValueChange={setValue}
-                inputMode="decimal"
-                placeholder={t("savingsSheet.balancePlaceholder")}
-                className={amountInputClass}
-              />
-            </label>
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAdd();
+              }}
+            >
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("savingsSheet.balanceLabel")}
+                </span>
+                <ClearableInput
+                  ref={valueInputRef}
+                  value={value}
+                  onValueChange={setValue}
+                  inputMode="decimal"
+                  placeholder={t("savingsSheet.balancePlaceholder")}
+                  className={amountInputClass}
+                />
+              </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">
-                {t("savingsSheet.asOfLabel")}
-              </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={DATE_INPUT_CLASS}
-              />
-            </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-muted">
+                  {t("savingsSheet.asOfLabel")}
+                </span>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={DATE_INPUT_CLASS}
+                />
+              </label>
 
-            <Button type="submit" variant="primary" disabled={!canSubmit}>
-              {t("common.add")}
+              <Button type="submit" variant="primary" disabled={!canSubmit}>
+                {t("common.add")}
+              </Button>
+            </form>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setImportOpen(true)}
+            >
+              {t("valueImport.trigger")}
             </Button>
-          </form>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold tracking-wider uppercase text-muted">
-              {t("savingsSheet.balanceHistory")}
-            </span>
-            {history.length === 0 ? (
-              <p className="m-0 text-xs text-muted">
-                {t("savingsSheet.noBalanceHistory")}
-              </p>
-            ) : (
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {history.map((point) => (
-                  <li
-                    key={point.id}
-                    className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
-                  >
-                    <span className="text-muted">
-                      {formatDate(point.date, settings.dateFormat, lang)}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="tabular-nums text-fg-bright">
-                        {formatBalance(point.value, settings, {
-                          neverAbbreviate: true,
-                        })}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold tracking-wider uppercase text-muted">
+                {t("savingsSheet.balanceHistory")}
+              </span>
+              {history.length === 0 ? (
+                <p className="m-0 text-xs text-muted">
+                  {t("savingsSheet.noBalanceHistory")}
+                </p>
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                  {history.map((point) => (
+                    <li
+                      key={point.id}
+                      className="flex items-center justify-between gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm"
+                    >
+                      <span className="text-muted">
+                        {formatDate(point.date, settings.dateFormat, lang)}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteBalance(saving.id, point.id)}
-                        aria-label={t("savingsSheet.deleteBalanceAria")}
-                        className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      <span className="flex items-center gap-2">
+                        <span className="tabular-nums text-fg-bright">
+                          {formatBalance(point.value, settings, {
+                            neverAbbreviate: true,
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteBalance(saving.id, point.id)}
+                          aria-label={t("savingsSheet.deleteBalanceAria")}
+                          className="cursor-pointer rounded border-0 bg-transparent px-1 text-xs text-muted hover:text-danger"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-        </div>
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onClose}>
-          {t("common.done")}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onClose}>
+            {t("common.done")}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <BatchValueImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        subject={saving.name}
+        valueLabel={t("savingsSheet.balanceLabel")}
+        settings={settings}
+        allowNegative
+        onImport={(points) => onImportBalances(saving.id, points)}
+      />
+    </>
   );
 }

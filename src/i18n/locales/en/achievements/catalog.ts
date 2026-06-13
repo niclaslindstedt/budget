@@ -580,6 +580,12 @@ const catalog = {
     learnMore:
       "Open an item's “…” menu on the Items sheet and pick Update value to log what it's worth today. Some things gain value — art, collectibles, antiques — so record a snapshot now and then; each one shows up on the net-worth graph, letting an appreciating item climb instead of sitting flat at what you paid.",
   },
+  bulkImporter: {
+    name: "Bulk Importer",
+    condition: "Import a batch of dated values from a CSV or Excel file.",
+    learnMore:
+      "Any “Update value / balance” modal — items, property, savings, loans, holdings, stock prices — has an Import from file button. Drop in a CSV or Excel export, click the column holding the dates and the one holding the values, and every row lands as a dated point in one go. The modal previews exactly which dates and values it read (and flags rows it couldn't), so a few years of history take seconds instead of one snapshot at a time.",
+  },
   completionist: {
     name: "Completionist",
     condition: "Unlock every other achievement.",

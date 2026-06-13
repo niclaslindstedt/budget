@@ -2808,6 +2808,43 @@ A custom dropdown for choosing one of many. Never use a native
 `<select>`. Examples: `CategoryPicker.tsx`, `TypePicker.tsx`,
 `LanguagePicker.tsx`, `BackendPicker.tsx`, `GlyphPicker.tsx`.
 
+### Batch value import
+
+`BatchValueImportModal.tsx` — the universal "Import from file" modal shared
+by every "update value / balance over time" modal (items, property,
+savings, loans, investment holdings, stock prices). The user drops a CSV
+or `.xlsx` file; it renders as a spreadsheet-style grid where clicking a
+column header marks it as the **date** column (accent tint) or the
+**value** column (positive tint). The two chosen columns are previewed
+**normalised** — the date column shows the parsed ISO date in the user's
+display format, the value column shows the parsed number — and rows that
+can't be read are dimmed so the user sees exactly what will and won't
+import before committing. A role toggle picks which role a header click
+assigns; detection seeds a sensible default but both roles are always
+re-assignable.
+
+The page-agnostic plumbing lives in `src/data/import/value-import.ts`:
+`readTabularFile` (xlsx via `src/storage/xlsx-reader.ts`, otherwise CSV via
+`src/utils/csv.ts`) parses the file into a dense grid with header
+detection; `suggestColumns` scores each column for date-ness / number-ness
+(plus header-keyword nudges in English and Swedish) to pick the defaults;
+`buildPoints` turns the two columns into `{ date, value }[]`, skipping
+rows that don't parse and clamping the sign (magnitude by default,
+signed for savings); `mergeImportedPoints` folds them into an entity's
+existing history one-point-per-date (a covered date is replaced, its id
+reused so a re-import is idempotent), generalising
+`applyImportedSavingBalances`. Date parsing handles ISO, year-first,
+numeric day/month-first (disambiguated per-column by `inferDayFirst`,
+falling back to the user's `dateFormat`), two-digit years, Excel serials,
+and English / Swedish month names — see `src/utils/parse-date.ts`.
+
+Each modal renders the importer behind an **Import from file** button and
+passes an `onImport` callback that its host dispatches as a per-entity
+bulk action (`importItemValues`, `importPropertyValues`,
+`importSavingBalances`, `importLoanBalances`,
+`importInvestmentHoldingValues`, `importStockPrices`) — one undo entry per
+import.
+
 ### Modal search bar
 
 `src/components/ModalSearchBar.tsx` — the search-field shell rendered at

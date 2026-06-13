@@ -252,6 +252,7 @@ export function describeActionSubject(
     case "deleteItem":
       return name(byId(prev.items, action.itemId)?.name);
     case "addItemValue":
+    case "importItemValues":
       return name(byId(next.items, action.itemId)?.name);
     case "deleteItemValue":
       return name(byId(next.items, action.itemId)?.name);
@@ -276,6 +277,7 @@ export function describeActionSubject(
       return name(action.saving.name);
     case "updateSaving":
     case "addSavingBalance":
+    case "importSavingBalances":
     case "updateSavingBalance":
     case "deleteSavingBalance":
       return name(byId(next.savings, action.savingId)?.name);
@@ -292,6 +294,7 @@ export function describeActionSubject(
     case "deleteLoanPayment":
     case "deleteAllLoanPayments":
     case "addLoanBalance":
+    case "importLoanBalances":
     case "deleteLoanBalance":
       return name(byId(next.loans, action.loanId)?.name);
     case "deleteLoan":
@@ -304,6 +307,7 @@ export function describeActionSubject(
       return name(action.holding.name);
     case "updateInvestmentHolding":
     case "addInvestmentHoldingValue":
+    case "importInvestmentHoldingValues":
     case "deleteInvestmentHoldingValue":
       return name(byId(next.investmentHoldings, action.holdingId)?.name);
     case "deleteInvestmentHolding":
@@ -314,6 +318,7 @@ export function describeActionSubject(
     case "addStockTransaction":
     case "deleteStockTransaction":
     case "addStockPrice":
+    case "importStockPrices":
     case "deleteStockPrice":
       return name(byId(next.investmentStocks, action.positionId)?.name);
     case "deleteStockPosition":
@@ -386,6 +391,7 @@ export function describeActionSubject(
       return name(action.property.name);
     case "updateProperty":
     case "addPropertyValue":
+    case "importPropertyValues":
     case "updatePropertyValue":
     case "deletePropertyValue":
       return name(byId(next.properties, action.propertyId)?.name);

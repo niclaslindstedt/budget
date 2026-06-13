@@ -25,6 +25,7 @@ export function SavingsModalHost({ effectiveSettings, savingDialog }: Props) {
     updateBalanceSaving,
     setUpdateBalanceForId,
     onAddSavingBalance,
+    onImportSavingBalances,
     onDeleteSavingBalance,
   } = savingDialog;
 
@@ -44,6 +45,7 @@ export function SavingsModalHost({ effectiveSettings, savingDialog }: Props) {
         settings={effectiveSettings}
         onClose={() => setUpdateBalanceForId(null)}
         onAddBalance={onAddSavingBalance}
+        onImportBalances={onImportSavingBalances}
         onDeleteBalance={onDeleteSavingBalance}
       />
       <ConfirmDialog

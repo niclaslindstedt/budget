@@ -1,3 +1,5 @@
+import { mergeImportedPoints } from "../import/value-import";
+import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { Saving, UserData } from "../types";
@@ -56,6 +58,17 @@ export function reduceSavings(
     return updateSavingById(state, action.savingId, (s) => ({
       ...s,
       balanceHistory: [...s.balanceHistory, action.point],
+    }));
+  }
+  if (action.type === "importSavingBalances") {
+    return updateSavingById(state, action.savingId, (s) => ({
+      ...s,
+      balanceHistory: mergeImportedPoints(
+        s.balanceHistory,
+        action.points,
+        newId,
+        (p) => ({ id: p.id, date: p.date, value: p.value }),
+      ),
     }));
   }
   if (action.type === "updateSavingBalance") {
