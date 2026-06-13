@@ -7,6 +7,7 @@ const insightsSheet: InsightsSheetCatalog = {
   chartTitle: "Över tid",
   chartEmpty: "Inte tillräckligt med daterad data att rita ännu.",
   chartNoneInRange: "Ingen data i den här perioden. Välj en längre.",
+  chartAllHidden: "Inga band valda. Bocka i ett för att rita det.",
   noData:
     "Inget att summera ännu. Lägg till konton, sparande, saker, fastigheter eller lån så samlas allt här.",
 
@@ -15,7 +16,7 @@ const insightsSheet: InsightsSheetCatalog = {
   categoryItems: "Saker",
   categoryInvestments: "Investeringar",
   categoryProperties: "Fastigheter",
-  categoryMortgages: "Bolån",
+  categoryPropertiesNet: "Fastigheter & bolån",
   categoryLoans: "Övriga lån",
 
   settingsAction: "Inställningar för nettoförmögenhet",
