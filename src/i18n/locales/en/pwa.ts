@@ -3,6 +3,7 @@ import type { Widen } from "./_widen";
 const pwa = {
   updateReady: "Updated to {version} — reload to apply",
   updateReadyGeneric: "A new version is ready — reload to apply",
+  downloading: "Downloading update… {percent}%",
   reload: "Reload",
   dismiss: "Dismiss update notice",
   installTitle: "Install Budget",

@@ -2869,13 +2869,32 @@ An ephemeral status message at the bottom. `src/components/Toast.tsx` +
 ### Update toast
 
 `src/components/UpdateToast.tsx` — the "new build, click to reload" PWA
-prompt. When the workbox `waiting` event fires it fetches
-`version.json` (emitted into the slot root by `emitVersionJson()` in
-`vite.config.ts`, cache-bypassed so the still-active old SW lets it
-reach the network) to name the _incoming_ build's version — not the
-running bundle's `BUILD_LABEL`, which is the version being upgraded
-away from. Falls back to a version-less message when the fetch fails
-(offline, or a deploy predating `version.json`).
+prompt. The service-worker registration, update polling, and
+download-progress tracking all live in the shared `usePwaUpdate` store
+(`src/hooks/usePwaUpdate.ts`) so the toast and the header wordmark read
+the same state; the component itself is just the completion CTA. When
+the workbox `waiting` event fires the store fetches `version.json`
+(emitted into the slot root by `emitVersionJson()` in `vite.config.ts`,
+cache-bypassed so the still-active old SW lets it reach the network) to
+name the _incoming_ build's version — not the running bundle's
+`BUILD_LABEL`, which is the version being upgraded away from. Falls back
+to a version-less message when the fetch fails (offline, or a deploy
+predating `version.json`).
+
+While a new build downloads, the store turns its transfer into a real
+percentage and fills the header **budget** wordmark gold from the
+bottom — like a glass of water — and the toast surfaces once it is
+full. Workbox exposes no precache-progress API, so the store watches
+the shared precache Cache Storage from the window: a build-time plugin
+(`emitPrecacheManifest()` in `vite.config.ts`) emits
+`precache-manifest.json` listing every precached asset and its byte
+size, and the store sums the sizes of the entries already present in
+the cache against the manifest total. Content-hashed assets change URL
+every build, so they only count once the new SW actually downloads
+them, which is what makes the fill track the real transfer. The fill
+gradient reads `var(--meta)` (the logo gold) so it follows the user's
+theme, and the `.pwa-title-fill` rule lives in
+`src/styles/utilities.css`.
 
 ### Active row
 

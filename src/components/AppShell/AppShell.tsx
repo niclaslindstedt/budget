@@ -1,4 +1,11 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo } from "react";
+import {
+  type CSSProperties,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 
 import {
   type AppShellAuth,
@@ -75,6 +82,7 @@ import {
   useIdleSignOut,
   useIsMobile,
   usePullToRefresh,
+  usePwaUpdate,
   useToast,
 } from "../../hooks";
 import { createDevSeedAdapter } from "../../storage/dev-seed-adapter";
@@ -206,6 +214,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   const t = useT();
   const lang = useLang();
   const toast = useToast();
+  // While a new build's service worker downloads, fill the "budget"
+  // wordmark gold from the bottom (like a glass of water); `progress`
+  // is 0..100, or null when no update is in flight.
+  const { progress: pwaProgress } = usePwaUpdate();
   // Resolve the subject of each dispatched action for the action-history
   // modal and undo / redo toasts. Captures `lang` so the (rare) settings
   // subject is named in the active language; re-created on a language
@@ -944,7 +956,21 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                 height={24}
                 className="h-6 w-6 rounded-sm"
               />
-              <h1 className="m-0 text-base font-bold tracking-wide text-fg-bright">
+              <h1
+                className={`m-0 text-base font-bold tracking-wide ${
+                  pwaProgress === null ? "text-fg-bright" : "pwa-title-fill"
+                }`}
+                style={
+                  pwaProgress === null
+                    ? undefined
+                    : ({ "--pwa-fill": String(pwaProgress) } as CSSProperties)
+                }
+                title={
+                  pwaProgress === null
+                    ? undefined
+                    : t("pwa.downloading", { percent: String(pwaProgress) })
+                }
+              >
                 budget
               </h1>
             </button>
