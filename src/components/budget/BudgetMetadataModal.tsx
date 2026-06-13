@@ -867,6 +867,7 @@ export function BudgetMetadataModal({
                     onToggleSign={() => dispatchSplit({ kind: "toggleSign" })}
                     settings={settings}
                     ariaLabel={t("metadata.amountLabel")}
+                    calculator
                   />
                 </label>
                 <div className="flex flex-col gap-1">

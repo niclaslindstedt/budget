@@ -279,6 +279,18 @@ Estimate mode stores a signed `amountMin` / `amountMax` band on the
 `Row` (sign math in `budget-amount-span.ts`; reconciliation tolerance
 via `amountWithinSpan` in `src/data/reconciliation.ts`).
 
+### Amount calculator
+
+The calculator button on a `SignedAmountInput`
+(`src/components/form/SignedAmountInput.tsx`, opt-in via the
+`calculator` prop) — opens a popover where the user types an arithmetic
+expression (`100 + 30 + 50`) that `evaluateExpression`
+(`src/utils/calc.ts`) resolves; the computed magnitude replaces the
+field's value while the sign stays on the +/− toggle. Enabled on the
+split-entry amount fields (`BudgetSplitEntryModal`) and metadata mode's
+split amount (`BudgetMetadataModal`) so a credit-card bill's line items
+can be summed straight into a split.
+
 ### Bulk edit modal
 
 `BudgetBulkEditModal.tsx`, `BudgetMoveCopyModal.tsx`,

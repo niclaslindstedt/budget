@@ -5,6 +5,7 @@
 
 import type { Catalog } from "../en/index";
 import common from "./common";
+import calc from "./calc";
 import cloudLink from "./cloudLink";
 import pwa from "./pwa";
 import app from "./app";
@@ -89,6 +90,7 @@ import attachment from "./attachment";
 
 export const sv: Catalog = {
   common,
+  calc,
   cloudLink,
   pwa,
   app,

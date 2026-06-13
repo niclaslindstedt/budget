@@ -356,6 +356,7 @@ export function BudgetSplitEntryModal({
                       settings={settings}
                       ariaLabel={t("splitRow.amount")}
                       surface="surface"
+                      calculator
                     />
                   </label>
                   <div className="flex flex-col gap-1">

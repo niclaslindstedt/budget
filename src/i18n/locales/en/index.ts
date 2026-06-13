@@ -7,6 +7,7 @@
 import type { Widen } from "./_widen";
 
 import common from "./common";
+import calc from "./calc";
 import cloudLink from "./cloudLink";
 import pwa from "./pwa";
 import app from "./app";
@@ -91,6 +92,7 @@ import attachment from "./attachment";
 
 export const en = {
   common,
+  calc,
   cloudLink,
   pwa,
   app,

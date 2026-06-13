@@ -1,9 +1,20 @@
-import { useRef } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Calculator, Minus, Plus, X } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import type { Settings } from "../../data/types";
+import { type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
-import { normalizeAmountInput, parseAmount } from "../../utils/format";
+import { evaluateExpression } from "../../utils/calc";
+import {
+  formatAmountForInput,
+  formatNumber,
+  normalizeAmountInput,
+  parseAmount,
+  withCurrency,
+} from "../../utils/format";
+import { FloatingPanel } from "../FloatingPanel";
+import { Button } from "./Button";
 
 type Props = {
   value: string;
@@ -17,6 +28,22 @@ type Props = {
   density?: "regular" | "compact";
   width?: "flex" | "w-32";
   disabled?: boolean;
+  // When true, render a calculator button to the right of the field.
+  // Clicking it opens a popover where the user types an arithmetic
+  // expression ("100 + 30 + 50") and the evaluated magnitude replaces
+  // the field's value. The sign stays on the +/- toggle, so a field
+  // set to negative turns "100+30+50" into a magnitude of 180 that
+  // still reads as −180.
+  calculator?: boolean;
+};
+
+// Popover anchors to the input wrapper, right edges aligned, and opens
+// below (flipping up when there's no room) — the same vocabulary the
+// custom pickers use.
+const CALC_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 220 },
+  anchor: "right",
+  coordinateSpace: "viewport",
 };
 
 // Shared signed-amount editor: a +/- toggle button absolutely positioned
@@ -40,6 +67,7 @@ export function SignedAmountInput({
   density = "regular",
   width = "flex",
   disabled = false,
+  calculator = false,
 }: Props) {
   const t = useT();
 
@@ -58,15 +86,53 @@ export function SignedAmountInput({
       : "text-fg";
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canClear = value.length > 0 && !disabled;
+
+  const showCalc = calculator && !disabled;
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [calcExpr, setCalcExpr] = useState("");
+  const calcInputRef = useRef<HTMLInputElement | null>(null);
+  // Focus the expression field when the popover opens so the user can
+  // type straight away (the a11y lint rule forbids the `autoFocus`
+  // attribute, so we drive focus imperatively instead).
+  useEffect(() => {
+    if (calcOpen) calcInputRef.current?.focus();
+  }, [calcOpen]);
+
+  // Padding-right grows with the number of trailing buttons so the typed
+  // value never slides under them. Right offsets keep the calculator at
+  // the far edge and the clear button just inside it.
+  const trailingButtons = (showCalc ? 1 : 0) + (canClear ? 1 : 0);
+  const prClass =
+    trailingButtons >= 2 ? "pr-14" : trailingButtons === 1 ? "pr-7" : "pr-2";
+  const clearRightClass = showCalc ? "right-8" : "right-1.5";
 
   function handleChange(next: string) {
     const stripped = next.replace(/-/g, "");
     onValueChange(normalizeAmountInput(stripped, settings));
   }
 
+  const calcResult = evaluateExpression(calcExpr);
+  const calcTrimmed = calcExpr.trim();
+
+  function applyCalc() {
+    if (calcResult === null) return;
+    const magnitude = Math.abs(calcResult);
+    onValueChange(
+      magnitude === 0 ? "" : formatAmountForInput(magnitude, settings),
+    );
+    unlock("quickMaths");
+    setCalcOpen(false);
+    setCalcExpr("");
+    inputRef.current?.focus();
+  }
+
   return (
-    <div className={`${wrapperClass}${disabled ? " opacity-60" : ""}`}>
+    <div
+      ref={wrapperRef}
+      className={`${wrapperClass}${disabled ? " opacity-60" : ""}`}
+    >
       <button
         type="button"
         onClick={onToggleSign}
@@ -96,7 +162,7 @@ export function SignedAmountInput({
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
-        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} ${canClear ? "pr-7" : "pr-2"} pl-7 text-right font-mono text-sm tabular-nums ${tone}${disabled ? " cursor-not-allowed" : ""}`}
+        className={`field-input ${inputWidthClass} rounded border border-line ${bgClass} ${paddingClass} ${prClass} pl-7 text-right font-mono text-sm tabular-nums ${tone}${disabled ? " cursor-not-allowed" : ""}`}
       />
       {canClear && (
         <button
@@ -110,10 +176,75 @@ export function SignedAmountInput({
             onValueChange("");
             inputRef.current?.focus();
           }}
-          className="absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+          className={`absolute top-1/2 ${clearRightClass} z-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg`}
         >
           <X size={14} aria-hidden focusable={false} />
         </button>
+      )}
+      {showCalc && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={t("calc.open")}
+          title={t("calc.open")}
+          onClick={() => {
+            setCalcExpr("");
+            setCalcOpen((prev) => !prev);
+          }}
+          className={`absolute top-1/2 right-1.5 z-10 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded ${
+            calcOpen ? "text-accent" : "text-muted"
+          } hover:bg-surface-3 hover:text-fg`}
+        >
+          <Calculator size={14} aria-hidden focusable={false} />
+        </button>
+      )}
+      {showCalc && (
+        <FloatingPanel
+          open={calcOpen}
+          onClose={() => setCalcOpen(false)}
+          triggerRef={wrapperRef}
+          placement={CALC_PLACEMENT}
+          className="gap-2 p-3"
+        >
+          <div className="text-xs text-muted">{t("calc.title")}</div>
+          <input
+            ref={calcInputRef}
+            type="text"
+            value={calcExpr}
+            onChange={(e) => setCalcExpr(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyCalc();
+              }
+            }}
+            placeholder={t("calc.placeholder")}
+            aria-label={t("calc.title")}
+            className="field-input w-full rounded border border-line bg-surface px-2 py-1.5 text-left font-mono text-sm text-fg"
+          />
+          <div className="flex items-center justify-between gap-2">
+            {calcTrimmed === "" ? (
+              <span className="text-xs text-muted">{t("calc.hint")}</span>
+            ) : calcResult === null ? (
+              <span className="text-xs text-danger">{t("calc.invalid")}</span>
+            ) : (
+              <span className="font-mono text-sm tabular-nums text-fg-bright">
+                {negative && calcResult !== 0 ? "−" : ""}
+                {withCurrency(
+                  formatNumber(Math.abs(calcResult), settings),
+                  settings,
+                )}
+              </span>
+            )}
+            <Button
+              variant="primary"
+              onClick={applyCalc}
+              disabled={calcResult === null}
+            >
+              {t("common.apply")}
+            </Button>
+          </div>
+        </FloatingPanel>
       )}
     </div>
   );
