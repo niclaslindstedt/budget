@@ -1160,6 +1160,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
     investmentHoldings: [],
     investmentStocks: [],
   }),
+
+  // v77 → v78: items gain dated value snapshots (`Item.valueHistory`,
+  // an `ItemValuePoint[]`), recorded via the Items sheet's "Update value"
+  // modal so an appreciating item (art, collectibles) tracks its rising
+  // value over time and feeds the net-worth roll-up. The field is optional
+  // and absent on every old export — the v78 validator simply omits it
+  // when missing, so this is a bare additive bump.
+  77: (v77) => ({ ...v77, version: 78 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

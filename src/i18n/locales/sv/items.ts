@@ -80,6 +80,17 @@ const items: ItemsCatalog = {
   deleteItem: "Ta bort sak",
   editItemAria: "Redigera {name}",
   save: "Spara",
+  // Uppdatera värde-modal — registrera daterade värden (värdestegring /
+  // omvärdering) från sakens "…"-meny.
+  updateValue: "Uppdatera värde",
+  updateValueTitle: "Uppdatera värde",
+  valueLabel: "Värde",
+  valuePlaceholder: "Aktuellt värde",
+  asOfLabel: "Per",
+  valueHistoryHeading: "Registrerade värden",
+  noValueHistory: "Inga värden registrerade ännu.",
+  purchaseValueTag: "Inköp",
+  deleteValue: "Ta bort värde",
   // Kvittosektion i redigera sak-modalen
   receipt: "Kvitto",
   receiptUpload: "Ladda upp kvitto",

@@ -15,6 +15,7 @@ import { CompanyEditorModal } from "../CompanyEditorModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ItemEditorModal } from "../ItemEditorModal";
 import { ItemFinderModal } from "../items/ItemFinderModal";
+import { UpdateItemValueModal } from "../items/UpdateItemValueModal";
 import { ConflictResolutionModal } from "../ConflictResolutionModal";
 import { DownloadModal } from "../DownloadModal";
 import { ReconnectCloudModal } from "../ReconnectCloudModal";
@@ -167,6 +168,12 @@ export function UniversalModalHost(props: Props) {
   // item" button. Distinct from `editItemId` so the two flows don't
   // alias each other — create has no id to resolve.
   const [creatingItem, setCreatingItem] = useState(false);
+  // "Update value" modal opened from an item row's "…" menu. Holds the id
+  // of the item whose value is being recorded; the modal resolves it
+  // against live `data.items` so a concurrent change isn't recorded stale.
+  const [updateValueItemId, setUpdateValueItemId] = useState<string | null>(
+    null,
+  );
   // "Find items" modal opened from the Items sheet title "…" menu. Scans
   // bank history for likely item purchases and walks the user through
   // cataloguing them.
@@ -225,6 +232,7 @@ export function UniversalModalHost(props: Props) {
     editCompany: (companyId: string) => setEditCompanyId(companyId),
     editItem: (itemId: string) => setEditItemId(itemId),
     createItem: () => setCreatingItem(true),
+    updateItemValue: (itemId: string) => setUpdateValueItemId(itemId),
     findItems: () => setFindItemsOpen(true),
   });
   const {
@@ -643,6 +651,22 @@ export function UniversalModalHost(props: Props) {
         onCreateSubtype={onCreateSubtype}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+      />
+      <UpdateItemValueModal
+        open={updateValueItemId !== null}
+        item={
+          updateValueItemId !== null
+            ? (data.items.find((it) => it.id === updateValueItemId) ?? null)
+            : null
+        }
+        settings={effectiveSettings}
+        onClose={() => setUpdateValueItemId(null)}
+        onAddValue={(itemId, point) =>
+          dispatch({ type: "addItemValue", itemId, point })
+        }
+        onDeleteValue={(itemId, pointId) =>
+          dispatch({ type: "deleteItemValue", itemId, pointId })
+        }
       />
       <ChangelogModal
         open={changelogOpen}

@@ -341,6 +341,12 @@ export function ItemsPage({
                       }
                       hasReceipt={itemReceipts.get(item.id) !== undefined}
                       onManageReceipt={(it) => setManagingReceiptId(it.id)}
+                      onUpdateValue={(it) =>
+                        dispatchModal({
+                          kind: "open-update-item-value",
+                          itemId: it.id,
+                        })
+                      }
                     />
                   ))}
                   {ownedItems.length > 0 && (

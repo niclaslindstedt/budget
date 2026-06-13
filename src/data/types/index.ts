@@ -21,7 +21,12 @@ export type {
   Tag,
 } from "./categories";
 
-export type { Item, ItemDepreciation, LineItemLink } from "./items";
+export type {
+  Item,
+  ItemDepreciation,
+  ItemValuePoint,
+  LineItemLink,
+} from "./items";
 
 export type {
   FileCategory,

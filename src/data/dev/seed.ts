@@ -1198,7 +1198,23 @@ export function buildSeedUserData(): UserData {
       ratePerYear: 15,
     },
   };
-  const items: Item[] = [laptopItem, bikeItem, phoneItem];
+  // Art appreciates: a run of dated value snapshots (recorded via the
+  // "Update value" modal) makes its rising value render across the
+  // net-worth graph instead of sitting flat at the purchase price. No
+  // depreciation rule — the value history drives the figure, and the
+  // seed leaves the modal one realistic catalog entry to land on.
+  const artItem: Item = {
+    id: mkId("item"),
+    name: "Oljemålning – Skärgården",
+    acquiredAt: "2022-03-01",
+    purchasePrice: 18000,
+    valueHistory: [
+      { id: mkId("itemvalue"), date: "2023-06-01", value: 21000 },
+      { id: mkId("itemvalue"), date: "2024-09-01", value: 26500 },
+      { id: mkId("itemvalue"), date: "2025-11-01", value: 32000 },
+    ],
+  };
+  const items: Item[] = [laptopItem, bikeItem, phoneItem, artItem];
 
   // ---- Budget sheet bound to Checking ------------------------------
   // Forward-looking recurring rows (salary, rent, subscription, gym)

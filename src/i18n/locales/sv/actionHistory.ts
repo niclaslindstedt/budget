@@ -51,6 +51,8 @@ const actionHistory: ActionHistoryCatalog = {
     addItem: "Lade till pryl",
     updateItem: "Redigerade pryl",
     deleteItem: "Tog bort pryl",
+    addItemValue: "Registrerade prylvärde",
+    deleteItemValue: "Tog bort prylvärde",
     linkLineItemsToHistoryEntry: "Redigerade radposter",
     ignoreItemEntry: "Ignorerade en transaktion",
     clearIgnoredItemEntries: "Rensade ignorerade transaktioner",

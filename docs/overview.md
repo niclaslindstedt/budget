@@ -579,15 +579,37 @@ comes from `computeItemCurrentValue` in `src/data/items/value.ts`.
 
 ### Current value (item)
 
-`computeItemCurrentValue` (`src/data/items/value.ts`), also called
-"resale value": a manual `resaleValue` wins, else the depreciation
-rule decays the purchase price from `acquiredAt` — a steady declining
-balance (`percentPerYear`) or the accelerated curve (`accelerated`:
-an instant `initialDrop` % off the moment the item is no longer new,
-`firstYearRate` % of the remainder across year one, then
-`ratePerYear` % per year after that), never below `floor` — else the
-purchase price; a disposed item is worth its `soldFor`. `isItemOwned`
-is the predicate the Items table filters on.
+`computeItemCurrentValue(item, iso)` (`src/data/items/value.ts`), also
+called "resale value": a disposed item is worth its `soldFor`; else the
+latest dated value snapshot on or before `iso` (see **Update value
+(item)**) wins; else a manual `resaleValue`; else the depreciation rule
+decays the purchase price from `acquiredAt` — a steady declining balance
+(`percentPerYear`) or the accelerated curve (`accelerated`: an instant
+`initialDrop` % off the moment the item is no longer new, `firstYearRate`
+% of the remainder across year one, then `ratePerYear` % per year after
+that), never below `floor` — else the purchase price. The function is
+date-aware so the Insights net-worth roll-up (`src/data/insights/`) can
+sample it per month. `isItemOwned` is the predicate the Items table
+filters on.
+
+### Update value (item)
+
+`UpdateItemValueModal.tsx` (`src/components/items/`, hosted by
+`UniversalModalHost`, opened via the `open-update-item-value` modal
+command from an item row's "…" overflow menu). Records dated value
+snapshots so an item that **appreciates** (art, sculptures, collectibles)
+tracks its rising value over time instead of sitting flat at its purchase
+price. Each snapshot is an `ItemValuePoint` (`{ id, date, value }`)
+appended to `Item.valueHistory` by the `addItemValue` reducer; a point is
+removed by `deleteItemValue`. The item's purchase (`purchasePrice` at
+`acquiredAt`) folds in as a read-only first point via
+`resolveItemValueHistory` for display only — it is owned by the item's
+purchase fields, not stored in `valueHistory`. The latest recorded point
+on or before a date is the item's value at that date (see **Current value
+(item)**), winning over both a static `resaleValue` and a `depreciation`
+curve, so the recorded values flow straight into the net-worth graph and
+total. Mirrors **Update value (property)** / the investment
+`UpdateHoldingValueModal`.
 
 ### Find items modal
 

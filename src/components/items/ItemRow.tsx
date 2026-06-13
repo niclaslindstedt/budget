@@ -29,6 +29,9 @@ type Props = {
   canManageReceipt: boolean;
   hasReceipt: boolean;
   onManageReceipt: (item: Item) => void;
+  // Open the "Update value" modal for this item — record a dated value
+  // snapshot so an appreciating item tracks its rising value over time.
+  onUpdateValue: (item: Item) => void;
 };
 
 // Description popovers open below the row and to the left of the
@@ -50,6 +53,7 @@ function ItemRowImpl({
   canManageReceipt,
   hasReceipt,
   onManageReceipt,
+  onUpdateValue,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -195,6 +199,7 @@ function ItemRowImpl({
             canManageReceipt={canManageReceipt}
             hasReceipt={hasReceipt}
             onManageReceipt={onManageReceipt}
+            onUpdateValue={onUpdateValue}
             onEdit={() => onEditItem(item.id)}
             onDelete={() => onDeleteItem(item.id, item.name)}
             onAction={() => setSwiped(false)}

@@ -1,4 +1,4 @@
-import { FileText, Pencil, Trash2, Upload } from "lucide-react";
+import { Coins, FileText, Pencil, Trash2, Upload } from "lucide-react";
 
 import { useT } from "../../i18n";
 import type { Item } from "../../data/types";
@@ -20,6 +20,9 @@ type Props = {
   // Open the shared attachment modal for this item's receipt — upload a new
   // one, or view / replace / remove the existing file.
   onManageReceipt: (item: Item) => void;
+  // Open the "Update value" modal for this item — record a dated value
+  // snapshot so an appreciating item tracks its rising value over time.
+  onUpdateValue: (item: Item) => void;
   // Edit / Delete handlers surfaced as menu items ONLY when the action
   // column has collapsed to the compact (⋯-only) layout — in the wide
   // layout these are the inline pen / trash buttons in the swipe strip.
@@ -31,15 +34,17 @@ type Props = {
 };
 
 // The "…" overflow popover in an item row's swipe strip — the items-sheet
-// analogue of `SalaryEntryActionsMenu`. Its single entry manages the
-// receipt of the purchase the item is linked to. Renders nothing when no
-// entry applies (no receipts capability, or the item isn't linked to a
-// transaction yet), so the swipe strip stays at edit + delete.
+// analogue of `SalaryEntryActionsMenu`. Always offers "Update value"
+// (record a dated value snapshot for appreciation / re-appraisal) and
+// manages the receipt of the purchase the item is linked to when one
+// applies. Edit / Delete join the list only in the compact layout where
+// the inline pen / trash are hidden.
 export function ItemEntryActionsMenu({
   item,
   canManageReceipt,
   hasReceipt,
   onManageReceipt,
+  onUpdateValue,
   onEdit,
   onDelete,
   onAction,
@@ -66,6 +71,13 @@ export function ItemEntryActionsMenu({
       onClick: onDelete,
     });
   }
+
+  items.push({
+    key: "update-value",
+    icon: <Coins size={16} aria-hidden focusable={false} />,
+    label: t("items.updateValue"),
+    onClick: () => onUpdateValue(item),
+  });
 
   if (canManageReceipt) {
     items.push({

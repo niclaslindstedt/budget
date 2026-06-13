@@ -574,6 +574,12 @@ const catalog = {
     learnMore:
       "Open a row's “…” menu and pick Line items to link part of its amount to something you own — 15 000 of a 20 000 purchase was the phone, the rest is just remainder. Build up a catalog of items (and optionally classify each with a subtype), the groundwork for tracking what you own and what it's worth over time.",
   },
+  appreciated: {
+    name: "Appreciated",
+    condition: "Record a value for an item you own.",
+    learnMore:
+      "Open an item's “…” menu on the Items sheet and pick Update value to log what it's worth today. Some things gain value — art, collectibles, antiques — so record a snapshot now and then; each one shows up on the net-worth graph, letting an appreciating item climb instead of sitting flat at what you paid.",
+  },
   completionist: {
     name: "Completionist",
     condition: "Unlock every other achievement.",

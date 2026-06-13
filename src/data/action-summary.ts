@@ -251,6 +251,10 @@ export function describeActionSubject(
       return name(byId(next.items, action.itemId)?.name);
     case "deleteItem":
       return name(byId(prev.items, action.itemId)?.name);
+    case "addItemValue":
+      return name(byId(next.items, action.itemId)?.name);
+    case "deleteItemValue":
+      return name(byId(next.items, action.itemId)?.name);
     case "excludeSimilarItemEntries":
       return name(action.description);
 

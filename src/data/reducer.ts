@@ -14,6 +14,7 @@ import type {
   InvestmentHolding,
   InvestmentValuePoint,
   Item,
+  ItemValuePoint,
   LineItemLink,
   Loan,
   LoanBalancePoint,
@@ -193,6 +194,20 @@ export type Action =
       // trips on a dangling id.
       type: "deleteItem";
       itemId: string;
+    }
+  | {
+      // Record a manually-entered value for an item — appends one point to
+      // its `valueHistory` (the current value is the latest point on or
+      // before today). Lets an appreciating item track a rising value over
+      // time. Mirrors `addInvestmentHoldingValue`.
+      type: "addItemValue";
+      itemId: string;
+      point: ItemValuePoint;
+    }
+  | {
+      type: "deleteItemValue";
+      itemId: string;
+      pointId: string;
     }
   | {
       // Replace the inline line-item links on a single bank-imported

@@ -115,6 +115,43 @@ describe("item reducer", () => {
     expect(rows[0].lineItems).toEqual([{ id: "l2", itemId: "i2" }]);
     expect(rows[1].lineItems).toBeUndefined();
   });
+
+  it("records and deletes dated value snapshots", () => {
+    const item: Item = { id: "i1", name: "Painting" };
+    const data = seed([], { items: [item] });
+    let next = reducer(data, {
+      type: "addItemValue",
+      itemId: "i1",
+      point: { id: "v1", date: "2025-01-01", value: 15000 },
+    });
+    next = reducer(next, {
+      type: "addItemValue",
+      itemId: "i1",
+      point: { id: "v2", date: "2026-01-01", value: 22000 },
+    });
+    expect(next.items[0].valueHistory).toEqual([
+      { id: "v1", date: "2025-01-01", value: 15000 },
+      { id: "v2", date: "2026-01-01", value: 22000 },
+    ]);
+
+    // Deleting one point leaves the rest…
+    next = reducer(next, {
+      type: "deleteItemValue",
+      itemId: "i1",
+      pointId: "v1",
+    });
+    expect(next.items[0].valueHistory).toEqual([
+      { id: "v2", date: "2026-01-01", value: 22000 },
+    ]);
+
+    // …and deleting the last drops the field entirely.
+    next = reducer(next, {
+      type: "deleteItemValue",
+      itemId: "i1",
+      pointId: "v2",
+    });
+    expect(next.items[0].valueHistory).toBeUndefined();
+  });
 });
 
 describe("setRowLineItems", () => {
