@@ -8,17 +8,21 @@ const insightsSheet = {
   chartTitle: "Over time",
   chartEmpty: "Not enough dated data to chart yet.",
   chartNoneInRange: "No data in this range. Pick a longer one.",
+  chartAllHidden: "No bands selected. Tick one to chart it.",
   noData:
     "Nothing to sum up yet. Add accounts, savings, items, properties, or loans and they all roll up here.",
 
-  // Category rows in the breakdown. Mortgages are listed apart from the
-  // other loans because they ride with their property's share setting.
+  // Category rows in the breakdown / bands in the chart. The chart folds a
+  // property's mortgages into its own net-equity band (`categoryPropertiesNet`)
+  // so the two figures that dwarf everything else move as one toggle;
+  // `categoryProperties` is the settings-modal section header, which still
+  // lists properties on their own.
   categoryAccounts: "Accounts",
   categorySavings: "Savings",
   categoryItems: "Items",
   categoryInvestments: "Investments",
   categoryProperties: "Properties",
-  categoryMortgages: "Mortgages",
+  categoryPropertiesNet: "Properties & mortgages",
   categoryLoans: "Other loans",
 
   // Net-worth settings modal.
