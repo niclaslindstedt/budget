@@ -151,6 +151,7 @@ const properties = {
     "How often the interest rate is renegotiated — 3 for a variable rate, 12 for a 1-year fixed term.",
   nextRateChangeLabel: "Next rate change",
   amortizationLabel: "Monthly amortisation",
+  amortizationYearlyLabel: "Yearly amortisation",
   amortModePercent: "% of initial loan",
   amortModeFixed: "Fixed sum",
   amortPercentPlaceholder: "e.g. 2",

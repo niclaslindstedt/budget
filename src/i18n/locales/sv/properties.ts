@@ -132,6 +132,7 @@ const properties: PropertiesCatalog = {
     "Hur ofta räntan omförhandlas — 3 för rörlig ränta, 12 för 1 års bindningstid.",
   nextRateChangeLabel: "Nästa ränteändring",
   amortizationLabel: "Månadsamortering",
+  amortizationYearlyLabel: "Årlig amortering",
   amortModePercent: "% av ursprungslån",
   amortModeFixed: "Fast summa",
   amortPercentPlaceholder: "t.ex. 2",

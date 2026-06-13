@@ -380,7 +380,9 @@ export function MortgageEditorModal({
 
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">
-              {t("properties.amortizationLabel")}
+              {amortMode === "percent"
+                ? t("properties.amortizationYearlyLabel")
+                : t("properties.amortizationLabel")}
             </span>
             <div className="flex rounded border border-line bg-surface-2 p-0.5 text-xs">
               <button
