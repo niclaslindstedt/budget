@@ -90,6 +90,26 @@ export type MortgageRateChange = {
   rate: number; // annual interest rate as a percent (3.45 ⇒ 3.45%), >= 0
 };
 
+// One effective-dated amortisation-plan period on a mortgage. The plan
+// `amortization` became effective on `date` and holds until the next change
+// (or indefinitely if it's the most recent). A blank `date` marks the original
+// plan — effective "from the start", before any recorded change. Banks
+// renegotiate the amortisation requirement over a loan's life (Swedish
+// "amorteringskrav" steps down as the loan-to-value ratio falls, e.g. 3% → 2%
+// → 1%), and the step is an exact, round change to the plan — not the small
+// month-to-month drift the interest leg carries. Recorded so a historical
+// payment's amortisation is taken from the plan that was actually in effect
+// that month: the next charge after a change follows the new plan. The latest
+// change by date is the current plan (and is mirrored onto
+// `Mortgage.amortization` so the card and current resolvers don't have to walk
+// the list). Resolve a plan at an arbitrary date with
+// `resolveMonthlyAmortizationAt` in `src/data/finance/amortization.ts`.
+export type MortgageAmortizationChange = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd the plan took effect, or "" for the original plan
+  amortization: MortgageAmortization; // the plan effective from this date
+};
+
 // The loan-terms fields below are all manually entered and all optional —
 // a mortgage can exist with just a name and have its terms filled in
 // later. `currentBalance` is recorded directly (not derived from
@@ -114,6 +134,12 @@ export type Mortgage = {
   rateChangeMonths?: number; // how often the rate resets, in months
   nextRateChangeDate?: string; // ISO yyyy-mm-dd of the next rate change
   amortization?: MortgageAmortization; // monthly amortisation (percent-of-initial or fixed)
+  // Past amortisation-plan changes, effective-dated. The most recent entry is
+  // the current plan and is kept in sync with `amortization`; earlier entries
+  // let the payment split take a historical charge's amortisation from the plan
+  // in effect that month (a bank-agreed step like 3% → 2%). Absent / empty ⇒ no
+  // history recorded, and `amortization` is used for every date.
+  amortizationHistory?: MortgageAmortizationChange[];
   // How often the loan's amortisation + interest is charged, in months: 1 =
   // monthly (the default and overwhelmingly common case), 3 = quarterly, 6 =
   // semi-annual, 12 = annual. Drives "Find mortgage payments": the number of

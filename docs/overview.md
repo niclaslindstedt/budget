@@ -1041,6 +1041,28 @@ effect on any date, so a historical payment's interest is computed at
 the rate that actually applied that month. Absent ⇒ `interestRate` is
 used for every date.
 
+### Mortgage amortisation change
+
+`MortgageAmortizationChange` (`{ id, date, amortization }`) on
+`Mortgage.amortizationHistory` — an effective-dated amortisation plan,
+the exact analogue of a rate change. The plan `amortization` (a percent
+of the initial loan, or a fixed monthly sum) became effective on `date`
+(blank `date` = the original plan, effective from the start) and holds
+until the next change; the latest by date is the current plan (mirrored
+onto `Mortgage.amortization`). Banks step the amortisation requirement
+over a loan's life (Swedish "amorteringskrav" falls as the
+loan-to-value ratio drops, e.g. 3% → 2% → 1%), an exact, round change —
+not the small month-to-month drift the interest leg carries.
+`resolveAmortizationPlanAt(mortgage, date)` /
+`resolveMonthlyAmortizationAt(mortgage, date)` in
+`src/data/finance/amortization.ts` walk the history to the plan in
+effect on any date, so a recorded payment's amortisation leg is taken
+from the plan that actually applied that month and **steps** on the
+first charge after a change. Absent ⇒ the current `amortization` is used
+for every date. Edited as a list of dated rows in `MortgageEditorModal`
+(one percent/fixed mode toggle for the whole loan), mirroring the
+rate-history editor.
+
 ### Mortgage payment
 
 `MortgagePayment` (`{ id, date, amount, sourceHistoryId?, sourceAccountId? }`)
@@ -1082,7 +1104,8 @@ mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
   its Paid total, broken down beneath into the cumulative interest and
   amortisation (`splitRecordedPayment` in
   `src/data/finance/payment.ts` inverts the amortisation-first
-  split: amortisation = the mortgage's monthly amortisation capped at the
+  split: amortisation = the mortgage's monthly amortisation **for the plan in
+  effect on the charge's date** (`resolveMonthlyAmortizationAt`) capped at the
   recorded amount, interest = the rest). The amortisation leg is the loan's
   plan figure — a fixed sum or an exact percent of the _initial_ loan — so it
   is a **constant** that does not move with the balance: it is identical across
@@ -1092,9 +1115,11 @@ mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
   to re-derive interest and let amortisation absorb the remainder — that made
   the amortisation leg drift a few currency units every month instead of
   holding flat. A genuine amortisation-plan change steps the plan by a whole
-  tier (e.g. 2 % → 1.5 %) and would need a stored plan history to reproduce its
-  exact step; inferring it from the recorded charge only manufactures the
-  drift. Added in bulk via
+  tier (e.g. 3% → 2%); the exact, round step comes from the loan's recorded
+  `amortizationHistory` (see Mortgage amortisation change), so the amortisation
+  leg steps on the first charge after the change while interest holds — not from
+  inferring it out of the recorded charge, which only manufactures drift. Added
+  in bulk via
   `addMortgagePaymentsForProperty` (one undo entry for the whole
   property), re-balanced within a charge via `setMortgageChargeSplit`, or
   deleted individually (`deleteMortgagePayment`) — all surfaced in the

@@ -6,6 +6,7 @@ import { newId } from "../../data/sheet";
 import type {
   Mortgage,
   MortgageAmortization,
+  MortgageAmortizationChange,
   MortgageRateChange,
   Settings,
 } from "../../data/types";
@@ -67,6 +68,48 @@ function seedRateRows(mortgage: Mortgage | null): RateRow[] {
   return [{ id: newId(), date: "", rate: "" }];
 }
 
+// One editable amortisation-plan period: a (possibly blank) effective date and
+// the plan value as typed text, interpreted in the editor's single
+// percent/fixed mode (the toggle applies to every row).
+type AmortRow = { id: string; date: string; value: string };
+
+// Render an amortisation plan's value as editor text: a bare percent, or a
+// currency amount formatted for the input.
+function amortPlanValue(
+  plan: MortgageAmortization,
+  settings: Settings,
+): string {
+  return plan.mode === "percent"
+    ? String(plan.percent)
+    : formatAmountForInput(Math.abs(plan.amount), settings);
+}
+
+// Seed the amortisation-history editor: the stored history when present, else a
+// single row carrying the current `amortization` plan (or an empty starter
+// row). The editor edits one mode for the whole loan, so a saved row coerces to
+// the active mode — the byte-clean common case is a single uniform-mode plan.
+function seedAmortRows(
+  mortgage: Mortgage | null,
+  settings: Settings,
+): AmortRow[] {
+  const history = mortgage?.amortizationHistory;
+  if (history && history.length > 0)
+    return history.map((ac) => ({
+      id: ac.id,
+      date: ac.date,
+      value: amortPlanValue(ac.amortization, settings),
+    }));
+  if (mortgage?.amortization)
+    return [
+      {
+        id: newId(),
+        date: "",
+        value: amortPlanValue(mortgage.amortization, settings),
+      },
+    ];
+  return [{ id: newId(), date: "", value: "" }];
+}
+
 export function MortgageEditorModal({
   open,
   mortgage,
@@ -85,7 +128,9 @@ export function MortgageEditorModal({
   const [rateChangeMonths, setRateChangeMonths] = useState("");
   const [nextRateChangeDate, setNextRateChangeDate] = useState("");
   const [amortMode, setAmortMode] = useState<"percent" | "fixed">("percent");
-  const [amortValue, setAmortValue] = useState("");
+  // Effective-dated amortisation plans, newest editing at the bottom. The most
+  // recent by date is the current plan; a blank date marks the original.
+  const [amortRows, setAmortRows] = useState<AmortRow[]>([]);
   // How often amortisation + interest is charged, in months (1 = monthly).
   const [cadenceMonths, setCadenceMonths] = useState(1);
   const [cadenceOpen, setCadenceOpen] = useState(false);
@@ -105,11 +150,8 @@ export function MortgageEditorModal({
     setCadenceMonths(mortgage?.paymentCadenceMonths ?? 1);
     setCadenceOpen(false);
     setLoanStartDate(mortgage?.loanStartDate ?? "");
-    const amort = mortgage?.amortization;
-    setAmortMode(amort?.mode ?? "percent");
-    if (!amort) setAmortValue("");
-    else if (amort.mode === "percent") setAmortValue(String(amort.percent));
-    else setAmortValue(seedAmount(amort.amount, settings));
+    setAmortMode(mortgage?.amortization?.mode ?? "percent");
+    setAmortRows(seedAmortRows(mortgage, settings));
   });
 
   if (!open) return null;
@@ -124,14 +166,34 @@ export function MortgageEditorModal({
     return parsed === null ? undefined : Math.abs(parsed);
   }
 
-  // Build the amortisation value for the active mode, or undefined when the
-  // value is blank / unparseable so the field clears on save.
-  function buildAmortization(): MortgageAmortization | undefined {
-    const v = num(amortValue);
-    if (v === undefined) return undefined;
+  // Build one amortisation plan from a parsed value, in the active mode.
+  function planFor(value: number): MortgageAmortization {
     return amortMode === "percent"
-      ? { mode: "percent", percent: v }
-      : { mode: "fixed", amount: v };
+      ? { mode: "percent", percent: value }
+      : { mode: "fixed", amount: value };
+  }
+
+  // Collapse the amortisation rows into the current plan + an optional history,
+  // mirroring `buildRateTerms`. A single original-plan row (blank date) is just
+  // a current plan, so it stores `amortization` only — no history clutter.
+  function buildAmortTerms(): {
+    amortization?: MortgageAmortization;
+    amortizationHistory?: MortgageAmortizationChange[];
+  } {
+    const parsed = amortRows
+      .map((r) => ({ id: r.id, date: r.date.trim(), value: num(r.value) }))
+      .filter(
+        (r): r is { id: string; date: string; value: number } =>
+          r.value !== undefined,
+      )
+      .map((r) => ({ id: r.id, date: r.date, amortization: planFor(r.value) }))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    if (parsed.length === 0)
+      return { amortization: undefined, amortizationHistory: undefined };
+    const amortization = parsed[parsed.length - 1].amortization;
+    if (parsed.length === 1 && parsed[0].date === "")
+      return { amortization, amortizationHistory: undefined };
+    return { amortization, amortizationHistory: parsed };
   }
 
   // Collapse the rate rows into the current rate + an optional history.
@@ -158,6 +220,7 @@ export function MortgageEditorModal({
 
   function buildTerms(): Partial<Omit<Mortgage, "id">> {
     const { interestRate, rateHistory } = buildRateTerms();
+    const { amortization, amortizationHistory } = buildAmortTerms();
     return {
       loanAmount: num(loanAmount),
       currentBalance: num(currentBalance),
@@ -166,7 +229,8 @@ export function MortgageEditorModal({
       rateChangeMonths: num(rateChangeMonths),
       nextRateChangeDate:
         nextRateChangeDate !== "" ? nextRateChangeDate : undefined,
-      amortization: buildAmortization(),
+      amortization,
+      amortizationHistory,
       // Monthly is the default — store the cadence only when it differs, so a
       // plain monthly loan stays byte-clean.
       paymentCadenceMonths: cadenceMonths === 1 ? undefined : cadenceMonths,
@@ -184,6 +248,18 @@ export function MortgageEditorModal({
   }
   function removeRateRow(id: string) {
     setRateRows((rows) => rows.filter((r) => r.id !== id));
+  }
+
+  function updateAmortRow(id: string, patch: Partial<Omit<AmortRow, "id">>) {
+    setAmortRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    );
+  }
+  function addAmortRow() {
+    setAmortRows((rows) => [...rows, { id: newId(), date: "", value: "" }]);
+  }
+  function removeAmortRow(id: string) {
+    setAmortRows((rows) => rows.filter((r) => r.id !== id));
   }
 
   function handleSubmit() {
@@ -215,6 +291,8 @@ export function MortgageEditorModal({
       fresh.nextRateChangeDate = terms.nextRateChangeDate;
     if (terms.amortization !== undefined)
       fresh.amortization = terms.amortization;
+    if (terms.amortizationHistory !== undefined)
+      fresh.amortizationHistory = terms.amortizationHistory;
     if (terms.paymentCadenceMonths !== undefined)
       fresh.paymentCadenceMonths = terms.paymentCadenceMonths;
     if (terms.loanStartDate !== undefined)
@@ -225,23 +303,20 @@ export function MortgageEditorModal({
   const fieldClass =
     "field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg";
 
-  // Live preview of the resolved monthly amortisation, reusing the same
-  // resolver the card and data layer use. `null` when there's nothing to
-  // show yet (blank value, or percent mode without a loan amount to take
-  // the percentage of).
-  const amortValueNum = num(amortValue);
+  // Live preview of the resolved monthly amortisation for the current (latest)
+  // plan, reusing the same resolver the card and data layer use. `null` when
+  // there's nothing to show yet (no parseable value, or percent mode without a
+  // loan amount to take the percentage of).
+  const { amortization: previewPlan } = buildAmortTerms();
   const amortPreview =
-    amortValueNum === undefined
+    previewPlan === undefined
       ? null
       : resolveMonthlyAmortization({
           id: "",
           name: "",
           payments: [],
           loanAmount: num(loanAmount),
-          amortization:
-            amortMode === "percent"
-              ? { mode: "percent", percent: amortValueNum }
-              : { mode: "fixed", amount: amortValueNum },
+          amortization: previewPlan,
         });
 
   return (
@@ -410,17 +485,51 @@ export function MortgageEditorModal({
                 {t("properties.amortModeFixed")}
               </button>
             </div>
-            <ClearableInput
-              value={amortValue}
-              onValueChange={setAmortValue}
-              inputMode="decimal"
-              placeholder={
-                amortMode === "percent"
-                  ? t("properties.amortPercentPlaceholder")
-                  : t("properties.amortFixedPlaceholder")
-              }
-              className={fieldClass}
-            />
+            <div className="flex flex-col gap-1.5">
+              {amortRows.map((row) => (
+                <div key={row.id} className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={row.date}
+                    onChange={(e) =>
+                      updateAmortRow(row.id, { date: e.target.value })
+                    }
+                    aria-label={t("properties.amortChangeDateLabel")}
+                    className={DATE_INPUT_CLASS}
+                  />
+                  <ClearableInput
+                    value={row.value}
+                    onValueChange={(v) => updateAmortRow(row.id, { value: v })}
+                    inputMode="decimal"
+                    placeholder={
+                      amortMode === "percent"
+                        ? t("properties.amortPercentPlaceholder")
+                        : t("properties.amortFixedPlaceholder")
+                    }
+                    aria-label={t("properties.amortChangeValueLabel")}
+                    className={`${fieldClass} flex-1`}
+                  />
+                  {amortRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAmortRow(row.id)}
+                      aria-label={t("properties.removeAmortChange")}
+                      className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+                    >
+                      <X size={14} aria-hidden focusable={false} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addAmortRow}
+              className="inline-flex cursor-pointer items-center gap-1 self-start rounded border-0 bg-transparent px-1 text-xs text-accent hover:underline"
+            >
+              <Plus size={14} aria-hidden focusable={false} />
+              {t("properties.addAmortChange")}
+            </button>
             {amortPreview !== null ? (
               <p className="m-0 text-xs text-muted">
                 {t("properties.amortPreview", {
@@ -436,6 +545,9 @@ export function MortgageEditorModal({
                   : t("properties.amortFixedHint")}
               </p>
             )}
+            <p className="m-0 text-xs text-muted">
+              {t("properties.amortHistoryHint")}
+            </p>
           </div>
 
           <div className="flex flex-col gap-1">

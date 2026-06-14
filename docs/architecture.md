@@ -278,8 +278,9 @@ src/
 │   │                       #   groupRowsByMonth, previous/nextMonthKey, …)
 │   ├── finance/           # cross-page financial math on the shared Mortgage
 │   │   │                   #   entity — consumed by properties, loans, insights
-│   │   ├── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
-│   │   │                       #   or fixed monthly amortisation → a per-month sum
+│   │   ├── amortization.ts     # resolveMonthlyAmortization(At) — percent-of-initial
+│   │   │                       #   or fixed monthly amortisation → a per-month sum,
+│   │   │                       #   for the current plan or the plan effective on a date
 │   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
 │   │   │                       #   balanceAt (balance reconstructed for a month —
 │   │   │                       #   forward from loanAmount when a start date is

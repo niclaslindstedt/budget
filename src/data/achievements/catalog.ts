@@ -80,6 +80,7 @@ import {
   Smartphone,
   Split,
   Star,
+  StepForward,
   Tag,
   TrendingUp,
   Type as TypeIcon,
@@ -300,6 +301,14 @@ const hasMortgagePayment = (s: UserData) =>
 // count; the achievement is about the bank connection.
 const hasImportedLoanPayment = (s: UserData) =>
   s.loans.some((l) => l.payments.some((p) => p.sourceHistoryId !== undefined));
+// A mortgage records an amortisation-plan change — at least one step in its
+// effective-dated `amortizationHistory` beyond the original plan (e.g. the
+// bank-agreed 3% → 2% drop), so historical payments split against the plan
+// that was actually in effect that month.
+const hasAmortizationPlanChange = (s: UserData) =>
+  s.properties.some((p) =>
+    p.mortgages.some((m) => (m.amortizationHistory?.length ?? 0) >= 2),
+  );
 // A mortgage is fully paid off — its payoff "power bar" hit 100%, i.e.
 // the balance reached zero against a known loan amount.
 const hasFullyPaidMortgage = (s: UserData) =>
@@ -1004,6 +1013,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.properties],
       predicate: (prev, next) =>
         !hasMortgagePayment(prev) && hasMortgagePayment(next),
+    },
+  },
+  {
+    // The user recorded an amortisation-plan change on a mortgage (a dated step
+    // beyond the original plan, e.g. 3% → 2%), so historical payments split
+    // against the plan in effect that month.
+    id: "amortisationStep",
+    tier: "expert",
+    glyph: StepForward,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasAmortizationPlanChange(prev) && hasAmortizationPlanChange(next),
     },
   },
   {

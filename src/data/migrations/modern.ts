@@ -1168,6 +1168,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // and absent on every old export — the v78 validator simply omits it
   // when missing, so this is a bare additive bump.
   77: (v77) => ({ ...v77, version: 78 }),
+
+  // v78 → v79: a property mortgage gains `amortizationHistory`
+  // (`MortgageAmortizationChange[]`), the effective-dated amortisation-plan
+  // changes that mirror `rateHistory` — so a bank-agreed step (e.g. 3% → 2%)
+  // splits each historical payment against the plan in effect that month. The
+  // field is optional and absent on every old export; the v79 validator omits
+  // it when missing, so this is a bare additive bump.
+  78: (v78) => ({ ...v78, version: 79 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

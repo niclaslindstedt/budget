@@ -321,6 +321,12 @@ const catalog = {
     learnMore:
       "Tag a month of your mortgage charges with their lender and the Mortgage type, then open Find mortgage payments on the mortgage: it homes in on those tagged charges, learns their bank description, and pulls every matching month from the account's history — ranking the likeliest first and leaving a previous home's loan out by its different amount.",
   },
+  amortisationStep: {
+    name: "Step Down",
+    condition: "Record an amortisation-plan change on a mortgage.",
+    learnMore:
+      "Banks step a loan's amortisation requirement down over time as the loan-to-value ratio falls (3% → 2% → 1%). Open a mortgage's editor and add an amortisation change with the date it took effect, just like an interest-rate change — each payment then splits against the plan that was in effect that month, so the amortisation leg steps cleanly while the small month-to-month difference stays on interest.",
+  },
   mortgageFree: {
     name: "Mortgage Free",
     condition: "Pay a mortgage all the way off — its payoff bar hits 100%.",

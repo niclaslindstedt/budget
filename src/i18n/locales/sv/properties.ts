@@ -141,6 +141,12 @@ const properties: PropertiesCatalog = {
     "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp för att se månadsbeloppet.",
   amortFixedHint: "Ett fast belopp som amorteras varje månad.",
   amortPreview: "≈ {amount} per månad",
+  amortChangeDateLabel: "Datum för amorteringsändring",
+  amortChangeValueLabel: "Amortering",
+  addAmortChange: "Lägg till amorteringsändring",
+  removeAmortChange: "Ta bort amorteringsändring",
+  amortHistoryHint:
+    "Lägg till en amorteringsändring med datumet den trädde i kraft — den nyaste är den aktuella planen. Lämna det första datumet tomt för ursprungsplanen. Banker trappar ner planen över tid (t.ex. 3 % → 2 %); varje dragning efter en ändring följer den nya planen.",
   cadenceLabel: "Betalningsintervall",
   cadenceHint:
     "Hur ofta amortering och ränta dras. De flesta lån betalas månadsvis — ”Hitta bolånebetalningar” förväntar sig en dragning så här ofta sedan lånet togs.",

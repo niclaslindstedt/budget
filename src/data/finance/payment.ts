@@ -10,18 +10,18 @@
 // never hand-allocated.
 
 import type { Mortgage, MortgagePayment, Property } from "../types";
-import { resolveMonthlyAmortization } from "./amortization";
+import { resolveMonthlyAmortizationAt } from "./amortization";
 import { resolveMonthlyInterestAt } from "./interest";
 
 // A mortgage's expected monthly payment on `date` — amortisation plus
-// interest at the rate in effect that month. Unknown legs count as 0, so a
-// mortgage with no terms recorded contributes nothing (and is left out of
-// the split). Never negative.
+// interest at the rate in effect that month, both taken from the plan in
+// effect that month. Unknown legs count as 0, so a mortgage with no terms
+// recorded contributes nothing (and is left out of the split). Never negative.
 export function resolveMonthlyPaymentAt(
   mortgage: Mortgage,
   date: string,
 ): number {
-  const amort = resolveMonthlyAmortization(mortgage) ?? 0;
+  const amort = resolveMonthlyAmortizationAt(mortgage, date) ?? 0;
   const interest = resolveMonthlyInterestAt(mortgage, date) ?? 0;
   return Math.max(0, amort + interest);
 }
@@ -78,7 +78,7 @@ export function splitPaymentAcrossMortgages(
     Math.max(0, resolveMonthlyInterestAt(m, date, startDateOf?.(m)) ?? 0),
   );
   const amorts = mortgages.map((m) =>
-    Math.max(0, resolveMonthlyAmortization(m) ?? 0),
+    Math.max(0, resolveMonthlyAmortizationAt(m, date) ?? 0),
   );
   const totalInterest = interests.reduce((s, v) => s + v, 0);
   const totalAmort = amorts.reduce((s, v) => s + v, 0);
@@ -171,29 +171,34 @@ export function splitPaymentAcrossMortgages(
 // are ≥ 0 and sum to exactly `payment.amount`.
 export type PaymentSplit = { amortization: number; interest: number };
 
-// The amortisation leg is the loan's monthly amortisation — a fixed sum or an
-// exact percent of the *initial* loan, so a constant figure that does NOT move
-// with the balance. It is therefore identical across every charge of the same
-// plan; the month-to-month difference between charges (the balance falls, so
-// the interest the rate accrues falls with it) lands entirely on the interest
-// leg. Capped at the recorded amount so an under-covered charge records less
-// than the full amortisation and never any interest. Both legs are ≥ 0 and sum
-// to exactly `payment.amount`.
+// The amortisation leg is the loan's monthly amortisation under the plan in
+// effect on the charge's date — a fixed sum or an exact percent of the
+// *initial* loan, so a constant figure that does NOT move with the balance. It
+// is therefore identical across every charge of the same plan; the
+// month-to-month difference between charges (the balance falls, so the interest
+// the rate accrues falls with it) lands entirely on the interest leg. When the
+// bank steps the plan (e.g. 3% → 2%) the amortisation leg steps with it on the
+// next charge — an exact, round change — while interest stays put. Capped at
+// the recorded amount so an under-covered charge records less than the full
+// amortisation and never any interest. Both legs are ≥ 0 and sum to exactly
+// `payment.amount`.
 //
 // We deliberately do NOT reconstruct the balance here to re-derive interest and
 // let the amortisation absorb the remainder: that makes the amortisation leg
 // drift by a few currency units every month (tracking the balance), when a real
-// amortisation plan is a clean constant that only ever steps by a whole tier
-// (e.g. 2 % → 1.5 %). Pinning amortisation to the stored plan keeps it stable
-// and puts the drift where it belongs — on interest. A genuine historical plan
-// change would need a stored plan history to reproduce its exact (round) step;
-// inferring it from the recorded charge only manufactures the drift we want to
-// avoid.
+// amortisation plan is a clean constant that only ever steps by a whole tier.
+// Pinning amortisation to the dated plan keeps it stable and puts the drift
+// where it belongs — on interest. The exact (round) historical steps come from
+// the loan's recorded `amortizationHistory`, not from inferring them out of the
+// recorded charge (which only manufactures the drift we want to avoid).
 export function splitRecordedPayment(
   mortgage: Mortgage,
   payment: MortgagePayment,
 ): PaymentSplit {
-  const planAmort = Math.max(0, resolveMonthlyAmortization(mortgage) ?? 0);
+  const planAmort = Math.max(
+    0,
+    resolveMonthlyAmortizationAt(mortgage, payment.date) ?? 0,
+  );
   const amortization = Math.min(payment.amount, planAmort);
   const interest = payment.amount - amortization;
   return { amortization, interest };
