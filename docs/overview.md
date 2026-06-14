@@ -1083,16 +1083,18 @@ mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
   amortisation (`splitRecordedPayment` in
   `src/data/finance/payment.ts` inverts the amortisation-first
   split: amortisation = the mortgage's monthly amortisation capped at the
-  recorded amount, interest = the rest). When pinning to the current plan
-  would leave an interest leg more than
-  `AMORTIZATION_PLAN_CHANGE_TOLERANCE` (25 %) above the rate-derived
-  interest for that month, the surplus is reattributed to amortisation
-  instead: a plan that stepped down over the loan's life (e.g. 3 % → 2 %)
-  made older payments larger by the steeper principal, not by interest, so
-  the steady rate is the signal that the extra was amortisation rather than
-  a higher interest charge. Skipped for interest-only loans and when the
-  rate / balance can't resolve a computed interest to compare against.
-  Added in bulk via
+  recorded amount, interest = the rest). The amortisation leg is the loan's
+  plan figure — a fixed sum or an exact percent of the _initial_ loan — so it
+  is a **constant** that does not move with the balance: it is identical across
+  every charge of the same plan, and the whole month-to-month difference
+  between charges (the balance falls, so the rate accrues less interest) lands
+  on the interest leg. The split deliberately does not reconstruct the balance
+  to re-derive interest and let amortisation absorb the remainder — that made
+  the amortisation leg drift a few currency units every month instead of
+  holding flat. A genuine amortisation-plan change steps the plan by a whole
+  tier (e.g. 2 % → 1.5 %) and would need a stored plan history to reproduce its
+  exact step; inferring it from the recorded charge only manufactures the
+  drift. Added in bulk via
   `addMortgagePaymentsForProperty` (one undo entry for the whole
   property), re-balanced within a charge via `setMortgageChargeSplit`, or
   deleted individually (`deleteMortgagePayment`) — all surfaced in the

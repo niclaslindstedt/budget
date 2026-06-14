@@ -1,9 +1,9 @@
 ---
 type: Fixed
-title: Mortgage payment interest on sold properties
+title: Mortgage payment split on sold properties
 ---
 
-A mortgage payment's interest is now computed on the balance the loan
-actually carried that month — reconstructed forward from the original loan
-amount — instead of from the current balance, which is zero once a property
-is sold and made every historical charge's interest read far too low.
+Find mortgage payments now divides a combined charge across a sold property's
+loans using the balance each loan carried that month — reconstructed from the
+original loan amount — instead of the balance recorded today, which is zero
+once the property is sold.

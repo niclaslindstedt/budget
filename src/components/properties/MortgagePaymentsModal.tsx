@@ -274,7 +274,6 @@ export function MortgagePaymentsModal({
                             key={item.payment.id}
                             item={item}
                             settings={settings}
-                            purchaseDate={property.purchaseDate}
                             onEdit={() =>
                               setEditing({
                                 key: group.key,
@@ -542,11 +541,6 @@ function MortgageChargeHeader({
 type RowProps = {
   item: MortgageChargeItem;
   settings: Settings;
-  // The property's purchase date — the fallback loan start used (after the
-  // mortgage's own `loanStartDate`) to reconstruct the balance the charge's
-  // interest is taken on, so a sold property's zeroed balance doesn't drag the
-  // split. See `splitRecordedPayment`.
-  purchaseDate?: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -559,7 +553,6 @@ type RowProps = {
 function MortgagePaymentRowImpl({
   item,
   settings,
-  purchaseDate,
   onEdit,
   onDelete,
 }: RowProps) {
@@ -570,11 +563,7 @@ function MortgagePaymentRowImpl({
   // elsewhere only retracts the swipe instead of also firing the control
   // underneath.
   useClaimActiveRow(item.payment.id, swiped, () => setSwiped(false));
-  const split = splitRecordedPayment(
-    item.mortgage,
-    item.payment,
-    item.mortgage.loanStartDate ?? purchaseDate,
-  );
+  const split = splitRecordedPayment(item.mortgage, item.payment);
 
   return (
     <tr
