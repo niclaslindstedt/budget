@@ -259,9 +259,9 @@ describe("splitPaymentAcrossMortgages — date-aware balances", () => {
     expect(lastMonth.get("am")).toBeCloseTo(5512.5); // 5000 amort + 512.5
   });
 
-  // The real-data case: the recorded charge is the actual bank amount, which
-  // never lines up exactly with the modelled total (historical balances and
-  // rounding drift). A large fixed interest-only loan beside a smaller
+  // The drifting-charge case: the recorded charge is the actual bank amount,
+  // which never lines up exactly with the modelled total (historical balances
+  // and rounding drift). A large fixed interest-only loan beside a smaller
   // amortising loan — when the recorded charge differs from the model, the
   // interest-only loan must still keep its computed interest flat. The old
   // interest-weight split smeared that gap by interest magnitude, so the
@@ -269,8 +269,8 @@ describe("splitPaymentAcrossMortgages — date-aware balances", () => {
   // visibly fell month over month even though its balance never moved.
   const bigFixed = mortgage({
     id: "fixed",
-    currentBalance: 6_000_000,
-    interestRate: 1.63, // 6_000_000 * 1.63% / 12 = 8150/mo, constant
+    currentBalance: 4_000_000,
+    interestRate: 1.5, // 4_000_000 * 1.5% / 12 = 5000/mo, constant
   });
   const smallAmortising = mortgage({
     id: "amort",
@@ -278,30 +278,30 @@ describe("splitPaymentAcrossMortgages — date-aware balances", () => {
     interestRate: 3,
     amortization: { mode: "fixed", amount: 10_000 },
   });
-  const realLoans = [bigFixed, smallAmortising];
+  const driftingLoans = [bigFixed, smallAmortising];
 
   it("keeps a large fixed interest-only loan flat when the charge drifts from the model", () => {
     // This month the recorded charge happens to match the model exactly:
-    // 8150 (fixed interest) + 10000 (amort) + 5000 (amort interest @ today).
+    // 5000 (fixed interest) + 10000 (amort) + 5000 (amort interest @ today).
     const thisMonth = splitPaymentAcrossMortgages(
-      realLoans,
-      23_150,
+      driftingLoans,
+      20_000,
       "2026-06-01",
     );
     // Last month the amortising loan's balance was 2_010_000 ⇒ 5025 interest,
-    // so the model expects 23_175 — but the bank actually charged 23_100. The
+    // so the model expects 20_025 — but the bank actually charged 19_950. The
     // 75 shortfall is the amortising loan's, NOT the fixed loan's.
     const lastMonth = splitPaymentAcrossMortgages(
-      realLoans,
-      23_100,
+      driftingLoans,
+      19_950,
       "2026-05-01",
     );
 
-    // The fixed interest-only loan stays pinned to exactly 8150 both months,
-    // despite the charge drifting from the model (the old split dropped it to
-    // ~8104 last month, the reported bug).
-    expect(thisMonth.get("fixed")).toBeCloseTo(8150);
-    expect(lastMonth.get("fixed")).toBeCloseTo(8150);
+    // The fixed interest-only loan stays pinned to exactly 5000 both months,
+    // despite the charge drifting from the model (the old split let it drift
+    // below its computed interest, the reported bug).
+    expect(thisMonth.get("fixed")).toBeCloseTo(5000);
+    expect(lastMonth.get("fixed")).toBeCloseTo(5000);
 
     // The amortising loan carries its amortisation, its computed interest, and
     // the whole residual.
@@ -309,10 +309,10 @@ describe("splitPaymentAcrossMortgages — date-aware balances", () => {
     expect(lastMonth.get("amort")).toBeCloseTo(14_950); // 10000 + 5025 - 75
 
     expect([...thisMonth.values()].reduce((s, v) => s + v, 0)).toBeCloseTo(
-      23_150,
+      20_000,
     );
     expect([...lastMonth.values()].reduce((s, v) => s + v, 0)).toBeCloseTo(
-      23_100,
+      19_950,
     );
   });
 });
@@ -373,6 +373,115 @@ describe("splitRecordedPayment", () => {
     const payment = { id: "p", date: "2024-08-28", amount: 7250.5 };
     const split = splitRecordedPayment(m, payment);
     expect(split.amortization + split.interest).toBeCloseTo(payment.amount);
+  });
+});
+
+describe("splitRecordedPayment — steeper historical amortisation plan", () => {
+  // Pin "today" to the charge date so the reconstructed balance collapses to
+  // the recorded `currentBalance`; the detection compares the implied interest
+  // to the rate-derived interest, not the balance reconstruction.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-08-28T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reattributes the surplus to amortisation when the rate held steady", () => {
+    // Current plan: 2 % of a 1,200,000 loan = 2000/mo amortisation; at 3 % the
+    // rate puts interest at 3000/mo on the 1,200,000 balance. A payment from
+    // when the plan was steeper (3 % ⇒ 3000/mo principal) recorded 6000 — the
+    // interest the rate explains never changed, only the amortisation did.
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 3,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 6000,
+    });
+    // The 1000 over (2000 amort + 3000 interest) is the old plan's extra
+    // principal, not interest — so interest stays pinned to the rate's 3000.
+    expect(split.interest).toBeCloseTo(3000);
+    expect(split.amortization).toBeCloseTo(3000);
+  });
+
+  it("leaves a payment consistent with the current plan untouched", () => {
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      interestRate: 3,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    // 2000 amort + 3000 interest = 5000 — exactly the current plan, so the
+    // deterministic split stands.
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 5000,
+    });
+    expect(split.amortization).toBeCloseTo(2000);
+    expect(split.interest).toBeCloseTo(3000);
+  });
+
+  it("keeps the surplus as interest when a higher rate — not the plan — explains it", () => {
+    // The rate was higher in the past (5 % vs 3 % now); a larger historical
+    // payment is the higher interest, so it must stay interest, not be misread
+    // as a steeper plan.
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      currentBalance: 1_200_000,
+      amortization: { mode: "percent", percent: 2 }, // 2000/mo
+      rateHistory: [
+        { id: "r0", date: "", rate: 5 }, // 5000/mo originally
+        { id: "r1", date: "2024-06-01", rate: 3 }, // 3000/mo now
+      ],
+    });
+    // From when the rate was 5 %: 2000 amort + 5000 interest = 7000. The rate
+    // explains the whole interest leg, so nothing is reattributed.
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-01-28",
+      amount: 7000,
+    });
+    expect(split.amortization).toBeCloseTo(2000);
+    expect(split.interest).toBeCloseTo(5000);
+  });
+
+  it("does not reattribute when the loan's rate can't be resolved", () => {
+    // No rate ⇒ no computed interest to compare against, so the deterministic
+    // current-plan split stands even for an oversized payment.
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 6000,
+    });
+    expect(split.amortization).toBeCloseTo(2000);
+    expect(split.interest).toBeCloseTo(4000);
+  });
+
+  it("does not reattribute principal on an interest-only loan", () => {
+    // No amortisation plan to have stepped down from — an oversized payment on
+    // an interest-only loan stays interest rather than inventing principal.
+    const m = mortgage({
+      currentBalance: 1_200_000,
+      interestRate: 3, // 3000/mo computed interest
+    });
+    const split = splitRecordedPayment(m, {
+      id: "p",
+      date: "2024-08-28",
+      amount: 6000,
+    });
+    expect(split.amortization).toBe(0);
+    expect(split.interest).toBeCloseTo(6000);
   });
 });
 
