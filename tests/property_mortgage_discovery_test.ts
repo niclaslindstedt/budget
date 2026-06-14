@@ -1421,6 +1421,165 @@ describe("discoverMortgagePayments — cadence and window completeness", () => {
   });
 });
 
+// ── Metadata anchors skip the cadence requirement ──────────────────────────
+//
+// A charge the user marked as the mortgage (a company / type tag) or whose
+// description matches an already-recorded payment carries enough signal on its
+// own that it is promoted to "highly probable" on its amount alone — it does
+// NOT also have to recur on a clean, complete cadence. A few weekend-slipped or
+// missed months therefore no longer cost it the badge. An amount-only charge,
+// with no such metadata, still must recur cleanly across the whole window.
+describe("discoverMortgagePayments — metadata anchors skip cadence", () => {
+  it("flags a tagged charge with a broken cadence as highly probable", () => {
+    // Eleven months of a tagged mortgage draw with March missing — a broken
+    // monthly cadence. The tag vouches for it, so it is still highly probable.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`t-${i}`, d, -18_750, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("tag");
+    expect(series[0].regularCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("flags a payment-seeded charge with a broken cadence as highly probable", () => {
+    // The same gappy run, anchored by an existing recorded payment (a 1-1
+    // description match) instead of a tag — promoted all the same.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`s-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, {
+        seedEntryIds: ["s-0"],
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("payment");
+    expect(series[0].regularCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("still withholds the badge from an amount-only charge with a broken cadence", () => {
+    // No tag, no recorded payment — the same gap leaves it an ordinary
+    // candidate, since an amount-only match has no metadata to vouch for it.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`a-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("amount");
+    expect(series[0].highlyProbable).toBe(false);
+  });
+
+  it("does not promote a tagged charge whose amount is outside the band", () => {
+    // The cadence requirement is waived, but the amount band still gates: a
+    // tagged charge 30% off the expected figure is not highly probable.
+    const entries = monthlyDates(2024, 1, 12).map((d, i) =>
+      entry(`t-${i}`, d, -13_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("tag");
+    expect(series[0].highlyProbable).toBe(false);
+  });
+});
+
+// ── Weekend slips: two payments in one calendar month ──────────────────────
+//
+// A mortgage falls due on a fixed day, but a weekend or holiday pushes the
+// posting a few days on. When a payment due at the end of one month posts in
+// the first days of the next, that calendar month holds TWO payments and the
+// month between is empty. Grouping strictly by calendar month would collapse
+// the two into one (the larger wins) and lose the other; clustering by a
+// day-gap keeps both, because they are more than two weeks apart. A genuine
+// few-days-apart double-draw still folds into one payment.
+describe("discoverMortgagePayments — weekend month-boundary slips", () => {
+  it("keeps two same-group payments that share a calendar month", () => {
+    // Eleven clean monthly draws, but January's payment slipped to Feb 1 —
+    // so February holds both Feb 1 and Feb 27, and January is empty. All
+    // twelve payments must survive, not eleven.
+    const entries = [
+      entry("p-jan", "2024-02-01", -18_750, "HEMBANKEN BOLAN"),
+      ...monthlyDates(2024, 2, 11, 27).map((d, i) =>
+        entry(`p-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    const s = series.find((x) => x.suggestedAmount === 18_750)!;
+    expect(s).toBeDefined();
+    expect(s.months).toHaveLength(12);
+    // Both February payments are present.
+    const feb = s.months.filter((m) => m.monthKey === "2024-02");
+    expect(feb).toHaveLength(2);
+    expect(feb.map((m) => m.date).sort()).toEqual(["2024-02-01", "2024-02-27"]);
+  });
+
+  it("does not drop the slipped payment when its description is tagged", () => {
+    const entries = [
+      entry("p-jan", "2024-02-02", -8_000, "HEMBANKEN AMORTERING", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      ...monthlyDates(2024, 2, 11, 28).map((d, i) =>
+        entry(`p-${i}`, d, -8_000, "HEMBANKEN AMORTERING", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(baseInput(entries));
+    const s = series.find((x) => x.suggestedAmount === 8_000)!;
+    expect(s.months).toHaveLength(12);
+  });
+
+  it("folds a few-days-apart double-draw into a single payment", () => {
+    // A reversal + repost three days apart is the SAME payment — the larger
+    // (more-negative) draw stands in, the cluster counts once.
+    const entries = [
+      entry("dup-a", "2024-01-15", -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      entry("dup-b", "2024-01-18", -8_050, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      ...monthlyDates(2024, 2, 11, 15).map((d, i) =>
+        entry(`p-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(baseInput(entries));
+    const s = series.find((x) => x.label === "HEMBANKEN BOLAN")!;
+    // Twelve payments, not thirteen — the two January draws are one.
+    expect(s.months).toHaveLength(12);
+    const jan = s.months.filter((m) => m.monthKey === "2024-01");
+    expect(jan).toHaveLength(1);
+    // The larger of the two January draws stands in for the cluster.
+    expect(jan[0].amount).toBe(8_050);
+  });
+});
+
 describe("monthsWithinBand", () => {
   it("drops a month whose charge strays outside the band", () => {
     // Eleven steady 8,000 draws plus one 16,000 double-draw in an early

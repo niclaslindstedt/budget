@@ -442,7 +442,7 @@ export function MortgageDiscoveryModal({
                   </div>
                   <Slider
                     min={2}
-                    max={25}
+                    max={200}
                     step={1}
                     value={tolerancePct}
                     onChange={setTolerancePct}

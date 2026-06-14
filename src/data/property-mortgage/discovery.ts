@@ -34,8 +34,13 @@
 // lands within the tight band of an expected figure, AND which covers the
 // whole window the loan has been active (from its start date to the latest
 // charge the account has seen) is flagged **highly probable** and TRUMPS the
-// tag / company anchor in the ranking. The "covers the whole window" leg is
-// what stops a charge that happens to recur cleanly for only the last five of
+// tag / company anchor in the ranking. The cadence + window legs are demanded
+// only of an **amount-only** charge — one with no metadata to vouch for it. A
+// charge the user marked as the mortgage, or whose description matches an
+// already-recorded payment, is promoted on its amount alone: the tag (or the
+// matching payment) is signal enough, so a weekend-slipped or missed month
+// doesn't cost it the badge. The "covers the whole window" leg is what stops an
+// amount-only charge that happens to recur cleanly for only the last five of
 // eight months since the loan began (one that started late or has since
 // stopped) from masquerading as the mortgage — it stays an ordinary candidate.
 // Only ONE charge is promoted per expected figure: among the candidates that
@@ -79,7 +84,7 @@ export type MortgagePaymentSeries = {
   key: string; // normalised description (stable across imports)
   label: string; // a representative bank description
   suggestedAmount: number; // typical charge magnitude (positive)
-  months: SeriesMonth[]; // chronological, one winner per month
+  months: SeriesMonth[]; // chronological, one entry per payment occurrence
   spanMonths: number; // calendar months first..last, inclusive
   // Why this series surfaced: a company / type tag the user applied
   // ("tag"), a payment already recorded on the mortgage ("payment"), or —
@@ -98,15 +103,17 @@ export type MortgagePaymentSeries = {
   // every period, so an unbroken cadence is itself strong evidence the charge
   // IS the mortgage, independent of any tag.
   regularCadence: boolean;
-  // The standout candidate: the closest charge, per expected figure, that
-  // recurs on its cadence (`regularCadence`) under one stable description (not
-  // an amount-salvaged group), whose typical amount lands within
-  // `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of that figure, AND which covers the
-  // whole window the loan has been active (see `windowCovered`). A complete
-  // recurrence + matching amount + stable text is the surest signal a charge
-  // is the mortgage, so it TRUMPS the tag / company anchor in the ranking and
-  // is marked "highly probable" in the modal. `false` for any series missing a
-  // leg, and for the runner-up when two charges match the same figure.
+  // The standout candidate per expected figure, marked "highly probable" in the
+  // modal. A charge the user marked as the mortgage (a company / type tag) or
+  // whose description matches an already-recorded payment qualifies on its
+  // typical amount alone (within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of the
+  // figure) — its metadata is signal enough, so a weekend-slipped or missed
+  // month doesn't demote it. An amount-only charge has no such metadata, so it
+  // additionally has to recur on its cadence with no gaps (`regularCadence`)
+  // under one stable description (not an amount-salvaged group) AND cover the
+  // whole window the loan has been active (see `windowCovered`). `false` for
+  // any series missing a required leg, and for the runner-up when two charges
+  // match the same figure.
   highlyProbable: boolean;
 };
 
@@ -295,6 +302,21 @@ export const MORTGAGE_AMOUNT_ANCHOR_TOLERANCE = 0.2;
 // calendar months, so it applies the same to a quarterly loan.
 export const MORTGAGE_RECURRENCE_MIN_MONTHS = 3;
 
+// The smallest gap (in days) between two same-group charges for them to count
+// as SEPARATE payments. A mortgage falls due on a fixed day, but a weekend or
+// holiday pushes the posting a few days on — far enough that a payment due at
+// the end of one month can post in the first days of the next, landing two
+// payments in the same calendar month with the month between them empty.
+// Grouping strictly by calendar month would then collapse those two genuine
+// payments into one (the larger wins) and drop the other, so the finder
+// under-counts. Clustering by a day-gap instead keeps both: charges at least
+// two weeks apart are distinct payments, while charges closer than that (a
+// reversal + repost, an accidental double-draw) are the same payment, with the
+// largest standing in for the cluster. Two weeks comfortably separates one
+// month's payment from the next (≈28+ days apart) while still folding a
+// few-days-apart duplicate together.
+export const MORTGAGE_OCCURRENCE_MIN_GAP_DAYS = 14;
+
 // Relative distance between an amount and a reference (0 = exact match).
 function relativeDelta(amount: number, reference: number): number {
   const scale = Math.max(Math.abs(amount), Math.abs(reference));
@@ -322,6 +344,42 @@ function monthDiff(a: string, b: string): number {
   const by = Number(b.slice(0, 4));
   const bm = Number(b.slice(5, 7));
   return (by - ay) * 12 + (bm - am);
+}
+
+// Whole days between two ISO "YYYY-MM-DD" dates; negative when b precedes a.
+function dayDiff(a: string, b: string): number {
+  return Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+}
+
+// Collapse a group's charges into payment occurrences: a charge that falls
+// fewer than `MORTGAGE_OCCURRENCE_MIN_GAP_DAYS` after the previous one is the
+// same payment (a reversal + repost, an accidental double-draw), so the larger
+// outflow stands in for the cluster; a charge at least that far on is the next
+// payment and survives on its own — even when a weekend pushed it across a
+// month boundary so it shares a calendar month with that month's own charge.
+// Returns one representative entry per occurrence, in date order. The
+// representative keeps the most-negative ("largest") amount, matching the
+// per-month winner this replaces.
+function clusterOccurrences(charges: readonly HistoryEntry[]): HistoryEntry[] {
+  if (charges.length === 0) return [];
+  const sorted = [...charges].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  const occurrences: HistoryEntry[] = [];
+  let rep = sorted[0];
+  let prevDate = sorted[0].date;
+  for (let i = 1; i < sorted.length; i += 1) {
+    const e = sorted[i];
+    if (dayDiff(prevDate, e.date) >= MORTGAGE_OCCURRENCE_MIN_GAP_DAYS) {
+      occurrences.push(rep);
+      rep = e;
+    } else if (e.amount < rep.amount) {
+      rep = e; // larger outflow stands in for the cluster
+    }
+    prevDate = e.date;
+  }
+  occurrences.push(rep);
+  return occurrences;
 }
 
 // True when a chronological list of "YYYY-MM" keys recurs on a fixed cadence
@@ -441,12 +499,14 @@ function nearestTargetKey(
 // The grouped view of the account's outflows that the scan phase hands to
 // the candidate builder.
 type ChargeGroups = {
-  // Per-month winning charge for each group: the largest outflow that month
-  // whose normalised description (or, for a meaningless one, its amount
-  // group) matches. One winner per month per group so a stray same-month
-  // charge doesn't double-count. Tracked across the FULL history so a single
-  // tagged month can pull in every other month of the same charge.
-  byKeyMonth: Map<string, Map<string, HistoryEntry>>;
+  // The payment occurrences for each group, in date order: each group's
+  // charges (the entries whose normalised description — or, for a meaningless
+  // one, its amount group — matches) clustered by `clusterOccurrences`, so two
+  // charges a weekend apart in the same calendar month both survive as
+  // separate payments while a few-days-apart double-draw folds into one.
+  // Tracked across the FULL history so a single tagged month can pull in every
+  // other month of the same charge.
+  byKey: Map<string, HistoryEntry[]>;
   labelByKey: Map<string, string>;
   // Keys grouped by amount rather than by description text — they only ever
   // feed the amount fallback (a meaningless description can't carry a tag).
@@ -478,7 +538,7 @@ function scanChargeGroups(
   const seedEntryIds = new Set(input.seedEntryIds ?? []);
   const ruleCache = newRuleMatchCache();
 
-  const byKeyMonth = new Map<string, Map<string, HistoryEntry>>();
+  const byKeyCharges = new Map<string, HistoryEntry[]>();
   const labelByKey = new Map<string, string>();
   const syntheticKeys = new Set<string>();
   const tagKeys = new Set<string>();
@@ -521,17 +581,14 @@ function scanChargeGroups(
       synthetic = true;
     }
 
-    let months = byKeyMonth.get(key);
-    if (!months) {
-      months = new Map<string, HistoryEntry>();
-      byKeyMonth.set(key, months);
+    let charges = byKeyCharges.get(key);
+    if (!charges) {
+      charges = [];
+      byKeyCharges.set(key, charges);
       if (synthetic) syntheticKeys.add(key);
       if (entry.description.trim()) labelByKey.set(key, entry.description);
     }
-    const month = entry.date.slice(0, 7);
-    const current = months.get(month);
-    // "Largest" outflow = most negative amount.
-    if (!current || entry.amount < current.amount) months.set(month, entry);
+    charges.push(entry);
 
     // Synthetic (amount-grouped) keys never anchor on a tag or an existing
     // payment — a meaningless description carries no merchant identity, so the
@@ -555,12 +612,20 @@ function scanChargeGroups(
     if (companyMatch || typeMatch) tagKeys.add(key);
   }
 
-  diag.groupCount = byKeyMonth.size;
+  // Collapse each group's raw charges into payment occurrences now that the
+  // whole history has been seen — a weekend-slipped charge sharing a calendar
+  // month with the next payment survives as its own occurrence rather than
+  // being thrown away by a one-per-month winner.
+  const byKey = new Map<string, HistoryEntry[]>();
+  for (const [key, charges] of byKeyCharges)
+    byKey.set(key, clusterOccurrences(charges));
+
+  diag.groupCount = byKey.size;
   diag.tagKeyCount = tagKeys.size;
   diag.paymentKeyCount = paymentKeys.size;
 
   return {
-    byKeyMonth,
+    byKey,
     labelByKey,
     syntheticKeys,
     tagKeys,
@@ -588,7 +653,7 @@ function buildCandidateSeries(
 } {
   const { fromDate, toDate } = input;
   const {
-    byKeyMonth,
+    byKey,
     labelByKey,
     syntheticKeys,
     tagKeys,
@@ -612,16 +677,16 @@ function buildCandidateSeries(
   // surfaced and RANKED by strictness below, so a stray unrelated tag (a card
   // fee billed by the same bank that holds the mortgage) can't shadow the real
   // payment: the fee is dropped as implausible and the maths-found charge
-  // still appears. tag / payment keys are a subset of `byKeyMonth`, so when
-  // the loan resolves a figure the union is simply every group.
+  // still appears. tag / payment keys are a subset of `byKey`, so when the loan
+  // resolves a figure the union is simply every group.
   const candidateKeys = hasTargets
-    ? [...byKeyMonth.keys()]
+    ? [...byKey.keys()]
     : [...new Set([...tagKeys, ...paymentKeys])];
 
   const series: MortgagePaymentSeries[] = [];
   for (const key of candidateKeys) {
-    const months = byKeyMonth.get(key);
-    if (!months || months.size === 0) continue;
+    const occurrences = byKey.get(key);
+    if (!occurrences || occurrences.length === 0) continue;
     const tagged = tagKeys.has(key);
     const seeded = !tagged && paymentKeys.has(key);
     // A group surfaced purely by its amount — not tagged, not a payment seed.
@@ -632,29 +697,32 @@ function buildCandidateSeries(
         ? "payment"
         : "amount";
 
-    const sortedMonths = [...months.keys()].sort();
-    // Keep only the months whose charge falls inside the ownership window —
+    // Occurrences come from `clusterOccurrences` already in date order.
+    // Keep only the ones whose charge falls inside the ownership window —
     // on or after the purchase date and on or before the sold date. A payment
     // can't predate ownership, and an earlier (or, once sold, later) home's
     // same-description charge is the previous / next property's mortgage, not
-    // a payment on this one. The surviving months also centre the band: the
-    // typical charge is the median across them. With neither bound we keep
-    // every month. A series left with no surviving month is dropped outright.
-    const eligibleMonths =
+    // a payment on this one. The survivors also centre the band: the typical
+    // charge is the median across them. With neither bound we keep every
+    // occurrence. A series left with no surviving payment is dropped outright.
+    const eligibleOccurrences =
       fromDate !== undefined || toDate !== undefined
-        ? sortedMonths.filter((m) => {
-            const date = months.get(m)!.date;
-            if (fromDate !== undefined && date < fromDate) return false;
-            if (toDate !== undefined && date > toDate) return false;
+        ? occurrences.filter((e) => {
+            if (fromDate !== undefined && e.date < fromDate) return false;
+            if (toDate !== undefined && e.date > toDate) return false;
             return true;
           })
-        : sortedMonths;
-    const amountsFor = (ks: readonly string[]) =>
-      ks.map((m) => Math.abs(months.get(m)!.amount));
-    // Centres on the eligible months; with none eligible it's computed across
-    // all months purely for the diagnostic record.
+        : occurrences;
+    const monthKeysOf = (es: readonly HistoryEntry[]) =>
+      es.map((e) => e.date.slice(0, 7));
+    const amountsFor = (es: readonly HistoryEntry[]) =>
+      es.map((e) => Math.abs(e.amount));
+    // Centres on the eligible payments; with none eligible it's computed across
+    // all of them purely for the diagnostic record.
     const suggestedAmount = median(
-      amountsFor(eligibleMonths.length > 0 ? eligibleMonths : sortedMonths),
+      amountsFor(
+        eligibleOccurrences.length > 0 ? eligibleOccurrences : occurrences,
+      ),
     );
     let targetDelta: number | undefined;
     let targetIndex: number | undefined;
@@ -680,8 +748,9 @@ function buildCandidateSeries(
 
     // Recurs on its cadence with no gaps, over enough occurrences to be a
     // pattern (`MORTGAGE_RECURRENCE_MIN_MONTHS`).
-    const spanMonths = spanOfMonths(eligibleMonths);
-    const regularCadence = cadenceRegular(eligibleMonths, cadence);
+    const eligibleMonthKeys = monthKeysOf(eligibleOccurrences);
+    const spanMonths = spanOfMonths(eligibleMonthKeys);
+    const regularCadence = cadenceRegular(eligibleMonthKeys, cadence);
     // Spans the whole window the loan has been active — from its start (the
     // loan-start date, or the purchase) to the latest charge the account has
     // seen — at that cadence. A charge that recurs cleanly but covers only, say,
@@ -696,7 +765,7 @@ function buildCandidateSeries(
         ? soldMonth
         : latestOutflowMonth;
     const coversExpectedWindow = windowCovered(
-      eligibleMonths.length,
+      eligibleOccurrences.length,
       startMonth,
       windowEndMonth,
       cadence,
@@ -721,8 +790,8 @@ function buildCandidateSeries(
     const cand: MortgageCandidateDiagnostic = {
       label: labelByKey.get(key) ?? key,
       suggestedAmount,
-      monthCount: sortedMonths.length,
-      eligibleMonthCount: eligibleMonths.length,
+      monthCount: occurrences.length,
+      eligibleMonthCount: eligibleOccurrences.length,
       synthetic,
       regularCadence,
       coversExpectedWindow,
@@ -734,7 +803,7 @@ function buildCandidateSeries(
     diag.candidates.push(cand);
     if (targetIndex !== undefined) targetIndexByKey.set(key, targetIndex);
 
-    if (eligibleMonths.length === 0) {
+    if (eligibleOccurrences.length === 0) {
       cand.outcome = "no-eligible-month";
       continue;
     }
@@ -749,15 +818,12 @@ function buildCandidateSeries(
       label: labelByKey.get(key) ?? key,
       suggestedAmount,
       spanMonths,
-      months: eligibleMonths.map((m) => {
-        const e = months.get(m)!;
-        return {
-          monthKey: m,
-          date: e.date,
-          amount: Math.abs(e.amount),
-          entryId: e.id,
-        };
-      }),
+      months: eligibleOccurrences.map((e) => ({
+        monthKey: e.date.slice(0, 7),
+        date: e.date,
+        amount: Math.abs(e.amount),
+        entryId: e.id,
+      })),
       anchor: keyAnchor,
       regularCadence,
       // Promoted in the second pass below.
@@ -776,16 +842,21 @@ function anchorRank(a: MortgagePaymentSeries["anchor"]): number {
 }
 
 // Promote the standout candidate per expected figure to "highly probable":
-// among the kept series whose amount, cadence, and full-window coverage all
-// match a given target, the strongest one earns it — chosen by the same
-// strictness-then-closeness order the final ranking uses, so a charge the
-// user tagged still wins over a marginally-closer untagged one. Going
-// best-per-figure (not a single global winner) lets a property paid as one
-// draw PER loan light up each loan's charge, while a property paid as one
-// combined charge lights up only that — and a second clean-but-wrong charge
-// sitting near the same figure (the screenshot's incomplete 5-of-8-months
-// run) never also lights up, because it either loses to the stronger charge
-// or fails the window check outright.
+// among the kept series whose amount matches a given target, the strongest one
+// earns it — chosen by the same strictness-then-closeness order the final
+// ranking uses, so a charge the user tagged still wins over a marginally-closer
+// untagged one. Going best-per-figure (not a single global winner) lets a
+// property paid as one draw PER loan light up each loan's charge, while a
+// property paid as one combined charge lights up only that.
+//
+// What a series must prove to be eligible depends on its anchor. A charge the
+// user marked as the mortgage (a company / type tag) or one whose description
+// matches an already-recorded mortgage payment is promoted on its amount alone
+// — its metadata is signal enough, so a weekend-slipped or missed month no
+// longer demotes it. An amount-only charge has no such metadata, so it still
+// has to recur cleanly across the whole active window: a clean-but-incomplete
+// run (the screenshot's 5-of-8-months) loses to the stronger charge or fails
+// the window check outright.
 function promoteHighlyProbable(
   series: readonly MortgagePaymentSeries[],
   candidateByKey: ReadonlyMap<string, MortgageCandidateDiagnostic>,
@@ -794,13 +865,18 @@ function promoteHighlyProbable(
   const bestByTarget = new Map<number, MortgagePaymentSeries>();
   for (const s of series) {
     const cand = candidateByKey.get(s.key);
+    if (cand === undefined || s.targetDelta === undefined) continue;
+    // A charge the user marked as the mortgage (a company / type tag) or whose
+    // description matches an already-recorded mortgage payment carries a strong
+    // metadata signal in its own right, so it does NOT have to also prove a
+    // clean, complete recurrence to be promoted — a few weekend-slipped or
+    // missed months no longer cost it the badge. Amount-only matches have no
+    // such signal, so they still must recur cleanly across the whole window.
+    const metadataAnchored = s.anchor === "tag" || s.anchor === "payment";
     const eligible =
-      cand !== undefined &&
       !cand.synthetic &&
-      s.regularCadence &&
-      cand.coversExpectedWindow &&
-      s.targetDelta !== undefined &&
-      s.targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE;
+      s.targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE &&
+      (metadataAnchored || (s.regularCadence && cand.coversExpectedWindow));
     if (!eligible) continue;
     const ti = targetIndexByKey.get(s.key);
     if (ti === undefined) continue;
@@ -809,7 +885,7 @@ function promoteHighlyProbable(
       !best ||
       anchorRank(s.anchor) < anchorRank(best.anchor) ||
       (anchorRank(s.anchor) === anchorRank(best.anchor) &&
-        (s.targetDelta! < best.targetDelta! ||
+        (s.targetDelta < best.targetDelta! ||
           (s.targetDelta === best.targetDelta &&
             s.suggestedAmount > best.suggestedAmount)));
     if (stronger) bestByTarget.set(ti, s);
