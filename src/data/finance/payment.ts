@@ -160,17 +160,50 @@ export function splitPaymentAcrossMortgages(
 // same way: the amortisation is the mortgage's monthly amortisation capped
 // at the recorded amount (an under-covered charge records less than the full
 // amortisation and never any interest), and the rest is interest. Both legs
-// are ≥ 0 and sum to exactly `payment.amount`. Amortisation is date-
-// independent, so unlike the interest leg this doesn't need the charge date.
+// are ≥ 0 and sum to exactly `payment.amount`.
 export type PaymentSplit = { amortization: number; interest: number };
+
+// A mortgage's amortisation plan is stored as a single current figure (a fixed
+// sum or a percent of the initial loan), but it can change over the life of the
+// loan — a plan often steps down (e.g. 3 % → 2 %) once the loan-to-value ratio
+// crosses a threshold. Older payments were therefore larger by that earlier,
+// steeper amortisation, even though the interest the rate explains was the
+// same. Pinning amortisation to the *current* plan would mis-read that extra
+// principal as interest, inflating the interest leg of every historical
+// payment. So when the interest implied by the current-plan split runs more
+// than this fraction above what the loan's rate can explain for that month —
+// and the rate (and so the computed interest) is unchanged — the excess is
+// reattributed to amortisation instead. The margin is wide enough to ignore
+// the small month-to-month drift between a recorded charge and the model, but
+// well below the jump a whole amortisation tier produces.
+export const AMORTIZATION_PLAN_CHANGE_TOLERANCE = 0.25;
 
 export function splitRecordedPayment(
   mortgage: Mortgage,
   payment: MortgagePayment,
 ): PaymentSplit {
-  const amort = Math.max(0, resolveMonthlyAmortization(mortgage) ?? 0);
-  const amortization = Math.min(payment.amount, amort);
-  return { amortization, interest: payment.amount - amortization };
+  const planAmort = Math.max(0, resolveMonthlyAmortization(mortgage) ?? 0);
+  let amortization = Math.min(payment.amount, planAmort);
+  let interest = payment.amount - amortization;
+
+  // Detect a steeper historical amortisation plan: if the current plan leaves
+  // an interest leg far above the rate-derived interest for the charge's month
+  // (and the loan has a plan to have changed), the surplus was amortisation
+  // under the old plan, not interest. Reattribute it so the split reports the
+  // amortisation that was actually paid. Skipped when the rate / balance can't
+  // resolve a computed interest to compare against, or for interest-only loans
+  // (no plan to step down from), leaving the deterministic split untouched.
+  const computedInterest = resolveMonthlyInterestAt(mortgage, payment.date);
+  if (
+    planAmort > 0 &&
+    computedInterest !== null &&
+    interest > computedInterest * (1 + AMORTIZATION_PLAN_CHANGE_TOLERANCE)
+  ) {
+    amortization = Math.min(payment.amount, payment.amount - computedInterest);
+    interest = payment.amount - amortization;
+  }
+
+  return { amortization, interest };
 }
 
 // One mortgage's reconciliation between what's been recorded and the loan's

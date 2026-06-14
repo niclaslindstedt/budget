@@ -897,8 +897,8 @@ describe("discoverMortgagePayments — amount fallback on clean payments", () =>
 
 // Twelve months of an auto-giro charge with a STATIC reference number (the same
 // every month, as a real recurring autogiro is), optionally with a leading word
-// and a caller-chosen reference / id prefix. Mirrors the reported "Avibetalning
-// 9120-3273663" statement text.
+// and a caller-chosen reference / id prefix. Models the "Avibetalning <ref>"
+// statement text a Swedish mortgage auto-giro charge carries.
 function aviCharges(
   amount: number,
   opts: {
@@ -912,7 +912,7 @@ function aviCharges(
 ): HistoryEntry[] {
   const {
     word = "Avibetalning",
-    ref = "9120-3273663",
+    ref = "1234-5678901",
     idPrefix = "avi",
     count = 12,
     startYear = 2025,
@@ -924,36 +924,38 @@ function aviCharges(
   );
 }
 
-// The property from the screenshot: two Skandiabanken loans (one interest-only
-// at 1.63 %, one amortising 10 755/mo at 2.85 %) whose combined monthly
-// payment is ~19 600, bought 2025-09-01.
-function screenshotProperty(): Property {
+// A property carrying a split mortgage: one large interest-only loan and one
+// smaller amortising loan, paid as a single combined monthly charge of 11 500
+// (5 000 interest-only + 5 000 amortisation + 1 500 interest), bought
+// 2025-09-01. Fictional, round figures — the finder cares about the combined
+// figure and the cadence, not the exact loan terms.
+function splitMortgageProperty(): Property {
   const m1 = mort("m1", {
-    loanAmount: 6_144_208,
-    currentBalance: 6_144_208,
-    interestRate: 1.63,
+    loanAmount: 4_000_000,
+    currentBalance: 4_000_000,
+    interestRate: 1.5, // 5 000/mo interest
     amortization: { mode: "fixed", amount: 0 },
   });
   const m2 = mort("m2", {
-    loanAmount: 308_792,
-    currentBalance: 211_977,
-    interestRate: 2.85,
-    amortization: { mode: "fixed", amount: 10_755 },
+    loanAmount: 600_000,
+    currentBalance: 600_000,
+    interestRate: 3, // 1 500/mo interest
+    amortization: { mode: "fixed", amount: 5_000 },
   });
   return property([m1, m2], {
-    purchaseAmount: 7_700_000,
+    purchaseAmount: 4_600_000,
     purchaseDate: "2025-09-01",
-    valueHistory: [{ id: "v", date: "2026-01-01", value: 8_120_000 }],
+    valueHistory: [{ id: "v", date: "2026-01-01", value: 4_800_000 }],
   });
 }
 
 describe("discoverMortgagePayments — reference-number descriptions", () => {
   it("coalesces a monthly auto-giro charge with a static reference into one series", () => {
-    const prop = screenshotProperty();
-    const { series, seed } = runFinder(prop, aviCharges(19_636));
+    const prop = splitMortgageProperty();
+    const { series, seed } = runFinder(prop, aviCharges(11_500));
     expect(seed).toBe("amount");
     expect(series).toHaveLength(1);
-    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].suggestedAmount).toBe(11_500);
     // All twelve months in one group — the description is identical every month.
     expect(series[0].months).toHaveLength(12);
     expect(series[0].spanMonths).toBe(12);
@@ -961,8 +963,8 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
   });
 
   it("groups a static per-property reference into one series", () => {
-    const prop = screenshotProperty();
-    const { diagnostics } = runFinder(prop, aviCharges(19_636));
+    const prop = splitMortgageProperty();
+    const { diagnostics } = runFinder(prop, aviCharges(11_500));
     expect(diagnostics.outflowEntries).toBe(12);
     // The exact description is identical every month, so the twelve months form
     // a SINGLE group, not twelve.
@@ -978,10 +980,10 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
     // No leading word at all — the description normalises to empty, so there
     // is no text to group by; the amount fallback groups it by the expected
     // figure instead.
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const { series, diagnostics } = runFinder(
       prop,
-      aviCharges(19_636, { word: "" }),
+      aviCharges(11_500, { word: "" }),
     );
     expect(series).toHaveLength(1);
     expect(series[0].months).toHaveLength(12);
@@ -995,7 +997,7 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
     // A bare-reference charge of a wholly unrelated size can't be salvaged —
     // no expected figure is near it — so it's dropped before grouping and the
     // funnel records why.
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const { series, diagnostics } = runFinder(
       prop,
       aviCharges(450, { word: "" }),
@@ -1051,20 +1053,20 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
 // never sweeps in (and offers to record) another property's payments.
 describe("discoverMortgagePayments — distinct references stay apart", () => {
   it("does not merge two properties' similar avibetalning charges", () => {
-    // Property A and B are both charged ~19,600 under "Avibetalning", but each
+    // Property A and B are both charged ~11,500 under "Avibetalning", but each
     // carries its own static reference. They must form TWO groups, not one.
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const entries = [
-      ...aviCharges(19_636, { ref: "9120-3273663", idPrefix: "a" }),
-      ...aviCharges(19_600, { ref: "8473-1192834", idPrefix: "b" }),
+      ...aviCharges(11_500, { ref: "1100-2233445", idPrefix: "a" }),
+      ...aviCharges(11_450, { ref: "9988-7766554", idPrefix: "b" }),
     ];
     const { series, diagnostics } = runFinder(prop, entries);
     expect(diagnostics.groupCount).toBe(2);
     expect(series).toHaveLength(2);
     const refs = series.map((s) => s.label).sort();
     expect(refs).toEqual([
-      "Avibetalning 8473-1192834",
-      "Avibetalning 9120-3273663",
+      "Avibetalning 1100-2233445",
+      "Avibetalning 9988-7766554",
     ]);
     // Each series carries only its own twelve months, not a merged twenty-four.
     expect(series.every((s) => s.months.length === 12)).toBe(true);
@@ -1074,14 +1076,14 @@ describe("discoverMortgagePayments — distinct references stay apart", () => {
     // One recorded payment seeds property A's reference. Only A's series is a
     // payment match; B's identical-prefix charge stays amount-only and is never
     // anchored as a payment on this property.
-    const prop = screenshotProperty();
-    const aCharges = aviCharges(19_636, { ref: "9120-3273663", idPrefix: "a" });
-    const bCharges = aviCharges(19_600, { ref: "8473-1192834", idPrefix: "b" });
+    const prop = splitMortgageProperty();
+    const aCharges = aviCharges(11_500, { ref: "1100-2233445", idPrefix: "a" });
+    const bCharges = aviCharges(11_450, { ref: "9988-7766554", idPrefix: "b" });
     const { series } = runFinder(prop, [...aCharges, ...bCharges], {
       seedEntryIds: ["a-0"],
     });
-    const a = series.find((s) => s.label === "Avibetalning 9120-3273663");
-    const b = series.find((s) => s.label === "Avibetalning 8473-1192834");
+    const a = series.find((s) => s.label === "Avibetalning 1100-2233445");
+    const b = series.find((s) => s.label === "Avibetalning 9988-7766554");
     expect(a?.anchor).toBe("payment");
     expect(b?.anchor).toBe("amount");
   });
@@ -1106,17 +1108,17 @@ describe("discoverMortgagePayments — a stray tag does not shadow the maths", (
   }
 
   it("finds the untagged mortgage even when an unrelated lender charge is tagged", () => {
-    const base = screenshotProperty();
+    const base = splitMortgageProperty();
     const prop = property(base.mortgages, {
       ...base,
       companyId: COMPANY.id, // the property's lender
     });
-    const entries = [...aviCharges(19_636), ...feeCharges()];
+    const entries = [...aviCharges(11_500), ...feeCharges()];
     const { series, seed, diagnostics } = runFinder(prop, entries);
     // The stray fee IS tagged...
     expect(diagnostics.tagKeyCount).toBeGreaterThanOrEqual(1);
     // ...but the mortgage still surfaces, from the loan maths, and leads.
-    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].suggestedAmount).toBe(11_500);
     expect(series[0].anchor).toBe("amount");
     expect(seed).toBe("amount");
     // The 20 kr fee is offered to nobody — it's an order of magnitude off the
@@ -1129,16 +1131,16 @@ describe("discoverMortgagePayments — a stray tag does not shadow the maths", (
   it("still surfaces a correctly-tagged mortgage as a tag match", () => {
     // When the tagged charge IS the mortgage, it leads as a tag anchor (the
     // amount search would find it too, deduped by its description key).
-    const base = screenshotProperty();
+    const base = splitMortgageProperty();
     const prop = property(base.mortgages, { ...base, companyId: COMPANY.id });
     const entries = monthlyDates(2025, 9, 12).map((d, i) =>
-      entry(`m-${i}`, d, -19_636, "Avibetalning bolan", {
+      entry(`m-${i}`, d, -11_500, "Avibetalning bolan", {
         userCompanyId: COMPANY.id,
       }),
     );
     const { series, seed } = runFinder(prop, entries);
     expect(series).toHaveLength(1);
-    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].suggestedAmount).toBe(11_500);
     expect(series[0].anchor).toBe("tag");
     expect(seed).toBe("tags");
   });
@@ -1321,10 +1323,10 @@ describe("discoverMortgagePayments — monthly recurrence promotion", () => {
   it("does not flag an amount-salvaged (no stable description) charge", () => {
     // A bare-reference charge recurs monthly in band, but has no stable
     // description to group by — it is salvaged by amount and stays unflagged.
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const { series, diagnostics } = runFinder(
       prop,
-      aviCharges(19_636, { word: "" }),
+      aviCharges(11_500, { word: "" }),
     );
     expect(series).toHaveLength(1);
     expect(series[0].regularCadence).toBe(true);
@@ -1358,13 +1360,13 @@ describe("discoverMortgagePayments — cadence and window completeness", () => {
   it("flags a charge that covers the whole window since the loan started", () => {
     // The mortgage runs every month from the purchase (2025-09) to the latest
     // data the account has (2026-04) — eight of eight expected months.
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const { series } = runFinder(
       prop,
-      monthly("loan", "Avibetalning bolan", 19_636, 2025, 9, 8),
+      monthly("loan", "Avibetalning bolan", 11_500, 2025, 9, 8),
     );
     expect(series).toHaveLength(1);
-    expect(series[0].suggestedAmount).toBe(19_636);
+    expect(series[0].suggestedAmount).toBe(11_500);
     expect(series[0].regularCadence).toBe(true);
     expect(series[0].highlyProbable).toBe(true);
   });
@@ -1375,19 +1377,19 @@ describe("discoverMortgagePayments — cadence and window completeness", () => {
     // spending (groceries) keeps running all eight months, so the data window
     // reaches 2026-04 and the five-month run falls short. It stays a candidate,
     // just not "highly probable".
-    const prop = screenshotProperty();
+    const prop = splitMortgageProperty();
     const entries = [
-      ...monthly("loan", "Avibetalning bolan", 19_636, 2025, 12, 5),
+      ...monthly("loan", "Avibetalning bolan", 11_500, 2025, 12, 5),
       ...monthly("food", "MATBUTIK", 1_250, 2025, 9, 8),
     ];
     const { series } = runFinder(prop, entries);
-    const loan = series.find((s) => s.suggestedAmount === 19_636);
+    const loan = series.find((s) => s.suggestedAmount === 11_500);
     expect(loan).toBeDefined();
     // Clean cadence, no internal gaps...
     expect(loan!.regularCadence).toBe(true);
     // ...but it covers only 5 of the 8 expected months, so it isn't promoted.
     expect(loan!.highlyProbable).toBe(false);
-    const cand = series.find((s) => s.suggestedAmount === 19_636);
+    const cand = series.find((s) => s.suggestedAmount === 11_500);
     expect(cand).toBeDefined();
   });
 
