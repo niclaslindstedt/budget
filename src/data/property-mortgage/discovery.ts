@@ -143,6 +143,21 @@ export type MortgageDiscoveryResult = {
   diagnostics: MortgageDiscoveryDiagnostics;
 };
 
+// The charges the discovery modal pre-checks before the user touches anything.
+// Highly-probable charges (steady, complete, on-cadence) are the surest sign,
+// so pre-check exactly those. With none, a single mortgage almost always maps
+// to one recurring charge — so pre-check just the leading (best-ranked)
+// candidate rather than the whole tail of weak one-off matches the scan also
+// surfaces. `series` is already sorted best-first, so `series[0]` is that lead.
+// Returns the keys to pre-check; an empty set when nothing was found.
+export function defaultSelectedSeriesKeys(
+  series: readonly MortgagePaymentSeries[],
+): Set<string> {
+  const probable = series.filter((s) => s.highlyProbable);
+  const source = probable.length > 0 ? probable : series.slice(0, 1);
+  return new Set(source.map((s) => s.key));
+}
+
 // Why a grouped candidate did or didn't reach the final series list.
 //   "kept"              — offered to the user
 //   "no-eligible-month" — every month fell outside the ownership window

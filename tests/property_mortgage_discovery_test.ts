@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  defaultSelectedSeriesKeys,
   discoverMortgagePayments,
   monthsWithinBand,
   type MortgageDiscoveryInput,
+  type MortgagePaymentSeries,
 } from "../src/data/property-mortgage/discovery";
 import {
   resolveMonthlyPaymentAt,
@@ -1654,5 +1656,54 @@ describe("monthsWithinBand", () => {
     const kept = monthsWithinBand(target!, target!.suggestedAmount, 0.1);
     expect(kept).toHaveLength(11);
     expect(kept.every((m) => m.amount === 8_000)).toBe(true);
+  });
+});
+
+// ── Default selection: pre-check the lead, not the long tail ────────────────
+//
+// A scan can surface one strong recurring mortgage charge alongside a tail of
+// weak one-off matches (a single transfer, a one-month bill that happened to
+// land in band). The modal must not pre-check that tail — a single mortgage
+// almost always maps to a single recurring charge, so the default is the
+// highly-probable charges, or just the leading candidate when none qualify.
+describe("defaultSelectedSeriesKeys", () => {
+  function series(
+    over: Partial<MortgagePaymentSeries> & { key: string },
+  ): MortgagePaymentSeries {
+    return {
+      label: over.key,
+      suggestedAmount: 0,
+      months: [],
+      spanMonths: 0,
+      anchor: "amount",
+      regularCadence: false,
+      highlyProbable: false,
+      ...over,
+    };
+  }
+
+  it("pre-checks only the highly-probable charges when any exist", () => {
+    const keys = defaultSelectedSeriesKeys([
+      series({ key: "lead", highlyProbable: true }),
+      series({ key: "second", highlyProbable: true }),
+      series({ key: "weak" }),
+    ]);
+    expect([...keys].sort()).toEqual(["lead", "second"]);
+  });
+
+  it("pre-checks just the leading candidate when none are highly probable", () => {
+    // The list is already sorted best-first, so the lead is the first entry;
+    // the weak one-off tail stays unchecked.
+    const keys = defaultSelectedSeriesKeys([
+      series({ key: "lead" }),
+      series({ key: "oneoff-a" }),
+      series({ key: "oneoff-b" }),
+      series({ key: "oneoff-c" }),
+    ]);
+    expect([...keys]).toEqual(["lead"]);
+  });
+
+  it("returns an empty set when the scan found nothing", () => {
+    expect(defaultSelectedSeriesKeys([]).size).toBe(0);
   });
 });
