@@ -1421,6 +1421,81 @@ describe("discoverMortgagePayments — cadence and window completeness", () => {
   });
 });
 
+// ── Weekend slips: two payments in one calendar month ──────────────────────
+//
+// A mortgage falls due on a fixed day, but a weekend or holiday pushes the
+// posting a few days on. When a payment due at the end of one month posts in
+// the first days of the next, that calendar month holds TWO payments and the
+// month between is empty. Grouping strictly by calendar month would collapse
+// the two into one (the larger wins) and lose the other; clustering by a
+// day-gap keeps both, because they are more than two weeks apart. A genuine
+// few-days-apart double-draw still folds into one payment.
+describe("discoverMortgagePayments — weekend month-boundary slips", () => {
+  it("keeps two same-group payments that share a calendar month", () => {
+    // Eleven clean monthly draws, but January's payment slipped to Feb 1 —
+    // so February holds both Feb 1 and Feb 27, and January is empty. All
+    // twelve payments must survive, not eleven.
+    const entries = [
+      entry("p-jan", "2024-02-01", -18_750, "HEMBANKEN BOLAN"),
+      ...monthlyDates(2024, 2, 11, 27).map((d, i) =>
+        entry(`p-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    const s = series.find((x) => x.suggestedAmount === 18_750)!;
+    expect(s).toBeDefined();
+    expect(s.months).toHaveLength(12);
+    // Both February payments are present.
+    const feb = s.months.filter((m) => m.monthKey === "2024-02");
+    expect(feb).toHaveLength(2);
+    expect(feb.map((m) => m.date).sort()).toEqual(["2024-02-01", "2024-02-27"]);
+  });
+
+  it("does not drop the slipped payment when its description is tagged", () => {
+    const entries = [
+      entry("p-jan", "2024-02-02", -8_000, "HEMBANKEN AMORTERING", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      ...monthlyDates(2024, 2, 11, 28).map((d, i) =>
+        entry(`p-${i}`, d, -8_000, "HEMBANKEN AMORTERING", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(baseInput(entries));
+    const s = series.find((x) => x.suggestedAmount === 8_000)!;
+    expect(s.months).toHaveLength(12);
+  });
+
+  it("folds a few-days-apart double-draw into a single payment", () => {
+    // A reversal + repost three days apart is the SAME payment — the larger
+    // (more-negative) draw stands in, the cluster counts once.
+    const entries = [
+      entry("dup-a", "2024-01-15", -8_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      entry("dup-b", "2024-01-18", -8_050, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+      ...monthlyDates(2024, 2, 11, 15).map((d, i) =>
+        entry(`p-${i}`, d, -8_000, "HEMBANKEN BOLAN", {
+          userTypeId: PRESET_TYPE_MORTGAGE_ID,
+        }),
+      ),
+    ];
+    const { series } = discoverMortgagePayments(baseInput(entries));
+    const s = series.find((x) => x.label === "HEMBANKEN BOLAN")!;
+    // Twelve payments, not thirteen — the two January draws are one.
+    expect(s.months).toHaveLength(12);
+    const jan = s.months.filter((m) => m.monthKey === "2024-01");
+    expect(jan).toHaveLength(1);
+    // The larger of the two January draws stands in for the cluster.
+    expect(jan[0].amount).toBe(8_050);
+  });
+});
+
 describe("monthsWithinBand", () => {
   it("drops a month whose charge strays outside the band", () => {
     // Eleven steady 8,000 draws plus one 16,000 double-draw in an early
