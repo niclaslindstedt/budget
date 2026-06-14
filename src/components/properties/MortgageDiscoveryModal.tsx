@@ -146,17 +146,23 @@ export function MortgageDiscoveryModal({
   // The merged history across every selected account, deduped by entry id
   // (a content hash, so an identical row imported into two accounts collapses
   // to one). A property is paid to the bank as one charge covering every loan,
-  // so within each account the charge is shared across the mortgages.
-  const entries = useMemo(() => {
+  // so within each account the charge is shared across the mortgages. The
+  // companion map records which account each surviving entry came from (the
+  // first to claim it, matching the dedupe) so an accepted payment can store
+  // its source account — without it the payments view can't resolve a charge
+  // drawn from any account other than the property's main one.
+  const { entries, accountByEntryId } = useMemo(() => {
     const seen = new Set<string>();
     const out: HistoryEntry[] = [];
+    const byEntry = new Map<string, string>();
     for (const id of accountIds)
       for (const e of history[id] ?? [])
         if (!seen.has(e.id)) {
           seen.add(e.id);
           out.push(e);
+          byEntry.set(e.id, id);
         }
-    return out;
+    return { entries: out, accountByEntryId: byEntry };
   }, [accountIds, history]);
 
   const hasAccount = accountIds.length > 0;
@@ -313,13 +319,16 @@ export function MortgageDiscoveryModal({
           month.amount,
           month.date,
         );
+        const sourceAccountId = accountByEntryId.get(month.entryId);
         for (const [mortgageId, amount] of split) {
-          (byMortgage[mortgageId] ??= []).push({
+          const payment: MortgagePayment = {
             id: newId(),
             date: month.date,
             amount,
             sourceHistoryId: month.entryId,
-          });
+          };
+          if (sourceAccountId) payment.sourceAccountId = sourceAccountId;
+          (byMortgage[mortgageId] ??= []).push(payment);
         }
         freshMonthKeys.push(month.monthKey);
       }
@@ -344,6 +353,7 @@ export function MortgageDiscoveryModal({
     addedSourceIds,
     tolerance,
     mortgages,
+    accountByEntryId,
   ]);
 
   if (!open) return null;

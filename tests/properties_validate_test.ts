@@ -75,3 +75,62 @@ describe("validateProperty via validateUserData — sale fields", () => {
     }
   });
 });
+
+describe("validateProperty via validateUserData — mortgage payment source", () => {
+  it("preserves a payment's source account alongside its source history id", () => {
+    const data = blob([
+      property({
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            payments: [
+              {
+                id: "p1",
+                date: "2026-03-28",
+                amount: 8000,
+                sourceHistoryId: "h1",
+                sourceAccountId: "acct-other",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const payment = result.value.properties[0].mortgages[0].payments[0];
+      expect(payment.sourceHistoryId).toBe("h1");
+      expect(payment.sourceAccountId).toBe("acct-other");
+    }
+  });
+
+  it("drops a source account with no source history id to pair with", () => {
+    const data = blob([
+      property({
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            payments: [
+              {
+                id: "p1",
+                date: "2026-03-28",
+                amount: 8000,
+                sourceAccountId: "acct-other",
+              } as never,
+            ],
+          },
+        ],
+      }),
+    ]);
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const payment = result.value.properties[0].mortgages[0].payments[0];
+      expect(payment.sourceHistoryId).toBeUndefined();
+      expect(payment.sourceAccountId).toBeUndefined();
+    }
+  });
+});

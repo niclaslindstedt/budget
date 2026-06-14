@@ -242,11 +242,17 @@ export type MortgageChargeItem = {
 // `sourceHistoryId` is the bank transaction the split came from, when the
 // charge was discovered (absent for hand-entered payments) — the payments
 // view resolves it back to the original `HistoryEntry` for the popover.
+// `sourceAccountId` is which account's history that transaction lives in,
+// so the popover resolves a charge drawn from any account, not only the
+// property's main one (absent for hand-entered payments, and for payments
+// recorded before the field existed — the view then falls back to the
+// property's main account).
 export type MortgageChargeGroup = {
   key: string;
   date: string;
   total: number;
   sourceHistoryId?: string;
+  sourceAccountId?: string;
   items: MortgageChargeItem[];
 };
 
@@ -270,6 +276,7 @@ export function groupPaymentsByCharge(
           date: payment.date,
           total: 0,
           sourceHistoryId: payment.sourceHistoryId,
+          sourceAccountId: payment.sourceAccountId,
           items: [],
         };
         groups.set(key, group);

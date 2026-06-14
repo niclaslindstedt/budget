@@ -477,4 +477,23 @@ describe("groupPaymentsByCharge", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].total).toBe(4000);
   });
+
+  it("carries the payment's source account so the popover can resolve a charge drawn from any account", () => {
+    const m = mortgage({
+      id: "a",
+      payments: [
+        {
+          id: "p1",
+          date: "2026-03-28",
+          amount: 8000,
+          sourceHistoryId: "h1",
+          sourceAccountId: "acct-other",
+        },
+      ],
+    });
+    const groups = groupPaymentsByCharge(property([m]));
+    expect(groups).toHaveLength(1);
+    expect(groups[0].sourceHistoryId).toBe("h1");
+    expect(groups[0].sourceAccountId).toBe("acct-other");
+  });
 });

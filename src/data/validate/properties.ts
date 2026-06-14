@@ -59,6 +59,17 @@ function validatePayment(raw: unknown): MortgagePayment | null {
   const payment: MortgagePayment = { id, date, amount };
   if (typeof raw.sourceHistoryId === "string" && raw.sourceHistoryId !== "")
     payment.sourceHistoryId = raw.sourceHistoryId;
+  // The account the source transaction lives in. Kept only alongside a
+  // source history id (the pair locates the bank row), unverified against
+  // the known-account set so a payment whose source account was later
+  // deleted keeps its snapshot — mirroring how `sourceHistoryId` is
+  // preserved unconditionally.
+  if (
+    payment.sourceHistoryId !== undefined &&
+    typeof raw.sourceAccountId === "string" &&
+    raw.sourceAccountId !== ""
+  )
+    payment.sourceAccountId = raw.sourceAccountId;
   return payment;
 }
 

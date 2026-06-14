@@ -910,7 +910,10 @@ export function buildSeedUserData(): UserData {
             date: charge ? charge.date : iso(year, month, 27),
             amount: charge ? Math.abs(charge.amount) : 5200,
           };
-          if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+          if (sourceHist) {
+            payment.sourceHistoryId = sourceHist.id;
+            payment.sourceAccountId = checking.id;
+          }
           return payment;
         }),
       },
@@ -965,7 +968,10 @@ export function buildSeedUserData(): UserData {
             date: charge ? charge.date : iso(year, month, 28),
             amount: charge ? Math.abs(charge.amount) : 5400,
           };
-          if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+          if (sourceHist) {
+            payment.sourceHistoryId = sourceHist.id;
+            payment.sourceAccountId = cityAccount.id;
+          }
           return payment;
         }),
       },
@@ -1025,7 +1031,10 @@ export function buildSeedUserData(): UserData {
             date: charge ? charge.date : iso(year, month, 28),
             amount: charge ? Math.abs(charge.amount) : 61500,
           };
-          if (sourceHist) payment.sourceHistoryId = sourceHist.id;
+          if (sourceHist) {
+            payment.sourceHistoryId = sourceHist.id;
+            payment.sourceAccountId = villaAccount.id;
+          }
           return payment;
         }),
       },

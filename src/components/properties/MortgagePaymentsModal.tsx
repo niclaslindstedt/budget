@@ -53,13 +53,17 @@ type Props = {
   open: boolean;
   property: Property | null;
   settings: Settings;
-  // The account the property's mortgages are paid from, when bound — used
-  // to label the original bank transaction in the per-charge popover.
-  account: Account | null;
-  // Bank-history entries keyed by id for the property's account, so a
-  // charge group can resolve the original transaction it was split from
-  // (its `sourceHistoryId`) for the popover. Empty when the account has no
-  // history (or no account is bound).
+  // Every account, by id — so a charge can label the original bank
+  // transaction with the account it was actually drawn from (which need
+  // not be the property's main account; "Find mortgage payments" can scan
+  // several at once).
+  accountsById: ReadonlyMap<string, Account>;
+  // Bank-history entries keyed by `${accountId}:${entryId}`, covering every
+  // account the property's payments reference (their recorded
+  // `sourceAccountId`, plus the property's main account as the fallback for
+  // legacy payments), so a charge group can resolve the original
+  // transaction it was split from for the popover regardless of which
+  // account holds it. Empty when no source account has history.
   sourceTransactions: Map<string, HistoryEntry>;
   onClose: () => void;
   onSetChargeSplit: (updates: ChargeSplitUpdate[]) => void;
@@ -82,7 +86,7 @@ export function MortgagePaymentsModal({
   open,
   property,
   settings,
-  account,
+  accountsById,
   sourceTransactions,
   onClose,
   onSetChargeSplit,
@@ -152,134 +156,146 @@ export function MortgagePaymentsModal({
         ) : (
           <ActiveRowProvider>
             <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {groups.map((group) => (
-                <li
-                  key={group.key}
-                  className="overflow-clip rounded border border-line bg-surface-2"
-                >
-                  <MortgageChargeHeader
-                    group={group}
-                    settings={settings}
-                    account={account}
-                    entry={
-                      group.sourceHistoryId
-                        ? (sourceTransactions.get(group.sourceHistoryId) ??
-                          null)
-                        : null
-                    }
-                  />
-                  <table className="swipe-table mortgage-payments-table w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="text-muted">
-                        <th
-                          className="w-full px-2.5 py-1 text-left font-normal"
-                          title={t("properties.loanColumn")}
-                        >
-                          <span className="inline-flex items-center gap-1.5">
-                            <Landmark
-                              size={13}
-                              className="shrink-0 text-accent"
-                              aria-label={t("properties.loanColumn")}
-                              focusable={false}
-                            />
-                            <span className="hidden md:inline">
-                              {t("properties.loanColumn")}
+              {groups.map((group) => {
+                // The account the charge was drawn from: the one recorded on
+                // the payment when known, falling back to the property's main
+                // account for payments recorded before `sourceAccountId`
+                // existed (and for hand-entered charges, which have neither).
+                const sourceAccountId =
+                  group.sourceAccountId ?? property.accountId ?? null;
+                const entry =
+                  group.sourceHistoryId && sourceAccountId
+                    ? (sourceTransactions.get(
+                        `${sourceAccountId}:${group.sourceHistoryId}`,
+                      ) ?? null)
+                    : null;
+                const account = sourceAccountId
+                  ? (accountsById.get(sourceAccountId) ?? null)
+                  : null;
+                return (
+                  <li
+                    key={group.key}
+                    className="overflow-clip rounded border border-line bg-surface-2"
+                  >
+                    <MortgageChargeHeader
+                      group={group}
+                      settings={settings}
+                      account={account}
+                      entry={entry}
+                    />
+                    <table className="swipe-table mortgage-payments-table w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="text-muted">
+                          <th
+                            className="w-full px-2.5 py-1 text-left font-normal"
+                            title={t("properties.loanColumn")}
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <Landmark
+                                size={13}
+                                className="shrink-0 text-accent"
+                                aria-label={t("properties.loanColumn")}
+                                focusable={false}
+                              />
+                              <span className="hidden md:inline">
+                                {t("properties.loanColumn")}
+                              </span>
                             </span>
-                          </span>
-                        </th>
-                        <th
-                          className={`py-1 font-normal ${headerClass}`}
-                          style={padStyle}
-                          title={t("properties.amortShort")}
-                        >
-                          <span
-                            className={`inline-flex items-center ${headerJustifyClass}`}
+                          </th>
+                          <th
+                            className={`py-1 font-normal ${headerClass}`}
+                            style={padStyle}
+                            title={t("properties.amortShort")}
                           >
-                            <TrendingDown
-                              size={13}
-                              className="shrink-0 text-accent"
-                              aria-label={t("properties.amortShort")}
-                              focusable={false}
-                            />
-                          </span>
-                        </th>
-                        <th
-                          className={`py-1 font-normal ${headerClass}`}
-                          style={padStyle}
-                          title={t("properties.interestShort")}
-                        >
-                          <span
-                            className={`inline-flex items-center ${headerJustifyClass}`}
-                          >
-                            <Percent
-                              size={13}
-                              className="shrink-0 text-accent"
-                              aria-label={t("properties.interestShort")}
-                              focusable={false}
-                            />
-                          </span>
-                        </th>
-                        <th
-                          className={`py-1 font-normal ${headerClass}`}
-                          style={padStyle}
-                          title={t("properties.paymentAmount")}
-                        >
-                          <span
-                            className={`inline-flex items-center ${headerJustifyClass}`}
-                          >
-                            <Coins
-                              size={13}
-                              className="shrink-0 text-accent"
-                              aria-label={t("properties.paymentAmount")}
-                              focusable={false}
-                            />
-                          </span>
-                        </th>
-                        <th
-                          className="swipe-action-cell mortgage-payments-action-cell w-32 px-2.5 py-1 text-right font-normal"
-                          title={t("properties.actionsColumn")}
-                        >
-                          <span className="inline-flex items-center justify-end gap-1.5">
-                            <Settings2
-                              size={13}
-                              className="shrink-0 text-accent"
-                              aria-label={t("properties.actionsColumn")}
-                              focusable={false}
-                            />
-                            <span className="hidden md:inline">
-                              {t("properties.actionsColumn")}
+                            <span
+                              className={`inline-flex items-center ${headerJustifyClass}`}
+                            >
+                              <TrendingDown
+                                size={13}
+                                className="shrink-0 text-accent"
+                                aria-label={t("properties.amortShort")}
+                                focusable={false}
+                              />
                             </span>
-                          </span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.items.map((item) => (
-                        <MortgagePaymentRow
-                          key={item.payment.id}
-                          item={item}
-                          settings={settings}
-                          onEdit={() =>
-                            setEditing({
-                              key: group.key,
-                              mortgageId: item.mortgage.id,
-                            })
-                          }
-                          onDelete={() =>
-                            setPendingDelete({
-                              mortgageId: item.mortgage.id,
-                              paymentId: item.payment.id,
-                              mortgageName: item.mortgage.name,
-                              date: item.payment.date,
-                              amount: item.payment.amount,
-                            })
-                          }
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </li>
-              ))}
+                          </th>
+                          <th
+                            className={`py-1 font-normal ${headerClass}`}
+                            style={padStyle}
+                            title={t("properties.interestShort")}
+                          >
+                            <span
+                              className={`inline-flex items-center ${headerJustifyClass}`}
+                            >
+                              <Percent
+                                size={13}
+                                className="shrink-0 text-accent"
+                                aria-label={t("properties.interestShort")}
+                                focusable={false}
+                              />
+                            </span>
+                          </th>
+                          <th
+                            className={`py-1 font-normal ${headerClass}`}
+                            style={padStyle}
+                            title={t("properties.paymentAmount")}
+                          >
+                            <span
+                              className={`inline-flex items-center ${headerJustifyClass}`}
+                            >
+                              <Coins
+                                size={13}
+                                className="shrink-0 text-accent"
+                                aria-label={t("properties.paymentAmount")}
+                                focusable={false}
+                              />
+                            </span>
+                          </th>
+                          <th
+                            className="swipe-action-cell mortgage-payments-action-cell w-32 px-2.5 py-1 text-right font-normal"
+                            title={t("properties.actionsColumn")}
+                          >
+                            <span className="inline-flex items-center justify-end gap-1.5">
+                              <Settings2
+                                size={13}
+                                className="shrink-0 text-accent"
+                                aria-label={t("properties.actionsColumn")}
+                                focusable={false}
+                              />
+                              <span className="hidden md:inline">
+                                {t("properties.actionsColumn")}
+                              </span>
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.items.map((item) => (
+                          <MortgagePaymentRow
+                            key={item.payment.id}
+                            item={item}
+                            settings={settings}
+                            onEdit={() =>
+                              setEditing({
+                                key: group.key,
+                                mortgageId: item.mortgage.id,
+                              })
+                            }
+                            onDelete={() =>
+                              setPendingDelete({
+                                mortgageId: item.mortgage.id,
+                                paymentId: item.payment.id,
+                                mortgageName: item.mortgage.name,
+                                date: item.payment.date,
+                                amount: item.payment.amount,
+                              })
+                            }
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </li>
+                );
+              })}
             </ul>
           </ActiveRowProvider>
         )}
