@@ -1238,8 +1238,11 @@ than `MORTGAGE_PLAUSIBILITY_FACTOR`× off every expected figure is
 dropped as too far from the maths to be the payment (only when the loan
 terms resolve a figure). The user ticks charge groups; the walk pre-checks
 only the "highly probable" charges when any surfaced (so the weaker
-candidates are opt-in), falling back to pre-checking everything found when
-none were promoted. Each month within
+candidates are opt-in), falling back to pre-checking just the leading
+(best-ranked) candidate when none were promoted — a single mortgage almost
+always maps to one recurring charge, so the long tail of weak one-off
+matches stays unchecked rather than being bulk-selected
+(`defaultSelectedSeriesKeys`). Each month within
 the ± band (a `Slider`, default ±10 % `DEFAULT_MORTGAGE_TOLERANCE`, up to
 ±200 % for a rate that swung hard, `monthsWithinBand`) is split across the
 mortgages by their amortisation +

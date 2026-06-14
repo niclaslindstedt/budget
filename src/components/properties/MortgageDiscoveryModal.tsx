@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Home, Landmark, Search } from "lucide-react";
 
 import {
+  defaultSelectedSeriesKeys,
   discoverMortgagePayments,
   DEFAULT_MORTGAGE_TOLERANCE,
   emptyMortgageDiagnostics,
@@ -284,16 +285,12 @@ export function MortgageDiscoveryModal({
   }, [open, property, hasAccount, result]);
 
   // The pre-checked set when the user hasn't toggled anything yet
-  // (`selectedKeys === null`). When the scan surfaces any "highly probable"
-  // charge, pre-check only those — the steady, complete rhythm is the surest
-  // sign they're the mortgage, so weaker candidates are opt-in rather than
-  // opt-out. With no highly-probable hit, fall back to pre-checking every
-  // charge found.
-  const defaultSelectedKeys = useMemo(() => {
-    const probable = result.series.filter((s) => s.highlyProbable);
-    const source = probable.length > 0 ? probable : result.series;
-    return new Set(source.map((s) => s.key));
-  }, [result.series]);
+  // (`selectedKeys === null`) — highly-probable charges, else just the leading
+  // candidate (see `defaultSelectedSeriesKeys`). Never the weak one-off tail.
+  const defaultSelectedKeys = useMemo(
+    () => defaultSelectedSeriesKeys(result.series),
+    [result.series],
+  );
 
   // Build the per-mortgage payments: each selected charge's months within
   // the band become a combined transaction, split across the property's
