@@ -197,21 +197,28 @@
    surfaces once it is full. `--pwa-fill` is a 0..100 number set inline
    by `AppShell`; this rule reads it.
 
-   Technique: a two-stop gradient (top half = normal title colour, bottom
-   half = the logo gold `--meta`) painted at 200% box height and clipped
-   to the glyphs. `background-position-y` slides the gold edge up as the
-   fill rises — 0% shows only the top (empty) half, 100% shows only the
-   bottom (gold) half — and the position transition animates the rise
-   smoothly. The reduce-motion guard in theme.css zeroes the
-   transition-duration when the user opts in, so the fill snaps in steps
-   instead of gliding. `--meta` is the gold token mirrored across every
-   palette, so the fill tracks the user's theme rather than a hardcoded
-   hue. */
+   Technique: a gradient (top half = normal title colour, bottom half =
+   the logo gold) painted at 200% box height and clipped to the glyphs.
+   `background-position-y` slides the gold edge up as the fill rises —
+   0% shows only the top (empty) half, 100% shows only the bottom (gold)
+   half — and the position transition animates the rise smoothly. The
+   reduce-motion guard in theme.css zeroes the transition-duration when
+   the user opts in, so the fill snaps in steps instead of gliding.
+
+   The gold is the exact three-stop gradient the `$` glyph in
+   `public/favicon.svg` uses (light gold → gold → bronze), via the
+   theme-constant `--logo-gold-*` tokens — NOT the per-theme `--meta`
+   amber, which reads too orange in several palettes and isn't the
+   brand gold. The favicon's gradient runs 0%/45%/100% over the glyph;
+   mapped into the bottom 50%–100% band of the 200%-tall image that
+   becomes 50%/72.5%/100%. */
 .pwa-title-fill {
   background-image: linear-gradient(
     to bottom,
     var(--fg-bright) 0 50%,
-    var(--meta) 50% 100%
+    var(--logo-gold-top) 50%,
+    var(--logo-gold-mid) 72.5%,
+    var(--logo-gold-bottom) 100%
   );
   background-size: 100% 200%;
   background-repeat: no-repeat;
