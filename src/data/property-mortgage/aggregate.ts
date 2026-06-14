@@ -12,7 +12,10 @@
 
 import type { Mortgage } from "../types";
 
-import { resolveMonthlyAmortization } from "../finance/amortization";
+import {
+  propertyInitialLoanTotal,
+  resolveMonthlyAmortization,
+} from "../finance/amortization";
 import {
   balanceAt,
   resolveMonthlyInterest,
@@ -67,6 +70,9 @@ export function aggregateMortgages(mortgages: Mortgage[]): MortgageAggregate {
   const paid = { total: 0, interest: 0, amortization: 0 };
   let paymentCount = 0;
   const today = todayIso();
+  // A percent amortisation is taken against the property's combined initial
+  // loan; the full list folded in here is exactly that basis.
+  const percentBasis = propertyInitialLoanTotal(mortgages);
 
   for (const mortgage of mortgages) {
     if (mortgage.currentBalance !== undefined) {
@@ -76,9 +82,9 @@ export function aggregateMortgages(mortgages: Mortgage[]): MortgageAggregate {
       totalLoan = (totalLoan ?? 0) + mortgage.loanAmount;
     }
 
-    const interest = resolveMonthlyInterest(mortgage);
+    const interest = resolveMonthlyInterest(mortgage, percentBasis);
     if (interest !== null) monthlyInterest = (monthlyInterest ?? 0) + interest;
-    const amort = resolveMonthlyAmortization(mortgage);
+    const amort = resolveMonthlyAmortization(mortgage, percentBasis);
     if (amort !== null)
       monthlyAmortization = (monthlyAmortization ?? 0) + amort;
 
@@ -86,7 +92,7 @@ export function aggregateMortgages(mortgages: Mortgage[]): MortgageAggregate {
     // the interest it actually charges (interest = balance × rate ÷ 1200), so
     // the division below recovers the balance-weighted rate.
     const rate = resolveRateAt(mortgage, today);
-    const balance = balanceAt(mortgage, today);
+    const balance = balanceAt(mortgage, today, undefined, percentBasis);
     if (rate !== null && balance !== undefined) {
       ratedInterest += (rate / 100) * balance;
       ratedBalance += balance;
@@ -103,7 +109,7 @@ export function aggregateMortgages(mortgages: Mortgage[]): MortgageAggregate {
     }
 
     for (const payment of mortgage.payments) {
-      const split = splitRecordedPayment(mortgage, payment);
+      const split = splitRecordedPayment(mortgage, payment, percentBasis);
       paid.amortization += split.amortization;
       paid.interest += split.interest;
       paid.total += payment.amount;

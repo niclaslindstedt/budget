@@ -2,10 +2,17 @@
 // month) to a concrete amount in the user's currency. The user records
 // amortisation in one of two modes (see `MortgageAmortization`):
 //
-// - `percent` — an annual percentage of the *initial* loan. Needs the
-//   mortgage's `loanAmount` to resolve: monthly = percent/100 × loanAmount
-//   ÷ 12. Returns `null` when `loanAmount` is unknown, since there is
-//   nothing to take the percentage of.
+// - `percent` — an annual percentage of the *initial* loan. Needs a loan
+//   amount to take the percentage of: monthly = percent/100 × basis ÷ 12.
+//   The basis is the property's **total** initial loan, not this one
+//   mortgage's: Swedish "amorteringskrav" is set on the property's combined
+//   debt, so a property carrying a large interest-only first loan plus a
+//   small amortising top-up amortises 2% of the *combined* original loan,
+//   charged against the top-up. Pass the property total as `percentBasis`;
+//   it defaults to the mortgage's own `loanAmount` so a single-mortgage
+//   property (where the two are equal) needs no caller change. Returns
+//   `null` when the basis is unknown, since there is nothing to take the
+//   percentage of.
 // - `fixed` — a flat monthly sum, returned as-is.
 //
 // Returns `null` when no amortisation is set, or when a `percent` mode
@@ -20,16 +27,37 @@
 
 import type { Mortgage, MortgageAmortization } from "../types";
 
-// Convert an amortisation plan to a monthly figure against a loan's amount.
-// `null` when the plan needs a loan amount it doesn't have (percent mode).
+// The basis a `percent`-mode amortisation plan is taken against: the sum of
+// every mortgage's *initial* loan amount on the property. Swedish
+// "amorteringskrav" is set on the property's combined debt, not one loan in
+// isolation — so the percent any single loan amortises is a percent of this
+// total. Returns `undefined` when no mortgage records a loan amount (nothing
+// to take a percentage of). Pass the result as the `percentBasis` argument to
+// the resolvers below.
+export function propertyInitialLoanTotal(
+  mortgages: readonly Mortgage[],
+): number | undefined {
+  let total = 0;
+  let any = false;
+  for (const m of mortgages) {
+    if (m.loanAmount !== undefined) {
+      total += m.loanAmount;
+      any = true;
+    }
+  }
+  return any ? total : undefined;
+}
+
+// Convert an amortisation plan to a monthly figure against a percent basis.
+// `null` when a percent plan has no basis to take the percentage of.
 function planToMonthly(
   plan: MortgageAmortization,
-  loanAmount: number | undefined,
+  basis: number | undefined,
 ): number | null {
   if (plan.mode === "fixed") return plan.amount;
-  // percent mode: needs the initial loan to take the percentage of.
-  if (loanAmount === undefined) return null;
-  return ((plan.percent / 100) * loanAmount) / 12;
+  // percent mode: needs the (property-total) initial loan to take a percent of.
+  if (basis === undefined) return null;
+  return ((plan.percent / 100) * basis) / 12;
 }
 
 // The amortisation plan in effect on `date`, walking the mortgage's
@@ -60,19 +88,30 @@ export function resolveAmortizationPlanAt(
 // The monthly amortisation under the plan in effect on `date` — so a historical
 // payment is split against the plan that was actually charged that month (the
 // next charge after a bank-agreed step follows the new plan). Mirrors the plain
-// resolver's "null when not enough info" contract.
+// resolver's "null when not enough info" contract. `percentBasis` is the
+// property's total initial loan a percent plan is taken against (see
+// `propertyInitialLoanTotal`); it defaults to the mortgage's own `loanAmount`.
 export function resolveMonthlyAmortizationAt(
   mortgage: Mortgage,
   date: string,
+  percentBasis?: number,
 ): number | null {
   const plan = resolveAmortizationPlanAt(mortgage, date);
   if (!plan) return null;
-  return planToMonthly(plan, mortgage.loanAmount);
+  return planToMonthly(plan, percentBasis ?? mortgage.loanAmount);
 }
 
 // The monthly amortisation under the loan's *current* plan — the headline
-// figure the card and current resolvers read.
-export function resolveMonthlyAmortization(mortgage: Mortgage): number | null {
+// figure the card and current resolvers read. `percentBasis` is the property's
+// total initial loan a percent plan is taken against (see
+// `propertyInitialLoanTotal`); it defaults to the mortgage's own `loanAmount`.
+export function resolveMonthlyAmortization(
+  mortgage: Mortgage,
+  percentBasis?: number,
+): number | null {
   if (!mortgage.amortization) return null;
-  return planToMonthly(mortgage.amortization, mortgage.loanAmount);
+  return planToMonthly(
+    mortgage.amortization,
+    percentBasis ?? mortgage.loanAmount,
+  );
 }

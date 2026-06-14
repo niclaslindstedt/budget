@@ -8,6 +8,7 @@ import {
   loanRemainingBalance,
   resolveLinkedMortgages,
 } from "../../data/loans/balance";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import { listLoanPayments } from "../../data/loans/payments";
 import type { Company, Loan, Property, Settings } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
@@ -54,9 +55,14 @@ export function LoanViewModal({
 
   const today = todayIso();
   const linked = resolveLinkedMortgages(loan, properties);
+  // A percent amortisation is taken against the property's combined initial
+  // loan, resolved from the whole property (not just the linked subset).
+  const linkedPercentBasis = linked
+    ? propertyInitialLoanTotal(linked.property.mortgages)
+    : undefined;
   // Same derivations the loan row shows, so the two never disagree.
   const figures = linked
-    ? linkedMortgageFigures(linked.mortgages, today)
+    ? linkedMortgageFigures(linked.mortgages, today, linkedPercentBasis)
     : {
         monthlyPayment: loanMonthlyPayment(loan, today),
         rate: loan.rate ?? null,
@@ -198,7 +204,11 @@ export function LoanViewModal({
             <div className="flex flex-col gap-1 rounded border border-line bg-surface-2 px-3 py-2">
               <span className="text-xs text-muted">{linkedLabel}</span>
               {linked.mortgages.map((mortgage) => {
-                const row = linkedMortgageRowFigures(mortgage, today);
+                const row = linkedMortgageRowFigures(
+                  mortgage,
+                  today,
+                  linkedPercentBasis,
+                );
                 return (
                   <div
                     key={mortgage.id}

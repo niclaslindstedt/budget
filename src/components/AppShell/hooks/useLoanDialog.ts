@@ -5,6 +5,7 @@ import type { ImportedPoint } from "../../../data/import/value-import";
 import type { Action, LoanImportEntryOverride } from "../../../data/reducer";
 import { resolveLinkedMortgages } from "../../../data/loans/balance";
 import { splitPaymentAcrossMortgages } from "../../../data/finance/payment";
+import { propertyInitialLoanTotal } from "../../../data/finance/amortization";
 import type { LoanPaymentCandidate } from "../../../data/loans/candidates";
 import { learnPaymentPatterns } from "../../../data/loans/patterns";
 import { LOAN_PRESET_TYPE_BY_KIND } from "../../../data/loans/presets";
@@ -370,6 +371,11 @@ export function useLoanDialog({ data, dispatch, toast }: Params): Result {
             linked.mortgages,
             amount,
             entry.date,
+            undefined,
+            // A percent amortisation is taken against the property's combined
+            // initial loan, resolved from the whole property — a loan need not
+            // link every mortgage on it.
+            propertyInitialLoanTotal(linked.property.mortgages),
           );
           const shares: Array<[string, number]> =
             split.size > 0

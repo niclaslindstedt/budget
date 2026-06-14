@@ -7,6 +7,7 @@ import {
   resolveEntryLabels,
 } from "../../data/budget/synthesis";
 import { allCategories, allTypes } from "../../data/presets/merge";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import {
   findRepairCandidates,
   resolveRepairSourceRows,
@@ -740,6 +741,17 @@ export function PropertiesPage({
             modal?.kind === "editMortgage" || modal?.kind === "createMortgage"
           }
           mortgage={modal?.kind === "editMortgage" ? modal.ref.mortgage : null}
+          otherInitialLoanTotal={
+            modal?.kind === "editMortgage"
+              ? propertyInitialLoanTotal(
+                  modal.ref.property.mortgages.filter(
+                    (m) => m.id !== modal.ref.mortgage.id,
+                  ),
+                )
+              : modal?.kind === "createMortgage"
+                ? propertyInitialLoanTotal(modal.property.mortgages)
+                : undefined
+          }
           settings={settings}
           onClose={() => setModal(null)}
           onSubmit={handleEditMortgage}

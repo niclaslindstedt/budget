@@ -24,6 +24,7 @@ import {
   loanRemainingBalance,
   resolveLinkedMortgages,
 } from "../../data/loans/balance";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
@@ -93,7 +94,11 @@ export function LoansPage({
     for (const loan of loans) {
       const linked = resolveLinkedMortgages(loan, data.properties);
       const remaining = linked
-        ? linkedMortgageFigures(linked.mortgages, today).remaining
+        ? linkedMortgageFigures(
+            linked.mortgages,
+            today,
+            propertyInitialLoanTotal(linked.property.mortgages),
+          ).remaining
         : loanRemainingBalance(loan, today);
       sum += remaining ?? 0;
       if (remaining !== null) {

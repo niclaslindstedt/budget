@@ -180,9 +180,16 @@ export function loanRemainingBalance(
 // and the rate is the balance-weighted blend of the mortgages that
 // resolve both a rate and a balance — so an unknown rate doesn't drag the
 // blend toward zero.
+// `percentBasis` is the property's total initial loan a percent amortisation is
+// taken against (see `propertyInitialLoanTotal`). Resolve it from the linked
+// loan's **property** (`resolveLinkedMortgages(...).property.mortgages`), not
+// the linked subset passed here — a loan need not link every mortgage on the
+// property, but the amortisation requirement is set on the property's combined
+// debt all the same.
 export function linkedMortgageFigures(
   mortgages: readonly Mortgage[],
   todayIso: string,
+  percentBasis?: number,
 ): {
   monthlyPayment: number | null;
   rate: number | null;
@@ -195,9 +202,9 @@ export function linkedMortgageFigures(
   let ratedInterest = 0;
   let ratedBalance = 0;
   for (const mortgage of mortgages) {
-    monthly += resolveMonthlyPaymentAt(mortgage, todayIso);
+    monthly += resolveMonthlyPaymentAt(mortgage, todayIso, percentBasis);
     for (const payment of mortgage.payments) paid += payment.amount;
-    const balance = balanceAt(mortgage, todayIso);
+    const balance = balanceAt(mortgage, todayIso, undefined, percentBasis);
     if (balance !== undefined) {
       remaining = (remaining ?? 0) + balance;
       const rate = resolveRateAt(mortgage, todayIso);
@@ -223,9 +230,10 @@ export function linkedMortgageFigures(
 export function linkedMortgageRowFigures(
   mortgage: Mortgage,
   todayIso: string,
+  percentBasis?: number,
 ): { remaining: number | null; rate: number | null; monthly: number | null } {
-  const balance = balanceAt(mortgage, todayIso);
-  const monthly = resolveMonthlyPaymentAt(mortgage, todayIso);
+  const balance = balanceAt(mortgage, todayIso, undefined, percentBasis);
+  const monthly = resolveMonthlyPaymentAt(mortgage, todayIso, percentBasis);
   return {
     remaining: balance ?? null,
     rate: resolveRateAt(mortgage, todayIso),

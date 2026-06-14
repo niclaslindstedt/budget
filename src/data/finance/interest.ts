@@ -80,8 +80,9 @@ export function balanceAt(
   mortgage: Mortgage,
   date: string,
   startDate?: string,
+  percentBasis?: number,
 ): number | undefined {
-  const monthlyAmort = resolveMonthlyAmortization(mortgage) ?? 0;
+  const monthlyAmort = resolveMonthlyAmortization(mortgage, percentBasis) ?? 0;
 
   // Forward reconstruction from the original loan amount at the loan's start.
   if (startDate !== undefined && mortgage.loanAmount !== undefined) {
@@ -111,22 +112,36 @@ export function balanceAt(
 // Monthly interest at the rate in effect on `date`, on the balance
 // reconstructed for that month. Pass `startDate` (the loan's effective start)
 // to anchor the balance forward from the original loan amount rather than
-// backward from today's `currentBalance` — see `balanceAt`. Mirrors
+// backward from today's `currentBalance` — see `balanceAt`. `percentBasis` is
+// the property's total initial loan a percent amortisation is taken against
+// (see `propertyInitialLoanTotal`) — it feeds the balance reconstruction so an
+// amortising loan's interest falls at the right pace. Mirrors
 // `resolveMonthlyAmortization`'s "null when not enough info" contract.
 export function resolveMonthlyInterestAt(
   mortgage: Mortgage,
   date: string,
   startDate?: string,
+  percentBasis?: number,
 ): number | null {
   const rate = resolveRateAt(mortgage, date);
   if (rate === null) return null;
-  const balance = balanceAt(mortgage, date, startDate);
+  const balance = balanceAt(mortgage, date, startDate, percentBasis);
   if (balance === undefined) return null;
   return ((rate / 100) * balance) / 12;
 }
 
 // Monthly interest at today's (current) rate — the headline figure the
-// card and the finder's expected-amount ranking read.
-export function resolveMonthlyInterest(mortgage: Mortgage): number | null {
-  return resolveMonthlyInterestAt(mortgage, todayIso());
+// card and the finder's expected-amount ranking read. `percentBasis` is the
+// property's total initial loan a percent amortisation is taken against (see
+// `propertyInitialLoanTotal`).
+export function resolveMonthlyInterest(
+  mortgage: Mortgage,
+  percentBasis?: number,
+): number | null {
+  return resolveMonthlyInterestAt(
+    mortgage,
+    todayIso(),
+    undefined,
+    percentBasis,
+  );
 }
