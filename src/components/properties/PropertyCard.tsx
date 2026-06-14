@@ -451,18 +451,21 @@ function MortgageRow({
     mortgage.nextRateChangeDate !== undefined ||
     mortgage.amortization !== undefined;
 
-  // The per-month amortisation amount, with an optional "(N%)" tail when the
-  // loan amortises by a percentage of its original amount — the "/ month"
-  // cadence lives in the stat label, so the figure stays a bare amount.
+  // The per-month amortisation amount, with an optional "(N% / yr)" tail when
+  // the loan amortises by a percentage of its original amount — the "/ month"
+  // cadence lives in the stat label, so the figure stays a bare amount and the
+  // tail spells out the annual percent the plan is set in.
   const amortPerMonth =
     monthlyAmort !== null
       ? formatBalance(monthlyAmort, settings, {
           neverAbbreviate: true,
         }) +
         (mortgage.amortization?.mode === "percent"
-          ? ` (${formatNumber(mortgage.amortization.percent, settings, {
-              neverAbbreviate: true,
-            })}%)`
+          ? ` (${t("properties.amortPercentPerYear", {
+              percent: formatNumber(mortgage.amortization.percent, settings, {
+                neverAbbreviate: true,
+              }),
+            })})`
           : "")
       : null;
 
