@@ -10,19 +10,26 @@
 // never hand-allocated.
 
 import type { Mortgage, MortgagePayment, Property } from "../types";
-import { resolveMonthlyAmortizationAt } from "./amortization";
+import {
+  propertyInitialLoanTotal,
+  resolveMonthlyAmortizationAt,
+} from "./amortization";
 import { resolveMonthlyInterestAt } from "./interest";
 
 // A mortgage's expected monthly payment on `date` — amortisation plus
 // interest at the rate in effect that month, both taken from the plan in
 // effect that month. Unknown legs count as 0, so a mortgage with no terms
 // recorded contributes nothing (and is left out of the split). Never negative.
+// `percentBasis` is the property's total initial loan a percent amortisation is
+// taken against (see `propertyInitialLoanTotal`).
 export function resolveMonthlyPaymentAt(
   mortgage: Mortgage,
   date: string,
+  percentBasis?: number,
 ): number {
-  const amort = resolveMonthlyAmortizationAt(mortgage, date) ?? 0;
-  const interest = resolveMonthlyInterestAt(mortgage, date) ?? 0;
+  const amort = resolveMonthlyAmortizationAt(mortgage, date, percentBasis) ?? 0;
+  const interest =
+    resolveMonthlyInterestAt(mortgage, date, undefined, percentBasis) ?? 0;
   return Math.max(0, amort + interest);
 }
 
@@ -65,20 +72,31 @@ export function resolveMonthlyPaymentAt(
 // (see `balanceAt`). Pass it so a sold property — whose `currentBalance` is
 // zeroed at the sale — splits its historical charges on the real balance the
 // loan carried that month, not on a back-walked zero.
+//
+// `percentBasis` is the property's total initial loan a percent amortisation is
+// taken against (see `propertyInitialLoanTotal`). It defaults to the total over
+// `mortgages` — correct when the full property set is passed (a whole combined
+// charge) — but a caller splitting only a *subset* (re-balancing the siblings
+// around a pinned share) must pass the property total explicitly, or the
+// excluded loans would be dropped from the basis.
 export function splitPaymentAcrossMortgages(
   mortgages: readonly Mortgage[],
   amount: number,
   date: string,
   startDateOf?: (mortgage: Mortgage) => string | undefined,
+  percentBasis: number | undefined = propertyInitialLoanTotal(mortgages),
 ): Map<string, number> {
   const result = new Map<string, number>();
   if (mortgages.length === 0) return result;
 
   const interests = mortgages.map((m) =>
-    Math.max(0, resolveMonthlyInterestAt(m, date, startDateOf?.(m)) ?? 0),
+    Math.max(
+      0,
+      resolveMonthlyInterestAt(m, date, startDateOf?.(m), percentBasis) ?? 0,
+    ),
   );
   const amorts = mortgages.map((m) =>
-    Math.max(0, resolveMonthlyAmortizationAt(m, date) ?? 0),
+    Math.max(0, resolveMonthlyAmortizationAt(m, date, percentBasis) ?? 0),
   );
   const totalInterest = interests.reduce((s, v) => s + v, 0);
   const totalAmort = amorts.reduce((s, v) => s + v, 0);
@@ -191,13 +209,18 @@ export type PaymentSplit = { amortization: number; interest: number };
 // where it belongs — on interest. The exact (round) historical steps come from
 // the loan's recorded `amortizationHistory`, not from inferring them out of the
 // recorded charge (which only manufactures the drift we want to avoid).
+// `percentBasis` is the property's total initial loan a percent amortisation is
+// taken against (see `propertyInitialLoanTotal`) — pass it so the amortisation
+// leg of a loan that amortises a percent of the property's *combined* debt is
+// taken against that total, not the single loan's own amount.
 export function splitRecordedPayment(
   mortgage: Mortgage,
   payment: MortgagePayment,
+  percentBasis?: number,
 ): PaymentSplit {
   const planAmort = Math.max(
     0,
-    resolveMonthlyAmortizationAt(mortgage, payment.date) ?? 0,
+    resolveMonthlyAmortizationAt(mortgage, payment.date, percentBasis) ?? 0,
   );
   const amortization = Math.min(payment.amount, planAmort);
   const interest = payment.amount - amortization;
@@ -233,6 +256,7 @@ export function reconcileMortgageAmortization(
   property: Property,
 ): MortgageReconciliation[] {
   const out: MortgageReconciliation[] = [];
+  const percentBasis = propertyInitialLoanTotal(property.mortgages);
   for (const mortgage of property.mortgages) {
     if (
       mortgage.loanAmount === undefined ||
@@ -243,7 +267,8 @@ export function reconcileMortgageAmortization(
     const expectedAmortized = mortgage.loanAmount - mortgage.currentBalance;
     const recordedAmortized = mortgage.payments.reduce(
       (sum, payment) =>
-        sum + splitRecordedPayment(mortgage, payment).amortization,
+        sum +
+        splitRecordedPayment(mortgage, payment, percentBasis).amortization,
       0,
     );
     out.push({

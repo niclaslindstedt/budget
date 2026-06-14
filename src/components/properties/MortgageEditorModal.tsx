@@ -38,6 +38,12 @@ type Props = {
   open: boolean;
   // The mortgage to edit, or null in create mode.
   mortgage: Mortgage | null;
+  // The combined initial loan of every *other* mortgage on the property (this
+  // mortgage excluded). A percent amortisation is taken against the property's
+  // total initial loan — Swedish "amorteringskrav" is set on the combined debt
+  // — so the live preview adds this to the loan amount being edited. Undefined
+  // when no other mortgage records a loan amount (a single-mortgage property).
+  otherInitialLoanTotal?: number;
   settings: Settings;
   onClose: () => void;
   onSubmit: (mortgageId: string, patch: Partial<Omit<Mortgage, "id">>) => void;
@@ -113,6 +119,7 @@ function seedAmortRows(
 export function MortgageEditorModal({
   open,
   mortgage,
+  otherInitialLoanTotal,
   settings,
   onClose,
   onSubmit,
@@ -306,18 +313,28 @@ export function MortgageEditorModal({
   // Live preview of the resolved monthly amortisation for the current (latest)
   // plan, reusing the same resolver the card and data layer use. `null` when
   // there's nothing to show yet (no parseable value, or percent mode without a
-  // loan amount to take the percentage of).
+  // loan amount to take the percentage of). A percent plan is taken against the
+  // property's *combined* initial loan, so the basis is the loan amount being
+  // edited plus every other mortgage's — `undefined` only when neither is set.
   const { amortization: previewPlan } = buildAmortTerms();
+  const editedLoan = num(loanAmount);
+  const percentBasis =
+    editedLoan === undefined && otherInitialLoanTotal === undefined
+      ? undefined
+      : (editedLoan ?? 0) + (otherInitialLoanTotal ?? 0);
   const amortPreview =
     previewPlan === undefined
       ? null
-      : resolveMonthlyAmortization({
-          id: "",
-          name: "",
-          payments: [],
-          loanAmount: num(loanAmount),
-          amortization: previewPlan,
-        });
+      : resolveMonthlyAmortization(
+          {
+            id: "",
+            name: "",
+            payments: [],
+            loanAmount: editedLoan,
+            amortization: previewPlan,
+          },
+          percentBasis,
+        );
 
   return (
     <Modal

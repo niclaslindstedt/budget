@@ -42,6 +42,11 @@ type Props = {
   // re-split's interest is taken on, so a sold property's zeroed balance
   // doesn't skew the re-balance. See `splitPaymentAcrossMortgages`.
   purchaseDate?: string;
+  // The property's total initial loan a percent amortisation is taken against
+  // (see `propertyInitialLoanTotal`). Passed explicitly because the re-split
+  // below runs over the *siblings only* (the pinned mortgage excluded), so it
+  // can't be derived from the subset handed to `splitPaymentAcrossMortgages`.
+  percentBasis?: number;
   onClose: () => void;
   onSubmit: (updates: ChargeSplitUpdate[]) => void;
 };
@@ -52,6 +57,7 @@ export function MortgagePaymentEditModal({
   mortgageId,
   settings,
   purchaseDate,
+  percentBasis,
   onClose,
   onSubmit,
 }: Props) {
@@ -100,8 +106,17 @@ export function MortgagePaymentEditModal({
       total - pinned,
       dateText,
       (m) => m.loanStartDate ?? purchaseDate,
+      percentBasis,
     );
-  }, [pinned, hasSiblings, siblings, total, dateText, purchaseDate]);
+  }, [
+    pinned,
+    hasSiblings,
+    siblings,
+    total,
+    dateText,
+    purchaseDate,
+    percentBasis,
+  ]);
 
   if (!open || !editing) return null;
 

@@ -18,6 +18,7 @@ import {
   reconcileMortgageAmortization,
   splitRecordedPayment,
 } from "../../data/finance/payment";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import type {
   Account,
   HistoryEntry,
@@ -99,6 +100,12 @@ export function MortgagePaymentsModal({
 
   const groups = useMemo(
     () => (property ? groupPaymentsByCharge(property) : []),
+    [property],
+  );
+  // A percent amortisation is taken against the property's combined initial
+  // loan, so resolve the basis once and thread it into every row's split.
+  const percentBasis = useMemo(
+    () => (property ? propertyInitialLoanTotal(property.mortgages) : undefined),
     [property],
   );
 
@@ -273,6 +280,7 @@ export function MortgagePaymentsModal({
                           <MortgagePaymentRow
                             key={item.payment.id}
                             item={item}
+                            percentBasis={percentBasis}
                             settings={settings}
                             onEdit={() =>
                               setEditing({
@@ -356,6 +364,7 @@ export function MortgagePaymentsModal({
         mortgageId={editing?.mortgageId ?? null}
         settings={settings}
         purchaseDate={property.purchaseDate}
+        percentBasis={percentBasis}
         onClose={() => setEditing(null)}
         onSubmit={(updates) => {
           onSetChargeSplit(updates);
@@ -540,6 +549,9 @@ function MortgageChargeHeader({
 
 type RowProps = {
   item: MortgageChargeItem;
+  // The property's combined initial loan a percent amortisation is taken
+  // against (see `propertyInitialLoanTotal`).
+  percentBasis: number | undefined;
   settings: Settings;
   onEdit: () => void;
   onDelete: () => void;
@@ -552,6 +564,7 @@ type RowProps = {
 // styles/components.css).
 function MortgagePaymentRowImpl({
   item,
+  percentBasis,
   settings,
   onEdit,
   onDelete,
@@ -563,7 +576,7 @@ function MortgagePaymentRowImpl({
   // elsewhere only retracts the swipe instead of also firing the control
   // underneath.
   useClaimActiveRow(item.payment.id, swiped, () => setSwiped(false));
-  const split = splitRecordedPayment(item.mortgage, item.payment);
+  const split = splitRecordedPayment(item.mortgage, item.payment, percentBasis);
 
   return (
     <tr

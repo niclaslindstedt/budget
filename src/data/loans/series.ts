@@ -22,6 +22,7 @@ import type { Loan, Mortgage, Property } from "../types";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";
 import { loanRemainingBalance, resolveLinkedMortgages } from "./balance";
 import { balanceAt, resolveMonthlyInterestAt } from "../finance/interest";
+import { propertyInitialLoanTotal } from "../finance/amortization";
 
 export type SeriesPoint = { x: number; y: number };
 
@@ -38,10 +39,15 @@ export type LoanBandSeries = {
 };
 
 // One included loan with its linked mortgages resolved (null for a simple
-// loan), so the per-sample walks don't re-resolve per month.
+// loan), so the per-sample walks don't re-resolve per month. `percentBasis` is
+// the linked **property's** total initial loan a percent amortisation is taken
+// against (see `propertyInitialLoanTotal`) — resolved from the whole property,
+// not just the linked subset, since the amortisation requirement is set on the
+// property's combined debt.
 type IncludedLoan = {
   loan: Loan;
   mortgages: Mortgage[] | null;
+  percentBasis: number | undefined;
 };
 
 function includedLoans(
@@ -54,7 +60,13 @@ function includedLoans(
     if (loan.kind === "student" && !options.includeStudent) continue;
     if (loan.kind === "mortgage" && !options.includeMortgages) continue;
     const linked = resolveLinkedMortgages(loan, properties);
-    result.push({ loan, mortgages: linked ? linked.mortgages : null });
+    result.push({
+      loan,
+      mortgages: linked ? linked.mortgages : null,
+      percentBasis: linked
+        ? propertyInitialLoanTotal(linked.property.mortgages)
+        : undefined,
+    });
   }
   return result;
 }
@@ -132,7 +144,12 @@ export function buildLoanBalanceBands(
         value = loanRemainingBalance(entry.loan, iso);
       } else {
         for (const mortgage of entry.mortgages) {
-          const balance = balanceAt(mortgage, iso);
+          const balance = balanceAt(
+            mortgage,
+            iso,
+            undefined,
+            entry.percentBasis,
+          );
           if (balance !== undefined) value = (value ?? 0) + balance;
         }
       }
@@ -202,7 +219,13 @@ export function buildLoanPaymentBands(
         }
       } else {
         for (const mortgage of entry.mortgages) {
-          estimate += resolveMonthlyInterestAt(mortgage, iso) ?? 0;
+          estimate +=
+            resolveMonthlyInterestAt(
+              mortgage,
+              iso,
+              undefined,
+              entry.percentBasis,
+            ) ?? 0;
         }
       }
       const interest = Math.min(estimate, paid);

@@ -31,6 +31,7 @@ import { computeAccountBalances } from "../accounts/balance";
 import { computeItemCurrentValue, isItemOwned } from "../items/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
 import { balanceAt } from "../finance/interest";
+import { propertyInitialLoanTotal } from "../finance/amortization";
 import { isPropertySoldAt, resolveValueHistory } from "../property-value/value";
 import { holdingValueAt } from "../investment/holdings";
 import { resolveStockPosition } from "../investment/stock";
@@ -160,8 +161,9 @@ function propertyMortgageBalanceAt(
   if (valueDates.length > 0 && valueDates.every((p) => p.date > iso))
     return undefined;
   let sum: number | undefined;
+  const percentBasis = propertyInitialLoanTotal(property.mortgages);
   for (const mortgage of property.mortgages) {
-    const balance = balanceAt(mortgage, iso);
+    const balance = balanceAt(mortgage, iso, undefined, percentBasis);
     if (balance !== undefined) sum = (sum ?? 0) + balance;
   }
   return sum;

@@ -13,6 +13,7 @@ import {
   resolveMonthlyPaymentAt,
   splitPaymentAcrossMortgages,
 } from "../../data/finance/payment";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import { PRESET_TYPE_MORTGAGE_ID } from "../../data/presets/types";
 import { newId } from "../../data/sheet";
 import type {
@@ -183,7 +184,12 @@ export function MortgageDiscoveryModal({
   // charge first.
   const targetAmounts = useMemo(() => {
     const today = todayIso();
-    const each = mortgages.map((m) => resolveMonthlyPaymentAt(m, today));
+    // A percent amortisation is taken against the property's combined initial
+    // loan, so resolve the basis once across every mortgage on the property.
+    const percentBasis = propertyInitialLoanTotal(mortgages);
+    const each = mortgages.map((m) =>
+      resolveMonthlyPaymentAt(m, today, percentBasis),
+    );
     const combined = each.reduce((s, v) => s + v, 0);
     return [combined, ...each];
   }, [mortgages]);

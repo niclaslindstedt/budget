@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  propertyInitialLoanTotal,
   resolveAmortizationPlanAt,
   resolveMonthlyAmortization,
   resolveMonthlyAmortizationAt,
@@ -48,6 +49,25 @@ describe("resolveMonthlyAmortization", () => {
     expect(resolveMonthlyAmortization(m)).toBe(0);
   });
 
+  it("takes the percent against the property total basis, not the loan", () => {
+    // A small 500k top-up amortising 2% — but of the property's *combined*
+    // 7,000,000 initial loan (a 6.5M interest-only first loan plus this), so
+    // 0.02 × 7,000,000 ÷ 12 ≈ 11,666.67, not 2% of 500k (≈ 833).
+    const m = mortgage({
+      loanAmount: 500_000,
+      amortization: { mode: "percent", percent: 2 },
+    });
+    expect(resolveMonthlyAmortization(m, 7_000_000)).toBeCloseTo(11_666.67, 2);
+  });
+
+  it("ignores the basis for a fixed-mode plan", () => {
+    const m = mortgage({
+      loanAmount: 500_000,
+      amortization: { mode: "fixed", amount: 5000 },
+    });
+    expect(resolveMonthlyAmortization(m, 7_000_000)).toBe(5000);
+  });
+
   it("reads the current plan, not an older history entry", () => {
     // The current `amortization` mirrors the latest history entry, so the plain
     // resolver must return the current (2%) plan, not the original (3%).
@@ -64,6 +84,58 @@ describe("resolveMonthlyAmortization", () => {
       ],
     });
     expect(resolveMonthlyAmortization(m)).toBeCloseTo(2000);
+  });
+});
+
+describe("propertyInitialLoanTotal", () => {
+  it("sums every mortgage's initial loan amount", () => {
+    expect(
+      propertyInitialLoanTotal([
+        mortgage({ loanAmount: 6_500_000 }),
+        mortgage({ loanAmount: 500_000 }),
+      ]),
+    ).toBe(7_000_000);
+  });
+
+  it("skips mortgages with no loan amount recorded", () => {
+    expect(
+      propertyInitialLoanTotal([
+        mortgage({ loanAmount: 1_000_000 }),
+        mortgage({}),
+      ]),
+    ).toBe(1_000_000);
+  });
+
+  it("is undefined when no mortgage records a loan amount", () => {
+    expect(
+      propertyInitialLoanTotal([mortgage({}), mortgage({})]),
+    ).toBeUndefined();
+    expect(propertyInitialLoanTotal([])).toBeUndefined();
+  });
+});
+
+describe("resolveMonthlyAmortizationAt with a property basis", () => {
+  it("steps a dated percent plan against the property total", () => {
+    // 3% then 2% of the property's combined 7,000,000 loan, charged against a
+    // small top-up: 17,500/mo before the step, 11,666.67 after.
+    const m = mortgage({
+      loanAmount: 500_000,
+      amortization: { mode: "percent", percent: 2 },
+      amortizationHistory: [
+        { id: "a0", date: "", amortization: { mode: "percent", percent: 3 } },
+        {
+          id: "a1",
+          date: "2024-01-01",
+          amortization: { mode: "percent", percent: 2 },
+        },
+      ],
+    });
+    expect(
+      resolveMonthlyAmortizationAt(m, "2023-08-28", 7_000_000),
+    ).toBeCloseTo(17_500);
+    expect(
+      resolveMonthlyAmortizationAt(m, "2024-08-28", 7_000_000),
+    ).toBeCloseTo(11_666.67, 2);
   });
 });
 

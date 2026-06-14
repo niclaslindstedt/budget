@@ -17,7 +17,10 @@ import {
   aggregateMortgages,
   type MortgageAggregate,
 } from "../../data/property-mortgage/aggregate";
-import { resolveMonthlyAmortization } from "../../data/finance/amortization";
+import {
+  propertyInitialLoanTotal,
+  resolveMonthlyAmortization,
+} from "../../data/finance/amortization";
 import { resolveMonthlyInterest } from "../../data/finance/interest";
 import { splitRecordedPayment } from "../../data/finance/payment";
 import { mortgagePayoffProgress } from "../../data/property-mortgage/progress";
@@ -417,12 +420,16 @@ function MortgageRow({
 }) {
   const t = useT();
   const count = mortgage.payments.length;
+  // A percent amortisation is taken against the property's *combined* initial
+  // loan, not this one mortgage's — so resolve the basis from every mortgage on
+  // the property and thread it through the per-leg figures below.
+  const percentBasis = propertyInitialLoanTotal(property.mortgages);
   // Sum what's been paid and how it divides between interest and
   // amortisation, so a loan that carries all the principal (or all the
   // interest) is obvious at a glance rather than hidden in one total.
   const paidSplit = mortgage.payments.reduce(
     (acc, p) => {
-      const split = splitRecordedPayment(mortgage, p);
+      const split = splitRecordedPayment(mortgage, p, percentBasis);
       acc.amortization += split.amortization;
       acc.interest += split.interest;
       return acc;
@@ -430,12 +437,12 @@ function MortgageRow({
     { amortization: 0, interest: 0 },
   );
   const paid = paidSplit.amortization + paidSplit.interest;
-  const monthlyAmort = resolveMonthlyAmortization(mortgage);
+  const monthlyAmort = resolveMonthlyAmortization(mortgage, percentBasis);
   // Interest the loan is accruing right now — the rate in effect applied to
   // what's still owed (rate × outstanding balance, monthly), so the figure
   // reads next to the monthly amortisation as "what each leg of the payment
   // costs currently". `null` when neither a rate nor a balance is known.
-  const monthlyInterest = resolveMonthlyInterest(mortgage);
+  const monthlyInterest = resolveMonthlyInterest(mortgage, percentBasis);
   // Share of the original loan amortised away so far — drives the payoff
   // "power bar". `null` when the loan / balance terms can't resolve it.
   const progress = mortgagePayoffProgress(mortgage);

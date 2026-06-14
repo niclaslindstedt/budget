@@ -280,7 +280,9 @@ src/
 │   │   │                   #   entity — consumed by properties, loans, insights
 │   │   ├── amortization.ts     # resolveMonthlyAmortization(At) — percent-of-initial
 │   │   │                       #   or fixed monthly amortisation → a per-month sum,
-│   │   │                       #   for the current plan or the plan effective on a date
+│   │   │                       #   for the current plan or the plan effective on a date;
+│   │   │                       #   percent basis = propertyInitialLoanTotal (the
+│   │   │                       #   property's combined initial loan, not one mortgage)
 │   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
 │   │   │                       #   balanceAt (balance reconstructed for a month —
 │   │   │                       #   forward from loanAmount when a start date is

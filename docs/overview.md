@@ -943,7 +943,15 @@ property: `name`, optional loan terms (`loanAmount` — the sum borrowed,
 / `nextRateChangeDate`, `amortization` — monthly amortisation as either
 an annual percent of the initial loan or a fixed sum per month, resolved
 by `resolveMonthlyAmortization` in
-`src/data/finance/amortization.ts`, `paymentCadenceMonths` —
+`src/data/finance/amortization.ts`. A **percent** plan is taken against
+the property's **combined** initial loan, not the single mortgage's own:
+Swedish "amorteringskrav" is set on the property's total debt, so a
+property carrying a large interest-only first loan plus a small amortising
+top-up amortises (say) 2% of the _combined_ original loan, charged against
+the top-up. The basis is `propertyInitialLoanTotal(property.mortgages)`
+(sum of every mortgage's `loanAmount`), threaded into the resolvers as
+`percentBasis` and defaulting to the mortgage's own `loanAmount` so a
+single-mortgage property is unchanged. `paymentCadenceMonths` —
 how often amortisation + interest is charged in months (1 = monthly, the
 default; 3 = quarterly, etc., picked in the editor's "Payment frequency"
 dropdown), `loanStartDate` — when the loan started being paid, falling

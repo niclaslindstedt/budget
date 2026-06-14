@@ -8,6 +8,7 @@ import {
   loanRemainingBalance,
   resolveLinkedMortgages,
 } from "../../data/loans/balance";
+import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import type { Company, Loan, Property, Settings } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
@@ -53,7 +54,11 @@ function LoanRowImpl({
   const today = todayIso();
   const linked = resolveLinkedMortgages(loan, properties);
   const figures = linked
-    ? linkedMortgageFigures(linked.mortgages, today)
+    ? linkedMortgageFigures(
+        linked.mortgages,
+        today,
+        propertyInitialLoanTotal(linked.property.mortgages),
+      )
     : {
         monthlyPayment: loanMonthlyPayment(loan, today),
         rate: loan.rate ?? null,
