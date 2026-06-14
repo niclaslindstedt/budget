@@ -37,6 +37,11 @@ type Props = {
   group: MortgageChargeGroup | null;
   mortgageId: string | null;
   settings: Settings;
+  // The property's purchase date — the fallback loan start (after each
+  // mortgage's own `loanStartDate`) used to reconstruct the balance the
+  // re-split's interest is taken on, so a sold property's zeroed balance
+  // doesn't skew the re-balance. See `splitPaymentAcrossMortgages`.
+  purchaseDate?: string;
   onClose: () => void;
   onSubmit: (updates: ChargeSplitUpdate[]) => void;
 };
@@ -46,6 +51,7 @@ export function MortgagePaymentEditModal({
   group,
   mortgageId,
   settings,
+  purchaseDate,
   onClose,
   onSubmit,
 }: Props) {
@@ -93,8 +99,9 @@ export function MortgagePaymentEditModal({
       siblings.map((s) => s.mortgage),
       total - pinned,
       dateText,
+      (m) => m.loanStartDate ?? purchaseDate,
     );
-  }, [pinned, hasSiblings, siblings, total, dateText]);
+  }, [pinned, hasSiblings, siblings, total, dateText, purchaseDate]);
 
   if (!open || !editing) return null;
 

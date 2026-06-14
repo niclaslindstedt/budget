@@ -485,6 +485,41 @@ describe("splitRecordedPayment — steeper historical amortisation plan", () => 
   });
 });
 
+describe("splitRecordedPayment — forward reconstruction from the loan start", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("computes interest on the balance reconstructed forward from the loan start", () => {
+    // A sold property zeroes the balance at the sale. Without the start anchor
+    // the charge's interest is computed on a balance walked back from that zero
+    // — far too low — so the real interest is misread as principal.
+    const m = mortgage({
+      loanAmount: 1_200_000,
+      currentBalance: 0, // settled at the sale
+      interestRate: 3,
+      amortization: { mode: "fixed", amount: 5000 },
+    });
+    const payment = { id: "p", date: "2022-01-28", amount: 7700 };
+
+    // Forward from the 2020-01 start: balance 1,080,000 ⇒ 2700 interest, so the
+    // 7700 charge is 5000 amortisation + 2700 interest.
+    const fixed = splitRecordedPayment(m, payment, "2020-01-01");
+    expect(fixed.amortization).toBeCloseTo(5000);
+    expect(fixed.interest).toBeCloseTo(2700);
+
+    // Without the start anchor the back-walked balance (from 0) is far too low,
+    // so the real interest is misattributed to amortisation (the reported bug).
+    const broken = splitRecordedPayment(m, payment);
+    expect(broken.amortization).toBeGreaterThan(5000);
+    expect(broken.interest).toBeLessThan(2700);
+  });
+});
+
 describe("reconcileMortgageAmortization", () => {
   it("reports the gap between the balance drop and the recorded amortisation", () => {
     const m = mortgage({

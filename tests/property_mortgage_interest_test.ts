@@ -100,4 +100,33 @@ describe("balanceAt", () => {
     expect(balanceAt(m, "2026-07-01")).toBe(3000);
     expect(balanceAt(m, "2026-08-01")).toBe(0);
   });
+
+  it("reconstructs forward from the loan amount when a start date is given", () => {
+    const m = mortgage({
+      loanAmount: 1_000_000,
+      currentBalance: 700_000,
+      amortization: { mode: "fixed", amount: 10_000 },
+    });
+    // 24 months after the 2020-01 start: 1,000,000 - 24 × 10,000 = 760,000.
+    expect(balanceAt(m, "2022-01-01", "2020-01-01")).toBe(760_000);
+    // Before the loan started it owes the whole loan.
+    expect(balanceAt(m, "2019-06-01", "2020-01-01")).toBe(1_000_000);
+    // Fully amortised, floored at 0 (100 months × 10,000 > loan).
+    expect(balanceAt(m, "2028-06-01", "2020-01-01")).toBe(0);
+  });
+
+  it("ignores a zeroed current balance for a sold loan when reconstructing forward", () => {
+    // A sold property zeroes the balance at the sale; walking back from 0 would
+    // understate every historical balance. The start anchor recovers the real
+    // figure the loan carried that month.
+    const m = mortgage({
+      loanAmount: 1_000_000,
+      currentBalance: 0, // settled at the sale
+      amortization: { mode: "fixed", amount: 10_000 },
+    });
+    // Backward from 0 (no start) would give 0 + 36 × 10,000 = 360,000.
+    expect(balanceAt(m, "2023-06-01")).toBe(360_000);
+    // Forward from the 2020-01 start: 1,000,000 - 41 × 10,000 = 590,000.
+    expect(balanceAt(m, "2023-06-01", "2020-01-01")).toBe(590_000);
+  });
 });
