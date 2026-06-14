@@ -978,6 +978,7 @@ export function PropertiesPage({
           open={modal?.kind === "find"}
           initialPropertyId={modal?.kind === "find" ? modal.property.id : null}
           properties={data.properties}
+          accounts={data.accounts}
           history={data.history}
           merchantHints={data.merchantHints}
           matchRules={data.matchRules}

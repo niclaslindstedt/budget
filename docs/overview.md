@@ -959,7 +959,8 @@ same account as a single charge). A property can carry several. Created
 both carrying the parent `propertyId`; the interest field is a
 rate-history editor); deleted via a confirm (`deleteMortgage`). Surfaced
 on the `MortgageRow` in `PropertyCard` with its current rate and payment
-count; the property's bound account is what Find mortgage payments scans.
+count; the property's active payment account is what Find mortgage payments
+pre-selects to scan (the walk can add more accounts).
 The `rateChangeMonths` reset cadence shows as a pill next to the rate —
 read in months below a year ("monthly", "3 months") and in whole years at
 or above one ("yearly", "2 years"), since a reset interval is always a
@@ -1131,8 +1132,12 @@ both figures and a ≥ 1 difference.
 mortgage payments glyph button in a property card's "MORTGAGES" header
 (scoped to that property via `initialPropertyId`), driven by
 `discoverMortgagePayments` (`src/data/property-mortgage/discovery.ts`).
-The modal's picker can still switch to another property; the walk scans the
-property's bound account (`Property.accountId`) history, resolving each
+The modal's picker can still switch to another property. The walk scans one
+or more accounts' history: a multi-select **Accounts** dropdown
+(`AccountMultiPicker`) is pre-set to the property's active payment account
+(`Property.accountId`) but can take several at once — a loan's payments can
+move between accounts over time, and the merged history (deduped by entry
+id) is scanned as one. It resolves each
 entry's effective company / type via `resolveEntryLabels` and anchoring
 on the charges tagged with the property's lender (`Property.companyId`)
 and/or the `preset-type-mortgage` type, on the descriptions of payments
@@ -1150,12 +1155,19 @@ charge still appears below any genuine tags. The reported `seed`
 reflects the leading surfaced series (`"tags"` / `"payments"` /
 `"amount"`); only with no tag, no payment, and no loan terms is there
 nothing to go on (`seed: "none"` → a nudge to tag a month). Charges are
-grouped by a finder-local `financeGroupKey` — `normaliseDescription`
-with every standalone digit run stripped — so an auto-giro line whose
-reference number differs every month coalesces into one recurring series
-instead of fragmenting one-per-month; a charge that is nothing but a
-reference number normalises to empty and is instead salvaged into the
-nearest expected-figure amount group. The whole funnel (entries dropped
+grouped by a finder-local `financeGroupKey` — the EXACT bank description
+(trimmed only). A recurring mortgage charge's description is static per
+property (byte-identical every month, even as the amount drifts with the
+rate), and a Swedish autogiro reference like "Avibetalning 9120-3273663"
+carries the same reference on every payment for that property while a
+different property's charge carries a different one — so matching
+verbatim both coalesces one property's months into a single series AND
+keeps two properties whose charges share a prefix ("Avibetalning …")
+apart, so one property's payments are never offered for another (the
+amount band alone can't separate them when their payments are close in
+size). A charge that is nothing but a reference number normalises to
+empty (`isNormalisedKeyMeaningful(normaliseDescription(...))` is false)
+and is instead salvaged into the nearest expected-figure amount group. The whole funnel (entries dropped
 as inflows / collapsed transfers / meaningless descriptions, every
 grouped candidate with its amount, `targetDelta`, and keep/drop reason)
 is returned as `result.diagnostics` and logged to the in-app Logs tab

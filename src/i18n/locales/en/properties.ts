@@ -186,9 +186,14 @@ const properties = {
   findTitle: "Find mortgage payments",
   findNoProperties: "Add a property with a mortgage first.",
   findSelectProperty: "Property",
+  findAccountsLabel: "Accounts",
+  findAccountsPlaceholder: "Select accounts",
+  findAccountsCount: "{count} accounts",
+  findAccountsHint:
+    "Pre-set to this property's account. Add more if the loan was paid from different accounts over time.",
   findNoMortgages: "This property has no mortgages yet.",
   findNoAccount:
-    "Give this property's mortgages a bank account first — the finder scans that account's history for the charge.",
+    "Pick at least one account to scan its history for this property's mortgage charge.",
   findNoneFound: "No matching charges found in the account history.",
   findNeedsTags:
     "Nothing to go on yet. In your budget, tag this property's mortgage charges with their company and the Mortgage type (one month is enough), then come back — the finder uses those tags to locate the rest.",
