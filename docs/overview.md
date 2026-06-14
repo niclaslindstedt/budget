@@ -1043,8 +1043,8 @@ used for every date.
 
 ### Mortgage payment
 
-`MortgagePayment` (`{ id, date, amount, sourceHistoryId? }`) on
-`Mortgage.payments`. One mortgage's share of a monthly charge. A
+`MortgagePayment` (`{ id, date, amount, sourceHistoryId?, sourceAccountId? }`)
+on `Mortgage.payments`. One mortgage's share of a monthly charge. A
 property is paid to the bank as a single transaction covering every loan
 against it, so Find mortgage payments splits each found transaction
 across the property's mortgages (`splitPaymentAcrossMortgages` in
@@ -1068,7 +1068,11 @@ no interest-bearing loan amortises the residual is shared by interest weight
 instead (it is interest and only they can hold it). It records one payment per
 mortgage, all sharing the transaction's `sourceHistoryId` (the 1-1 link
 
-- the re-scan dedupe key). `PropertyCard` sums a mortgage's payments as
+- the re-scan dedupe key) plus its `sourceAccountId` (which account that
+  transaction lives in — the walk can scan several at once, so a charge
+  isn't always drawn from the property's main account, and the payments
+  view needs the account to resolve the bank row back). `PropertyCard`
+  sums a mortgage's payments as
   its Paid total, broken down beneath into the cumulative interest and
   amortisation (`splitRecordedPayment` in
   `src/data/finance/payment.ts` inverts the amortisation-first
@@ -1098,10 +1102,16 @@ per-charge header bar (date + total) becomes a button when the charge
 carries a `sourceHistoryId`: pressing it opens a popover (the shared
 `FloatingPanel`) showing the original bank transaction it was split from
 — description, date, amount, balance, account — resolved live from the
-account's history (`MortgageChargeGroup.sourceHistoryId` →
-`UserData.history[accountId]`, threaded in by `PropertiesPage` as the
-`sourceTransactions` map); hand-entered charges (no `sourceHistoryId`)
-keep a plain, non-interactive bar. Each row carries edit + trash in a
+source account's history (`MortgageChargeGroup.sourceAccountId` +
+`sourceHistoryId` → `UserData.history[sourceAccountId]`, threaded in by
+`PropertiesPage` as the `sourceTransactions` map keyed by
+`${accountId}:${entryId}` and covering every account the property's
+payments reference). The source account is the one recorded on the
+payment, falling back to the property's main `accountId` for legacy
+payments that predate `sourceAccountId` — so a charge drawn from any
+account "Find mortgage payments" scanned, not only the property's main
+one, traces back to its bank row. Hand-entered charges (no
+`sourceHistoryId`) keep a plain, non-interactive bar. Each row carries edit + trash in a
 trailing actions column — inline on desktop, hidden behind a left-swipe
 on mobile via the shared `useRowSwipe` / `useClaimActiveRow` pattern
 (the `.mortgage-payments-table` rules in `src/styles/components.css`

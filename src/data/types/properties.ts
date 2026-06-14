@@ -39,6 +39,17 @@ export type MortgagePayment = {
   // stable across re-imports, so the discovery walk pairs this with a
   // month dedupe. Absent on a hand-entered payment.
   sourceHistoryId?: string;
+  // Which account's history `sourceHistoryId` lives in. "Find mortgage
+  // payments" can scan several accounts at once (a loan's charges move
+  // between accounts over time), so the source transaction isn't always in
+  // the property's main `accountId` — without this the payments view can't
+  // resolve a charge drawn from any other account back to its bank row.
+  // Paired with `sourceHistoryId` (set / cleared together); best-effort
+  // across re-imports and the account may since have been deleted, exactly
+  // like `sourceHistoryId`. Absent on a hand-entered payment, and on a
+  // payment recorded before this field existed — the payments view then
+  // falls back to the property's main `accountId`.
+  sourceAccountId?: string;
 };
 
 // A loan taken against a property. A property can carry several (a first

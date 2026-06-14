@@ -322,20 +322,27 @@ export function PropertiesPage({
   // repairs editor resolves parent-type names and creation against.
   const categories = useMemo(() => allCategories(data), [data]);
 
-  // The account the payments-view property is paid from, plus its bank
-  // history keyed by id, so each charge group can resolve the original
-  // transaction it was split from (its `sourceHistoryId`) for the popover.
-  const paymentsAccount = livePaymentsProperty?.accountId
-    ? (accountsById.get(livePaymentsProperty.accountId) ?? null)
-    : null;
+  // Bank history for every account the payments-view property's payments
+  // reference — each payment's recorded `sourceAccountId`, plus the
+  // property's main account as the fallback for legacy payments that predate
+  // the field — keyed by `${accountId}:${entryId}` so each charge group
+  // resolves the original transaction it was split from for the popover, even
+  // when "Find mortgage payments" drew it from an account other than the
+  // property's main one.
   const paymentsSourceTransactions = useMemo(() => {
     const m = new Map<string, HistoryEntry>();
-    const accountId = livePaymentsProperty?.accountId;
-    if (accountId) {
-      for (const entry of data.history[accountId] ?? []) m.set(entry.id, entry);
-    }
+    if (!livePaymentsProperty) return m;
+    const accountIds = new Set<string>();
+    if (livePaymentsProperty.accountId)
+      accountIds.add(livePaymentsProperty.accountId);
+    for (const mortgage of livePaymentsProperty.mortgages)
+      for (const payment of mortgage.payments)
+        if (payment.sourceAccountId) accountIds.add(payment.sourceAccountId);
+    for (const accountId of accountIds)
+      for (const entry of data.history[accountId] ?? [])
+        m.set(`${accountId}:${entry.id}`, entry);
     return m;
-  }, [livePaymentsProperty?.accountId, data.history]);
+  }, [livePaymentsProperty, data.history]);
 
   const titleMenuItems: SheetTitleMenuItem[] = [
     favoriteMenuItem(sheet, t, dispatchModal),
@@ -743,7 +750,7 @@ export function PropertiesPage({
           open={livePaymentsProperty !== null}
           property={livePaymentsProperty}
           settings={settings}
-          account={paymentsAccount}
+          accountsById={accountsById}
           sourceTransactions={paymentsSourceTransactions}
           onClose={() => setModal(null)}
           onSetChargeSplit={(updates) => {
