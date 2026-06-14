@@ -58,14 +58,23 @@ beside the toggle, while **Add mortgage** lives in the property's "…" menu.
 ## Find mortgage payments
 
 Give the property a bank account and open **Find mortgage payments** from the
-button in its mortgage section. It scans that account's history for the
-recurring charge that pays its loans:
+button in its mortgage section. It scans an account's history for the
+recurring charge that pays its loans. The **Accounts** dropdown starts on the
+property's current payment account, but you can pick several — if the loan was
+paid from one account for a while and then another, select them all and the
+finder searches the combined history:
 
 - It homes in on the charges you tagged with a lender or the **Mortgage**
   type, learns their bank description, and sweeps the rest of the history for
   every matching charge — ranking the likeliest first, leaving a previous
   home's loan out by its different amount, and ignoring charges that are
   nowhere near what the loan's amortisation and interest add up to.
+- Charges are matched on their **exact** bank description. A mortgage's
+  description stays the same every month (even as the amount moves with the
+  rate), so all its payments group together — and because each property's
+  autogiro reference is different, two properties paid under the same
+  "Avibetalning" prefix stay separate even when their amounts are close, so one
+  property's payments are never added to another.
 - Two charges at least two weeks apart count as separate payments, so a
   payment that a weekend pushed into the start of the next month — landing two
   charges in the same calendar month — is no longer mistaken for a duplicate

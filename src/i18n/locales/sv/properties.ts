@@ -167,9 +167,14 @@ const properties: PropertiesCatalog = {
   findTitle: "Hitta bolånebetalningar",
   findNoProperties: "Lägg till en fastighet med ett bolån först.",
   findSelectProperty: "Fastighet",
+  findAccountsLabel: "Konton",
+  findAccountsPlaceholder: "Välj konton",
+  findAccountsCount: "{count} konton",
+  findAccountsHint:
+    "Förinställt till fastighetens konto. Lägg till fler om lånet betalats från olika konton över tid.",
   findNoMortgages: "Den här fastigheten har inga bolån ännu.",
   findNoAccount:
-    "Ge fastighetens bolån ett bankkonto först — sökningen går igenom kontots historik efter dragningen.",
+    "Välj minst ett konto vars historik ska sökas igenom efter fastighetens bolånedragning.",
   findNoneFound: "Inga matchande dragningar hittades i kontohistoriken.",
   findNeedsTags:
     "Inget att utgå från ännu. Märk den här fastighetens bolånedragningar med deras företag och bolånetypen i din budget (en månad räcker), och kom sedan tillbaka — sökningen använder de märkningarna för att hitta resten.",

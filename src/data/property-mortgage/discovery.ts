@@ -418,24 +418,26 @@ function windowCovered(
   return observedCount >= expectedCount - 1;
 }
 
-// The grouping key the finder buckets a charge's months under. The shared
-// `normaliseDescription` deliberately keeps short (1–3 digit) standalone
-// numbers — a store number can carry meaning elsewhere — but a mortgage
-// auto-giro reference like "Avibetalning 9120-3273663" survives normalisation
-// as "avibetalning 91", and because the reference differs every month
-// ("…84", "…10", …) each month lands in its OWN group and the charge never
-// coalesces into a recurring series. The finder doesn't care about reference
-// numbers, so it strips every standalone digit run on top of the shared
-// normaliser: "Avibetalning 9120-3273663" and "Avibetalning 8473-1192834"
-// both collapse to "avibetalning", grouping all the months together, while
-// genuinely distinct text ("Bolån amortering" vs "Bolån ränta") still keys
-// apart. A description that is nothing but a reference number normalises to
-// empty here and is handled by the amount-group salvage instead.
+// The grouping key the finder buckets a charge's months under: the EXACT bank
+// description, trimmed only. A recurring mortgage charge's description is
+// STATIC PER PROPERTY — byte-identical on every payment (the amount drifts with
+// the rate, the text does not), and a Swedish autogiro reference like
+// "Avibetalning 9120-3273663" carries the SAME reference number every month for
+// that property, while a DIFFERENT property's charge carries a different one.
+// So the reference IS the per-property discriminator and must be preserved, not
+// stripped: matching the description verbatim coalesces one property's months
+// into a single series AND keeps two properties whose charges share a prefix
+// ("Avibetalning …") apart, so property B's charge is never offered for
+// property A — which the amount band alone can't prevent when the two
+// properties' payments are close in size. (An earlier version stripped every
+// digit run, on the assumption the reference varied month to month; real
+// statements keep it static per property, and stripping it merged distinct
+// properties into one group.) A description that normalises to nothing
+// meaningful — empty, or nothing but a reference number — carries no
+// per-property identity and is routed to the amount-group salvage instead; the
+// caller gates on `isNormalisedKeyMeaningful(normaliseDescription(...))`.
 function financeGroupKey(description: string): string {
-  return normaliseDescription(description)
-    .replace(/\b\d+\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return description.trim();
 }
 
 // Median of a non-empty list — a robust centre for the amount band that
@@ -564,11 +566,14 @@ function scanChargeGroups(
     if (!latestOutflowMonth || outflowMonth > latestOutflowMonth)
       latestOutflowMonth = outflowMonth;
 
-    const textKey = financeGroupKey(entry.description);
+    // Group on the exact description, but decide whether there's any merchant
+    // text to group BY off the normalised form — so a bare reference number
+    // (which normalises to empty) still routes to the amount salvage instead of
+    // forming a meaningless per-reference group.
     let key: string;
     let synthetic: boolean;
-    if (isNormalisedKeyMeaningful(textKey)) {
-      key = textKey;
+    if (isNormalisedKeyMeaningful(normaliseDescription(entry.description))) {
+      key = financeGroupKey(entry.description);
       synthetic = false;
     } else {
       // No usable merchant text. Salvage it for the amount fallback by

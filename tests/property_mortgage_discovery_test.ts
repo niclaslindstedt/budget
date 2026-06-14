@@ -883,23 +883,28 @@ describe("discoverMortgagePayments — amount fallback on clean payments", () =>
   });
 });
 
-// ── Reference-number descriptions (the real reported failure) ──────────────
+// ── Reference-number descriptions ──────────────────────────────────────────
 //
-// A Swedish mortgage auto-giro charge is labelled "Avibetalning <ref>" with a
-// DIFFERENT reference number every month. The shared normaliser leaves a
-// stray two-digit fragment ("avibetalning 91", "avibetalning 84", …), so a
-// description-keyed grouping puts every month in its own group and the charge
-// never forms a recurring series. The finder's stricter grouping key strips
-// the reference so all the months coalesce under "avibetalning"; a charge
-// that's nothing but a reference number is salvaged by its amount instead.
+// A Swedish mortgage auto-giro charge is labelled "Avibetalning <ref>". The
+// reference number is STATIC PER PROPERTY — the same on every payment for a
+// given property — so the description is byte-identical month to month, and the
+// finder groups on it verbatim: all the months coalesce into one series. The
+// reference is also what separates properties (see the cross-property battery
+// below): a different property's charge carries a different reference and forms
+// its own group, so it can't be offered for the wrong property. A charge that
+// is nothing but a reference number (no leading word) normalises to empty and
+// is salvaged by its amount instead.
 
-// Twelve months of an auto-giro charge whose reference number differs every
-// month, optionally with a leading word. Mirrors the reported "Avibetalning
+// Twelve months of an auto-giro charge with a STATIC reference number (the same
+// every month, as a real recurring autogiro is), optionally with a leading word
+// and a caller-chosen reference / id prefix. Mirrors the reported "Avibetalning
 // 9120-3273663" statement text.
 function aviCharges(
   amount: number,
   opts: {
     word?: string;
+    ref?: string;
+    idPrefix?: string;
     count?: number;
     startYear?: number;
     startMonth?: number;
@@ -907,15 +912,16 @@ function aviCharges(
 ): HistoryEntry[] {
   const {
     word = "Avibetalning",
+    ref = "9120-3273663",
+    idPrefix = "avi",
     count = 12,
     startYear = 2025,
     startMonth = 9,
   } = opts;
-  return monthlyDates(startYear, startMonth, count).map((d, i) => {
-    const ref = `${9120 + i * 137}-${3273663 + i * 911}`;
-    const description = word ? `${word} ${ref}` : ref;
-    return entry(`avi-${i}`, d, -amount, description);
-  });
+  const description = word ? `${word} ${ref}` : ref;
+  return monthlyDates(startYear, startMonth, count).map((d, i) =>
+    entry(`${idPrefix}-${i}`, d, -amount, description),
+  );
 }
 
 // The property from the screenshot: two Skandiabanken loans (one interest-only
@@ -942,24 +948,24 @@ function screenshotProperty(): Property {
 }
 
 describe("discoverMortgagePayments — reference-number descriptions", () => {
-  it("coalesces a monthly auto-giro charge with a varying reference into one series", () => {
+  it("coalesces a monthly auto-giro charge with a static reference into one series", () => {
     const prop = screenshotProperty();
     const { series, seed } = runFinder(prop, aviCharges(19_636));
     expect(seed).toBe("amount");
     expect(series).toHaveLength(1);
     expect(series[0].suggestedAmount).toBe(19_636);
-    // All twelve months in one group — not fragmented one-per-reference.
+    // All twelve months in one group — the description is identical every month.
     expect(series[0].months).toHaveLength(12);
     expect(series[0].spanMonths).toBe(12);
     expect(series[0].label).toContain("Avibetalning");
   });
 
-  it("groups by stable text even though every reference number differs", () => {
+  it("groups a static per-property reference into one series", () => {
     const prop = screenshotProperty();
     const { diagnostics } = runFinder(prop, aviCharges(19_636));
     expect(diagnostics.outflowEntries).toBe(12);
-    // The reference is stripped, so the twelve distinct descriptions form a
-    // SINGLE group, not twelve.
+    // The exact description is identical every month, so the twelve months form
+    // a SINGLE group, not twelve.
     expect(diagnostics.groupCount).toBe(1);
     expect(diagnostics.candidates).toHaveLength(1);
     expect(diagnostics.candidates[0].monthCount).toBe(12);
@@ -1002,7 +1008,7 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
 
   it("still keeps genuinely distinct descriptions in separate groups", () => {
     // Two recurring charges with different stable text near two different
-    // expected figures must not be merged by the reference-stripping key.
+    // expected figures stay in separate groups.
     const m1 = mort("m1", {
       loanAmount: 2_000_000,
       currentBalance: 2_000_000,
@@ -1021,13 +1027,63 @@ describe("discoverMortgagePayments — reference-number descriptions", () => {
     });
     const [c1, c2] = eachCharge([m1, m2]); // 7,333 and 3,250
     const entries = [
-      ...aviCharges(c1, { word: "Bolan amortering", startMonth: 1 }),
-      ...aviCharges(c2, { word: "Bolan ranta", startMonth: 1 }),
+      ...aviCharges(c1, {
+        word: "Bolan amortering",
+        idPrefix: "a",
+        startMonth: 1,
+      }),
+      ...aviCharges(c2, { word: "Bolan ranta", idPrefix: "b", startMonth: 1 }),
     ];
     const { series } = runFinder(prop, entries);
     expect(series.map((s) => s.suggestedAmount).sort((a, b) => a - b)).toEqual([
       3_250, 7_333,
     ]);
+  });
+});
+
+// ── Cross-property safety: distinct references stay apart ───────────────────
+//
+// Several properties' mortgages can be paid from the same account, all labelled
+// "Avibetalning <ref>" — same prefix, but each property's reference is static
+// and DIFFERENT. Their payments can also be close in size, so the amount band
+// alone can't tell them apart. Matching the exact description keeps each
+// property's charge in its own group, so running the walk for one property
+// never sweeps in (and offers to record) another property's payments.
+describe("discoverMortgagePayments — distinct references stay apart", () => {
+  it("does not merge two properties' similar avibetalning charges", () => {
+    // Property A and B are both charged ~19,600 under "Avibetalning", but each
+    // carries its own static reference. They must form TWO groups, not one.
+    const prop = screenshotProperty();
+    const entries = [
+      ...aviCharges(19_636, { ref: "9120-3273663", idPrefix: "a" }),
+      ...aviCharges(19_600, { ref: "8473-1192834", idPrefix: "b" }),
+    ];
+    const { series, diagnostics } = runFinder(prop, entries);
+    expect(diagnostics.groupCount).toBe(2);
+    expect(series).toHaveLength(2);
+    const refs = series.map((s) => s.label).sort();
+    expect(refs).toEqual([
+      "Avibetalning 8473-1192834",
+      "Avibetalning 9120-3273663",
+    ]);
+    // Each series carries only its own twelve months, not a merged twenty-four.
+    expect(series.every((s) => s.months.length === 12)).toBe(true);
+  });
+
+  it("anchors only the property whose recorded payment matches the exact description", () => {
+    // One recorded payment seeds property A's reference. Only A's series is a
+    // payment match; B's identical-prefix charge stays amount-only and is never
+    // anchored as a payment on this property.
+    const prop = screenshotProperty();
+    const aCharges = aviCharges(19_636, { ref: "9120-3273663", idPrefix: "a" });
+    const bCharges = aviCharges(19_600, { ref: "8473-1192834", idPrefix: "b" });
+    const { series } = runFinder(prop, [...aCharges, ...bCharges], {
+      seedEntryIds: ["a-0"],
+    });
+    const a = series.find((s) => s.label === "Avibetalning 9120-3273663");
+    const b = series.find((s) => s.label === "Avibetalning 8473-1192834");
+    expect(a?.anchor).toBe("payment");
+    expect(b?.anchor).toBe("amount");
   });
 });
 

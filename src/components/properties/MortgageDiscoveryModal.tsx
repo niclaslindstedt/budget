@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Home, Search } from "lucide-react";
+import { Check, ChevronDown, Home, Landmark, Search } from "lucide-react";
 
 import {
   discoverMortgagePayments,
@@ -15,6 +15,7 @@ import {
 import { PRESET_TYPE_MORTGAGE_ID } from "../../data/presets/types";
 import { newId } from "../../data/sheet";
 import type {
+  Account,
   Company,
   EntryType,
   HistoryEntry,
@@ -60,6 +61,7 @@ type Props = {
   // walk. The in-modal property picker can still switch to another property.
   initialPropertyId: string | null;
   properties: readonly Property[];
+  accounts: readonly Account[];
   history: Record<string, HistoryEntry[]>;
   merchantHints: Readonly<Record<string, MerchantHint>>;
   matchRules: readonly MatchRule[];
@@ -77,6 +79,7 @@ export function MortgageDiscoveryModal({
   open,
   initialPropertyId,
   properties,
+  accounts,
   history,
   merchantHints,
   matchRules,
@@ -92,6 +95,12 @@ export function MortgageDiscoveryModal({
     initialPropertyId,
   );
   const [propertyPickerOpen, setPropertyPickerOpen] = useState(false);
+  const [accountPickerOpen, setAccountPickerOpen] = useState(false);
+  // null = "use the default (the property's active payment account)"; a Set
+  // once the user has toggled the account selection. A loan's payments can
+  // move between accounts over time, so the scan can span several.
+  const [selectedAccountIds, setSelectedAccountIds] =
+    useState<Set<string> | null>(null);
   // null = "use the default (everything selected)"; a Set once the user
   // has toggled at least one group.
   const [selectedKeys, setSelectedKeys] = useState<Set<string> | null>(null);
@@ -115,19 +124,42 @@ export function MortgageDiscoveryModal({
 
   useResetOnOpen(open, property?.id, () => {
     setSelectedKeys(null);
+    setSelectedAccountIds(null);
     setTolerancePct(Math.round(DEFAULT_MORTGAGE_TOLERANCE * 100));
     setPropertyPickerOpen(false);
+    setAccountPickerOpen(false);
   });
 
-  // The account the property's loans are paid from, and its history — a
-  // property is paid to the bank as one charge covering every loan, so the
-  // account is shared across the property's mortgages (`Property.accountId`).
-  const entries = useMemo(
-    () => (property?.accountId ? (history[property.accountId] ?? []) : []),
-    [property, history],
+  // The account(s) to scan. The property's `accountId` is its currently active
+  // payment account and is pre-selected, but a loan's payments can switch
+  // accounts over time, so the user can scan several at once. `null` means
+  // "the property default"; a Set once the selection is touched.
+  const defaultAccountIds = useMemo(
+    () => (property?.accountId ? [property.accountId] : []),
+    [property],
+  );
+  const accountIds = useMemo(
+    () => [...(selectedAccountIds ?? new Set(defaultAccountIds))],
+    [selectedAccountIds, defaultAccountIds],
   );
 
-  const hasAccount = Boolean(property?.accountId);
+  // The merged history across every selected account, deduped by entry id
+  // (a content hash, so an identical row imported into two accounts collapses
+  // to one). A property is paid to the bank as one charge covering every loan,
+  // so within each account the charge is shared across the mortgages.
+  const entries = useMemo(() => {
+    const seen = new Set<string>();
+    const out: HistoryEntry[] = [];
+    for (const id of accountIds)
+      for (const e of history[id] ?? [])
+        if (!seen.has(e.id)) {
+          seen.add(e.id);
+          out.push(e);
+        }
+    return out;
+  }, [accountIds, history]);
+
+  const hasAccount = accountIds.length > 0;
 
   // Bank entries already backing a payment on any of the property's
   // mortgages — the fallback anchor and the months to skip.
@@ -371,6 +403,33 @@ export function MortgageDiscoveryModal({
               </div>
             )}
 
+            {mortgages.length > 0 && accounts.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold tracking-wider uppercase text-muted">
+                  {t("properties.findAccountsLabel")}
+                </span>
+                <AccountMultiPicker
+                  accounts={accounts}
+                  selected={accountIds}
+                  open={accountPickerOpen}
+                  onToggle={() => setAccountPickerOpen((v) => !v)}
+                  onClose={() => setAccountPickerOpen(false)}
+                  onToggleAccount={(id) => {
+                    setSelectedKeys(null);
+                    setSelectedAccountIds((prev) => {
+                      const next = new Set(prev ?? new Set(defaultAccountIds));
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    });
+                  }}
+                />
+                <span className="text-xs text-muted">
+                  {t("properties.findAccountsHint")}
+                </span>
+              </div>
+            )}
+
             {mortgages.length === 0 ? (
               <p className="m-0 text-sm text-muted">
                 {t("properties.findNoMortgages")}
@@ -592,6 +651,88 @@ function PropertyPicker({
               </button>
             </li>
           ))}
+        </ul>
+      </FloatingPanel>
+    </div>
+  );
+}
+
+function AccountMultiPicker({
+  accounts,
+  selected,
+  open,
+  onToggle,
+  onClose,
+  onToggleAccount,
+}: {
+  accounts: readonly Account[];
+  selected: readonly string[];
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onToggleAccount: (id: string) => void;
+}) {
+  const t = useT();
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const selectedSet = new Set(selected);
+  const summary =
+    selected.length === 0
+      ? t("properties.findAccountsPlaceholder")
+      : selected.length === 1
+        ? (accounts.find((a) => a.id === selected[0])?.name ??
+          t("properties.findAccountsCount", { count: selected.length }))
+        : t("properties.findAccountsCount", { count: selected.length });
+  return (
+    <div ref={triggerRef} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+      >
+        <Landmark size={14} className="shrink-0 text-accent" aria-hidden />
+        <span className="flex-1 truncate">{summary}</span>
+        <ChevronDown size={14} className="shrink-0 text-muted" aria-hidden />
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={onClose}
+        triggerRef={triggerRef}
+        placement={PROPERTY_PICKER_PLACEMENT}
+      >
+        <ul
+          role="listbox"
+          aria-multiselectable
+          aria-label={t("properties.findAccountsLabel")}
+          className="max-h-64 overflow-auto py-1"
+        >
+          {accounts.map((a) => {
+            const checked = selectedSet.has(a.id);
+            return (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={checked}
+                  onClick={() => onToggleAccount(a.id)}
+                  className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-fg hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span
+                    aria-hidden
+                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                      checked
+                        ? "border-accent bg-accent text-page-bg"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {checked && <Check size={11} focusable={false} />}
+                  </span>
+                  <span className="flex-1 truncate">{a.name}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </FloatingPanel>
     </div>
