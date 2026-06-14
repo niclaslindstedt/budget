@@ -350,11 +350,14 @@ src/
 │   │   ├── discovery.ts        # discoverMortgagePayments — scans a property's
 │   │   │                       #   bound account history for charges tagged with
 │   │   │                       #   a lender / the Mortgage type, expands by bank
-│   │   │                       #   description + amount band, ranks by the
-│   │   │                       #   expected figures; promotes the best complete
-│   │   │                       #   on-cadence run per figure (cadence + window
-│   │   │                       #   from targetSchedules) to "highly probable"
-│   │   │                       #   (Find mortgage payments walk)
+│   │   │                       #   description + amount band, clusters charges
+│   │   │                       #   into payment occurrences by a 2-week day-gap
+│   │   │                       #   (weekend slips kept), ranks by the expected
+│   │   │                       #   figures; promotes the best per figure to
+│   │   │                       #   "highly probable" — on amount alone for a
+│   │   │                       #   tagged / payment-matched charge, else needing
+│   │   │                       #   a complete on-cadence run (Find mortgage
+│   │   │                       #   payments walk)
 │   │   └── progress.ts         # mortgagePayoffProgress — share of the original
 │   │                           #   loan amortised away (drives the payoff bar)
 │   ├── property-repairs/   # properties page — repairs / renovations helpers

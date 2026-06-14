@@ -1161,25 +1161,36 @@ grouped candidate with its amount, `targetDelta`, and keep/drop reason)
 is returned as `result.diagnostics` and logged to the in-app Logs tab
 under the `mortgage-finder` scope so a "no matches" report can be
 diagnosed. From each anchored charge it learns the bank description and
-sweeps the history for matching months, dropping any month outside the
-ownership window — before the property's `purchaseDate` or after its
-`soldDate` — outright (a payment can't predate ownership, and a sold
-home stopped being charged at the sale) and centring the amount band on
-the surviving owned months.
-Series rank a highly probable charge first (`highlyProbable`) — one that
-recurs on its loan's cadence with no gaps (`regularCadence`: consecutive
-months spaced by `paymentCadenceMonths`, over ≥
-`MORTGAGE_RECURRENCE_MIN_MONTHS` occurrences) under one stable
-description (not amount-salvaged), whose typical amount lands within
-`MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an expected figure, AND which
-covers the whole window the loan has been active (`windowCovered`:
-charges from the loan start — `loanStartDate`, or the purchase — to the
-latest outflow the account has seen, or the sale month for a sold
-property, at that cadence, allowing one missing slot). The window leg is what keeps a charge that recurs cleanly
-for only the last five of eight expected months (started late, or
-stopped) out of the promotion — it stays an ordinary candidate. Only one
+sweeps the history for matching charges, clustering each group's charges
+into payment occurrences by a day-gap (`MORTGAGE_OCCURRENCE_MIN_GAP_DAYS`,
+two weeks) rather than by calendar month — two charges at least two weeks
+apart are distinct payments and both survive (so a weekend-slipped charge
+that shares a calendar month with the next payment is no longer thrown
+away by a one-per-month winner), while charges closer than that (a
+reversal + repost) fold into one with the larger draw standing in. It
+drops any occurrence outside the ownership window — before the property's
+`purchaseDate` or after its `soldDate` — outright (a payment can't
+predate ownership, and a sold home stopped being charged at the sale)
+and centres the amount band on the surviving owned occurrences.
+Series rank a highly probable charge first (`highlyProbable`) — one whose
+typical amount lands within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of an
+expected figure. A charge the user marked as the mortgage (a company /
+type tag) or whose description matches an already-recorded payment is
+promoted on that amount alone: the metadata vouches for it, so a
+weekend-slipped or missed month doesn't demote it. An **amount-only**
+charge has no such metadata, so it additionally has to recur on its
+loan's cadence with no gaps (`regularCadence`: consecutive months spaced
+by `paymentCadenceMonths`, over ≥ `MORTGAGE_RECURRENCE_MIN_MONTHS`
+occurrences) under one stable description (not amount-salvaged) AND cover
+the whole window the loan has been active (`windowCovered`: charges from
+the loan start — `loanStartDate`, or the purchase — to the latest outflow
+the account has seen, or the sale month for a sold property, at that
+cadence, allowing one missing slot). The window leg is what keeps an
+amount-only charge that recurs cleanly for only the last five of eight
+expected months (started late, or stopped) out of the promotion — it
+stays an ordinary candidate. Only one
 charge is promoted per expected figure (combined, or per-loan): among the
-candidates matching a figure's amount and cadence the strongest by the
+eligible candidates for a figure the strongest by the
 usual strictness-then-closeness order wins, so a second clean-but-wrong
 charge near the same figure never also lights up, while a property paid
 as one draw per loan can light up each loan's charge. A complete
@@ -1198,8 +1209,9 @@ terms resolve a figure). The user ticks charge groups; the walk pre-checks
 only the "highly probable" charges when any surfaced (so the weaker
 candidates are opt-in), falling back to pre-checking everything found when
 none were promoted. Each month within
-the ± band (a `Slider`, default ±10 %, `DEFAULT_MORTGAGE_TOLERANCE`,
-`monthsWithinBand`) is split across the mortgages by their amortisation +
+the ± band (a `Slider`, default ±10 % `DEFAULT_MORTGAGE_TOLERANCE`, up to
+±200 % for a rate that swung hard, `monthsWithinBand`) is split across the
+mortgages by their amortisation +
 dated interest and recorded via `addMortgagePaymentsForProperty`,
 deduping months already added via the `sourceHistoryId` set.
 

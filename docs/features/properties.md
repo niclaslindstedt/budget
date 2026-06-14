@@ -59,30 +59,41 @@ beside the toggle, while **Add mortgage** lives in the property's "…" menu.
 
 Give the property a bank account and open **Find mortgage payments** from the
 button in its mortgage section. It scans that account's history for the
-single monthly charge that pays its loans:
+recurring charge that pays its loans:
 
 - It homes in on the charges you tagged with a lender or the **Mortgage**
   type, learns their bank description, and sweeps the rest of the history for
-  every matching month — ranking the likeliest first, leaving a previous
+  every matching charge — ranking the likeliest first, leaving a previous
   home's loan out by its different amount, and ignoring charges that are
   nowhere near what the loan's amortisation and interest add up to.
-- A charge that recurs on the loan's cadence under the same description, for
-  an amount that matches the expected payment, **and** that has been charged
-  for every period since the loan started is flagged **"Highly probable"**
-  and stands out at the top of the list. That steady, complete rhythm is the
-  surest sign it's the mortgage, so it outranks even a charge you tagged.
+- Two charges at least two weeks apart count as separate payments, so a
+  payment that a weekend pushed into the start of the next month — landing two
+  charges in the same calendar month — is no longer mistaken for a duplicate
+  and dropped. A genuine same-week double-charge still folds into one.
+- A charge you marked as the mortgage, or one whose description matches a
+  payment you already recorded, that lands on the expected amount is flagged
+  **"Highly probable"** and ticked for you — even if a month slipped or was
+  missed, because your tag (or the matching payment) already vouches for it.
+  A charge found only by its **amount**, with nothing marking it, additionally
+  has to recur cleanly for every period since the loan started before it earns
+  that flag — a steady, complete rhythm is what stands in for the missing tag.
 - When any charge is flagged this way, only those are ticked for you to begin
   with — the weaker candidates are left for you to add deliberately. When
   nothing is flagged, every charge found is ticked as before.
-- A charge that recurs cleanly but only covers part of that span — say five
-  of the eight months since you took the loan out — stays an ordinary
-  candidate instead. When two charges match the same expected amount only the
-  strongest is flagged, so look-alikes don't all light up.
+- An amount-only charge that recurs cleanly but covers only part of that span
+  — say five of the eight months since you took the loan out — stays an
+  ordinary candidate instead. When two charges match the same expected amount
+  only the strongest is flagged, so look-alikes don't all light up.
 
 Haven't tagged anything yet? As long as the loan's terms are filled in, the
 finder still picks out the charges whose amount matches the expected monthly
 payment, so a freshly imported account turns up its mortgage straight from
 the maths.
+
+A **match tolerance** slider controls how far a month's charge may stray from
+the typical amount and still count. Leave it tight for a steady loan; widen it
+(up to ±200 %) when the interest rate swung hard over the period and the
+monthly charge moved a lot with it.
 
 Each found transaction is split across the property's mortgages by their
 amortisation and interest, recording one payment per loan that adds up to
