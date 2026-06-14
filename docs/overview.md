@@ -1491,7 +1491,8 @@ actions into one trigger (modelled on `RepairEntryActionsMenu` /
 `SheetTitleMenu`, on `FloatingPanel`). Entries: **Add mortgage**, **Upload
 file** (opens the **property files modal**), Net sale profit, **Export
 property** (opens the **property export modal**), Edit property, Delete
-property. Updating the recorded value is not here — the current-value
+property. Net sale profit is omitted once the property is sold
+(`soldDate` set) — the forward-looking estimator no longer applies. Updating the recorded value is not here — the current-value
 figure in the card's stat grid is itself the button that opens the
 **Update value** modal. Visualize value and View repairs (the latter with
 a `--danger` dot when any repair lacks a receipt) are their own glyph

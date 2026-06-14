@@ -40,6 +40,11 @@ export function PropertyActionsMenu({
 }: Props) {
   const t = useT();
 
+  // A sold property's sale has already settled, so the forward-looking
+  // "Net sale profit" estimator no longer applies — hide it once `soldDate`
+  // is set.
+  const isSold = property.soldDate !== undefined;
+
   const items: MenuItem[] = [
     {
       key: "addMortgage",
@@ -53,12 +58,16 @@ export function PropertyActionsMenu({
       label: t("properties.uploadFile"),
       onClick: () => onUploadFile(property),
     },
-    {
-      key: "netSaleProfit",
-      icon: <Calculator size={16} aria-hidden focusable={false} />,
-      label: t("properties.netSaleProfit"),
-      onClick: () => onNetSaleProfit(property),
-    },
+    ...(isSold
+      ? []
+      : [
+          {
+            key: "netSaleProfit",
+            icon: <Calculator size={16} aria-hidden focusable={false} />,
+            label: t("properties.netSaleProfit"),
+            onClick: () => onNetSaleProfit(property),
+          },
+        ]),
     {
       key: "exportProperty",
       icon: <Share2 size={16} aria-hidden focusable={false} />,
