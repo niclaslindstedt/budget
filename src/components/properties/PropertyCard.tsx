@@ -439,6 +439,10 @@ function MortgageRow({
   // Share of the original loan amortised away so far — drives the payoff
   // "power bar". `null` when the loan / balance terms can't resolve it.
   const progress = mortgagePayoffProgress(mortgage);
+  // A fully-paid loan has no live balance / interest / amortisation left to
+  // run, so the ongoing-terms grid is hidden and the payoff bar simply states
+  // "Paid off" — the recorded payments stay reachable from the payments view.
+  const payoffComplete = progress !== null && progress >= 1;
   const hasTerms =
     mortgage.loanAmount !== undefined ||
     mortgage.currentBalance !== undefined ||
@@ -497,7 +501,7 @@ function MortgageRow({
         </div>
       </div>
 
-      {hasTerms && (
+      {hasTerms && !payoffComplete && (
         <>
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
             {mortgage.currentBalance !== undefined && (
@@ -719,6 +723,9 @@ function UnifiedMortgageView({
     purchaseAmount > 0
       ? Math.round((agg.totalBalance / purchaseAmount) * 100)
       : undefined;
+  // Every loan paid off ⇒ hide the ongoing combined figures; the payoff bar
+  // states "Paid off" and the payments stay reachable from the payments view.
+  const payoffComplete = agg.progress !== null && agg.progress >= 1;
 
   return (
     <div className="flex flex-col gap-2.5 rounded border border-line bg-surface-2 px-3 py-2.5 text-sm">
@@ -726,51 +733,55 @@ function UnifiedMortgageView({
         {t("properties.mortgageCountOther", { count: agg.count })}
       </span>
 
-      <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
-        {agg.totalBalance !== undefined && (
-          <MortgageStat label={t("properties.balanceShort")}>
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate">
-                {formatBalance(agg.totalBalance, settings, {
-                  neverAbbreviate: true,
-                })}
-              </span>
-              {loanShare !== undefined && (
-                <span
-                  title={t("properties.loanToValueTitle")}
-                  className={PILL_CLASS}
-                >
-                  {loanShare}%
+      {!payoffComplete && (
+        <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
+          {agg.totalBalance !== undefined && (
+            <MortgageStat label={t("properties.balanceShort")}>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">
+                  {formatBalance(agg.totalBalance, settings, {
+                    neverAbbreviate: true,
+                  })}
                 </span>
-              )}
-            </span>
-          </MortgageStat>
-        )}
-        {agg.totalLoan !== undefined && (
-          <MortgageStat label={t("properties.loanShort")}>
-            {formatBalance(agg.totalLoan, settings, { neverAbbreviate: true })}
-          </MortgageStat>
-        )}
-        {agg.effectiveRate !== null && (
-          <MortgageStat label={t("properties.effectiveRateShort")}>
-            {formatRate(agg.effectiveRate, settings)}%
-          </MortgageStat>
-        )}
-        {agg.monthlyAmortization !== null && (
-          <MortgageStat label={t("properties.amortPerMonthLabel")}>
-            {formatBalance(agg.monthlyAmortization, settings, {
-              neverAbbreviate: true,
-            })}
-          </MortgageStat>
-        )}
-        {agg.monthlyInterest !== null && (
-          <MortgageStat label={t("properties.interestPerMonthLabel")}>
-            {formatBalance(agg.monthlyInterest, settings, {
-              neverAbbreviate: true,
-            })}
-          </MortgageStat>
-        )}
-      </dl>
+                {loanShare !== undefined && (
+                  <span
+                    title={t("properties.loanToValueTitle")}
+                    className={PILL_CLASS}
+                  >
+                    {loanShare}%
+                  </span>
+                )}
+              </span>
+            </MortgageStat>
+          )}
+          {agg.totalLoan !== undefined && (
+            <MortgageStat label={t("properties.loanShort")}>
+              {formatBalance(agg.totalLoan, settings, {
+                neverAbbreviate: true,
+              })}
+            </MortgageStat>
+          )}
+          {agg.effectiveRate !== null && (
+            <MortgageStat label={t("properties.effectiveRateShort")}>
+              {formatRate(agg.effectiveRate, settings)}%
+            </MortgageStat>
+          )}
+          {agg.monthlyAmortization !== null && (
+            <MortgageStat label={t("properties.amortPerMonthLabel")}>
+              {formatBalance(agg.monthlyAmortization, settings, {
+                neverAbbreviate: true,
+              })}
+            </MortgageStat>
+          )}
+          {agg.monthlyInterest !== null && (
+            <MortgageStat label={t("properties.interestPerMonthLabel")}>
+              {formatBalance(agg.monthlyInterest, settings, {
+                neverAbbreviate: true,
+              })}
+            </MortgageStat>
+          )}
+        </dl>
+      )}
 
       <PayoffSection
         progress={agg.progress}
