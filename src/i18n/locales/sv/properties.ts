@@ -141,6 +141,7 @@ const properties: PropertiesCatalog = {
     "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp för att se månadsbeloppet.",
   amortFixedHint: "Ett fast belopp som amorteras varje månad.",
   amortPreview: "≈ {amount} per månad",
+  amortPercentPerYear: "{percent}% / år",
   amortChangeDateLabel: "Datum för amorteringsändring",
   amortChangeValueLabel: "Amortering",
   addAmortChange: "Lägg till amorteringsändring",

@@ -160,6 +160,7 @@ const properties = {
     "Annual amortisation as a percent of the original loan amount. Add a loan amount to see the monthly figure.",
   amortFixedHint: "A flat amount paid down every month.",
   amortPreview: "≈ {amount} per month",
+  amortPercentPerYear: "{percent}% / yr",
   amortChangeDateLabel: "Amortisation change date",
   amortChangeValueLabel: "Amortisation",
   addAmortChange: "Add amortisation change",
