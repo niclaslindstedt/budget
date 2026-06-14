@@ -227,8 +227,8 @@ export function MortgageEditorModal({
 
   // Live preview of the resolved monthly amortisation, reusing the same
   // resolver the card and data layer use. `null` when there's nothing to
-  // show yet (blank value, or percent mode without a loan amount to take
-  // the percentage of).
+  // show yet (blank value, or percent mode without a loan amount or current
+  // balance to take the percentage of).
   const amortValueNum = num(amortValue);
   const amortPreview =
     amortValueNum === undefined
@@ -238,6 +238,7 @@ export function MortgageEditorModal({
           name: "",
           payments: [],
           loanAmount: num(loanAmount),
+          currentBalance: num(currentBalance),
           amortization:
             amortMode === "percent"
               ? { mode: "percent", percent: amortValueNum }

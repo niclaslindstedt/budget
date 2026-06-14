@@ -54,7 +54,9 @@ export type MortgagePayment = {
 // - `percent` — an annual percentage of the *initial* loan
 //   (`Mortgage.loanAmount`). Swedish "amorteringskrav" is expressed this
 //   way: 2% of an original 7,000,000 ⇒ 0.02 × 7,000,000 ÷ 12 ≈ 11,667 a
-//   month. Needs `loanAmount` to resolve to a monthly figure.
+//   month. Falls back to `currentBalance` when `loanAmount` was never
+//   recorded so the percentage still resolves; needs at least one of the
+//   two to produce a monthly figure.
 // - `fixed` — a flat sum paid every month, independent of the loan size.
 //
 // Both values are non-negative. Resolve the per-month amount with

@@ -943,7 +943,10 @@ property: `name`, optional loan terms (`loanAmount` — the sum borrowed,
 / `nextRateChangeDate`, `amortization` — monthly amortisation as either
 an annual percent of the initial loan or a fixed sum per month, resolved
 by `resolveMonthlyAmortization` in
-`src/data/finance/amortization.ts`, `paymentCadenceMonths` —
+`src/data/finance/amortization.ts` (percent mode falls back to
+`currentBalance` when no `loanAmount` was recorded, so a loan tracked only
+by its outstanding figure still amortises instead of reading as zero),
+`paymentCadenceMonths` —
 how often amortisation + interest is charged in months (1 = monthly, the
 default; 3 = quarterly, etc., picked in the editor's "Payment frequency"
 dropdown), `loanStartDate` — when the loan started being paid, falling

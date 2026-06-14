@@ -138,7 +138,7 @@ const properties: PropertiesCatalog = {
   amortPercentPlaceholder: "t.ex. 2",
   amortFixedPlaceholder: "Belopp per månad",
   amortPercentHint:
-    "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp för att se månadsbeloppet.",
+    "Årlig amortering som en procent av det ursprungliga lånebeloppet. Ange ett lånebelopp eller en aktuell skuld för att se månadsbeloppet.",
   amortFixedHint: "Ett fast belopp som amorteras varje månad.",
   amortPreview: "≈ {amount} per månad",
   cadenceLabel: "Betalningsintervall",
