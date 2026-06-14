@@ -34,8 +34,13 @@
 // lands within the tight band of an expected figure, AND which covers the
 // whole window the loan has been active (from its start date to the latest
 // charge the account has seen) is flagged **highly probable** and TRUMPS the
-// tag / company anchor in the ranking. The "covers the whole window" leg is
-// what stops a charge that happens to recur cleanly for only the last five of
+// tag / company anchor in the ranking. The cadence + window legs are demanded
+// only of an **amount-only** charge — one with no metadata to vouch for it. A
+// charge the user marked as the mortgage, or whose description matches an
+// already-recorded payment, is promoted on its amount alone: the tag (or the
+// matching payment) is signal enough, so a weekend-slipped or missed month
+// doesn't cost it the badge. The "covers the whole window" leg is what stops an
+// amount-only charge that happens to recur cleanly for only the last five of
 // eight months since the loan began (one that started late or has since
 // stopped) from masquerading as the mortgage — it stays an ordinary candidate.
 // Only ONE charge is promoted per expected figure: among the candidates that
@@ -98,15 +103,17 @@ export type MortgagePaymentSeries = {
   // every period, so an unbroken cadence is itself strong evidence the charge
   // IS the mortgage, independent of any tag.
   regularCadence: boolean;
-  // The standout candidate: the closest charge, per expected figure, that
-  // recurs on its cadence (`regularCadence`) under one stable description (not
-  // an amount-salvaged group), whose typical amount lands within
-  // `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of that figure, AND which covers the
-  // whole window the loan has been active (see `windowCovered`). A complete
-  // recurrence + matching amount + stable text is the surest signal a charge
-  // is the mortgage, so it TRUMPS the tag / company anchor in the ranking and
-  // is marked "highly probable" in the modal. `false` for any series missing a
-  // leg, and for the runner-up when two charges match the same figure.
+  // The standout candidate per expected figure, marked "highly probable" in the
+  // modal. A charge the user marked as the mortgage (a company / type tag) or
+  // whose description matches an already-recorded payment qualifies on its
+  // typical amount alone (within `MORTGAGE_AMOUNT_ANCHOR_TOLERANCE` of the
+  // figure) — its metadata is signal enough, so a weekend-slipped or missed
+  // month doesn't demote it. An amount-only charge has no such metadata, so it
+  // additionally has to recur on its cadence with no gaps (`regularCadence`)
+  // under one stable description (not an amount-salvaged group) AND cover the
+  // whole window the loan has been active (see `windowCovered`). `false` for
+  // any series missing a required leg, and for the runner-up when two charges
+  // match the same figure.
   highlyProbable: boolean;
 };
 
@@ -835,16 +842,21 @@ function anchorRank(a: MortgagePaymentSeries["anchor"]): number {
 }
 
 // Promote the standout candidate per expected figure to "highly probable":
-// among the kept series whose amount, cadence, and full-window coverage all
-// match a given target, the strongest one earns it — chosen by the same
-// strictness-then-closeness order the final ranking uses, so a charge the
-// user tagged still wins over a marginally-closer untagged one. Going
-// best-per-figure (not a single global winner) lets a property paid as one
-// draw PER loan light up each loan's charge, while a property paid as one
-// combined charge lights up only that — and a second clean-but-wrong charge
-// sitting near the same figure (the screenshot's incomplete 5-of-8-months
-// run) never also lights up, because it either loses to the stronger charge
-// or fails the window check outright.
+// among the kept series whose amount matches a given target, the strongest one
+// earns it — chosen by the same strictness-then-closeness order the final
+// ranking uses, so a charge the user tagged still wins over a marginally-closer
+// untagged one. Going best-per-figure (not a single global winner) lets a
+// property paid as one draw PER loan light up each loan's charge, while a
+// property paid as one combined charge lights up only that.
+//
+// What a series must prove to be eligible depends on its anchor. A charge the
+// user marked as the mortgage (a company / type tag) or one whose description
+// matches an already-recorded mortgage payment is promoted on its amount alone
+// — its metadata is signal enough, so a weekend-slipped or missed month no
+// longer demotes it. An amount-only charge has no such metadata, so it still
+// has to recur cleanly across the whole active window: a clean-but-incomplete
+// run (the screenshot's 5-of-8-months) loses to the stronger charge or fails
+// the window check outright.
 function promoteHighlyProbable(
   series: readonly MortgagePaymentSeries[],
   candidateByKey: ReadonlyMap<string, MortgageCandidateDiagnostic>,
@@ -853,13 +865,18 @@ function promoteHighlyProbable(
   const bestByTarget = new Map<number, MortgagePaymentSeries>();
   for (const s of series) {
     const cand = candidateByKey.get(s.key);
+    if (cand === undefined || s.targetDelta === undefined) continue;
+    // A charge the user marked as the mortgage (a company / type tag) or whose
+    // description matches an already-recorded mortgage payment carries a strong
+    // metadata signal in its own right, so it does NOT have to also prove a
+    // clean, complete recurrence to be promoted — a few weekend-slipped or
+    // missed months no longer cost it the badge. Amount-only matches have no
+    // such signal, so they still must recur cleanly across the whole window.
+    const metadataAnchored = s.anchor === "tag" || s.anchor === "payment";
     const eligible =
-      cand !== undefined &&
       !cand.synthetic &&
-      s.regularCadence &&
-      cand.coversExpectedWindow &&
-      s.targetDelta !== undefined &&
-      s.targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE;
+      s.targetDelta <= MORTGAGE_AMOUNT_ANCHOR_TOLERANCE &&
+      (metadataAnchored || (s.regularCadence && cand.coversExpectedWindow));
     if (!eligible) continue;
     const ti = targetIndexByKey.get(s.key);
     if (ti === undefined) continue;
@@ -868,7 +885,7 @@ function promoteHighlyProbable(
       !best ||
       anchorRank(s.anchor) < anchorRank(best.anchor) ||
       (anchorRank(s.anchor) === anchorRank(best.anchor) &&
-        (s.targetDelta! < best.targetDelta! ||
+        (s.targetDelta < best.targetDelta! ||
           (s.targetDelta === best.targetDelta &&
             s.suggestedAmount > best.suggestedAmount)));
     if (stronger) bestByTarget.set(ti, s);

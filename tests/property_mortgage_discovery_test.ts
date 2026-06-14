@@ -1421,6 +1421,90 @@ describe("discoverMortgagePayments — cadence and window completeness", () => {
   });
 });
 
+// ── Metadata anchors skip the cadence requirement ──────────────────────────
+//
+// A charge the user marked as the mortgage (a company / type tag) or whose
+// description matches an already-recorded payment carries enough signal on its
+// own that it is promoted to "highly probable" on its amount alone — it does
+// NOT also have to recur on a clean, complete cadence. A few weekend-slipped or
+// missed months therefore no longer cost it the badge. An amount-only charge,
+// with no such metadata, still must recur cleanly across the whole window.
+describe("discoverMortgagePayments — metadata anchors skip cadence", () => {
+  it("flags a tagged charge with a broken cadence as highly probable", () => {
+    // Eleven months of a tagged mortgage draw with March missing — a broken
+    // monthly cadence. The tag vouches for it, so it is still highly probable.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`t-${i}`, d, -18_750, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("tag");
+    expect(series[0].regularCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("flags a payment-seeded charge with a broken cadence as highly probable", () => {
+    // The same gappy run, anchored by an existing recorded payment (a 1-1
+    // description match) instead of a tag — promoted all the same.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`s-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, {
+        seedEntryIds: ["s-0"],
+        targetAmounts: [18_750],
+      }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("payment");
+    expect(series[0].regularCadence).toBe(false);
+    expect(series[0].highlyProbable).toBe(true);
+  });
+
+  it("still withholds the badge from an amount-only charge with a broken cadence", () => {
+    // No tag, no recorded payment — the same gap leaves it an ordinary
+    // candidate, since an amount-only match has no metadata to vouch for it.
+    const dates = monthlyDates(2024, 1, 12).filter(
+      (d) => !d.startsWith("2024-03"),
+    );
+    const entries = dates.map((d, i) =>
+      entry(`a-${i}`, d, -18_750, "HEMBANKEN BOLAN"),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("amount");
+    expect(series[0].highlyProbable).toBe(false);
+  });
+
+  it("does not promote a tagged charge whose amount is outside the band", () => {
+    // The cadence requirement is waived, but the amount band still gates: a
+    // tagged charge 30% off the expected figure is not highly probable.
+    const entries = monthlyDates(2024, 1, 12).map((d, i) =>
+      entry(`t-${i}`, d, -13_000, "HEMBANKEN BOLAN", {
+        userTypeId: PRESET_TYPE_MORTGAGE_ID,
+      }),
+    );
+    const { series } = discoverMortgagePayments(
+      baseInput(entries, { targetAmounts: [18_750] }),
+    );
+    expect(series).toHaveLength(1);
+    expect(series[0].anchor).toBe("tag");
+    expect(series[0].highlyProbable).toBe(false);
+  });
+});
+
 // ── Weekend slips: two payments in one calendar month ──────────────────────
 //
 // A mortgage falls due on a fixed day, but a weekend or holiday pushes the
