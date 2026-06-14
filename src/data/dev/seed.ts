@@ -1019,6 +1019,22 @@ export function buildSeedUserData(): UserData {
         rateChangeMonths: 12,
         nextRateChangeDate: "2026-09-01",
         amortization: { mode: "percent", percent: 2 },
+        // The amortisation requirement stepped down from 3% to 2% mid-window
+        // (a bank-agreed change as the loan-to-value ratio fell), so the
+        // payments view shows the amortisation leg stepping down — and the
+        // interest leg holding roughly flat — across that date.
+        amortizationHistory: [
+          {
+            id: mkId("amort"),
+            date: "",
+            amortization: { mode: "percent", percent: 3 },
+          },
+          {
+            id: mkId("amort"),
+            date: "2026-03-01",
+            amortization: { mode: "percent", percent: 2 },
+          },
+        ],
         payments: MONTHS.map(({ year, month }) => {
           const charge = villaMortgageByMonth.get(`${year}-${month}`);
           const sourceHist = charge

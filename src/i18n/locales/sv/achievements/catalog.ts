@@ -318,6 +318,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Märk en månad av dina bolånedragningar med deras långivare och bolånetypen, och öppna sedan Hitta bolånebetalningar på bolånet: den hittar de märkta dragningarna, lär sig deras bankbeskrivning och plockar fram varje matchande månad ur kontots historik — rankar de mest sannolika först och lämnar en tidigare bostads lån utanför tack vare dess annorlunda belopp.",
   },
+  amortisationStep: {
+    name: "Trappa ner",
+    condition: "Registrera en ändring av amorteringsplanen på ett bolån.",
+    learnMore:
+      "Banker trappar ner ett låns amorteringskrav över tid när belåningsgraden sjunker (3 % → 2 % → 1 %). Öppna ett bolåns redigerare och lägg till en amorteringsändring med datumet den trädde i kraft, precis som en ränteändring — varje betalning delas sedan upp mot planen som gällde den månaden, så amorteringsdelen trappas ner rent medan den lilla månadsskillnaden stannar på räntan.",
+  },
   mortgageFree: {
     name: "Skuldfri",
     condition: "Betala av ett bolån helt — dess avbetalningsstapel når 100 %.",

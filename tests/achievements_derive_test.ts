@@ -256,6 +256,57 @@ describe("deriveUnlocks", () => {
     expect(fresh).toContain("loanRanger");
   });
 
+  it("fires amortisationStep when a mortgage records an amortisation-plan change", () => {
+    const prev = withItem([]);
+    prev.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            amortization: { mode: "percent", percent: 3 },
+            payments: [],
+          },
+        ],
+        repairs: [],
+      },
+    ];
+    const next = withItem([]);
+    next.properties = [
+      {
+        id: "p1",
+        name: "Apartment",
+        valueHistory: [],
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            amortization: { mode: "percent", percent: 2 },
+            amortizationHistory: [
+              {
+                id: "a0",
+                date: "",
+                amortization: { mode: "percent", percent: 3 },
+              },
+              {
+                id: "a1",
+                date: "2024-01-01",
+                amortization: { mode: "percent", percent: 2 },
+              },
+            ],
+            payments: [],
+          },
+        ],
+        repairs: [],
+      },
+    ];
+    const fresh = deriveUnlocks(prev, next, {});
+    expect(fresh).toContain("amortisationStep");
+  });
+
   it("fires mortgageFree when a mortgage's balance reaches zero", () => {
     const prev = withItem([]);
     prev.properties = [

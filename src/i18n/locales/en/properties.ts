@@ -160,6 +160,12 @@ const properties = {
     "Annual amortisation as a percent of the original loan amount. Add a loan amount to see the monthly figure.",
   amortFixedHint: "A flat amount paid down every month.",
   amortPreview: "≈ {amount} per month",
+  amortChangeDateLabel: "Amortisation change date",
+  amortChangeValueLabel: "Amortisation",
+  addAmortChange: "Add amortisation change",
+  removeAmortChange: "Remove amortisation change",
+  amortHistoryHint:
+    "Add an amortisation change with the date it took effect — the newest is the current plan. Leave the first date blank for the original plan. Banks step the plan over time (e.g. 3% → 2%); each charge after a change follows the new plan.",
   cadenceLabel: "Payment frequency",
   cadenceHint:
     "How often the amortisation and interest are charged. Most loans are paid monthly — “Find mortgage payments” expects a charge this often since the loan started.",

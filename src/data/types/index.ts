@@ -32,6 +32,7 @@ export type {
   FileCategory,
   Mortgage,
   MortgageAmortization,
+  MortgageAmortizationChange,
   MortgagePayment,
   MortgageRateChange,
   Property,

@@ -453,6 +453,112 @@ describe("splitRecordedPayment — constant amortisation across a series", () =>
   });
 });
 
+describe("splitRecordedPayment — amortisation-plan changes", () => {
+  // The amortisation leg follows the plan in effect on the charge's date. When
+  // a bank steps the plan down (e.g. 3% → 2%) the amortisation leg steps with
+  // it — an exact, round change — and, because the loan and rate are unchanged,
+  // the interest leg stays flat (the whole drop in the total payment is the
+  // amortisation stepping down). This is the case the user reported.
+  const planChange = mortgage({
+    loanAmount: 1_200_000,
+    amortization: { mode: "percent", percent: 2 }, // current plan: 2000/mo
+    amortizationHistory: [
+      { id: "a0", date: "", amortization: { mode: "percent", percent: 3 } }, // 3000/mo
+      {
+        id: "a1",
+        date: "2024-01-01",
+        amortization: { mode: "percent", percent: 2 }, // 2000/mo
+      },
+    ],
+  });
+
+  it("steps the amortisation leg at the change and keeps interest flat", () => {
+    // Before the step the charge is larger by the steeper amortisation; the
+    // interest the rate explains is the same both months.
+    const before = splitRecordedPayment(planChange, {
+      id: "p1",
+      date: "2023-12-28",
+      amount: 5500, // 3000 amort + 2500 interest
+    });
+    expect(before.amortization).toBeCloseTo(3000);
+    expect(before.interest).toBeCloseTo(2500);
+
+    const after = splitRecordedPayment(planChange, {
+      id: "p2",
+      date: "2024-02-28",
+      amount: 4500, // 2000 amort + 2500 interest
+    });
+    expect(after.amortization).toBeCloseTo(2000);
+    // Interest unchanged — only the amortisation stepped down.
+    expect(after.interest).toBeCloseTo(2500);
+  });
+
+  it("the first charge on/after the change date follows the new plan", () => {
+    // A charge dated exactly on the change → new plan.
+    const on = splitRecordedPayment(planChange, {
+      id: "p",
+      date: "2024-01-01",
+      amount: 4500,
+    });
+    expect(on.amortization).toBeCloseTo(2000);
+    // The day before → old plan.
+    const dayBefore = splitRecordedPayment(planChange, {
+      id: "p",
+      date: "2023-12-31",
+      amount: 5500,
+    });
+    expect(dayBefore.amortization).toBeCloseTo(3000);
+  });
+
+  it("holds the amortisation constant within each plan period", () => {
+    // Several charges either side of the step: the leg is one constant before
+    // and another constant after, never drifting between them.
+    const old = ["2023-09-28", "2023-10-28", "2023-11-28"].map(
+      (date, i) =>
+        splitRecordedPayment(planChange, { id: `o${i}`, date, amount: 5500 })
+          .amortization,
+    );
+    const recent = ["2024-03-28", "2024-04-28", "2024-05-28"].map(
+      (date, i) =>
+        splitRecordedPayment(planChange, { id: `r${i}`, date, amount: 4500 })
+          .amortization,
+    );
+    for (const a of old) expect(a).toBeCloseTo(3000);
+    for (const a of recent) expect(a).toBeCloseTo(2000);
+  });
+});
+
+describe("splitPaymentAcrossMortgages — dated amortisation plan", () => {
+  it("settles the amortisation in effect on the charge's date", () => {
+    // One loan with a stepped plan: a combined charge settles amortisation
+    // first, so the amount attributed must use the plan dated to the charge.
+    const m = mortgage({
+      id: "m",
+      loanAmount: 1_200_000,
+      interestRate: 3,
+      amortization: { mode: "percent", percent: 2 },
+      amortizationHistory: [
+        { id: "a0", date: "", amortization: { mode: "percent", percent: 3 } },
+        {
+          id: "a1",
+          date: "2024-01-01",
+          amortization: { mode: "percent", percent: 2 },
+        },
+      ],
+    });
+    // A single-loan charge gets the whole amount; the split still resolves the
+    // dated amortisation internally, which `splitRecordedPayment` then inverts.
+    const before = splitPaymentAcrossMortgages([m], 5500, "2023-12-28");
+    expect(
+      splitRecordedPayment(m, {
+        id: "p",
+        date: "2023-12-28",
+        amount: before.get("m") ?? 0,
+      }).amortization,
+    ).toBeCloseTo(3000);
+  });
+});
+
 describe("reconcileMortgageAmortization", () => {
   it("reports the gap between the balance drop and the recorded amortisation", () => {
     const m = mortgage({

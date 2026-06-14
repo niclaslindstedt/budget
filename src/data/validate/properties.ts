@@ -2,6 +2,7 @@ import type {
   BrokerCost,
   Mortgage,
   MortgageAmortization,
+  MortgageAmortizationChange,
   MortgagePayment,
   MortgageRateChange,
   Property,
@@ -293,6 +294,25 @@ function validateAmortization(raw: unknown): MortgageAmortization | undefined {
   return undefined;
 }
 
+// Validate one amortisation-plan change: a non-empty `id`, a blank-or-ISO
+// effective `date`, and a well-formed `amortization` plan. A malformed entry
+// drops to null so the caller can skip it (mirrors `validateRateChange`).
+function validateAmortizationChange(
+  raw: unknown,
+): MortgageAmortizationChange | null {
+  if (!isObject(raw)) return null;
+  const { id } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  const date =
+    typeof raw.date === "string" && (raw.date === "" || isIsoDate(raw.date))
+      ? raw.date
+      : null;
+  if (date === null) return null;
+  const amortization = validateAmortization(raw.amortization);
+  if (!amortization) return null;
+  return { id, date, amortization };
+}
+
 // Validate one mortgage. The bound account lives on the parent property
 // now (`Property.accountId`), so a mortgage carries only its name, terms,
 // and payments. A malformed mortgage is dropped rather than failing the
@@ -329,6 +349,21 @@ function validateMortgage(raw: unknown): Mortgage | null {
     mortgage.nextRateChangeDate = raw.nextRateChangeDate;
   const amortization = validateAmortization(raw.amortization);
   if (amortization) mortgage.amortization = amortization;
+  // Past amortisation-plan changes (effective-dated). Drop entries with a
+  // malformed date or plan and dedupe by id; an emptied list is left absent
+  // rather than stored as `[]`.
+  if (Array.isArray(raw.amortizationHistory)) {
+    const seen = new Set<string>();
+    const amortizationHistory: MortgageAmortizationChange[] = [];
+    for (const rawChange of raw.amortizationHistory) {
+      const change = validateAmortizationChange(rawChange);
+      if (!change || seen.has(change.id)) continue;
+      seen.add(change.id);
+      amortizationHistory.push(change);
+    }
+    if (amortizationHistory.length > 0)
+      mortgage.amortizationHistory = amortizationHistory;
+  }
   // Payment cadence in months (1 = monthly). A malformed / below-1 value is
   // dropped, leaving the finder to assume monthly.
   if (isFiniteNumber(raw.paymentCadenceMonths) && raw.paymentCadenceMonths >= 1)

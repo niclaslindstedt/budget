@@ -134,3 +134,109 @@ describe("validateProperty via validateUserData — mortgage payment source", ()
     }
   });
 });
+
+describe("validateProperty via validateUserData — amortisation history", () => {
+  it("round-trips an effective-dated amortisation history", () => {
+    const data = blob([
+      property({
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            amortization: { mode: "percent", percent: 2 },
+            amortizationHistory: [
+              {
+                id: "a0",
+                date: "",
+                amortization: { mode: "percent", percent: 3 },
+              },
+              {
+                id: "a1",
+                date: "2024-01-01",
+                amortization: { mode: "percent", percent: 2 },
+              },
+            ],
+            payments: [],
+          },
+        ],
+      }),
+    ]);
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(
+        result.value.properties[0].mortgages[0].amortizationHistory,
+      ).toEqual(data.properties[0].mortgages[0].amortizationHistory);
+  });
+
+  it("drops malformed entries and dedupes by id, leaving an emptied list absent", () => {
+    const data = blob([
+      property({
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            amortizationHistory: [
+              // Bad date.
+              {
+                id: "a0",
+                date: "nope",
+                amortization: { mode: "percent", percent: 3 },
+              },
+              // Missing / malformed plan.
+              { id: "a1", date: "2024-01-01", amortization: { mode: "x" } },
+              // Valid, but a duplicate id keeps only the first.
+              {
+                id: "a2",
+                date: "2024-06-01",
+                amortization: { mode: "fixed", amount: 4000 },
+              },
+              {
+                id: "a2",
+                date: "2024-09-01",
+                amortization: { mode: "fixed", amount: 3000 },
+              },
+            ] as never,
+            payments: [],
+          },
+        ],
+      }),
+    ]);
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const history =
+        result.value.properties[0].mortgages[0].amortizationHistory;
+      expect(history).toEqual([
+        {
+          id: "a2",
+          date: "2024-06-01",
+          amortization: { mode: "fixed", amount: 4000 },
+        },
+      ]);
+    }
+  });
+
+  it("leaves the field absent when every entry is malformed", () => {
+    const data = blob([
+      property({
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            amortizationHistory: [
+              { id: "", date: "", amortization: { mode: "fixed", amount: 1 } },
+            ] as never,
+            payments: [],
+          },
+        ],
+      }),
+    ]);
+    const result = validateUserData(data);
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(
+        result.value.properties[0].mortgages[0].amortizationHistory,
+      ).toBeUndefined();
+  });
+});
