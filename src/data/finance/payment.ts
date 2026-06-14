@@ -58,16 +58,24 @@ export function resolveMonthlyPaymentAt(
 // Returns a map of mortgage id → amount, omitting any mortgage that gets
 // nothing. The parts sum to exactly `amount` (the largest share absorbs
 // rounding). An empty mortgage list yields an empty map.
+// `startDateOf` resolves each mortgage's effective loan start (typically
+// `mortgage.loanStartDate ?? property.purchaseDate`); when it returns a date,
+// that loan's interest is computed on the balance reconstructed *forward* from
+// its original loan amount rather than backward from today's `currentBalance`
+// (see `balanceAt`). Pass it so a sold property — whose `currentBalance` is
+// zeroed at the sale — splits its historical charges on the real balance the
+// loan carried that month, not on a back-walked zero.
 export function splitPaymentAcrossMortgages(
   mortgages: readonly Mortgage[],
   amount: number,
   date: string,
+  startDateOf?: (mortgage: Mortgage) => string | undefined,
 ): Map<string, number> {
   const result = new Map<string, number>();
   if (mortgages.length === 0) return result;
 
   const interests = mortgages.map((m) =>
-    Math.max(0, resolveMonthlyInterestAt(m, date) ?? 0),
+    Math.max(0, resolveMonthlyInterestAt(m, date, startDateOf?.(m)) ?? 0),
   );
   const amorts = mortgages.map((m) =>
     Math.max(0, resolveMonthlyAmortization(m) ?? 0),
@@ -178,9 +186,16 @@ export type PaymentSplit = { amortization: number; interest: number };
 // well below the jump a whole amortisation tier produces.
 export const AMORTIZATION_PLAN_CHANGE_TOLERANCE = 0.25;
 
+// `startDate` is the loan's effective start; when given, the computed interest
+// used by the plan-change detection below is taken on the balance
+// reconstructed forward from the original loan amount (see `balanceAt`),
+// instead of backward from today's `currentBalance`. This matters for a sold
+// property (balance zeroed at the sale) whose historical charges would
+// otherwise be compared against a back-walked-from-zero interest.
 export function splitRecordedPayment(
   mortgage: Mortgage,
   payment: MortgagePayment,
+  startDate?: string,
 ): PaymentSplit {
   const planAmort = Math.max(0, resolveMonthlyAmortization(mortgage) ?? 0);
   let amortization = Math.min(payment.amount, planAmort);
@@ -193,7 +208,11 @@ export function splitRecordedPayment(
   // amortisation that was actually paid. Skipped when the rate / balance can't
   // resolve a computed interest to compare against, or for interest-only loans
   // (no plan to step down from), leaving the deterministic split untouched.
-  const computedInterest = resolveMonthlyInterestAt(mortgage, payment.date);
+  const computedInterest = resolveMonthlyInterestAt(
+    mortgage,
+    payment.date,
+    startDate,
+  );
   if (
     planAmort > 0 &&
     computedInterest !== null &&
@@ -243,9 +262,10 @@ export function reconcileMortgageAmortization(
       continue;
     }
     const expectedAmortized = mortgage.loanAmount - mortgage.currentBalance;
+    const startDate = mortgage.loanStartDate ?? property.purchaseDate;
     const recordedAmortized = mortgage.payments.reduce(
       (sum, payment) =>
-        sum + splitRecordedPayment(mortgage, payment).amortization,
+        sum + splitRecordedPayment(mortgage, payment, startDate).amortization,
       0,
     );
     out.push({

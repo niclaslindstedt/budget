@@ -1052,11 +1052,17 @@ across the property's mortgages (`splitPaymentAcrossMortgages` in
 settled in full first, then each loan is pinned to its **own** computed
 interest for that month, with only the residual shared out). Each loan's
 interest is taken on the balance reconstructed for the charge's date by
-`balanceAt` (`interest.ts` — `currentBalance` walked back along the
-deterministic monthly amortisation, capped at `loanAmount`), not a flat
-snapshot of today's balance: a fixed interest-only loan's reconstructed
-interest is constant month over month, while an amortising loan's falls as
-it pays down. Crucially the interest is used as the loan's **absolute**
+`balanceAt` (`interest.ts`), not a flat snapshot of today's balance: a fixed
+interest-only loan's reconstructed interest is constant month over month,
+while an amortising loan's falls as it pays down. `balanceAt` reconstructs
+the balance **forward from the original loan amount** (`loanAmount` minus the
+amortisation accrued from the loan's effective start —
+`mortgage.loanStartDate ?? property.purchaseDate` — to the charge's date)
+whenever that start is known; otherwise it walks `currentBalance` back along
+the deterministic monthly amortisation, capped at `loanAmount`. The forward
+anchor is what makes the interest correct for a **sold property**, whose
+`currentBalance` is zeroed at the sale: walking back from that zero would
+understate every historical balance and charge far too little interest. Crucially the interest is used as the loan's **absolute**
 share, not as a weight to apportion the leftover — so a charge that shrinks
 month over month because one loan is paying down is attributed to that loan,
 and an interest-only loan at a static rate keeps a constant share instead of

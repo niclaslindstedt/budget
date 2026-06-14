@@ -315,6 +315,7 @@ export function MortgageDiscoveryModal({
           mortgages,
           month.amount,
           month.date,
+          (m) => m.loanStartDate ?? property?.purchaseDate,
         );
         const sourceAccountId = accountByEntryId.get(month.entryId);
         for (const [mortgageId, amount] of split) {
@@ -351,6 +352,7 @@ export function MortgageDiscoveryModal({
     tolerance,
     mortgages,
     accountByEntryId,
+    property,
   ]);
 
   if (!open) return null;

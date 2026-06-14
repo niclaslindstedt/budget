@@ -281,7 +281,9 @@ src/
 │   │   ├── amortization.ts     # resolveMonthlyAmortization — percent-of-initial
 │   │   │                       #   or fixed monthly amortisation → a per-month sum
 │   │   ├── interest.ts         # resolveRateAt (rate effective on a date) +
-│   │   │                       #   balanceAt (balance reconstructed for a month) +
+│   │   │                       #   balanceAt (balance reconstructed for a month —
+│   │   │                       #   forward from loanAmount when a start date is
+│   │   │                       #   known, else back from currentBalance) +
 │   │   │                       #   resolveMonthlyInterest(At) — balance × rate ÷ 12
 │   │   └── payment.ts          # resolveMonthlyPaymentAt + splitPaymentAcrossMortgages
 │   │                           #   — split a combined charge across a property's loans
