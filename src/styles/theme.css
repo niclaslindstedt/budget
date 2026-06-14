@@ -124,6 +124,18 @@
   --tint-fill-strength: 18%;
   --tint-border-strength: 55%;
 
+  /* Logo gold — the exact gradient the `$` glyph in `public/favicon.svg`
+     is filled with (light gold → gold → bronze, top to bottom). The
+     brand mark is the same gold in every theme, so these are defined
+     once here in the base `:root` and deliberately NOT mirrored per
+     palette — they must not drift toward the per-theme `--meta` amber
+     (which reads too orange in several palettes). Consumed by the
+     `.pwa-title-fill` rule that fills the header wordmark while a PWA
+     update downloads. Keep in lockstep with the favicon gradient. */
+  --logo-gold-top: #f8e3a6;
+  --logo-gold-mid: #e5c07b;
+  --logo-gold-bottom: #a67a36;
+
   /* Active webfont stack. Inline-set by React when
      `settings.fontFamily` changes; the body's `font-family` reads
      through this variable so the whole UI swaps in one place. The
