@@ -736,6 +736,16 @@ function UnifiedMortgageView({
   // Every loan paid off ⇒ hide the ongoing combined figures; the payoff bar
   // states "Paid off" and the payments stay reachable from the payments view.
   const payoffComplete = agg.progress !== null && agg.progress >= 1;
+  // The blended annual amortisation rate of the combined loan: total yearly
+  // amortisation ÷ total original loan — the analogue of the per-loan plan's
+  // own percent, spelled out as a "(N% / yr)" tail on the combined figure.
+  // Only when both resolve and the combined loan is positive.
+  const amortPercentPerYear =
+    agg.monthlyAmortization !== null &&
+    agg.totalLoan !== undefined &&
+    agg.totalLoan > 0
+      ? (agg.monthlyAmortization * 12 * 100) / agg.totalLoan
+      : undefined;
 
   return (
     <div className="flex flex-col gap-2.5 rounded border border-line bg-surface-2 px-3 py-2.5 text-sm">
@@ -781,6 +791,10 @@ function UnifiedMortgageView({
               {formatBalance(agg.monthlyAmortization, settings, {
                 neverAbbreviate: true,
               })}
+              {amortPercentPerYear !== undefined &&
+                ` (${t("properties.amortPercentPerYear", {
+                  percent: formatRate(amortPercentPerYear, settings),
+                })})`}
             </MortgageStat>
           )}
           {agg.monthlyInterest !== null && (
