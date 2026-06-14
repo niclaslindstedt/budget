@@ -48,15 +48,7 @@ export type MortgageAggregate = {
   paymentCount: number;
 };
 
-// `purchaseDate` is the parent property's purchase date — the fallback loan
-// start (after each mortgage's own `loanStartDate`) used to reconstruct the
-// balance each recorded charge's interest is taken on, so a sold property's
-// zeroed balance doesn't skew the combined paid split. See
-// `splitRecordedPayment`.
-export function aggregateMortgages(
-  mortgages: Mortgage[],
-  purchaseDate?: string,
-): MortgageAggregate {
+export function aggregateMortgages(mortgages: Mortgage[]): MortgageAggregate {
   let totalBalance: number | undefined;
   let totalLoan: number | undefined;
   let monthlyInterest: number | null = null;
@@ -111,11 +103,7 @@ export function aggregateMortgages(
     }
 
     for (const payment of mortgage.payments) {
-      const split = splitRecordedPayment(
-        mortgage,
-        payment,
-        mortgage.loanStartDate ?? purchaseDate,
-      );
+      const split = splitRecordedPayment(mortgage, payment);
       paid.amortization += split.amortization;
       paid.interest += split.interest;
       paid.total += payment.amount;

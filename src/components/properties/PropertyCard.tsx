@@ -366,7 +366,6 @@ export function PropertyCard({
           <UnifiedMortgageView
             mortgages={property.mortgages}
             purchaseAmount={property.purchaseAmount}
-            purchaseDate={property.purchaseDate}
             settings={settings}
           />
         ) : (
@@ -421,10 +420,9 @@ function MortgageRow({
   // Sum what's been paid and how it divides between interest and
   // amortisation, so a loan that carries all the principal (or all the
   // interest) is obvious at a glance rather than hidden in one total.
-  const startDate = mortgage.loanStartDate ?? property.purchaseDate;
   const paidSplit = mortgage.payments.reduce(
     (acc, p) => {
-      const split = splitRecordedPayment(mortgage, p, startDate);
+      const split = splitRecordedPayment(mortgage, p);
       acc.amortization += split.amortization;
       acc.interest += split.interest;
       return acc;
@@ -703,16 +701,14 @@ function PayoffSection({
 function UnifiedMortgageView({
   mortgages,
   purchaseAmount,
-  purchaseDate,
   settings,
 }: {
   mortgages: Mortgage[];
   purchaseAmount: number | undefined;
-  purchaseDate: string | undefined;
   settings: Settings;
 }) {
   const t = useT();
-  const agg: MortgageAggregate = aggregateMortgages(mortgages, purchaseDate);
+  const agg: MortgageAggregate = aggregateMortgages(mortgages);
   // Loan-to-value the way the bank reads it: combined current balance ÷ the
   // price the property was bought for, shown after the balance. Only when both
   // figures resolve and the purchase amount is positive, so a missing or zero
