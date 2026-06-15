@@ -21,6 +21,15 @@ type Props = Omit<
   // multi-line placeholder clips when the textarea is empty — the
   // browser sizes a textarea to its value, ignoring the placeholder.
   sizeToContent?: boolean;
+  // Also grow the wrapper *horizontally* to fit the longest line before
+  // wrapping. Requires `sizeToContent` (the same ghost drives it). The
+  // ghost drops its `w-full` so `field-sizing: content` sizes its width
+  // to the content (capped at the container via `max-w-full`), which the
+  // wrapper then tracks. Used by the description popover so a long bank
+  // memo widens the panel toward the page edge instead of wrapping into
+  // a tall, scrolling column. The container must let the wrapper grow
+  // (e.g. `flex-auto`, not `flex-1`, whose `0%` basis would pin it).
+  sizeWidthToContent?: boolean;
 };
 
 // Textarea with an inline X button that clears the value in one tap.
@@ -38,6 +47,7 @@ export const ClearableTextarea = forwardRef<HTMLTextAreaElement, Props>(
       readOnly,
       placeholder,
       sizeToContent,
+      sizeWidthToContent,
       ...rest
     },
     ref,
@@ -76,7 +86,13 @@ export const ClearableTextarea = forwardRef<HTMLTextAreaElement, Props>(
             value={value || placeholder || ""}
             rows={1}
             style={{ gridArea: "1 / 1" }}
-            className={`pointer-events-none invisible [field-sizing:content] ${textareaClass}`}
+            // `w-auto! max-w-full` overrides the inherited `w-full` so
+            // `field-sizing: content` can size the ghost's width to the
+            // longest line (capped at the container), letting the wrapper
+            // grow horizontally before the text wraps.
+            className={`pointer-events-none invisible [field-sizing:content] ${textareaClass} ${
+              sizeWidthToContent ? "w-auto! max-w-full" : ""
+            }`.trim()}
           />
         )}
         <textarea

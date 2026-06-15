@@ -366,7 +366,10 @@ export function DescriptionCell({
 // from under the popover when the keyboard appears, leaving the field
 // off screen.
 const DESCRIPTION_POPOVER_PLACEMENT: FloatingPlacement = {
-  width: { kind: "max", maxPx: 280 },
+  // Grow horizontally with the content (the textarea sizes itself to the
+  // bank memo) up to the viewport edge before wrapping downward, rather
+  // than pinning a narrow width and scrolling a long memo vertically.
+  width: { kind: "grow", minPx: 240 },
   anchor: "left",
   coordinateSpace: "document",
 };
@@ -538,7 +541,7 @@ function DescriptionPopover({
             />
           </div>
         )}
-        <div className="flex items-start">
+        <div className="flex items-center">
           <ClearableTextarea
             ref={textareaRef}
             value={draft}
@@ -556,7 +559,8 @@ function DescriptionPopover({
             placeholder={placeholder ?? t("cell.descriptionPlaceholder")}
             rows={1}
             sizeToContent
-            wrapperClassName="min-w-0 flex-1"
+            sizeWidthToContent
+            wrapperClassName="min-w-0 flex-auto"
             className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
           />
           {/* Lift the bank's original memo verbatim — handy on history
