@@ -24,15 +24,15 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/opendyslexic": "^5.2.5",
     "@fontsource/source-serif-4": "^5.2.9",
-    "@visx/axis": "^3.12.0",
-    "@visx/curve": "^3.12.0",
-    "@visx/event": "^3.12.0",
-    "@visx/grid": "^3.12.0",
-    "@visx/group": "^3.12.0",
-    "@visx/responsive": "^3.12.0",
-    "@visx/scale": "^3.12.0",
-    "@visx/shape": "^3.12.0",
-    "@visx/tooltip": "^3.12.0",
+    "@visx/axis": "^4.0.0",
+    "@visx/curve": "^4.0.0",
+    "@visx/event": "^4.0.0",
+    "@visx/grid": "^4.0.0",
+    "@visx/group": "^4.0.0",
+    "@visx/responsive": "^4.0.0",
+    "@visx/scale": "^4.0.0",
+    "@visx/shape": "^4.0.0",
+    "@visx/tooltip": "^4.0.0",
     "lucide-react": "^1.16.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
@@ -42,18 +42,18 @@
     "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
-    "@tailwindcss/vite": "^4.3.0",
-    "@types/node": "^25.9.2",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^6.0.2",
-    "eslint": "^10.4.0",
+    "eslint": "^10.5.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
-    "prettier": "^3.4.2",
+    "prettier": "^3.8.4",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
@@ -64,30 +64,6 @@
   "overrides": {
     "eslint-plugin-jsx-a11y": {
       "eslint": "$eslint"
-    },
-    "@visx/axis": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "@visx/grid": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "@visx/group": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "@visx/responsive": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "@visx/shape": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "@visx/tooltip": {
-      "react": "$react",
-      "react-dom": "$react-dom"
     }
   }
 }
