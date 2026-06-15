@@ -24,6 +24,7 @@ const presetTypes = {
   takeaway: "Takeaway",
   snacks: "Snacks",
   bakery: "Bakery",
+  sweets: "Sweets",
   fuel: "Fuel",
   "public-transport": "Public transport",
   parking: "Parking",

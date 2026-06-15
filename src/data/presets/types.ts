@@ -263,6 +263,22 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "food",
       kind: "expense",
     },
+    {
+      slug: "sweets",
+      name: "Sweets",
+      color: C[5],
+      glyph: "candy",
+      category: "food",
+      kind: "expense",
+    },
+    {
+      slug: "kids-consumables",
+      name: "Kids' consumables",
+      color: C[6],
+      glyph: "milk",
+      category: "food",
+      kind: "expense",
+    },
     // Transport
     {
       slug: "fuel",
@@ -455,14 +471,6 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       name: "Kids' gear",
       color: C[6],
       glyph: "package",
-      category: "family",
-      kind: "expense",
-    },
-    {
-      slug: "kids-consumables",
-      name: "Kids' consumables",
-      color: C[6],
-      glyph: "milk",
       category: "family",
       kind: "expense",
     },
