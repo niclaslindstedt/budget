@@ -960,6 +960,12 @@ export type Action =
       // history rows inherit the same tag. `null` means "no company
       // override" — the row stays untagged.
       companyId: string | null;
+      // Optional inclusive estimate band stamped on every minted future
+      // row (the estimate itself stays in `amount`). Both bounds are
+      // present together or both absent — an exact promotion sends
+      // neither.
+      amountMin?: number;
+      amountMax?: number;
       dates: string[];
       // When false, the merchant hint is not stamped — past entries
       // sharing the merchant key keep their raw bank text. The future

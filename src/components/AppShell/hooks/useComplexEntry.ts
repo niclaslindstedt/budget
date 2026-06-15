@@ -62,6 +62,8 @@ type Result = {
       amount: number;
       typeId: string | null;
       companyId: string | null;
+      amountMin?: number;
+      amountMax?: number;
       dates: string[];
       applyToHistoric: boolean;
       excludedHistoryEntryIds: readonly string[];
@@ -179,6 +181,8 @@ export function useComplexEntry({
         amount: number;
         typeId: string | null;
         companyId: string | null;
+        amountMin?: number;
+        amountMax?: number;
         dates: string[];
         applyToHistoric: boolean;
         excludedHistoryEntryIds: readonly string[];
@@ -200,6 +204,10 @@ export function useComplexEntry({
         amount: promotion.amount,
         typeId: promotion.typeId,
         companyId: promotion.companyId,
+        ...(promotion.amountMin !== undefined &&
+        promotion.amountMax !== undefined
+          ? { amountMin: promotion.amountMin, amountMax: promotion.amountMax }
+          : {}),
         dates: promotion.dates,
         applyToHistoric: promotion.applyToHistoric,
         accountId: activeBudget.accountId,
