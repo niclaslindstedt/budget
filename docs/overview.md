@@ -583,8 +583,28 @@ both the budget tables and the transfer-search modal — the Cover action
 only shows when every selected row is imported (historic), and Edit / Move
 / Delete are hidden for those (Copy stays). Covered transactions render a
 check glyph after their description (`DescriptionCell`); tapping it — or a
-synthesized cover-transfer row — opens the info modal. The cover index is
-threaded through `BudgetContext`.
+synthesized cover-transfer row — opens the info modal. The set of
+cover-transfer ids is threaded through `BudgetContext` (for the
+transfer-row tap); the per-row covered/attributed markers are set on the
+synthesized rows by `applyCoverRoles`.
+
+**Spending attribution.** A covered expense belongs to the account that
+covered it, not the one it was charged to. `applyCoverRoles`
+(`src/data/accounts/cover-transfer.ts`, run in `BudgetPage`'s synthesis
+memo) tags each reimbursed expense on the charged account with
+`Row.coverRole = "covered"` — `isActualSpendingRow`
+(`src/data/budget/spending.ts`) drops those from that account's Visualize-
+spending stats, while they stay in its running balance (they really
+happened, offset by the incoming cover transfer). For every cover transfer
+the covering account _sources_, `applyCoverRoles` injects a read-only,
+balance-neutral itemization row (`Row.coverRole = "attributed"`, resolved
+from the charged account's history and re-synthesized against the covering
+account's columns) so the spending counts there under each expense's
+category. `computeBalances` (`src/data/budget/rows.ts`) skips
+`coverRole === "attributed"` rows so they don't double the cover transfer's
+own balance step; `BudgetRow` / `BudgetCell` render them fully read-only
+(no swipe actions, no selection) like a transfer row, with the cover glyph
+opening the info modal.
 
 ### Rename predictor
 

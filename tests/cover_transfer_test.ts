@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   COVER_MESSAGE_MAX_CHARS,
+  applyCoverRoles,
   attachImportedCoverTransfers,
   buildCoverIndex,
   coverKey,
@@ -9,7 +10,7 @@ import {
   generateCoverMessage,
   isCoverTransfer,
 } from "../src/data/accounts/cover-transfer";
-import type { HistoryEntry, Transfer } from "../src/data/types";
+import type { Column, HistoryEntry, Row, Transfer } from "../src/data/types";
 
 let counter = 0;
 function entry(
@@ -89,6 +90,90 @@ describe("isCoverTransfer / buildCoverIndex", () => {
     expect(index.get(coverKey("main", "x1"))?.id).toBe("cv1");
     expect(index.get(coverKey("main", "x2"))?.id).toBe("cv1");
     expect(index.get(coverKey("main", "nope"))).toBeUndefined();
+  });
+});
+
+const COLUMNS: Column[] = [
+  { id: "date", type: "date", label: "Date" },
+  { id: "desc", type: "description", label: "Description" },
+  { id: "amount", type: "amount", label: "Amount" },
+  { id: "completed", type: "completed", label: "Done" },
+];
+
+describe("applyCoverRoles", () => {
+  it("marks the covered historic row on the charged account", () => {
+    const tx = coverTransfer({
+      cover: {
+        motivation: "",
+        message: "M",
+        covered: [{ accountId: "main", entryId: "x1" }],
+      },
+    });
+    const base: Row[] = [
+      {
+        kind: "historic",
+        id: "hist:x1",
+        historyEntryId: "x1",
+        cells: { date: "2026-05-01", desc: "H&M", amount: -900 },
+      },
+    ];
+    const out = applyCoverRoles(
+      base,
+      "main",
+      [tx],
+      {},
+      COLUMNS,
+      {},
+      [],
+      [],
+      [],
+    );
+    expect(out[0].coverRole).toBe("covered");
+    expect(out[0].coverTransferId).toBe("cv1");
+  });
+
+  it("injects balance-neutral attributed rows on the covering account", () => {
+    const tx = coverTransfer({
+      cover: {
+        motivation: "",
+        message: "M",
+        covered: [{ accountId: "main", entryId: "x1" }],
+      },
+    });
+    const allHistory = {
+      main: [entry("2026-05-01", "H&M", -900, { id: "x1" })],
+    };
+    const out = applyCoverRoles(
+      [],
+      "savings",
+      [tx],
+      allHistory,
+      COLUMNS,
+      {},
+      [],
+      [],
+      [],
+    );
+    const attributed = out.filter((r) => r.coverRole === "attributed");
+    expect(attributed).toHaveLength(1);
+    expect(attributed[0].id.startsWith("cover:cv1:")).toBe(true);
+    expect(attributed[0].coverTransferId).toBe("cv1");
+  });
+
+  it("is a no-op for an account no cover transfer touches", () => {
+    const base: Row[] = [];
+    const out = applyCoverRoles(
+      base,
+      "other",
+      [coverTransfer()],
+      {},
+      COLUMNS,
+      {},
+      [],
+      [],
+      [],
+    );
+    expect(out).toBe(base);
   });
 });
 

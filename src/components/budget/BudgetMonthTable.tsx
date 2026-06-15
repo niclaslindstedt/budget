@@ -193,6 +193,8 @@ function MonthTableImpl({
         const isTx = r.kind !== "correction" && isTransferRow(r);
         if (!(hideTransfers && isTx)) visibleCount++;
         if (r.kind === "transfer" || r.kind === "correction") continue;
+        // Attributed cover itemizations are read-only — not selectable.
+        if (r.coverRole === "attributed") continue;
         if (hideTransfers && isTx) continue;
         ids.push(r.id);
         if (selectedIds.has(r.id)) selectedCount++;
