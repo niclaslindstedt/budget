@@ -35,6 +35,7 @@ export type ModalCommand =
   // owns the 3-favorite cap + the "favorites full" toast.
   | { kind: "toggle-sheet-favorite"; sheetId: string }
   | { kind: "open-edit-entry"; row: Row }
+  | { kind: "open-entry-info"; row: Row }
   | { kind: "open-edit-row"; row: Row }
   | { kind: "open-delete-row"; row: Row }
   | { kind: "open-split-row"; row: Row }
@@ -83,6 +84,8 @@ export type ModalCommandHandlers = {
   // handler resolves what to open (and may no-op / dispatch directly,
   // e.g. discarding an unsaved row or guarding a synthesized row).
   editEntry: (row: Row) => void;
+  // Open the read-only entry-info modal for a budget / history row.
+  entryInfo: (row: Row) => void;
   editRow: (row: Row) => void;
   deleteRow: (row: Row) => void;
   splitRow: (row: Row) => void;
@@ -172,6 +175,9 @@ export function applyModalCommand(
     case "open-edit-entry":
       handlers.editEntry(command.row);
       return;
+    case "open-entry-info":
+      handlers.entryInfo(command.row);
+      return;
     case "open-edit-row":
       handlers.editRow(command.row);
       return;
@@ -245,6 +251,7 @@ const COMMAND_TARGET: Record<ModalCommand["kind"], keyof ModalCommandHandlers> =
     "open-download-sheet": "openDownloadSheet",
     "toggle-sheet-favorite": "toggleSheetFavorite",
     "open-edit-entry": "editEntry",
+    "open-entry-info": "entryInfo",
     "open-edit-row": "editRow",
     "open-delete-row": "deleteRow",
     "open-split-row": "splitRow",

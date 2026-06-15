@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   HandCoins,
+  Info,
   Pencil,
   Repeat,
   RotateCcw,
@@ -65,9 +66,15 @@ export function BudgetEntryActionsMenu({
 
   const items: MenuItem[] = [];
 
-  // In the compact layout the inline pen / trash are hidden, so the menu
-  // leads with Edit / Delete to keep both reachable.
+  // In the compact layout the inline info / pen / trash are hidden, so
+  // the menu leads with Info / Edit / Delete to keep them reachable.
   if (compact) {
+    items.push({
+      key: "info",
+      icon: <Info size={16} aria-hidden focusable={false} />,
+      label: t("cell.infoTitle"),
+      onClick: () => dispatchModal({ kind: "open-entry-info", row }),
+    });
     items.push({
       key: "edit",
       icon: <Pencil size={16} aria-hidden focusable={false} />,

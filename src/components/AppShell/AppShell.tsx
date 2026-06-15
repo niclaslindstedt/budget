@@ -353,6 +353,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     setSplitPrompt,
     setLineItemsPrompt,
     setPendingSeriesEdit,
+    setInfoPrompt,
   } = editPrompts;
 
   // Merged category / type lists exposed to every picker, renderer,
@@ -500,6 +501,12 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       setEditPrompt({ kind: "edit", row });
     },
     [setEditPrompt],
+  );
+  const onEntryInfoRequest = useCallback(
+    (row: Row) => {
+      setInfoPrompt({ kind: "info", row });
+    },
+    [setInfoPrompt],
   );
   const onEditRowRequest = useCallback(
     (row: Row) => {
@@ -867,6 +874,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
         dispatch({ type: "toggleSheetFavorite", sheetId });
       },
       editEntry: onEditRequest,
+      entryInfo: onEntryInfoRequest,
       editRow: onEditRowRequest,
       deleteRow: onDeleteRequest,
       splitRow: onSplitRequest,
@@ -891,6 +899,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       toast,
       t,
       onEditRequest,
+      onEntryInfoRequest,
       onEditRowRequest,
       onDeleteRequest,
       onSplitRequest,

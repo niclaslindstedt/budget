@@ -8,6 +8,8 @@ const cell: CellCatalog = {
   pickCategory: "Välj kategori",
   pickDate: "Välj datum",
   clearValue: "Rensa värde",
+  info: "Info",
+  infoTitle: "Visa alla detaljer",
   editRow: "Redigera rad",
   deleteRow: "Ta bort rad",
   cannotDeleteHistory: "Historikposter kan inte tas bort",

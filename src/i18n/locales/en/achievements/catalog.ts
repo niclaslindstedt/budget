@@ -301,6 +301,12 @@ const catalog = {
     name: "Swiper",
     condition: "Swipe left or right to switch sheets.",
   },
+  copycat: {
+    name: "Copycat",
+    condition: "Copy an entry's details from its info view.",
+    learnMore:
+      "Tap the info button on any row (left of the edit pencil, or in the “…” menu) to open a read-only view of every field. Each value has a copy glyph, and “Copy all details” lifts the whole entry — description, amount, type, and more — onto your clipboard.",
+  },
   searchSmith: {
     name: "Search Smith",
     condition: "Tune the search ranking settings.",

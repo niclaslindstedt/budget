@@ -19,6 +19,7 @@ import {
   ChartArea,
   Check,
   ChevronsDownUp,
+  ClipboardCopy,
   Cloud,
   Code2,
   Columns3,
@@ -964,6 +965,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "swiper",
     tier: "intermediate",
     glyph: Share2,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user copied a field (or the whole entry) from the read-only
+    // entry-info modal. A manual unlock — a clipboard write leaves no
+    // trace in persisted state.
+    id: "copycat",
+    tier: "intermediate",
+    glyph: ClipboardCopy,
+    hasLearnMore: true,
     trigger: { kind: "manual" },
   },
 

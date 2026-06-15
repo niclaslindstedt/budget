@@ -88,6 +88,31 @@ const budget = {
   spendingSpreadItemCosts: "Spread item costs over lifetime",
   spendingSpreadItemCostsHint:
     "Replaces each purchase spike with the linked item's cost divided evenly across its lifetime.",
+  // Read-only entry-info modal.
+  entryInfoTitle: "Entry details",
+  entryInfoKindUser: "Budget entry",
+  entryInfoKindHistory: "Imported transaction",
+  entryInfoDate: "Date",
+  entryInfoDescription: "Description",
+  entryInfoBankDescription: "Bank description",
+  entryInfoAmount: "Amount",
+  entryInfoBalance: "Balance",
+  entryInfoType: "Type",
+  entryInfoCategory: "Category",
+  entryInfoCompany: "Company",
+  entryInfoTags: "Tags",
+  entryInfoRecurring: "Recurring",
+  entryInfoTransfer: "Transfer",
+  entryInfoImported: "Imported",
+  entryInfoSplits: "Splits",
+  entryInfoLineItems: "Line items",
+  entryInfoReceipt: "Receipt",
+  entryInfoYes: "Yes",
+  entryInfoNone: "—",
+  entryInfoUncategorized: "(no type)",
+  entryInfoCopyField: "Copy {field}",
+  entryInfoCopyAll: "Copy all details",
+  entryInfoCopied: "Copied",
 } as const;
 
 export type BudgetCatalog = Widen<typeof budget>;

@@ -8,6 +8,8 @@ const cell = {
   pickCategory: "Pick category",
   pickDate: "Pick date",
   clearValue: "Clear value",
+  info: "Info",
+  infoTitle: "View all details",
   editRow: "Edit row",
   deleteRow: "Delete row",
   cannotDeleteHistory: "History entries can't be deleted",

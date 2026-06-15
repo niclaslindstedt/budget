@@ -4,6 +4,7 @@ import type { HistoryEntry, Row } from "../../../data/types";
 import type {
   EditPrompt,
   EditRowPrompt,
+  InfoPrompt,
   LineItemsPrompt,
   PendingSeriesEdit,
   SplitPrompt,
@@ -42,6 +43,9 @@ type Result = {
   // series.
   pendingSeriesEdit: PendingSeriesEdit | null;
   setPendingSeriesEdit: (next: PendingSeriesEdit | null) => void;
+  // Read-only entry-info modal — opens from the info action button / menu.
+  infoPrompt: InfoPrompt | null;
+  setInfoPrompt: (next: InfoPrompt | null) => void;
 };
 
 export function useEditPrompts({
@@ -58,6 +62,7 @@ export function useEditPrompts({
     useState<LineItemsPrompt | null>(null);
   const [pendingSeriesEdit, setPendingSeriesEdit] =
     useState<PendingSeriesEdit | null>(null);
+  const [infoPrompt, setInfoPrompt] = useState<InfoPrompt | null>(null);
 
   // Drop the pending prompt if the row vanishes (sheet switch, delete,
   // import) so a stale prompt can't fan out a no-longer-relevant edit.
@@ -105,6 +110,21 @@ export function useEditPrompts({
     if (!exists) setLineItemsPrompt(null);
   }, [lineItemsPrompt, activeRows, activeAccountId, history]);
 
+  // Same guard for the read-only info modal — identical history-vs-user-row
+  // existence check as the split / line-items modals.
+  useEffect(() => {
+    if (!infoPrompt) return;
+    const promptRow = infoPrompt.row;
+    if (promptRow.kind === "historic") {
+      const entries = (activeAccountId && history[activeAccountId]) || [];
+      const exists = entries.some((e) => e.id === promptRow.historyEntryId);
+      if (!exists) setInfoPrompt(null);
+      return;
+    }
+    const exists = activeRows.some((r) => r.id === promptRow.id);
+    if (!exists) setInfoPrompt(null);
+  }, [infoPrompt, activeRows, activeAccountId, history]);
+
   return {
     editPrompt,
     setEditPrompt,
@@ -116,5 +136,7 @@ export function useEditPrompts({
     setLineItemsPrompt,
     pendingSeriesEdit,
     setPendingSeriesEdit,
+    infoPrompt,
+    setInfoPrompt,
   };
 }

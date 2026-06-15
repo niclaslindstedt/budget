@@ -68,6 +68,10 @@ export type AppShellStorage = {
 
 export type DeletePrompt = { kind: "delete"; row: Row };
 export type EditPrompt = { kind: "edit"; row: Row };
+// Read-only entry-info modal — opened from the info action button / menu.
+// Carries the row to describe; the host resolves the backing history
+// entry (for `historic` rows) and the type / company / tag metadata.
+export type InfoPrompt = { kind: "info"; row: Row };
 export type EditRowPrompt = { kind: "edit-row"; row: Row };
 export type SplitPrompt = { kind: "split"; row: Row };
 export type LineItemsPrompt = { kind: "line-items"; row: Row };
