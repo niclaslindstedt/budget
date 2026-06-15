@@ -50,6 +50,7 @@ type Result = {
     rule: RecurrenceRule,
     dates: string[],
     typeId: string | null,
+    companyId: string | null,
   ) => void;
   onDismissRecurringCandidate: (key: string) => void;
   onDismissAllRecurringCandidates: (keys: readonly string[]) => void;
@@ -103,10 +104,7 @@ export function useComplexEntry({
           itemId,
           key: recurringPromoteContext.key,
           sourceDescription: recurringPromoteContext.sourceDescription,
-          description: draft.description,
-          amount: draft.amount,
-          typeId: draft.typeId,
-          dates: draft.dates,
+          draft,
           now: Date.now(),
         });
       } else {
@@ -131,6 +129,7 @@ export function useComplexEntry({
       rule: RecurrenceRule,
       _dates: string[],
       typeId: string | null,
+      companyId: string | null,
     ) => {
       if (!activeBudget) return;
       const shifted = shiftRuleStartToFuture(rule, todayIso());
@@ -143,7 +142,7 @@ export function useComplexEntry({
         description: candidate.description,
         amount: candidate.suggestedAmount,
         typeId,
-        companyId: null,
+        companyId,
         isTransfer: false,
         rule: shifted,
       });

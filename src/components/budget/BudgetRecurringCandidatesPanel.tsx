@@ -4,7 +4,10 @@ import { Repeat, X } from "lucide-react";
 import type { RecurringCandidate } from "../../data/budget/recurring-detection";
 import { detectRecurringCandidates } from "../../data/budget/recurring-detection";
 import { expandRecurrence, type RecurrenceRule } from "../../data/recurrence";
-import { suggestTypeForDescription } from "../../data/merchant-hints";
+import {
+  suggestCompanyForDescription,
+  suggestTypeForDescription,
+} from "../../data/merchant-hints";
 import type {
   EntryType,
   HistoryEntry,
@@ -37,6 +40,7 @@ type Props = {
     rule: RecurrenceRule,
     dates: string[],
     typeId: string | null,
+    companyId: string | null,
   ) => void;
   onDismiss: (key: string) => void;
   onDismissAll: (keys: readonly string[]) => void;
@@ -120,6 +124,14 @@ export function BudgetRecurringCandidatesPanel({
             suggestedTypeId === null
               ? null
               : (types.find((ty) => ty.id === suggestedTypeId) ?? null);
+          // Seed the company from the same merchant hint so promoting a
+          // candidate for a merchant the user has already tagged opens
+          // the confirm modal with the company pre-filled, mirroring the
+          // suggested type.
+          const suggestedCompanyId = suggestCompanyForDescription(
+            merchantHints,
+            c.description,
+          );
           return (
             <CandidateRow
               key={c.key}
@@ -128,7 +140,13 @@ export function BudgetRecurringCandidatesPanel({
               suggestedType={suggestedType}
               settings={settings}
               onPromote={(rule, dates) =>
-                onPromote(c, rule, dates, suggestedType?.id ?? null)
+                onPromote(
+                  c,
+                  rule,
+                  dates,
+                  suggestedType?.id ?? null,
+                  suggestedCompanyId,
+                )
               }
               onDismiss={() => onDismiss(c.key)}
             />

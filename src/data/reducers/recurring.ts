@@ -1,14 +1,18 @@
 import { mintBudgetRow } from "../budget/rows";
+import { reduceAccountBudget } from "./item";
 import { newId, updateAccountBudget } from "../sheet";
 import { recordMerchantHints } from "../merchant-hints";
 import type { Action } from "../reducer";
 import type { Sheet, UserData, UserRow } from "../types";
 
-// Shared row-minting body for the two recurring-promote actions
-// (`promoteRecurringCandidate` and `promoteHistoryToRecurring`).
-// Both produce a series of N rows from a single (description, amount,
-// typeId, dates) tuple targeting one AccountBudget; only their hint
-// recording bookkeeping differs, which stays in the per-action body.
+// Row-minting body for `promoteHistoryToRecurring`. Produces a series
+// of N rows from a single (description, amount, typeId, companyId,
+// dates) tuple targeting one AccountBudget — the history promote form
+// collects nothing richer, so it doesn't need the full
+// `ComplexEntryDraft` path the candidate promote reuses.
+// (`promoteRecurringCandidate` mints through `addRowsFromComplex`
+// instead so the whole draft — tags, transfer flag, estimate band,
+// formula — survives.)
 function appendSeriesRowsToBudget(
   sheets: readonly Sheet[],
   action: {
@@ -45,15 +49,28 @@ export function reduceRecurring(
   action: Action,
 ): UserData | null {
   if (action.type === "promoteRecurringCandidate") {
-    // Mint a fresh series from a recurring-detection candidate.
-    // Mirrors `addRowsFromComplex` (which the user-driven complex
-    // entry modal uses) so the resulting series is indistinguishable
-    // from one the user typed in by hand — same seriesId semantics,
-    // same glyph propagation, same row shape. The candidate's key is
-    // pushed onto `recurringDismissals` after row creation so the
+    // Mint a fresh series from a recurring-detection candidate through
+    // the exact same `addRowsFromComplex` path the user-driven complex
+    // entry modal uses, so the resulting series is indistinguishable
+    // from one the user typed in by hand — every draft field (company,
+    // tags, transfer flag, completed, estimate min/max band, formula)
+    // lands on each row, not a hand-picked subset. The candidate's key
+    // is pushed onto `recurringDismissals` after row creation so the
     // panel drops it on the next render and future imports won't
     // resurface a series the user has already promoted.
-    const nextSheets = appendSeriesRowsToBudget(state.sheets, action);
+    const { draft } = action;
+    const nextSheets = updateAccountBudget(
+      state.sheets,
+      action.sheetId,
+      action.itemId,
+      (item) =>
+        reduceAccountBudget(item, {
+          type: "addRowsFromComplex",
+          sheetId: action.sheetId,
+          itemId: action.itemId,
+          draft,
+        }),
+    );
     const dismissals = state.recurringDismissals.includes(action.key)
       ? state.recurringDismissals
       : [...state.recurringDismissals, action.key];
@@ -62,23 +79,28 @@ export function reduceRecurring(
       sheets: nextSheets,
       recurringDismissals: dismissals,
     };
-    if (action.typeId === null) return next;
+    if (draft.typeId === null) return next;
     // Key the merchant hint by the raw bank text (`sourceDescription`)
     // so future imports of the same merchant pick up the suggestion
     // even when the user edited the displayed description. When the
     // edit differs from the bank text, record it as an override so
     // synthesized history rows surface the user's label too.
     const override =
-      action.description.trim() !== action.sourceDescription.trim()
-        ? action.description
+      draft.description.trim() !== action.sourceDescription.trim()
+        ? draft.description
         : undefined;
     return recordMerchantHints(
       next,
       [
         {
           description: action.sourceDescription,
-          typeId: action.typeId,
+          typeId: draft.typeId,
           description_override: override,
+          // Fold the company tag into the merchant hint alongside the
+          // type so past synthesized rows sharing the merchant key
+          // adopt it automatically. `undefined` (no company chosen)
+          // preserves any existing company on the hint.
+          companyId: draft.companyId ?? undefined,
         },
       ],
       action.now,
