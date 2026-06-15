@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
-import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Info, Pencil, Trash2 } from "lucide-react";
 
 import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
@@ -440,6 +440,24 @@ function BudgetRowImpl({
               }}
             >
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
+            </button>
+          )}
+          {/* Info button — read-only view of every field, left of the
+              edit pen. Available on user-authored and synthesized history
+              rows (transfers / attributed cover itemizations have their
+              own info affordance). */}
+          {!isTransfer && !isCoverItem && (
+            <button
+              type="button"
+              className="action-btn action-btn-info inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
+              aria-label={tr("cell.infoTitle")}
+              title={tr("cell.infoTitle")}
+              onClick={() => {
+                setSwiped(false);
+                dispatchModal({ kind: "open-entry-info", row });
+              }}
+            >
+              <Info size={16} aria-hidden focusable={false} />
             </button>
           )}
           {!isTransfer && isHistory && !isCoverItem && (

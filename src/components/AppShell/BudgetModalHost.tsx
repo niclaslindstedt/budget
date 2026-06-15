@@ -26,6 +26,7 @@ import {
 } from "../budget/BudgetLineItemsModal";
 import { BudgetCoverTransferModal } from "../budget/BudgetCoverTransferModal";
 import { BudgetCoverInfoModal } from "../budget/BudgetCoverInfoModal";
+import { BudgetEntryInfoModal } from "../budget/BudgetEntryInfoModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
@@ -132,6 +133,8 @@ export function BudgetModalHost(props: Props) {
     setLineItemsPrompt,
     pendingSeriesEdit,
     setPendingSeriesEdit,
+    infoPrompt,
+    setInfoPrompt,
   } = editPrompts;
   const {
     deletePrompt,
@@ -553,8 +556,31 @@ export function BudgetModalHost(props: Props) {
     t,
   ]);
 
+  // Resolve the backing bank entry for the info modal — only `historic`
+  // rows have one (their bank text / balance / splits live on the
+  // `HistoryEntry`, not the synthesized row). Null for user rows.
+  const infoEntry = useMemo<HistoryEntry | null>(() => {
+    const row = infoPrompt?.row;
+    if (!row || row.kind !== "historic" || !activeItem.accountId) return null;
+    const entries = data.history[activeItem.accountId] ?? [];
+    return entries.find((e) => e.id === row.historyEntryId) ?? null;
+  }, [infoPrompt, activeItem.accountId, data.history]);
+
   return (
     <>
+      <BudgetEntryInfoModal
+        open={infoPrompt !== null}
+        onClose={() => setInfoPrompt(null)}
+        row={infoPrompt?.row ?? null}
+        columns={activeItem.columns}
+        entry={infoEntry}
+        types={types}
+        categories={categories}
+        companies={data.companies}
+        tags={data.tags}
+        items={data.items}
+        settings={effectiveSettings}
+      />
       <BudgetCoverTransferModal
         open={coverFlow.coverPrompt !== null}
         onClose={coverFlow.closeCover}

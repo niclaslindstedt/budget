@@ -297,6 +297,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Svepare",
     condition: "Svep åt vänster eller höger för att byta blad.",
   },
+  copycat: {
+    name: "Kopiekatt",
+    condition: "Kopiera en posts detaljer från dess infovy.",
+    learnMore:
+      "Tryck på info-knappen på valfri rad (till vänster om redigeringspennan, eller i “…”-menyn) för att öppna en skrivskyddad vy av alla fält. Varje värde har en kopieringsglyf, och “Kopiera alla detaljer” lyfter hela posten — beskrivning, belopp, typ med mera — till urklipp.",
+  },
   searchSmith: {
     name: "Söksmed",
     condition: "Justera inställningarna för sökrangordning.",

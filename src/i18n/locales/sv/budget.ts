@@ -84,6 +84,31 @@ const budget: BudgetCatalog = {
   spendingSpreadItemCosts: "Fördela prylkostnader över livslängden",
   spendingSpreadItemCostsHint:
     "Ersätter varje inköpstopp med prylens kostnad jämnt fördelad över dess livslängd.",
+  // Skrivskyddad postinfo-modal.
+  entryInfoTitle: "Postdetaljer",
+  entryInfoKindUser: "Budgetpost",
+  entryInfoKindHistory: "Importerad transaktion",
+  entryInfoDate: "Datum",
+  entryInfoDescription: "Beskrivning",
+  entryInfoBankDescription: "Bankbeskrivning",
+  entryInfoAmount: "Belopp",
+  entryInfoBalance: "Saldo",
+  entryInfoType: "Typ",
+  entryInfoCategory: "Kategori",
+  entryInfoCompany: "Företag",
+  entryInfoTags: "Etiketter",
+  entryInfoRecurring: "Återkommande",
+  entryInfoTransfer: "Överföring",
+  entryInfoImported: "Importerad",
+  entryInfoSplits: "Delningar",
+  entryInfoLineItems: "Prylar",
+  entryInfoReceipt: "Kvitto",
+  entryInfoYes: "Ja",
+  entryInfoNone: "—",
+  entryInfoUncategorized: "(ingen typ)",
+  entryInfoCopyField: "Kopiera {field}",
+  entryInfoCopyAll: "Kopiera alla detaljer",
+  entryInfoCopied: "Kopierad",
 };
 
 export default budget;
