@@ -531,7 +531,12 @@ popover (time range, amount band, date band) via the universal
 `ModalSearchControls`, all local to the open viewer (the sort seeds
 from `transactionSortOrder`; the filter bands reset on close). No
 transfer / completed / type filters — history rows carry only raw bank
-fields.
+fields. Opened by tapping an account's row body on the accounts page,
+and — since a savings account stores transactions for transfer
+detection under the same `history[id]` key — by tapping a savings
+account's row body on the Savings page (the savings account is
+presented as an `Account` for the modal chrome; both routes share this
+one modal).
 
 ### Import history modal
 
@@ -1864,10 +1869,13 @@ Its transactions live in `UserData.history` keyed by the saving's id
 `detectTransferCandidates` pairs a savings deposit with the matching
 withdrawal on a regular account automatically, and a `Transfer` may name
 a saving on either side. Those transactions are imported through the
-savings row's "…" menu — Import / View / Cut history reuse the accounts
+savings row's "…" menu — Import / Cut history reuse the accounts
 import pipeline (`useImportFlow` resolves a saving id the same as an
 account id, and `importBankHistory` merges into `history[savingId]` with
-its account- / budget-specific branches harmlessly skipped for a saving). The transfer log and collapse / create modals
+its account- / budget-specific branches harmlessly skipped for a
+saving). Viewing that history is the savings row's own body tap (the
+same `HistoryModal` the accounts page opens on a row tap), not a menu
+item. The transfer log and collapse / create modals
 resolve a saving endpoint to its name via `savingAsTransferEndpoint`
 (`src/data/savings/value.ts`). Savings are deliberately kept out of the
 Accounts table and `computeAccountBalances`. Deleting a saving cascades

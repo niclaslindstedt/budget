@@ -18,9 +18,8 @@ const savingsSheet: SavingsSheetCatalog = {
     "Ta bort {name}? Dess registrerade saldohistorik tas bort, tillsammans med transaktioner och överföringar kopplade till det.",
   updateBalance: "Uppdatera saldo",
   importHistory: "Importera historik",
-  viewHistory: "Visa historik",
+  viewHistoryAria: "Visa historik för {name}",
   cutHistory: "Klipp historik",
-  noHistory: "Inga transaktioner importerade än",
   nothingToCut: "Ingen historik eller transaktioner att klippa",
 
   // Skapa / redigera-modal.
