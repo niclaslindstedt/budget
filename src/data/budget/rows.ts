@@ -229,6 +229,15 @@ export function computeBalances(
     presortedRows ?? sortRowsByDate(item.rows, dateCol.id, sortContext);
   let running = openingBalance;
   for (const row of sorted) {
+    // Attributed cover-transfer itemizations are balance-neutral: the
+    // cover transfer's own row already carries the money movement, so
+    // counting these read-only copies would double it. They still get a
+    // balance entry (the carried running total) so the balance column
+    // renders.
+    if (row.coverRole === "attributed") {
+      result.set(row.id, running);
+      continue;
+    }
     const override = balanceOverrides?.get(row.id);
     if (override !== undefined) {
       running = override;

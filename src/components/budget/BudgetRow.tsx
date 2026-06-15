@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
-import { coverKey } from "../../data/accounts/cover-transfer";
 import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
@@ -99,8 +98,6 @@ function BudgetRowImpl({
     itemsById,
     companyTypeHints,
     settings,
-    accountId,
-    coveredByKey,
     coverTransferIds,
   } = useBudgetContext();
   const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
@@ -125,7 +122,8 @@ function BudgetRowImpl({
   // claim (folded into the hook) makes a tap outside only dismiss the
   // swipe instead of also firing the button that was tapped.
   const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(row.id, {
-    disabled: selectMode,
+    // Attributed cover itemizations are read-only — no swipe-revealed actions.
+    disabled: selectMode || row.coverRole === "attributed",
   });
 
   // Resolve the four standard columns once per `columns` reference so
@@ -140,15 +138,20 @@ function BudgetRowImpl({
   const isSeries = !!row.seriesId;
   const isTransfer = row.kind === "transfer";
   const isHistory = row.kind === "historic";
-  // Cover-transfer overlay: a synthesized transfer row that is a cover
-  // transfer opens the read-only info modal on tap; an imported row this
-  // budget covers shows a check glyph that opens that same modal.
+  // Cover-transfer overlay. A synthesized cover-transfer row opens the
+  // read-only info modal on tap. A "covered" historic row (reimbursed from
+  // another account) shows a check glyph that opens the same modal. An
+  // "attributed" row is a read-only itemization injected into the covering
+  // account's ledger — it behaves like a transfer row (no inline edit / swipe
+  // actions) and its glyph also opens the info modal.
   const isCoverTransferRow =
     row.kind === "transfer" && coverTransferIds.has(row.transferId);
-  const coveredTransferId =
-    row.kind === "historic" && accountId !== null
-      ? (coveredByKey.get(coverKey(accountId, row.historyEntryId)) ?? null)
-      : null;
+  const isCoverItem = row.coverRole === "attributed";
+  // Both covered (on the charged account) and attributed (on the covering
+  // account) rows carry the glyph that opens the cover info modal.
+  const coveredTransferId = row.coverRole
+    ? (row.coverTransferId ?? null)
+    : null;
   // The transfer button needs both a savable row (so we know an amount
   // and description exist to promote) AND a parent budget with a known
   // account. Synthesized transfer rows skip the savable check —
@@ -283,7 +286,8 @@ function BudgetRowImpl({
     .join(" ");
 
   const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
-    if (!selectMode) return;
+    // Attributed cover itemizations are read-only and not selectable.
+    if (!selectMode || isCoverItem) return;
     // Don't double-toggle when the click originated from the checkbox itself.
     const target = e.target as HTMLElement;
     if (target.closest("[data-select-cell]")) return;
@@ -312,28 +316,32 @@ function BudgetRowImpl({
           data-select-cell
           className="select-cell border-r border-b border-line bg-surface-3 p-0 text-center"
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect(row.id);
-            }}
-            className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 ${
-              selected ? "text-accent" : "text-muted"
-            }`}
-            aria-label={selected ? "Deselect row" : "Select row"}
-            aria-pressed={selected}
-          >
-            <span
-              className={`flex h-5 w-5 items-center justify-center rounded border ${
-                selected
-                  ? "border-accent bg-accent text-page-bg"
-                  : "border-muted"
+          {/* Attributed cover itemizations are read-only — render an empty
+              select cell so the column count stays aligned. */}
+          {!isCoverItem && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect(row.id);
+              }}
+              className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 ${
+                selected ? "text-accent" : "text-muted"
               }`}
+              aria-label={selected ? "Deselect row" : "Select row"}
+              aria-pressed={selected}
             >
-              {selected ? "✓" : ""}
-            </span>
-          </button>
+              <span
+                className={`flex h-5 w-5 items-center justify-center rounded border ${
+                  selected
+                    ? "border-accent bg-accent text-page-bg"
+                    : "border-muted"
+                }`}
+              >
+                {selected ? "✓" : ""}
+              </span>
+            </button>
+          )}
         </td>
       )}
       {columns.map((col) => (
@@ -354,6 +362,7 @@ function BudgetRowImpl({
           }
           onSetNoCompany={isHistory ? handleSetNoCompany : undefined}
           isTransfer={isTransfer}
+          isCoverItem={isCoverItem}
           peerName={row.kind === "transfer" ? row.peerAccountName : ""}
           outgoing={isOutgoing}
           isHistory={isHistory}
@@ -422,7 +431,7 @@ function BudgetRowImpl({
               <ArrowLeftRight size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransfer && isHistory && (
+          {!isTransfer && isHistory && !isCoverItem && (
             <button
               type="button"
               className="action-btn action-btn-pen inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
@@ -463,7 +472,7 @@ function BudgetRowImpl({
               <Trash2 size={16} aria-hidden focusable={false} />
             </button>
           )}
-          {!isTransfer && isHistory && (
+          {!isTransfer && isHistory && !isCoverItem && (
             <span
               aria-hidden
               title={tr("cell.cannotDeleteHistory")}
@@ -477,7 +486,7 @@ function BudgetRowImpl({
               </span>
             </span>
           )}
-          {!isTransfer && (
+          {!isTransfer && !isCoverItem && (
             <BudgetEntryActionsMenu
               row={row}
               isHistory={isHistory}

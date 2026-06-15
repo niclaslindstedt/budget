@@ -44,6 +44,47 @@ export type CellLineItem = {
   amount: string;
 };
 
+// The check glyph pinned to the trailing edge of a covered / attributed
+// row's description cell. Tapping it opens the cover transfer's info modal.
+// `stopPropagation` so the tap doesn't also toggle the row's popover /
+// selection.
+function CoverGlyphButton({ transferId }: { transferId: string }) {
+  const t = useT();
+  const dispatchModal = useModalDispatch();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        dispatchModal({ kind: "open-cover-info", transferId });
+      }}
+      aria-label={t("coverTransfer.coveredGlyphTitle")}
+      title={t("coverTransfer.coveredGlyphTitle")}
+      className="absolute top-1/2 right-1 z-10 inline-flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-3 text-success hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+    >
+      <BadgeCheck size={13} aria-hidden focusable={false} />
+    </button>
+  );
+}
+
+// Read-only description cell for an "attributed" cover itemization injected
+// into the covering account's ledger — plain text plus the cover glyph, no
+// editable popover (the row mirrors an expense charged to another account).
+export function CoverItemDescriptionCell({
+  value,
+  coveredTransferId,
+}: {
+  value: string;
+  coveredTransferId?: string | null;
+}) {
+  return (
+    <td className={`${CELL_BASE} relative align-middle text-fg md:w-full`}>
+      <span className="block truncate pr-6">{value}</span>
+      {coveredTransferId && <CoverGlyphButton transferId={coveredTransferId} />}
+    </td>
+  );
+}
+
 // Both mobile and desktop drive the description cell through the same
 // `DescriptionPopover` trigger: it owns the type-name / company-pill /
 // bank-text fallback rendering, surfaces the inline `CompanyPicker`
@@ -180,23 +221,7 @@ export function DescriptionCell({
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
-      {coveredTransferId && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            dispatchModal({
-              kind: "open-cover-info",
-              transferId: coveredTransferId,
-            });
-          }}
-          aria-label={t("coverTransfer.coveredGlyphTitle")}
-          title={t("coverTransfer.coveredGlyphTitle")}
-          className="absolute top-1/2 right-1 z-10 inline-flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-3 text-success hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-        >
-          <BadgeCheck size={13} aria-hidden focusable={false} />
-        </button>
-      )}
+      {coveredTransferId && <CoverGlyphButton transferId={coveredTransferId} />}
       <DescriptionPopover
         rowId={rowId}
         value={value}

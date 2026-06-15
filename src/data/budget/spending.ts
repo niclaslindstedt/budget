@@ -58,6 +58,10 @@ export function isActualSpendingRow(
 ): boolean {
   if (row.kind === "correction") return false;
   if (isTransferRow(row)) return false;
+  // A reimbursed expense belongs to the account that covered it, not the
+  // one it was charged to — drop it here (it's re-attributed to the
+  // covering account's budget as an "attributed" row, which counts there).
+  if (row.coverRole === "covered") return false;
   if (row.kind === "historic") return true;
   if (completedColumnId === null) return false;
   return row.cells[completedColumnId] === true;

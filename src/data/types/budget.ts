@@ -126,6 +126,23 @@ type RowBase = {
   // capability); on a backend missing the file the viewer degrades to
   // "unavailable".
   receiptPath?: string;
+  // Cover-transfer relationship, set during synthesis only (never
+  // persisted). A cover transfer reimburses expenses charged to the wrong
+  // account from a savings / spending account; the two roles let the same
+  // expense count toward the covering account's budget instead of the one
+  // it was charged to:
+  //   - "covered": the reimbursed expense on the account it was charged to.
+  //     EXCLUDED from that account's spending statistics (it nets out
+  //     against the incoming cover transfer) but still counted in the
+  //     running balance — it really happened on this account.
+  //   - "attributed": a read-only itemization injected into the COVERING
+  //     account's ledger. Counted in that account's spending and rendered
+  //     read-only, but BALANCE-NEUTRAL (`computeBalances` skips it) because
+  //     the cover transfer's own row already carries the money movement.
+  // `coverTransferId` points at the cover `Transfer`; tapping the row's
+  // glyph opens its info modal.
+  coverRole?: "covered" | "attributed";
+  coverTransferId?: string;
 };
 
 // Vanilla user-authored row. The default kind for anything in

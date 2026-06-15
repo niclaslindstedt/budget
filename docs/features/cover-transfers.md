@@ -37,6 +37,18 @@ date, or by the reference message appearing in the transaction text — and
 folded in automatically, flipping it to _transferred_ and hiding the raw
 legs (just like an ordinary cross-account transfer).
 
+## Where the spending counts
+
+A covered expense really belongs to the account that paid for it, not the
+card it happened to be charged to. So in **Visualize spending** the covered
+expenses drop out of the charged account's numbers (they were reimbursed),
+and — when the covering account has its own budget sheet — they count
+toward _that_ account's spending instead, under each expense's own
+category. The covering account's ledger also lists the covered expenses as
+read-only rows (so you can see the actual purchases under the savings
+account); these rows are balance-neutral, since the cover transfer itself
+already moved the money.
+
 ## Traceability
 
 Every transaction a cover transfer accounts for is marked with a check

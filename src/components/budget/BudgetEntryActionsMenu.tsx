@@ -163,8 +163,8 @@ export function BudgetEntryActionsMenu({
 
   // Cover this imported transaction with a transfer from another account —
   // reimburses an expense charged to the wrong account. Only imported
-  // transactions are coverable.
-  if (row.kind === "historic") {
+  // transactions that aren't already part of a cover transfer are coverable.
+  if (row.kind === "historic" && !row.coverRole) {
     const entryId = row.historyEntryId;
     items.push({
       key: "cover",

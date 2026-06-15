@@ -17,6 +17,7 @@ import { CELL_BASE } from "./cells/constants";
 import { DateCell, ReadonlyDateCell } from "./cells/DateCell";
 import {
   type CellLineItem,
+  CoverItemDescriptionCell,
   DescriptionCell,
   TransferDescriptionCell,
 } from "./cells/DescriptionCell";
@@ -69,6 +70,11 @@ type Props = {
   // no peer name. The action column hides edit/delete buttons too,
   // gated upstream in BudgetRow.
   isHistory?: boolean;
+  // True when the row is an "attributed" cover itemization — a read-only
+  // copy of an expense covered from this account, injected for statistics.
+  // Rendered fully read-only (no editable description / type), like a
+  // transfer row, with the cover glyph in the description cell.
+  isCoverItem?: boolean;
   // Threaded from `Row.descriptionPlaceholder`. When set, the
   // resolved description in `value` is a fallback (company / type /
   // bank text) rather than a real user override — `DescriptionCell`
@@ -160,6 +166,7 @@ function CellImpl({
   peerName,
   outgoing,
   isHistory,
+  isCoverItem,
   hasFormula,
   hiddenTransferCount = 0,
   transferExpanded = false,
@@ -213,7 +220,7 @@ function CellImpl({
   // per-mode variation is in the description and type cells. Route the
   // shared half through a single helper so the leaves stay in lock-step
   // when their prop contracts change.
-  if (isTransfer || isHistory) {
+  if (isTransfer || isHistory || isCoverItem) {
     const readonly = renderReadonlyColumn({
       column,
       value,
@@ -232,6 +239,18 @@ function CellImpl({
               value={typeof value === "string" ? value : ""}
               peerName={peerName ?? ""}
               outgoing={!!outgoing}
+            />
+          );
+        case "type":
+          return <ReadonlyTypeCell entryType={entryType ?? null} />;
+      }
+    } else if (isCoverItem) {
+      switch (column.type) {
+        case "description":
+          return (
+            <CoverItemDescriptionCell
+              value={typeof value === "string" ? value : ""}
+              coveredTransferId={coveredTransferId}
             />
           );
         case "type":
