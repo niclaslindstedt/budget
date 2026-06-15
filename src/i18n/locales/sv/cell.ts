@@ -40,6 +40,9 @@ const cell: CellCatalog = {
   originalFromBank: "Original från banken",
   copyBankText: "Kopiera banktext",
   copiedBankText: "Kopierad",
+  viewTransferDescription: "Visa överföringsbeskrivning",
+  copyDescription: "Kopiera beskrivning",
+  copiedDescription: "Kopierad",
   pushToNextMonth: "Skjut till nästa budgetmånad",
   pushToNextMonthTitle:
     "Behandla posten — och alla andra poster samma dag — som om de tillhörde nästa budgetmånad",

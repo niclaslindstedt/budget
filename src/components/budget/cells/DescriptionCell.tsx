@@ -693,15 +693,29 @@ function OmittedGlyph() {
 // arrow leading into the peer account name, then the transfer
 // description as plain text. Mirrors the editable description cell's
 // desktop / mobile split so the row collapses cleanly on small screens.
+//
+// The cell is a button that opens a read-only popover showing the full
+// transfer (bank) description — the inline text truncates, so on a
+// revealed hidden transfer the only way to read a long bank memo is to
+// tap it open. Unlike the editable `DescriptionCell` popover there is
+// no company picker and no textarea: a transfer's description lives on
+// `data.transfers`, not on the row, so the popover is purely for
+// reading.
 export function TransferDescriptionCell({
+  rowId,
   value,
   peerName,
   outgoing,
 }: {
+  rowId: string;
   value: string;
   peerName: string;
   outgoing: boolean;
 }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const arrow = outgoing ? (
     // Outgoing transfer: arrow pointing AWAY from us toward the peer.
     <ArrowRight
@@ -721,18 +735,90 @@ export function TransferDescriptionCell({
       className="shrink-0 text-flag"
     />
   );
+
+  async function handleCopy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (insecure context / denied permission) — leave
+      // the glyph untouched rather than flashing a false success.
+    }
+  }
+
   return (
-    <td className={`${CELL_BASE} text-flag align-middle md:w-full`}>
-      <div className="hidden md:flex md:items-center md:gap-1.5 md:px-[var(--table-cell-px)] md:py-[var(--table-cell-py)]">
-        {arrow}
-        <span className="text-muted">{peerName || "—"}</span>
-        {value && <span className="text-muted">·</span>}
-        <span className="truncate text-fg">{value}</span>
-      </div>
-      <div className="flex h-full min-h-9 w-full items-center justify-center gap-1.5 px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono text-flag md:hidden">
-        {arrow}
-        <span className="truncate text-fg">{value || peerName || "—"}</span>
-      </div>
+    <td className={`${CELL_BASE} relative align-middle text-flag md:w-full`}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={t("cell.viewTransferDescription")}
+        className="flex h-full min-h-9 w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono text-flag outline-none focus-visible:bg-surface-2"
+      >
+        {/* Desktop: arrow → peer · description. */}
+        <span className="hidden min-w-0 items-center gap-1.5 md:flex">
+          {arrow}
+          <span className="text-muted">{peerName || "—"}</span>
+          {value && <span className="text-muted">·</span>}
+          <span className="min-w-0 truncate text-fg">{value}</span>
+        </span>
+        {/* Mobile: arrow → description (falls back to peer name). */}
+        <span className="flex min-w-0 flex-1 items-center justify-center gap-1.5 md:hidden">
+          {arrow}
+          <span className="min-w-0 truncate text-fg">
+            {value || peerName || "—"}
+          </span>
+        </span>
+      </button>
+      <FloatingPanel
+        open={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        placement={DESCRIPTION_POPOVER_PLACEMENT}
+        rowId={rowId}
+        arrow="up"
+      >
+        <div className="flex items-start gap-1.5 px-2 py-1.5 text-xs">
+          <Landmark
+            size={12}
+            aria-hidden
+            focusable={false}
+            className="mt-0.5 shrink-0 text-muted"
+            aria-label={t("cell.originalFromBank")}
+          />
+          <span className="min-w-0 flex-1 font-mono break-words whitespace-pre-wrap text-fg">
+            {value || "—"}
+          </span>
+          {value && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={
+                copied ? t("cell.copiedDescription") : t("cell.copyDescription")
+              }
+              title={
+                copied ? t("cell.copiedDescription") : t("cell.copyDescription")
+              }
+              className="-my-0.5 -mr-0.5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              {copied ? (
+                <Check
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="text-success"
+                />
+              ) : (
+                <Copy size={12} aria-hidden focusable={false} />
+              )}
+            </button>
+          )}
+        </div>
+      </FloatingPanel>
     </td>
   );
 }

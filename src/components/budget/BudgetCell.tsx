@@ -236,6 +236,7 @@ function CellImpl({
         case "description":
           return (
             <TransferDescriptionCell
+              rowId={rowId}
               value={typeof value === "string" ? value : ""}
               peerName={peerName ?? ""}
               outgoing={!!outgoing}
