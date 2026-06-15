@@ -101,16 +101,22 @@ const PREVIEW_LIMIT = 8;
 
 // One row per matching history entry in the preview. The seed entry is
 // always rendered first when it's part of the match set so the user
-// can see "yes the row I clicked is in the result". Other matches
-// follow in newest-first order to mirror the History modal.
+// can see "yes the row I clicked is in the result". Every other match
+// follows in newest-first order, mirroring the History modal.
 function previewEntries(
   matches: readonly HistoryEntry[],
   seed: { id: string } | null,
 ): readonly HistoryEntry[] {
   if (matches.length === 0) return matches;
-  if (!seed) return matches.slice(0, PREVIEW_LIMIT);
+  // Newest-first so the year-header interspersing downstream walks the
+  // dates in descending order — the current year stays bare and a header
+  // is emitted exactly once the list crosses into an earlier year. ISO
+  // date strings sort lexicographically, so a string compare suffices.
+  const byNewest = (a: HistoryEntry, b: HistoryEntry) =>
+    b.date.localeCompare(a.date);
+  if (!seed) return [...matches].sort(byNewest).slice(0, PREVIEW_LIMIT);
   const seedMatch = matches.find((m) => m.id === seed.id);
-  const rest = matches.filter((m) => m.id !== seed.id);
+  const rest = matches.filter((m) => m.id !== seed.id).sort(byNewest);
   const ordered = seedMatch ? [seedMatch, ...rest] : rest;
   return ordered.slice(0, PREVIEW_LIMIT);
 }
