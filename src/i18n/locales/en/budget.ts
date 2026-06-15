@@ -96,7 +96,6 @@ const budget = {
   entryInfoDescription: "Description",
   entryInfoBankDescription: "Bank description",
   entryInfoAmount: "Amount",
-  entryInfoBalance: "Balance",
   entryInfoType: "Type",
   entryInfoCategory: "Category",
   entryInfoCompany: "Company",

@@ -215,20 +215,22 @@ copy / split actions for one row ("row actions menu").
 ### Entry info modal
 
 `BudgetEntryInfoModal.tsx` — a read-only modal that lays out every
-field of one budget or imported-history row: date, description, amount,
-type (glyph + name) and its derived category, company, tags, plus
-recurring / transfer / receipt flags. For a synthesized `historic` row
-it also surfaces the backing `HistoryEntry`'s raw bank description,
-running balance, import timestamp, and any splits — the fields the
-synthesized row doesn't carry. Each value has a copy glyph that lifts
-just that field onto the clipboard, and a footer "Copy all details"
-button copies the whole entry as `Label: value` lines. Reached from the
-info button in a row's swipe strip (left of the edit pen) and the
-`Info` item in the compact `BudgetEntryActionsMenu`; the row's
-`open-entry-info` modal command resolves through `BudgetModalHost`,
-which looks up the history entry and the taxonomy lists the modal
-indexes. Transfer rows and attributed cover itemizations have their own
-info affordance (`BudgetCoverInfoModal`) and don't show this one.
+field of one budget or imported-history row: date, bank description,
+description, amount, type (glyph + name) and its derived category,
+company, tags, plus recurring / transfer / receipt flags. For a
+synthesized `historic` row it also surfaces the backing
+`HistoryEntry`'s raw bank description, import timestamp, and any
+splits — the fields the synthesized row doesn't carry. Each value has a
+copy glyph that lifts just that field onto the clipboard, and a footer
+"Copy all details" button copies the whole entry as `Label: value`
+lines. Reached three ways: the info button in a row's swipe strip (left
+of the edit pen), the `Info` item in the compact
+`BudgetEntryActionsMenu`, and a long-press / right-click anywhere on the
+row. The `open-entry-info` modal command resolves through
+`BudgetModalHost`, which looks up the history entry and the taxonomy
+lists the modal indexes. Transfer rows and attributed cover
+itemizations have their own info affordance (`BudgetCoverInfoModal`) and
+don't show this one.
 
 ### Salary entry actions menu
 
@@ -277,7 +279,8 @@ full-row edit is the next entry.
 ### Edit-entry full modal
 
 `BudgetEditEntryFullModal.tsx` — the generic full-row edit form (every
-field at once), the "edit-row modal". Opened by long-press.
+field at once), the "edit-row modal". Opened from the edit (pen) button
+in a row's swipe strip / actions menu.
 
 ### Split entry modal
 
