@@ -263,9 +263,18 @@ export function HistoryModal({
   );
 
   const colWidths = useMemo(() => {
+    let dateChars = 0;
     let amountChars = 0;
     let balanceChars = 0;
     for (const e of filteredEntries) {
+      if (e.date !== "") {
+        const dateText = formatShortDate(
+          e.date,
+          settings.shortDateFormat,
+          lang,
+        );
+        if (dateText.length > dateChars) dateChars = dateText.length;
+      }
       const fullAmount = withCurrency(
         formatNumber(Math.abs(e.amount), accountSettings, {
           alwaysTwoFractionDigits: true,
@@ -285,13 +294,21 @@ export function HistoryModal({
       }
     }
     return {
+      dateChars: Math.max(dateChars, 4),
       amountChars: Math.max(amountChars, 4),
       balanceChars: Math.max(balanceChars, 4),
     };
-  }, [filteredEntries, accountSettings]);
+  }, [filteredEntries, accountSettings, settings.shortDateFormat, lang]);
 
+  // Mobile grid template — one track per rendered column. The date
+  // track is pinned to `Nch + padding` rather than `auto` because each
+  // `<tr>` is its own grid in mobile mode (the tbody is `display:block`),
+  // so an `auto` date track sizes independently per row: a shorter date
+  // ("1 Apr" vs "14 Apr") yields a narrower cell and shifts the
+  // description out of alignment between rows, and the header's icon-only
+  // date cell is narrowest of all. Mirrors `BudgetViewerModal`.
   const mobileGridTemplate = useMemo(() => {
-    const tracks: string[] = ["auto"];
+    const tracks: string[] = [`calc(${colWidths.dateChars} * 1ch + 1rem)`];
     tracks.push("minmax(0, 1fr)");
     tracks.push(`minmax(56px, calc(${colWidths.amountChars} * 1ch + 1rem))`);
     if (hasAnyBalance) {
