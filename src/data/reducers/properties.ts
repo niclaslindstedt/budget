@@ -1,8 +1,44 @@
 import { mergeImportedPoints } from "../import/value-import";
+import { PRESET_TYPE_MORTGAGE_ID } from "../presets/types";
 import { newId } from "../sheet";
 import { applyPatch } from "./patch";
 import type { Action } from "../reducer";
 import type { Mortgage, Property, UserData } from "../types";
+
+// Stamp the Mortgage type and the property's lender onto the bank entries
+// backing the freshly-added payments — the same per-entry write the
+// per-entry edit modal does, folded into the import so it shares the
+// payments' undo entry. Entries the scan saw but that have since vanished
+// (account deleted, statement re-cut) are skipped; buckets with no ref keep
+// their array reference. `companyId` undefined (the property has no lender)
+// stamps only the type.
+function stampMortgageEntries(
+  history: UserData["history"],
+  refs: readonly { accountId: string; entryId: string }[],
+  companyId: string | undefined,
+): UserData["history"] {
+  const byAccount = new Map<string, Set<string>>();
+  for (const ref of refs) {
+    let ids = byAccount.get(ref.accountId);
+    if (ids === undefined) {
+      ids = new Set();
+      byAccount.set(ref.accountId, ids);
+    }
+    ids.add(ref.entryId);
+  }
+  const next = { ...history };
+  for (const [accountId, ids] of byAccount) {
+    const entries = next[accountId];
+    if (entries === undefined) continue;
+    next[accountId] = entries.map((entry) => {
+      if (!ids.has(entry.id)) return entry;
+      const patched = { ...entry, userTypeId: PRESET_TYPE_MORTGAGE_ID };
+      if (companyId !== undefined) patched.userCompanyId = companyId;
+      return patched;
+    });
+  }
+  return next;
+}
 
 // Rewrite one property by id, leaving the rest of the array untouched.
 function updatePropertyById(
@@ -141,7 +177,8 @@ export function reduceProperties(
     const byMortgage = action.paymentsByMortgageId;
     const hasAny = Object.values(byMortgage).some((list) => list.length > 0);
     if (!hasAny) return state;
-    return updatePropertyById(state, action.propertyId, (p) => ({
+    const property = state.properties.find((p) => p.id === action.propertyId);
+    const next = updatePropertyById(state, action.propertyId, (p) => ({
       ...p,
       mortgages: p.mortgages.map((m) => {
         const added = byMortgage[m.id];
@@ -149,6 +186,12 @@ export function reduceProperties(
         return { ...m, payments: [...m.payments, ...added] };
       }),
     }));
+    const refs = action.entryRefs;
+    if (refs === undefined || refs.length === 0) return next;
+    return {
+      ...next,
+      history: stampMortgageEntries(next.history, refs, property?.companyId),
+    };
   }
   if (action.type === "updateMortgagePayment") {
     return updatePropertyById(state, action.propertyId, (p) =>

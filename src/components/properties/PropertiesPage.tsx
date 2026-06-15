@@ -508,11 +508,13 @@ export function PropertiesPage({
   function handleAddPayments(
     propertyId: string,
     paymentsByMortgageId: Record<string, MortgagePayment[]>,
+    entryRefs: { accountId: string; entryId: string }[],
   ) {
     dispatch({
       type: "addMortgagePaymentsForProperty",
       propertyId,
       paymentsByMortgageId,
+      ...(entryRefs.length > 0 && { entryRefs }),
     });
   }
 

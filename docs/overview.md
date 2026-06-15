@@ -1343,7 +1343,15 @@ the ± band (a `Slider`, default ±10 % `DEFAULT_MORTGAGE_TOLERANCE`, up to
 ±200 % for a rate that swung hard, `monthsWithinBand`) is split across the
 mortgages by their amortisation +
 dated interest and recorded via `addMortgagePaymentsForProperty`,
-deduping months already added via the `sourceHistoryId` set.
+deduping months already added via the `sourceHistoryId` set. The action
+also carries `entryRefs` — the source bank entries behind the accepted
+payments — and the properties reducer stamps each with
+`userTypeId: preset-type-mortgage` and the property's lender
+(`Property.companyId`) as `userCompanyId`, folded into the same undo entry
+so the metadata reverts with the payments; a property with no lender stamps
+only the type. This write-back carries the finder's own type / company
+anchors forward onto every charge it accepts, so the budget view and search
+see the mortgage metadata without any per-entry tagging by hand.
 
 ### Property repair
 
