@@ -1,4 +1,10 @@
-import type { AccountBudget, MatchRule, Row } from "../../types";
+import type {
+  AccountBudget,
+  CellValue,
+  Column,
+  MatchRule,
+  Row,
+} from "../../types";
 import type { EditPatch } from "../../action-payloads";
 import { findColumnByType } from "../../sheet";
 import { findMatchingRuleForCandidate, mergeTagIds } from "../../match-rules";
@@ -69,6 +75,30 @@ export function setRowType<R extends Row>(row: R, typeId: string): R {
 export function clearRowType<R extends Row>(row: R): R {
   delete row.typeId;
   delete row.typeIdLocked;
+  return row;
+}
+
+// Apply a single column's value to a (fresh) row draft exactly as a
+// live inline edit does: the `type` column is virtual — it has no
+// `cells` slot and routes into `row.typeId` via setRowType /
+// clearRowType — while every other column lands in `row.cells`. This is
+// the one place that knows where a column's value belongs; both the
+// `updateCell` reducer and the series-propagation sweep go through it,
+// so a propagated edit can never write to a different place than the
+// edit that triggered it. Mutates and returns the draft.
+export function writeColumnValue<R extends Row>(
+  row: R,
+  columns: readonly Column[],
+  columnId: string,
+  value: CellValue,
+): R {
+  const column = columns.find((c) => c.id === columnId);
+  if (column?.type === "type") {
+    if (typeof value === "string" && value !== "")
+      return setRowType(row, value);
+    return clearRowType(row);
+  }
+  row.cells = { ...row.cells, [columnId]: value };
   return row;
 }
 

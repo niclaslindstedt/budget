@@ -11,6 +11,7 @@ import type {
   AccountBudget,
   CellValue,
   Column,
+  ColumnType,
   Company,
   EntryType,
   HistoryEntry,
@@ -526,25 +527,35 @@ export function mintBudgetRow(
   return row;
 }
 
-// Set `cellColumnId` to `value` on the anchor and every later sibling in
-// the same series, optionally clamped by `untilIso`. Returns `rows`
-// unchanged when the anchor is not part of a series.
-export function propagateCellInSeries<R extends Row>(
+// Column types whose inline edit on a recurring row offers to fan the
+// change out to the rest of the series (via the ApplySeriesDialog).
+// `date` / `completed` are inherently per-occurrence and `balance` is
+// computed, so they never propagate. Company is propagatable too but
+// has no column — it rides its own path (see `field: "company"` on the
+// `propagateCellToFuture` action). Keeping this list in one place means
+// the staging gate can't drift from what the reducer knows how to
+// propagate.
+export const SERIES_PROPAGATABLE_COLUMN_TYPES: ReadonlySet<ColumnType> =
+  new Set(["description", "amount", "type"]);
+
+// Apply `apply` to the anchor and every later sibling in the same
+// series, optionally clamped by `untilIso`, leaving every other row
+// untouched. The single "which rows does a series edit reach" primitive
+// — the per-field write (a cell, `typeId`, `companyId`, …) lives in the
+// caller so this stays agnostic of what is being propagated. Returns
+// `rows` unchanged when the anchor is not part of a series or the sweep
+// is empty.
+export function mapSeriesFrom<R extends Row>(
   rows: R[],
   anchor: R,
   dateColumnId: string,
-  cellColumnId: string,
-  value: CellValue,
   untilIso: string | null,
+  apply: (row: R) => R,
 ): R[] {
   if (!anchor.seriesId) return rows;
   const targetIds = new Set(
     rowsInSeriesFrom(rows, anchor, dateColumnId, untilIso).map((r) => r.id),
   );
   if (targetIds.size === 0) return rows;
-  return rows.map((r) =>
-    targetIds.has(r.id)
-      ? { ...r, cells: { ...r.cells, [cellColumnId]: value } }
-      : r,
-  );
+  return rows.map((r) => (targetIds.has(r.id) ? apply(r) : r));
 }

@@ -221,6 +221,7 @@ export function BudgetModalHost(props: Props) {
         columnId: pendingSeriesEdit.columnId,
         value: pendingSeriesEdit.value,
         untilIso,
+        field: pendingSeriesEdit.field,
       });
       setPendingSeriesEdit(null);
     },

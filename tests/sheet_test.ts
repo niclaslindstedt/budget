@@ -5,8 +5,8 @@ import {
   defaultCompletedForDate,
   isRowHalfDone,
   isRowSavable,
+  mapSeriesFrom,
   mintBudgetRow,
-  propagateCellInSeries,
   rowsInSeriesFrom,
   sortRowsByDate,
   userDataHasHalfDoneRows,
@@ -601,7 +601,7 @@ describe("rowsInSeriesFrom", () => {
   });
 });
 
-describe("propagateCellInSeries", () => {
+describe("mapSeriesFrom", () => {
   const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
   const dateCol = findColumnByType(sheet.columns, "date")!;
   const amountCol = findColumnByType(sheet.columns, "amount")!;
@@ -625,16 +625,14 @@ describe("propagateCellInSeries", () => {
     s("f", "2026-03-20", 5),
   ];
 
-  it("updates the anchor and every later sibling in the same series", () => {
+  const bump = (r: Row): Row => ({
+    ...r,
+    cells: { ...r.cells, [amountCol.id]: 9 },
+  });
+
+  it("applies to the anchor and every later sibling in the same series", () => {
     const anchor = rows.find((r) => r.id === "b")!;
-    const result = propagateCellInSeries(
-      rows,
-      anchor,
-      dateCol.id,
-      amountCol.id,
-      9,
-      null,
-    );
+    const result = mapSeriesFrom(rows, anchor, dateCol.id, null, bump);
     expect(result.find((r) => r.id === "a")!.cells[amountCol.id]).toBe(1);
     expect(result.find((r) => r.id === "b")!.cells[amountCol.id]).toBe(9);
     expect(result.find((r) => r.id === "c")!.cells[amountCol.id]).toBe(9);
@@ -645,14 +643,7 @@ describe("propagateCellInSeries", () => {
 
   it("respects the inclusive untilIso bound", () => {
     const anchor = rows.find((r) => r.id === "b")!;
-    const result = propagateCellInSeries(
-      rows,
-      anchor,
-      dateCol.id,
-      amountCol.id,
-      9,
-      "2026-03-31",
-    );
+    const result = mapSeriesFrom(rows, anchor, dateCol.id, "2026-03-31", bump);
     expect(result.find((r) => r.id === "b")!.cells[amountCol.id]).toBe(9);
     expect(result.find((r) => r.id === "c")!.cells[amountCol.id]).toBe(9);
     expect(result.find((r) => r.id === "d")!.cells[amountCol.id]).toBe(1);
@@ -660,14 +651,7 @@ describe("propagateCellInSeries", () => {
 
   it("returns rows untouched when anchor isn't part of a series", () => {
     const anchor = rows.find((r) => r.id === "f")!;
-    const result = propagateCellInSeries(
-      rows,
-      anchor,
-      dateCol.id,
-      amountCol.id,
-      9,
-      null,
-    );
+    const result = mapSeriesFrom(rows, anchor, dateCol.id, null, bump);
     expect(result).toBe(rows);
   });
 });
