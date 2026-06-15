@@ -83,6 +83,12 @@ export type PendingSeriesEdit = {
   anchorDate: string;
   lastSeriesDate: string | null;
   value: CellValue;
+  // When set, the propagation targets a row-level field rather than a
+  // cell column. `"company"` propagates the inline company assignment
+  // (set from the description popover, which has no dedicated column);
+  // `columnId` is unused in that mode. Absent ⇒ a plain cell edit
+  // (description / amount), propagated via `columnId`.
+  field?: "company";
 };
 
 // Reconciliation modal state, populated after the user picks a bank

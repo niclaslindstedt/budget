@@ -548,3 +548,31 @@ export function propagateCellInSeries<R extends Row>(
       : r,
   );
 }
+
+// Set the row-level `companyId` to `companyId` on the anchor and every
+// later sibling in the same series, optionally clamped by `untilIso`.
+// `null` clears the field (drops it) so the resolver falls back to its
+// hint chain. Mirrors `propagateCellInSeries` but targets the row field
+// the description popover's inline CompanyPicker writes — there is no
+// dedicated company column to sweep. Returns `rows` unchanged when the
+// anchor is not part of a series.
+export function propagateCompanyInSeries<R extends Row>(
+  rows: R[],
+  anchor: R,
+  dateColumnId: string,
+  companyId: string | null,
+  untilIso: string | null,
+): R[] {
+  if (!anchor.seriesId) return rows;
+  const targetIds = new Set(
+    rowsInSeriesFrom(rows, anchor, dateColumnId, untilIso).map((r) => r.id),
+  );
+  if (targetIds.size === 0) return rows;
+  return rows.map((r) => {
+    if (!targetIds.has(r.id)) return r;
+    const next = { ...r };
+    if (companyId === null) delete next.companyId;
+    else next.companyId = companyId;
+    return next;
+  });
+}

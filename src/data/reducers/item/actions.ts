@@ -65,6 +65,10 @@ export type ItemAction =
       columnId: string;
       value: CellValue;
       untilIso: string | null;
+      // When `"company"`, propagate the row-level company assignment to
+      // every following occurrence instead of a cell value; `columnId`
+      // is ignored and `value` carries the companyId (`string | null`).
+      field?: "company";
     }
   | {
       type: "deleteRows";

@@ -7,6 +7,7 @@ import {
   isRowSavable,
   mintBudgetRow,
   propagateCellInSeries,
+  propagateCompanyInSeries,
   rowsInSeriesFrom,
   sortRowsByDate,
   userDataHasHalfDoneRows,
@@ -666,6 +667,98 @@ describe("propagateCellInSeries", () => {
       dateCol.id,
       amountCol.id,
       9,
+      null,
+    );
+    expect(result).toBe(rows);
+  });
+});
+
+describe("propagateCompanyInSeries", () => {
+  const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+  const dateCol = findColumnByType(sheet.columns, "date")!;
+  const amountCol = findColumnByType(sheet.columns, "amount")!;
+
+  function s(
+    id: string,
+    date: string,
+    seriesId?: string,
+    companyId?: string,
+  ): Row {
+    const row: Row = {
+      kind: "user",
+      id,
+      cells: { [dateCol.id]: date, [amountCol.id]: 1 },
+    };
+    if (seriesId) row.seriesId = seriesId;
+    if (companyId) row.companyId = companyId;
+    return row;
+  }
+
+  const rows: Row[] = [
+    s("a", "2026-01-15", "rent"),
+    s("b", "2026-02-15", "rent"),
+    s("c", "2026-03-15", "rent"),
+    s("d", "2026-04-15", "rent"),
+    s("e", "2026-02-20", "spotify"),
+    s("f", "2026-03-20"),
+  ];
+
+  it("sets companyId on the anchor and every later sibling in the series", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = propagateCompanyInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      "landlord",
+      null,
+    );
+    expect(result.find((r) => r.id === "a")!.companyId).toBeUndefined();
+    expect(result.find((r) => r.id === "b")!.companyId).toBe("landlord");
+    expect(result.find((r) => r.id === "c")!.companyId).toBe("landlord");
+    expect(result.find((r) => r.id === "d")!.companyId).toBe("landlord");
+    expect(result.find((r) => r.id === "e")!.companyId).toBeUndefined();
+  });
+
+  it("respects the inclusive untilIso bound", () => {
+    const anchor = rows.find((r) => r.id === "b")!;
+    const result = propagateCompanyInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      "landlord",
+      "2026-03-31",
+    );
+    expect(result.find((r) => r.id === "b")!.companyId).toBe("landlord");
+    expect(result.find((r) => r.id === "c")!.companyId).toBe("landlord");
+    expect(result.find((r) => r.id === "d")!.companyId).toBeUndefined();
+  });
+
+  it("clears companyId across the series when passed null", () => {
+    const tagged: Row[] = [
+      s("a", "2026-01-15", "rent", "landlord"),
+      s("b", "2026-02-15", "rent", "landlord"),
+      s("c", "2026-03-15", "rent", "landlord"),
+    ];
+    const anchor = tagged.find((r) => r.id === "a")!;
+    const result = propagateCompanyInSeries(
+      tagged,
+      anchor,
+      dateCol.id,
+      null,
+      null,
+    );
+    expect(result.find((r) => r.id === "a")!.companyId).toBeUndefined();
+    expect(result.find((r) => r.id === "b")!.companyId).toBeUndefined();
+    expect(result.find((r) => r.id === "c")!.companyId).toBeUndefined();
+  });
+
+  it("returns rows untouched when anchor isn't part of a series", () => {
+    const anchor = rows.find((r) => r.id === "f")!;
+    const result = propagateCompanyInSeries(
+      rows,
+      anchor,
+      dateCol.id,
+      "landlord",
       null,
     );
     expect(result).toBe(rows);

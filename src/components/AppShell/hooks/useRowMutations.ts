@@ -11,8 +11,35 @@ import type {
   Row,
   Settings,
 } from "../../../data/types";
+import { useT } from "../../../i18n";
 import { formatNumber, withCurrency } from "../../../utils/format";
 import type { CorrectionDeletePrompt, PendingSeriesEdit } from "../types";
+
+// Snapshot the anchor's own date and the latest date across its series,
+// used to seed the ApplySeriesDialog's "from … " copy and "stop after"
+// bound. Shared by the cell-commit and inline-company propagation paths.
+function seriesAnchorDates(
+  row: Row,
+  activeRows: readonly Row[],
+  activeColumns: readonly Column[],
+): { anchorDate: string; lastSeriesDate: string | null } {
+  const dateCol = findColumnByType(activeColumns, "date");
+  const anchorDate =
+    dateCol && typeof row.cells[dateCol.id] === "string"
+      ? (row.cells[dateCol.id] as string)
+      : "";
+  let lastSeriesDate: string | null = null;
+  if (dateCol) {
+    const seriesDates = activeRows
+      .filter((r) => r.seriesId === row.seriesId)
+      .map((r) => r.cells[dateCol.id])
+      .filter((d): d is string => typeof d === "string");
+    if (seriesDates.length > 0) {
+      lastSeriesDate = seriesDates.sort().at(-1) ?? null;
+    }
+  }
+  return { anchorDate, lastSeriesDate };
+}
 
 type Params = {
   // Which sheet + item the dispatched mutations target. Every callback
@@ -144,6 +171,7 @@ export function useRowMutations({
   setCorrectionDeletePrompt,
   dispatch,
 }: Params): Result {
+  const t = useT();
   const onUpdateCell = useCallback(
     (rowId: string, columnId: string, value: CellValue) =>
       dispatch({
@@ -168,21 +196,11 @@ export function useRowMutations({
       if (!col || (col.type !== "description" && col.type !== "amount")) {
         return;
       }
-      const dateCol = findColumnByType(activeColumns, "date");
-      const anchorDate =
-        dateCol && typeof row.cells[dateCol.id] === "string"
-          ? (row.cells[dateCol.id] as string)
-          : "";
-      let lastSeriesDate: string | null = null;
-      if (dateCol) {
-        const seriesDates = activeRows
-          .filter((r) => r.seriesId === row.seriesId)
-          .map((r) => r.cells[dateCol.id])
-          .filter((d): d is string => typeof d === "string");
-        if (seriesDates.length > 0) {
-          lastSeriesDate = seriesDates.sort().at(-1) ?? null;
-        }
-      }
+      const { anchorDate, lastSeriesDate } = seriesAnchorDates(
+        row,
+        activeRows,
+        activeColumns,
+      );
       setPendingSeriesEdit({
         rowId,
         columnId,
@@ -382,14 +400,39 @@ export function useRowMutations({
         rowIds: [row.id],
         patch,
       });
+      // Mirror the cell-commit flow: a company change on a recurring row
+      // is written to the anchor above, then staged so the
+      // ApplySeriesDialog can offer to fan it out to every following
+      // occurrence — the same prompt the user gets after editing the
+      // description of a recurring entry.
+      if (row.seriesId) {
+        const { anchorDate, lastSeriesDate } = seriesAnchorDates(
+          row,
+          activeRows,
+          activeColumns,
+        );
+        setPendingSeriesEdit({
+          rowId: row.id,
+          columnId: "",
+          fieldLabel: t("editEntry.company"),
+          anchorDate,
+          lastSeriesDate,
+          value: companyId,
+          field: "company",
+        });
+      }
     },
     [
       dispatch,
       sheetId,
       itemId,
       activeAccountId,
+      activeRows,
+      activeColumns,
       history,
       companyTypeSuggestions,
+      setPendingSeriesEdit,
+      t,
     ],
   );
 

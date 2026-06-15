@@ -1,6 +1,7 @@
 import {
   defaultCompletedForDate,
   propagateCellInSeries,
+  propagateCompanyInSeries,
   rowsInSeriesFrom,
 } from "../../budget/rows";
 import { shiftIsoToMonth } from "../../fiscal-month";
@@ -288,6 +289,18 @@ export function reduceAccountBudget(
       if (!anchor) return item;
       const dateCol = findColumnByType(item.columns, "date");
       if (!dateCol) return item;
+      if (action.field === "company") {
+        return {
+          ...item,
+          rows: propagateCompanyInSeries(
+            item.rows,
+            anchor,
+            dateCol.id,
+            typeof action.value === "string" ? action.value : null,
+            action.untilIso,
+          ),
+        };
+      }
       return {
         ...item,
         rows: propagateCellInSeries(
