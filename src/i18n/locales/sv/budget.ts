@@ -92,7 +92,6 @@ const budget: BudgetCatalog = {
   entryInfoDescription: "Beskrivning",
   entryInfoBankDescription: "Bankbeskrivning",
   entryInfoAmount: "Belopp",
-  entryInfoBalance: "Saldo",
   entryInfoType: "Typ",
   entryInfoCategory: "Kategori",
   entryInfoCompany: "Företag",

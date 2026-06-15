@@ -234,22 +234,23 @@ function BudgetRowImpl({
   const rowDateColor =
     rowDateMonthNum !== null ? monthColorVar(rowDateMonthNum) : undefined;
 
-  // Long-press / right-click → open the generic edit-row modal. Same
+  // Long-press / right-click → open the read-only entry-info modal. Same
   // coordinator pattern as `BudgetAddEntryButton` / `BottomBar`'s sheet
   // tabs: `consumeTriggered` guards the trailing click so the tap that
   // produced the long-press doesn't also fire a cell editor underneath
   // the modal.
   //
-  // Synthesized rows have their own edit affordances (AccountTransferModal
-  // for transfers, the promote flow for history) and balance-correction
-  // rows are display-only — long-press is a no-op on all of them. The
-  // select-mode tap toggles selection so we leave it alone there too.
+  // Enabled for user-authored and synthesized history rows — both have an
+  // info view. Transfers (their own edit / cover-info modals), attributed
+  // cover itemizations (read-only, no swipe), and balance-correction rows
+  // (display-only dividers) stay a no-op. The select-mode tap toggles
+  // selection so we leave it alone there too.
   const longPress = useLongPress({
     enabled:
-      !selectMode && !isTransfer && !isHistory && row.kind !== "correction",
+      !selectMode && !isTransfer && !isCoverItem && row.kind !== "correction",
     onLongPress: () => {
       setSwiped(false);
-      dispatchModal({ kind: "open-edit-row", row });
+      dispatchModal({ kind: "open-entry-info", row });
     },
     // Action-cell taps and select-cell taps drive their own handlers —
     // starting a long-press there would race with the button click and

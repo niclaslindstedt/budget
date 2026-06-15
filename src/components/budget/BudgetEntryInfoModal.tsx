@@ -174,16 +174,11 @@ export function BudgetEntryInfoModal({
   const pushLine = (label: string, value: string) =>
     copyAllLines.push(`${label}: ${value}`);
   if (view.dateIso) pushLine(t("budget.entryInfoDate"), dateText);
-  if (view.description)
-    pushLine(t("budget.entryInfoDescription"), view.description);
   if (view.bankDescription)
     pushLine(t("budget.entryInfoBankDescription"), view.bankDescription);
+  if (view.description)
+    pushLine(t("budget.entryInfoDescription"), view.description);
   if (view.amount !== null) pushLine(t("budget.entryInfoAmount"), amountText);
-  if (entry?.balance !== undefined)
-    pushLine(
-      t("budget.entryInfoBalance"),
-      formatAmount(entry.balance, settings),
-    );
   if (view.type) {
     const cat = view.category ? ` (${view.category.name})` : "";
     pushLine(t("budget.entryInfoType"), `${view.type.name}${cat}`);
@@ -215,11 +210,6 @@ export function BudgetEntryInfoModal({
               display={dateText}
               copyValue={view.dateIso ? dateText : null}
             />
-            <InfoField
-              label={t("budget.entryInfoDescription")}
-              display={view.description || none}
-              copyValue={view.description || null}
-            />
             {view.bankDescription && (
               <InfoField
                 label={t("budget.entryInfoBankDescription")}
@@ -228,19 +218,16 @@ export function BudgetEntryInfoModal({
               />
             )}
             <InfoField
+              label={t("budget.entryInfoDescription")}
+              display={view.description || none}
+              copyValue={view.description || null}
+            />
+            <InfoField
               label={t("budget.entryInfoAmount")}
               display={amountText}
               copyValue={view.amount !== null ? amountText : null}
               numeric
             />
-            {entry?.balance !== undefined && (
-              <InfoField
-                label={t("budget.entryInfoBalance")}
-                display={formatAmount(entry.balance, settings)}
-                copyValue={formatAmount(entry.balance, settings)}
-                numeric
-              />
-            )}
             <InfoField
               label={t("budget.entryInfoType")}
               display={
