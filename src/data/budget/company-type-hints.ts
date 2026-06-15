@@ -96,6 +96,65 @@ export function computeCompanyTypeHints(
   return out;
 }
 
+export const MAX_TYPE_COMPANY_HINTS = 5;
+
+// The inverse of `computeCompanyTypeHints`: for every entry type, the
+// companies most often paired with it, ranked by descending usage count
+// (ties broken by companyId for determinism), capped at `max`. Picking a
+// type first surfaces these as a "Suggested" band atop the description
+// popover's CompanyPicker, so the user skips scrolling the full
+// alphabetic list to reach the merchant they almost always use for that
+// type. Unlike the company → type direction there is no manual-pin
+// source (no inverse of `Company.typeIds`), so this is purely
+// usage-derived. Types with no learned pairing are omitted.
+export function computeTypeCompanyHints(
+  data: UserData,
+  max: number = MAX_TYPE_COMPANY_HINTS,
+): ReadonlyMap<string, readonly string[]> {
+  // typeId → (companyId → count). Built from the same explicit
+  // `(companyId, typeId)` pairings the company → type tally walks, keyed
+  // the other way round.
+  const tallies = new Map<string, Map<string, number>>();
+  const bump = (companyId: string | undefined, typeId: string | undefined) => {
+    if (!companyId || !typeId) return;
+    let inner = tallies.get(typeId);
+    if (!inner) {
+      inner = new Map();
+      tallies.set(typeId, inner);
+    }
+    inner.set(companyId, (inner.get(companyId) ?? 0) + 1);
+  };
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      for (const row of item.rows) {
+        bump(row.companyId, row.typeId);
+      }
+    }
+  }
+  for (const list of Object.values(data.history)) {
+    for (const entry of list) {
+      if (entry.splits && entry.splits.length > 0) {
+        for (const split of entry.splits) {
+          bump(split.companyId ?? undefined, split.typeId ?? undefined);
+        }
+        continue;
+      }
+      bump(entry.userCompanyId, entry.userTypeId);
+    }
+  }
+
+  const out = new Map<string, readonly string[]>();
+  for (const [typeId, inner] of tallies) {
+    const ranked = [...inner.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, max)
+      .map(([companyId]) => companyId);
+    if (ranked.length > 0) out.set(typeId, ranked);
+  }
+  return out;
+}
+
 // Derive the single-type instant-fill map from the ranked hints: a
 // company whose ranked list resolves to exactly one type is confident
 // enough to auto-fill it. The shape (companyId → typeId) is what the

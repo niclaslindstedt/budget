@@ -310,7 +310,7 @@ src/
 │   │   ├── pattern-derive.ts   # glob-pattern seed from a row description
 │   │   ├── recurring-detection.ts  # "looks recurring" candidate detector
 │   │   ├── payday.ts           # salary detection over budget rows
-│   │   ├── company-type-hints.ts  # company→type hints (manual + learned)
+│   │   ├── company-type-hints.ts  # company→type + type→company hints (manual + learned)
 │   │   └── formula*.ts         # tokenizer / parser / ast / evaluator / resolve
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/

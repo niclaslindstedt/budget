@@ -38,6 +38,11 @@ export type BudgetContextValue = {
   // Consumed by the row's inline type cell to render its "Suggested"
   // band for the row's company.
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  // typeId → ranked hint companyIds (see `computeTypeCompanyHints`).
+  // The inverse direction: consumed by the row's description popover so
+  // picking a type first surfaces that type's most-used companies atop
+  // the inline CompanyPicker.
+  typeCompanyHints: ReadonlyMap<string, readonly string[]>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;

@@ -97,6 +97,7 @@ function BudgetRowImpl({
     companiesById,
     itemsById,
     companyTypeHints,
+    typeCompanyHints,
     settings,
     coverTransferIds,
   } = useBudgetContext();
@@ -109,6 +110,13 @@ function BudgetRowImpl({
   const typeHintIds = useMemo(
     () => (row.companyId ? (companyTypeHints.get(row.companyId) ?? []) : []),
     [companyTypeHints, row.companyId],
+  );
+  // The row's type → company hint ids, surfaced as the "Suggested" band
+  // in the description popover's inline company picker. Empty when the
+  // row has no type set yet.
+  const companyHintIds = useMemo(
+    () => (row.typeId ? (typeCompanyHints.get(row.typeId) ?? []) : []),
+    [typeCompanyHints, row.typeId],
   );
   const handleSetCompany = useCallback(
     (companyId: string | null) => onSetRowCompany(row, companyId),
@@ -391,6 +399,9 @@ function BudgetRowImpl({
               : undefined
           }
           lineItems={col.type === "description" ? lineItems : undefined}
+          companyHintIds={
+            col.type === "description" ? companyHintIds : undefined
+          }
           coveredTransferId={
             col.type === "description" ? coveredTransferId : null
           }

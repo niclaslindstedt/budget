@@ -96,6 +96,11 @@ type Props = {
   // description popover. Undefined on every non-description column and
   // on rows with no line items.
   lineItems?: readonly CellLineItem[];
+  // The row's type → company hint ids (see `computeTypeCompanyHints`),
+  // rendered as the "Suggested" band atop the description popover's
+  // inline CompanyPicker. Only the `description` column receives them;
+  // other columns get undefined and pass shallow-compare cleanly.
+  companyHintIds?: readonly string[];
   // When set (description column on a covered imported row), the id of the
   // cover transfer that accounts for this transaction. The description cell
   // appends a check glyph that opens that transfer's info modal.
@@ -180,6 +185,7 @@ function CellImpl({
   descriptionPlaceholder,
   bankDescription,
   lineItems,
+  companyHintIds,
   coveredTransferId,
   onUpdateCell,
   onCommitCell,
@@ -271,6 +277,7 @@ function CellImpl({
               placeholder={descriptionPlaceholder}
               bankDescription={bankDescription}
               lineItems={lineItems}
+              companyHintIds={companyHintIds}
               coveredTransferId={coveredTransferId}
               onChange={onChange}
               onCommit={onCommit}
@@ -323,6 +330,7 @@ function CellImpl({
           company={company ?? null}
           companies={companies}
           lineItems={lineItems}
+          companyHintIds={companyHintIds}
           onChange={onChange}
           onCommit={onCommit}
           onSetCompany={onSetCompany}

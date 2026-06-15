@@ -106,6 +106,7 @@ export function DescriptionCell({
   placeholder,
   bankDescription,
   lineItems,
+  companyHintIds,
   coveredTransferId,
   onChange,
   onCommit,
@@ -150,6 +151,11 @@ export function DescriptionCell({
   // glyph keyed by the count and the popover lists every line at the
   // bottom. Undefined / empty on rows with no line items.
   lineItems?: readonly CellLineItem[];
+  // Type → company hint ids for the row's currently-picked type (see
+  // `computeTypeCompanyHints`). Forwarded to the popover's inline
+  // CompanyPicker so picking a type first surfaces that type's most-used
+  // companies as a "Suggested" band. Empty / undefined ⇒ no band.
+  companyHintIds?: readonly string[];
   // When set, this imported transaction is accounted for by a cover
   // transfer (its id). The cell renders a trailing check glyph that opens
   // that transfer's info modal. Undefined on every non-covered row.
@@ -231,6 +237,7 @@ export function DescriptionCell({
         lineItems={lineItems}
         company={company}
         companies={pickerEnabled ? companies : undefined}
+        companyHintIds={companyHintIds}
         onChange={onChange}
         onCommit={onCommit}
         onSetCompany={pickerEnabled ? onSetCompany : undefined}
@@ -379,6 +386,7 @@ function DescriptionPopover({
   lineItems,
   company,
   companies,
+  companyHintIds,
   onChange,
   onCommit,
   onSetCompany,
@@ -418,6 +426,9 @@ function DescriptionPopover({
   // textarea (matches the pre-picker behaviour).
   company: Company | null;
   companies?: readonly Company[];
+  // Type → company hint ids for the inline CompanyPicker's "Suggested"
+  // band (see `computeTypeCompanyHints`). Empty / undefined ⇒ no band.
+  companyHintIds?: readonly string[];
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   onSetCompany?: (companyId: string | null) => void;
@@ -522,6 +533,7 @@ function DescriptionPopover({
               onSelect={onSetCompany}
               onOmitChange={onSetNoCompany}
               onCreate={onCreateCompany}
+              hintCompanyIds={companyHintIds}
               variant="field"
             />
           </div>

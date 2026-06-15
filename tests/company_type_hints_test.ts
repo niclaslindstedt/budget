@@ -4,6 +4,7 @@ import {
   autoTypeForCompany,
   companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
+  computeTypeCompanyHints,
 } from "../src/data/budget/company-type-hints";
 import { freshUserData } from "../src/storage/local";
 import type {
@@ -142,6 +143,76 @@ describe("computeCompanyTypeHints", () => {
       row({ id: "r1", typeId: "t_clothes" }),
     ];
     expect(computeCompanyTypeHints(makeData({ rows })).size).toBe(0);
+  });
+});
+
+describe("computeTypeCompanyHints", () => {
+  it("returns nothing when no type is paired with a company", () => {
+    expect(computeTypeCompanyHints(makeData({})).size).toBe(0);
+  });
+
+  it("surfaces a single learned company regardless of count", () => {
+    const rows = [row({ companyId: "co_hm", typeId: "t_clothes" })];
+    const hints = computeTypeCompanyHints(makeData({ rows }));
+    expect(hints.get("t_clothes")).toEqual(["co_hm"]);
+  });
+
+  it("ranks multiple learned companies by descending usage count", () => {
+    const rows = [
+      ...Array.from({ length: 3 }, (_, i) =>
+        row({ id: `a${i}`, companyId: "co_a", typeId: "t" }),
+      ),
+      ...Array.from({ length: 5 }, (_, i) =>
+        row({ id: `b${i}`, companyId: "co_b", typeId: "t" }),
+      ),
+      row({ id: "c0", companyId: "co_c", typeId: "t" }),
+    ];
+    expect(computeTypeCompanyHints(makeData({ rows })).get("t")).toEqual([
+      "co_b",
+      "co_a",
+      "co_c",
+    ]);
+  });
+
+  it("caps the ranked list at the maximum", () => {
+    const rows = ["c_a", "c_b", "c_c", "c_d", "c_e", "c_f", "c_g"].map(
+      (companyId, i) => row({ id: `r${i}`, companyId, typeId: "t" }),
+    );
+    expect(
+      computeTypeCompanyHints(makeData({ rows }), 5).get("t"),
+    ).toHaveLength(5);
+  });
+
+  it("counts history-entry overrides and splits", () => {
+    const history = [
+      entry({ id: "e0", userCompanyId: "co_ica", userTypeId: "t_food" }),
+      entry({
+        id: "e1",
+        userCompanyId: "co_outer",
+        userTypeId: "t_outer",
+        splits: [
+          {
+            description: "",
+            amount: -10,
+            companyId: "co_split",
+            typeId: "t_s",
+          },
+        ],
+      }),
+    ];
+    const hints = computeTypeCompanyHints(makeData({ history }));
+    expect(hints.get("t_food")).toEqual(["co_ica"]);
+    expect(hints.get("t_s")).toEqual(["co_split"]);
+    // The parent's override is skipped when splits drive presentation.
+    expect(hints.has("t_outer")).toBe(false);
+  });
+
+  it("ignores a pairing that is missing either side", () => {
+    const rows = [
+      row({ id: "r0", companyId: "co_hm" }),
+      row({ id: "r1", typeId: "t_clothes" }),
+    ];
+    expect(computeTypeCompanyHints(makeData({ rows })).size).toBe(0);
   });
 });
 
