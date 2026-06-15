@@ -274,10 +274,12 @@ creator. Supports `amountFormula`.
 ### Amount span
 
 `BudgetAmountSpanFields.tsx` — the exact-vs-estimate amount control
-shared by the add / edit modals ("estimate range" / "min/estimate/max").
-Estimate mode stores a signed `amountMin` / `amountMax` band on the
-`Row` (sign math in `budget-amount-span.ts`; reconciliation tolerance
-via `amountWithinSpan` in `src/data/reconciliation.ts`).
+shared by the add / edit modals ("estimate range" / "min/estimate/max"),
+including the promote-history-to-recurring form (`BudgetPromoteHistoryForm`)
+so a varying bill can be promoted with a band. Estimate mode stores a
+signed `amountMin` / `amountMax` band on the `Row` (sign math in
+`budget-amount-span.ts`; reconciliation tolerance via `amountWithinSpan`
+in `src/data/reconciliation.ts`).
 
 ### Amount calculator
 

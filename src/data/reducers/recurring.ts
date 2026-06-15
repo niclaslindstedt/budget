@@ -23,6 +23,8 @@ function appendSeriesRowsToBudget(
     amount: number;
     typeId: string | null;
     companyId?: string | null;
+    amountMin?: number;
+    amountMax?: number;
   },
 ): Sheet[] {
   const seriesId = action.dates.length > 1 ? newId() : undefined;
@@ -36,6 +38,8 @@ function appendSeriesRowsToBudget(
         typeId: action.typeId,
         companyId: action.companyId ?? null,
         seriesId,
+        amountMin: action.amountMin,
+        amountMax: action.amountMax,
       });
       if (!row) return item;
       newRows.push(row);

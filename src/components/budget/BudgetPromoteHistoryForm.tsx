@@ -24,9 +24,16 @@ import {
 } from "../../utils/format";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
-import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
+import { Button, Checkbox, ClearableInput } from "../form";
 import { RecurrenceForm } from "../RecurrenceForm";
 import { TypePicker } from "../TypePicker";
+import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
+import {
+  amountModeFromRow,
+  resolveAmountSpan,
+  spanInputStringsFromBounds,
+  type AmountMode,
+} from "./budget-amount-span";
 
 // Prior merchant-hint label / type / company shared by past rows that
 // normalise to this row's description. Lets the promote form open with
@@ -60,6 +67,13 @@ export type HistoryPromotion = {
   // merchant key.
   description: string;
   amount: number;
+  // Optional inclusive estimate band for a bill that varies within a
+  // range (electricity, water, …). The estimate drives `amount`; the
+  // bounds only widen what an imported bank amount may be and still
+  // reconcile. Both present together or both absent — an exact promote
+  // sends neither.
+  amountMin?: number;
+  amountMax?: number;
   typeId: string | null;
   // Company tagged on the promoted entry. Folded into the merchant-
   // hint alongside the type so future imports inherit both.
@@ -151,6 +165,15 @@ export function BudgetPromoteHistoryForm({
     amountCol && typeof row.cells[amountCol.id] === "number"
       ? (row.cells[amountCol.id] as number) <= 0
       : true;
+  // Seed the estimate band from any bounds the source row already
+  // carries (a historic row usually has none, so this defaults to the
+  // "exact" single-amount input). The min / max strings are positive
+  // magnitudes the shared sign re-signs on submit.
+  const initialAmountMode = amountModeFromRow(row.amountMin, row.amountMax);
+  const initialSpanStrings =
+    row.amountMin !== undefined && row.amountMax !== undefined
+      ? spanInputStringsFromBounds(row.amountMin, row.amountMax, settings)
+      : { min: "", max: "" };
   const initialDate =
     dateCol && typeof row.cells[dateCol.id] === "string"
       ? (row.cells[dateCol.id] as string)
@@ -179,6 +202,9 @@ export function BudgetPromoteHistoryForm({
   const [description, setDescription] = useState(initialDescription);
   const [amount, setAmount] = useState(initialAmountText);
   const [negative, setNegative] = useState(initialNegative);
+  const [amountMode, setAmountMode] = useState<AmountMode>(initialAmountMode);
+  const [amountMinText, setAmountMinText] = useState(initialSpanStrings.min);
+  const [amountMaxText, setAmountMaxText] = useState(initialSpanStrings.max);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
   // Wrap the company picker's onSelect so a confident company → type
@@ -236,9 +262,20 @@ export function BudgetPromoteHistoryForm({
   function handleSubmit() {
     if (row.kind !== "historic") return;
     if (parsedAmount === null) return;
+    const span = resolveAmountSpan(
+      amountMode,
+      negative,
+      amount,
+      amountMinText,
+      amountMaxText,
+    );
     onSubmit(row.historyEntryId, rawCellDescription, {
       description: description.trim(),
       amount: parsedAmount,
+      // Only attach a band when both bounds parsed (estimate mode).
+      ...(span.amountMin !== null && span.amountMax !== null
+        ? { amountMin: span.amountMin, amountMax: span.amountMax }
+        : {}),
       typeId,
       companyId,
       dates: recurringDates,
@@ -294,17 +331,23 @@ export function BudgetPromoteHistoryForm({
               className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
             />
           </label>
-          <label className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <span className="text-xs text-muted">{t("editEntry.amount")}</span>
-            <SignedAmountInput
-              value={amount}
+            <BudgetAmountSpanFields
+              mode={amountMode}
+              onModeChange={setAmountMode}
               negative={negative}
-              onValueChange={setAmount}
               onToggleSign={toggleSign}
+              amount={amount}
+              onAmountChange={setAmount}
+              min={amountMinText}
+              onMinChange={setAmountMinText}
+              max={amountMaxText}
+              onMaxChange={setAmountMaxText}
               settings={settings}
-              ariaLabel={t("editEntry.amount")}
+              hideLabel
             />
-          </label>
+          </div>
         </div>
         <div className="mt-4">
           <RecurrenceForm

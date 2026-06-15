@@ -511,6 +511,11 @@ export function mintBudgetRow(
     typeId?: string | null;
     companyId?: string | null;
     seriesId?: string;
+    // Optional inclusive estimate band. Both bounds set together (a row
+    // is in estimate mode iff both are present); the estimate itself
+    // stays in `amount`.
+    amountMin?: number;
+    amountMax?: number;
   },
 ): UserRow | null {
   const { dateCol, descCol, amountCol } = getStandardColumns(columns);
@@ -524,6 +529,10 @@ export function mintBudgetRow(
   if (values.seriesId) row.seriesId = values.seriesId;
   if (values.typeId) row.typeId = values.typeId;
   if (values.companyId) row.companyId = values.companyId;
+  if (values.amountMin !== undefined && values.amountMax !== undefined) {
+    row.amountMin = values.amountMin;
+    row.amountMax = values.amountMax;
+  }
   return row;
 }
 
