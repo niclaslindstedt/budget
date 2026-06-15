@@ -230,11 +230,42 @@ export type HistoryImport = {
   duplicateCount: number;
 };
 
+// One imported bank transaction a cover transfer accounts for. References
+// the entry by its owning account (`UserData.history[accountId]`) plus the
+// entry id. Only imported transactions are coverable — manually-entered
+// budget rows are not — so a `HistoryEntry` id is the only shape needed.
+export type CoveredExpense = {
+  accountId: string;
+  entryId: string;
+};
+
+// Present only on a "cover transfer": a transfer the user creates to
+// reimburse — from a savings / spending account — expenses they charged to
+// the wrong account (typically a main card). Beyond the plain
+// `fromAccountId → toAccountId` movement it records the user's free-text
+// `motivation`, a short (≤ COVER_MESSAGE_MAX_CHARS) bank-reference `message`
+// generated at creation time so the posted transfer can be matched back on
+// the next import, and the specific imported transactions it covers. Absent
+// ⇒ an ordinary transfer. The covered entries are NOT hidden (they stay
+// visible in the ledger, flagged with a check glyph) — only the cover
+// transfer's own legs get hidden once they post and are detected on import.
+export type CoverDetails = {
+  motivation: string;
+  message: string;
+  covered: CoveredExpense[];
+};
+
 // One transfer between two accounts. Stored at the UserData level so a
 // transfer can exist for accounts without a budget attached — the
 // Accounts sheet renders the global list, and budget views synthesize
 // the involving rows for the account they track. `amount` is always
 // positive; direction is `fromAccountId → toAccountId`.
+//
+// `fromAccountId` / `toAccountId` reference an `Account` OR a `Saving` — both
+// keep their transactions under their id in `UserData.history`, so either can
+// be an endpoint. Savings only ever appear as the source of a cover transfer
+// today, but the field is deliberately id-only (no kind tag) so name / glyph
+// resolution stays a single lookup across the merged account+saving map.
 export type Transfer = {
   id: string;
   date: string;
@@ -244,4 +275,7 @@ export type Transfer = {
   toAccountId: string;
   typeId?: string | null;
   completed?: boolean;
+  // Set only on cover transfers — see `CoverDetails`. Absent ⇒ ordinary
+  // transfer minted from the transfer modal or the auto-collapse flow.
+  cover?: CoverDetails;
 };

@@ -7,6 +7,7 @@ import {
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
 import { attachImportedLoanPayments } from "../loans/auto-attach";
+import { attachImportedCoverTransfers } from "../accounts/cover-transfer";
 import { applyImportedSavingBalances } from "../savings/value";
 import {
   computeOpeningBalanceFromHistory,
@@ -297,8 +298,27 @@ export function reduceAccounts(
           state.properties ?? [],
         )
       : state.loans;
+    // Bind newly-imported legs to any pending cover transfer expecting them
+    // (amount + date span, or the cover's reference message in the bank
+    // description). Matched legs are hidden + back-referenced so the
+    // synthesized cover-transfer row stands in for them — same mechanism as
+    // the auto-collapse flow, and reversible via `deleteTransfer`. A no-op
+    // when no cover transfer matches.
+    const coverAttach = attachImportedCoverTransfers(
+      state.transfers,
+      action.accountId,
+      merged,
+      addedIds,
+    );
+    if (coverAttach.attachments.size > 0) {
+      merged = merged.map((e) => {
+        const txId = coverAttach.attachments.get(e.id);
+        return txId ? { ...e, hidden: true, collapsedIntoTransferId: txId } : e;
+      });
+    }
     return {
       ...state,
+      transfers: coverAttach.transfers,
       accounts: state.accounts.map((a) => {
         if (a.id !== action.accountId) return a;
         const patch: Partial<typeof a> = bankDetailPatch(a, action);

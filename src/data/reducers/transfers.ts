@@ -23,6 +23,15 @@ export function reduceTransfers(
       Date.now(),
     );
   }
+  if (action.type === "createCoverTransfer") {
+    // A cover transfer's description is the user's motivation, not a merchant
+    // name, so we deliberately skip `recordMerchantHints` here — folding it
+    // into the type/merchant memory would pollute future suggestions.
+    return {
+      ...state,
+      transfers: [...state.transfers, action.transfer],
+    };
+  }
   if (action.type === "updateTransfer") {
     const prev = state.transfers.find((t) => t.id === action.transferId);
     const next = {

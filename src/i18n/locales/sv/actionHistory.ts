@@ -155,6 +155,7 @@ const actionHistory: ActionHistoryCatalog = {
     updateFileCategory: "Redigerade filkategori",
     deleteFileCategory: "Tog bort filkategori",
     createTransfer: "Skapade överföring",
+    createCoverTransfer: "Skapade täckningsöverföring",
     updateTransfer: "Redigerade överföring",
     deleteTransfer: "Tog bort överföring",
     addSheet: "Lade till blad",

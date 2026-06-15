@@ -101,6 +101,9 @@ type Props = {
     onBulkCopy: () => void;
     onBulkDelete: () => void;
     onBulkCancel: () => void;
+    onBulkCover: () => void;
+    bulkHideMutations: boolean;
+    bulkCoverAvailable: boolean;
   };
   taxonomyCrud: ReturnType<typeof useTaxonomyCrud>;
   matchRuleUi: Pick<
@@ -711,6 +714,9 @@ export function UniversalModalHost(props: Props) {
         onBulkCopy={searchBulk.onBulkCopy}
         onBulkDelete={searchBulk.onBulkDelete}
         onBulkCancel={searchBulk.onBulkCancel}
+        onBulkCover={searchBulk.onBulkCover}
+        bulkHideMutations={searchBulk.bulkHideMutations}
+        bulkCoverAvailable={searchBulk.bulkCoverAvailable}
         onPick={(entry) => {
           if (entry.sheetId !== data.activeSheetId) {
             dispatch({ type: "selectSheet", sheetId: entry.sheetId });

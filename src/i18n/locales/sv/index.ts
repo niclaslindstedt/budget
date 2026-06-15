@@ -49,6 +49,7 @@ import recurrenceForm from "./recurrenceForm";
 import complex from "./complex";
 import transferCollapse from "./transferCollapse";
 import transfer from "./transfer";
+import coverTransfer from "./coverTransfer";
 import account from "./account";
 import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
@@ -135,6 +136,7 @@ export const sv: Catalog = {
   complex,
   transferCollapse,
   transfer,
+  coverTransfer,
   account,
   accountsSheet,
   itemsSheet,

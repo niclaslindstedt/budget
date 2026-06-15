@@ -508,6 +508,14 @@ export type Action =
     }
   | { type: "createTransfer"; transfer: Transfer }
   | {
+      // Create a cover transfer — a transfer carrying a `cover` payload that
+      // reimburses specific imported expenses from a savings / spending
+      // account. The caller mints the id + reference message (so the info
+      // modal can open on the same object) and passes the whole `Transfer`.
+      type: "createCoverTransfer";
+      transfer: Transfer;
+    }
+  | {
       type: "updateTransfer";
       transferId: string;
       patch: Partial<Transfer>;

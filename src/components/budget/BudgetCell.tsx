@@ -90,6 +90,10 @@ type Props = {
   // description popover. Undefined on every non-description column and
   // on rows with no line items.
   lineItems?: readonly CellLineItem[];
+  // When set (description column on a covered imported row), the id of the
+  // cover transfer that accounts for this transaction. The description cell
+  // appends a check glyph that opens that transfer's info modal.
+  coveredTransferId?: string | null;
   // True when the row carries an `amountFormula`. The amount cell
   // becomes read-only (the value comes from the formula resolver) and
   // surfaces a small `fx` glyph so the user can tell at a glance that
@@ -169,6 +173,7 @@ function CellImpl({
   descriptionPlaceholder,
   bankDescription,
   lineItems,
+  coveredTransferId,
   onUpdateCell,
   onCommitCell,
 }: Props) {
@@ -246,6 +251,7 @@ function CellImpl({
               placeholder={descriptionPlaceholder}
               bankDescription={bankDescription}
               lineItems={lineItems}
+              coveredTransferId={coveredTransferId}
               onChange={onChange}
               onCommit={onCommit}
               onSetCompany={onSetCompany}

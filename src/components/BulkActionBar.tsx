@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Copy, MoveRight, Pencil, Trash2, X } from "lucide-react";
+import { Copy, HandCoins, MoveRight, Pencil, Trash2, X } from "lucide-react";
 
 import { useT } from "../i18n";
 
@@ -14,6 +14,15 @@ type Props = {
   onCopy?: () => void;
   onDelete: () => void;
   onCancel: () => void;
+  // Cover an all-historic selection with a transfer from another account.
+  // Provided only on the budget page; rendered only when `coverAvailable`.
+  onCover?: () => void;
+  // True when an imported (historic) row is part of the selection. Imported
+  // transactions are the bank's truth, so Edit / Move / Delete are hidden —
+  // only Copy (which clones to fresh manual rows) and Cover survive.
+  hideMutations?: boolean;
+  // True when every selected row is historic, so the Cover action applies.
+  coverAvailable?: boolean;
 };
 
 // The bulk-select toolbar: a live count followed by the operations that
@@ -29,6 +38,9 @@ export function BulkActionBar({
   onCopy,
   onDelete,
   onCancel,
+  onCover,
+  hideMutations = false,
+  coverAvailable = false,
 }: Props) {
   const t = useT();
   const disabled = selectedCount === 0;
@@ -41,15 +53,17 @@ export function BulkActionBar({
         {selectedCount}
       </span>
       <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
-      <BulkButton
-        tone="text-accent"
-        icon={<Pencil size={16} aria-hidden focusable={false} />}
-        onClick={onEdit}
-        disabled={disabled}
-        ariaLabel={t("bulkBar.editSelected")}
-        title={t("common.edit")}
-      />
-      {onMove && (
+      {!hideMutations && (
+        <BulkButton
+          tone="text-accent"
+          icon={<Pencil size={16} aria-hidden focusable={false} />}
+          onClick={onEdit}
+          disabled={disabled}
+          ariaLabel={t("bulkBar.editSelected")}
+          title={t("common.edit")}
+        />
+      )}
+      {!hideMutations && onMove && (
         <BulkButton
           tone="text-meta"
           icon={<MoveRight size={16} aria-hidden focusable={false} />}
@@ -69,14 +83,26 @@ export function BulkActionBar({
           title={t("bulkBar.copy")}
         />
       )}
-      <BulkButton
-        tone="text-danger"
-        icon={<Trash2 size={16} aria-hidden focusable={false} />}
-        onClick={onDelete}
-        disabled={disabled}
-        ariaLabel={t("bulkBar.deleteSelected")}
-        title={t("common.delete")}
-      />
+      {onCover && coverAvailable && (
+        <BulkButton
+          tone="text-positive"
+          icon={<HandCoins size={16} aria-hidden focusable={false} />}
+          onClick={onCover}
+          disabled={disabled}
+          ariaLabel={t("coverTransfer.coverSelected")}
+          title={t("coverTransfer.coverAction")}
+        />
+      )}
+      {!hideMutations && (
+        <BulkButton
+          tone="text-danger"
+          icon={<Trash2 size={16} aria-hidden focusable={false} />}
+          onClick={onDelete}
+          disabled={disabled}
+          ariaLabel={t("bulkBar.deleteSelected")}
+          title={t("common.delete")}
+        />
+      )}
       <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-line" />
       <BulkButton
         tone="text-muted"

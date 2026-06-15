@@ -42,6 +42,15 @@ export type BudgetContextValue = {
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
   settings: Settings;
+  // Cover-transfer overlay for the budget's account. `accountId` is the
+  // budget's account id (null for an unbound budget); `coveredByKey` maps
+  // `coverKey(accountId, entryId)` → the covering transfer's id so a covered
+  // imported transaction shows a check glyph; `coverTransferIds` is the set
+  // of cover-transfer ids so a synthesized cover-transfer row opens the
+  // read-only info modal instead of the edit modal on tap.
+  accountId: string | null;
+  coveredByKey: ReadonlyMap<string, string>;
+  coverTransferIds: ReadonlySet<string>;
 };
 
 export const BudgetContext = createContext<BudgetContextValue | null>(null);

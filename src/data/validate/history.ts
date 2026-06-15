@@ -1,4 +1,5 @@
 import type {
+  CoveredExpense,
   HistoryEntry,
   HistoryEntrySplit,
   HistoryImport,
@@ -308,6 +309,29 @@ export function validateTransfer(
     if (typeof raw.completed !== "boolean")
       return fail(`${path}.completed`, "expected a boolean");
     tx.completed = raw.completed;
+  }
+  if (raw.cover !== undefined) {
+    if (!isObject(raw.cover))
+      return fail(`${path}.cover`, "expected an object");
+    const { motivation, message, covered } = raw.cover;
+    if (typeof motivation !== "string")
+      return fail(`${path}.cover.motivation`, "expected a string");
+    if (typeof message !== "string")
+      return fail(`${path}.cover.message`, "expected a string");
+    // Keep only well-formed refs to accounts that still exist; a covered
+    // expense pointing at a deleted account simply loses its check glyph
+    // rather than trapping the whole file.
+    const rawCovered = Array.isArray(covered) ? covered : [];
+    const cleanCovered: CoveredExpense[] = [];
+    for (const c of rawCovered) {
+      if (!isObject(c)) continue;
+      const { accountId, entryId } = c;
+      if (typeof accountId !== "string" || accountId === "") continue;
+      if (typeof entryId !== "string" || entryId === "") continue;
+      if (!knownAccountIds.has(accountId)) continue;
+      cleanCovered.push({ accountId, entryId });
+    }
+    tx.cover = { motivation, message, covered: cleanCovered };
   }
   return { ok: true, value: tx };
 }

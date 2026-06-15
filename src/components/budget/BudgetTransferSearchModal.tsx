@@ -57,8 +57,9 @@ type Props = {
   // Select-many wiring. Drives the same `useBulkSelection` instance and
   // the same bulk modals the BottomBar uses, so results can be picked in
   // bulk and run through Edit / Move / Copy / Delete. Selection is locked
-  // to one sheet at a time (the active sheet); only `kind === "user"`
-  // rows are selectable.
+  // to one sheet at a time (the active sheet); `kind === "user"` and
+  // `kind === "historic"` (imported) rows are selectable — the latter so
+  // imported transactions can be covered.
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   activeSheetId: string;
@@ -74,6 +75,11 @@ type Props = {
   onBulkCopy: () => void;
   onBulkDelete: () => void;
   onBulkCancel: () => void;
+  // Cover an all-historic selection; hide Edit / Move / Delete when any
+  // imported row is selected. Mirrors the BottomBar's bulk toolbar.
+  onBulkCover: () => void;
+  bulkHideMutations: boolean;
+  bulkCoverAvailable: boolean;
 };
 
 const SORT_MENU_PLACEMENT: FloatingPlacement = {
@@ -116,6 +122,9 @@ export function BudgetTransferSearchModal({
   onBulkCopy,
   onBulkDelete,
   onBulkCancel,
+  onBulkCover,
+  bulkHideMutations,
+  bulkCoverAvailable,
 }: Props) {
   const t = useT();
 
@@ -295,7 +304,7 @@ export function BudgetTransferSearchModal({
               {results.map((result) => {
                 const { entry } = result;
                 const selectable =
-                  entry.kind === "user" &&
+                  (entry.kind === "user" || entry.kind === "historic") &&
                   (selectedIds.size === 0 || entry.sheetId === activeSheetId);
                 return (
                   <li key={`${entry.sheetId}:${entry.rowId}`}>
@@ -325,6 +334,9 @@ export function BudgetTransferSearchModal({
               onCopy={onBulkCopy}
               onDelete={onBulkDelete}
               onCancel={onBulkCancel}
+              onCover={onBulkCover}
+              hideMutations={bulkHideMutations}
+              coverAvailable={bulkCoverAvailable}
             />
           </div>
         ) : (

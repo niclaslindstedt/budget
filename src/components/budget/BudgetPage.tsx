@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
+import { coverKey } from "../../data/accounts/cover-transfer";
 import { computeBudgetState } from "../../data/budget/computed-state";
 import { buildSynthesizedRows } from "../../data/budget/rows";
 import {
@@ -318,6 +319,22 @@ export function BudgetPage({
     return m;
   }, [accounts]);
 
+  // Cover-transfer overlay for this budget's account: which imported
+  // entries a cover transfer accounts for (→ check glyph) and which
+  // synthesized transfer rows are cover transfers (→ info modal on tap).
+  const { coveredByKey, coverTransferIds } = useMemo(() => {
+    const covered = new Map<string, string>();
+    const coverIds = new Set<string>();
+    for (const tx of transfers) {
+      if (!tx.cover) continue;
+      coverIds.add(tx.id);
+      for (const ref of tx.cover.covered) {
+        covered.set(coverKey(ref.accountId, ref.entryId), tx.id);
+      }
+    }
+    return { coveredByKey: covered, coverTransferIds: coverIds };
+  }, [transfers]);
+
   // Bundle the cross-cutting taxonomy + settings the budget subtree
   // reaches for in every row. Memoised once per change to any input so
   // every memoised descendant sees a stable context reference across
@@ -336,6 +353,9 @@ export function BudgetPage({
       onCreateCategory,
       onCreateCompany,
       settings,
+      accountId: item.accountId,
+      coveredByKey,
+      coverTransferIds,
     }),
     [
       types,
@@ -349,6 +369,9 @@ export function BudgetPage({
       onCreateCategory,
       onCreateCompany,
       settings,
+      item.accountId,
+      coveredByKey,
+      coverTransferIds,
     ],
   );
 
