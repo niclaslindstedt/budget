@@ -443,6 +443,7 @@ export function describeActionSubject(
 
     // Transfers.
     case "createTransfer":
+    case "createCoverTransfer":
       return name(transferName(action.transfer, next));
     case "updateTransfer":
       return name(transferName(byId(next.transfers, action.transferId), next));

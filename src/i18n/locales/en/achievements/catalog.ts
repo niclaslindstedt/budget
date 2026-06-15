@@ -242,6 +242,12 @@ const catalog = {
     name: "Mover & Shaker",
     condition: "Move or copy rows across months.",
   },
+  coverYourTracks: {
+    name: "Cover Your Tracks",
+    condition: "Create a cover transfer to reimburse expenses.",
+    learnMore:
+      "When you pay for something from the wrong account, a cover transfer reimburses it from the right one — totalling the expenses, generating a bank reference message, and linking back to exactly what it covered.",
+  },
   splitTheBill: {
     name: "Split the Bill",
     condition: "Split a row into multiple parts.",

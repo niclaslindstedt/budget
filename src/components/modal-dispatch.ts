@@ -44,6 +44,16 @@ export type ModalCommand =
   | { kind: "open-edit-history"; row: Row }
   | { kind: "open-copy-row"; row: Row }
   | { kind: "open-correction-delete"; row: Row }
+  // Open the create-cover-transfer modal seeded with the imported
+  // transactions to reimburse (the active budget account owns them). Fired
+  // from a history row's "…" menu (single entry) and the bulk toolbar /
+  // search modal (an all-historic selection).
+  | { kind: "open-cover-transfer"; entryIds: string[] }
+  // Open the read-only cover-transfer info modal (total + reference
+  // message with copy buttons, covered transactions, motivation). Fired
+  // after creation, by clicking a cover transfer in the ledger, and by the
+  // check glyph on a covered transaction.
+  | { kind: "open-cover-info"; transferId: string }
   | { kind: "open-edit-company"; companyId: string }
   | { kind: "open-edit-item"; itemId: string }
   | { kind: "open-create-item" }
@@ -86,6 +96,12 @@ export type ModalCommandHandlers = {
   // long-press / right-click escape hatch on a budget row's company
   // pill, so the user can rename a merchant (or re-pin its associated
   // types) without detouring through Settings → Companies.
+  // Open the create-cover-transfer modal for the given imported entry ids
+  // (resolved against the active budget account). Fired from a history
+  // row's "…" menu and the bulk toolbar / search modal.
+  openCoverTransfer: (entryIds: string[]) => void;
+  // Open the read-only cover-transfer info modal for a cover transfer id.
+  openCoverInfo: (transferId: string) => void;
   editCompany: (companyId: string) => void;
   // Open the edit-item modal for an owned item. Fired by the long-press /
   // right-click on a single-item row's line-item pill and by clicking a
@@ -183,6 +199,12 @@ export function applyModalCommand(
     case "open-correction-delete":
       handlers.correctionDelete(command.row);
       return;
+    case "open-cover-transfer":
+      handlers.openCoverTransfer(command.entryIds);
+      return;
+    case "open-cover-info":
+      handlers.openCoverInfo(command.transferId);
+      return;
     case "open-edit-company":
       handlers.editCompany(command.companyId);
       return;
@@ -232,6 +254,8 @@ const COMMAND_TARGET: Record<ModalCommand["kind"], keyof ModalCommandHandlers> =
     "open-edit-history": "editHistory",
     "open-copy-row": "copyRow",
     "open-correction-delete": "correctionDelete",
+    "open-cover-transfer": "openCoverTransfer",
+    "open-cover-info": "openCoverInfo",
     "open-edit-company": "editCompany",
     "open-edit-item": "editItem",
     "open-create-item": "createItem",

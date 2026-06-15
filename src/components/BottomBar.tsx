@@ -32,6 +32,12 @@ type Props = {
   onBulkCopy?: () => void;
   onBulkDelete: () => void;
   onBulkCancel: () => void;
+  // Cover an all-historic selection with a transfer (budget page only).
+  onBulkCover?: () => void;
+  // Hide Edit / Move / Delete when an imported row is selected.
+  bulkHideMutations?: boolean;
+  // Show Cover only when every selected row is historic.
+  bulkCoverAvailable?: boolean;
 };
 
 const actionButton =
@@ -61,6 +67,9 @@ export function BottomBar({
   onBulkCopy,
   onBulkDelete,
   onBulkCancel,
+  onBulkCover,
+  bulkHideMutations,
+  bulkCoverAvailable,
 }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
@@ -145,6 +154,9 @@ export function BottomBar({
               onCopy={onBulkCopy}
               onDelete={onBulkDelete}
               onCancel={onBulkCancel}
+              onCover={onBulkCover}
+              hideMutations={bulkHideMutations}
+              coverAvailable={bulkCoverAvailable}
             />
           ) : (
             favoriteSheets.map((sheet) => (

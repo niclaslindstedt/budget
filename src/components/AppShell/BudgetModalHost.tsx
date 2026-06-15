@@ -24,9 +24,12 @@ import {
   BudgetLineItemsModal,
   type ItemPriceUpdate,
 } from "../budget/BudgetLineItemsModal";
+import { BudgetCoverTransferModal } from "../budget/BudgetCoverTransferModal";
+import { BudgetCoverInfoModal } from "../budget/BudgetCoverInfoModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
+import { isCoverTransfer } from "../../data/accounts/cover-transfer";
 import { unlinkedItems } from "../../data/items/link";
 import { itemSubtypes } from "../../data/items/subtypes";
 import { findColumnByType } from "../../data/sheet";
@@ -36,6 +39,7 @@ import type {
   Category,
   Column,
   EntryType,
+  HistoryEntry,
   HistoryEntrySplit,
   LineItemLink,
   Settings,
@@ -47,6 +51,7 @@ import type { useComplexEntry } from "./hooks/useComplexEntry";
 import type { useDeletePrompts } from "./hooks/useDeletePrompts";
 import type { useEditPrompts } from "./hooks/useEditPrompts";
 import { useHistoryEntryActions } from "./hooks/useHistoryEntryActions";
+import type { CoverTransferFlow } from "./hooks/useCoverTransferFlow";
 import type { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { usePromptDerivations } from "./hooks/usePromptDerivations";
 import type { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
@@ -74,6 +79,7 @@ type Props = {
   complexEntry: ReturnType<typeof useComplexEntry>;
   matchRuleUi: ReturnType<typeof useMatchRuleUi>;
   bulkSelection: ReturnType<typeof useBulkSelection>;
+  coverFlow: CoverTransferFlow;
   onCreateType: ReturnType<typeof useTaxonomyCrud>["onCreateType"];
   onCreateCategory: ReturnType<typeof useTaxonomyCrud>["onCreateCategory"];
   onCreateCompany: ReturnType<typeof useTaxonomyCrud>["onCreateCompany"];
@@ -105,6 +111,7 @@ export function BudgetModalHost(props: Props) {
     complexEntry,
     matchRuleUi,
     bulkSelection,
+    coverFlow,
     onCreateType,
     onCreateCategory,
     onCreateCompany,
@@ -512,8 +519,61 @@ export function BudgetModalHost(props: Props) {
     ];
   }, [correctionDeletePrompt, dispatch, t, setCorrectionDeletePrompt]);
 
+  // Resolve the cover transfer + its covered entries + endpoint names for
+  // the read-only info modal. Either endpoint can be an account or a
+  // saving, so the name map merges both id-spaces.
+  const coverInfo = useMemo(() => {
+    if (!coverFlow.coverInfoId) return null;
+    const tx = data.transfers.find((x) => x.id === coverFlow.coverInfoId);
+    if (!tx || !isCoverTransfer(tx)) return null;
+    const nameById = new Map<string, string>();
+    for (const a of data.accounts) nameById.set(a.id, a.name);
+    for (const s of data.savings ?? []) nameById.set(s.id, s.name);
+    const coveredEntries: HistoryEntry[] = [];
+    for (const ref of tx.cover.covered) {
+      const entry = (data.history[ref.accountId] ?? []).find(
+        (e) => e.id === ref.entryId,
+      );
+      if (entry) coveredEntries.push(entry);
+    }
+    const unknown = t("transferCollapse.unknownAccount");
+    return {
+      transfer: tx,
+      coveredEntries,
+      fromName: nameById.get(tx.fromAccountId) ?? unknown,
+      toName: nameById.get(tx.toAccountId) ?? unknown,
+    };
+  }, [
+    coverFlow.coverInfoId,
+    data.transfers,
+    data.accounts,
+    data.savings,
+    data.history,
+    t,
+  ]);
+
   return (
     <>
+      <BudgetCoverTransferModal
+        open={coverFlow.coverPrompt !== null}
+        onClose={coverFlow.closeCover}
+        coveredEntries={coverFlow.coverPrompt?.coveredEntries ?? []}
+        total={coverFlow.coverPrompt?.total ?? 0}
+        toAccountId={coverFlow.coverPrompt?.toAccountId ?? ""}
+        accounts={data.accounts}
+        savings={data.savings ?? []}
+        settings={effectiveSettings}
+        onCreate={coverFlow.onCreateCover}
+      />
+      <BudgetCoverInfoModal
+        open={coverInfo !== null}
+        onClose={coverFlow.closeCoverInfo}
+        transfer={coverInfo?.transfer ?? null}
+        coveredEntries={coverInfo?.coveredEntries ?? []}
+        fromName={coverInfo?.fromName ?? ""}
+        toName={coverInfo?.toName ?? ""}
+        settings={effectiveSettings}
+      />
       <BudgetComplexEntryModal
         open={complexOpen}
         initialDate={complexSeedDate}

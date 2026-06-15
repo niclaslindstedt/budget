@@ -853,6 +853,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "coverYourTracks",
+    tier: "intermediate",
+    glyph: HandCoins,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "splitTheBill",
     tier: "intermediate",
     glyph: Split,

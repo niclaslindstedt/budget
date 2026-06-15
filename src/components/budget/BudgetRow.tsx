@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 
+import { coverKey } from "../../data/accounts/cover-transfer";
 import { isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
@@ -92,8 +93,16 @@ function BudgetRowImpl({
   const tr = useT();
   const lang = useLang();
   const dispatchModal = useModalDispatch();
-  const { typesById, companiesById, itemsById, companyTypeHints, settings } =
-    useBudgetContext();
+  const {
+    typesById,
+    companiesById,
+    itemsById,
+    companyTypeHints,
+    settings,
+    accountId,
+    coveredByKey,
+    coverTransferIds,
+  } = useBudgetContext();
   const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
   const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
@@ -131,6 +140,15 @@ function BudgetRowImpl({
   const isSeries = !!row.seriesId;
   const isTransfer = row.kind === "transfer";
   const isHistory = row.kind === "historic";
+  // Cover-transfer overlay: a synthesized transfer row that is a cover
+  // transfer opens the read-only info modal on tap; an imported row this
+  // budget covers shows a check glyph that opens that same modal.
+  const isCoverTransferRow =
+    row.kind === "transfer" && coverTransferIds.has(row.transferId);
+  const coveredTransferId =
+    row.kind === "historic" && accountId !== null
+      ? (coveredByKey.get(coverKey(accountId, row.historyEntryId)) ?? null)
+      : null;
   // The transfer button needs both a savable row (so we know an amount
   // and description exist to promote) AND a parent budget with a known
   // account. Synthesized transfer rows skip the savable check —
@@ -364,6 +382,9 @@ function BudgetRowImpl({
               : undefined
           }
           lineItems={col.type === "description" ? lineItems : undefined}
+          coveredTransferId={
+            col.type === "description" ? coveredTransferId : null
+          }
           onUpdateCell={onUpdateCell}
           onCommitCell={onCommitCell}
         />
@@ -375,11 +396,26 @@ function BudgetRowImpl({
               type="button"
               disabled={!transferEnabled}
               className="action-btn action-btn-transfer inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white disabled:cursor-not-allowed disabled:opacity-40 md:text-muted md:hover:bg-surface-2 md:hover:text-accent"
-              aria-label={tr("cell.editTransfer")}
-              title={tr("cell.editTransfer")}
+              aria-label={
+                isCoverTransferRow
+                  ? tr("coverTransfer.openInfo")
+                  : tr("cell.editTransfer")
+              }
+              title={
+                isCoverTransferRow
+                  ? tr("coverTransfer.openInfo")
+                  : tr("cell.editTransfer")
+              }
               onClick={() => {
                 if (!transferEnabled) return;
                 setSwiped(false);
+                if (isCoverTransferRow && row.kind === "transfer") {
+                  dispatchModal({
+                    kind: "open-cover-info",
+                    transferId: row.transferId,
+                  });
+                  return;
+                }
                 dispatchModal({ kind: "open-transfer-row", row });
               }}
             >

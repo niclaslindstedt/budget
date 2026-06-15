@@ -46,6 +46,8 @@ export type {
 
 export type {
   Account,
+  CoverDetails,
+  CoveredExpense,
   HistoryEntry,
   HistoryEntrySplit,
   HistoryImport,

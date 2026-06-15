@@ -5,6 +5,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  HandCoins,
   Pencil,
   Repeat,
   RotateCcw,
@@ -159,6 +160,20 @@ export function BudgetEntryActionsMenu({
     label: t("cell.copy"),
     onClick: () => dispatchModal({ kind: "open-copy-row", row }),
   });
+
+  // Cover this imported transaction with a transfer from another account —
+  // reimburses an expense charged to the wrong account. Only imported
+  // transactions are coverable.
+  if (row.kind === "historic") {
+    const entryId = row.historyEntryId;
+    items.push({
+      key: "cover",
+      icon: <HandCoins size={16} aria-hidden focusable={false} />,
+      label: t("coverTransfer.menuCover"),
+      onClick: () =>
+        dispatchModal({ kind: "open-cover-transfer", entryIds: [entryId] }),
+    });
+  }
 
   // Manual fiscal-month override. Hidden on synthesized rows (history /
   // transfer) since they have no editable persisted form; the parent

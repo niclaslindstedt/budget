@@ -16,6 +16,7 @@ import { useAccountDialog } from "./hooks/useAccountDialog";
 import { useSavingDialog } from "./hooks/useSavingDialog";
 import { useLoanDialog } from "./hooks/useLoanDialog";
 import { useBulkSelection } from "./hooks/useBulkSelection";
+import { useCoverTransferFlow } from "./hooks/useCoverTransferFlow";
 import { useSalaryBulkSelection } from "../salary/useSalaryBulkSelection";
 import { useComplexEntry } from "./hooks/useComplexEntry";
 import { useDeletePrompts } from "./hooks/useDeletePrompts";
@@ -661,6 +662,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     [activeItem.columns],
   );
 
+  const coverFlow = useCoverTransferFlow({ data, dispatch });
   const bulkSelection = useBulkSelection({
     sheetId,
     itemId,
@@ -669,6 +671,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     dispatch,
     toast,
     dateCol,
+    data,
+    openCover: (entryIds) =>
+      coverFlow.openCover(entryIds, activeItem.accountId),
   });
   const {
     selectMode,
@@ -681,6 +686,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onBulkDelete,
     onBulkMove,
     onBulkCopy,
+    onBulkCover,
+    anyHistoricSelected,
+    allHistoricSelected,
     onCopyRequest,
   } = bulkSelection;
 
@@ -863,6 +871,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       editHistory: onEditHistoryRequest,
       copyRow: onCopyRequest,
       correctionDelete: onCorrectionDeleteRequest,
+      openCoverTransfer: (entryIds: string[]) =>
+        coverFlow.openCover(entryIds, activeItem.accountId),
+      openCoverInfo: (transferId: string) =>
+        coverFlow.openCoverInfo(transferId),
     }),
     [
       setSearchOpen,
@@ -883,6 +895,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
       onEditHistoryRequest,
       onCopyRequest,
       onCorrectionDeleteRequest,
+      coverFlow,
+      activeItem.accountId,
     ],
   );
 
@@ -1249,6 +1263,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               onBulkCancel={
                 isSalarySheet ? salaryBulk.onCancelSelect : onCancelSelect
               }
+              // Covering imported transactions is a budget-page concept.
+              onBulkCover={isSalarySheet ? undefined : onBulkCover}
+              bulkHideMutations={!isSalarySheet && anyHistoricSelected}
+              bulkCoverAvailable={!isSalarySheet && allHistoricSelected}
             />
           )}
         </div>
@@ -1291,6 +1309,9 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
               onBulkCopy,
               onBulkDelete,
               onBulkCancel: onCancelSelect,
+              onBulkCover,
+              bulkHideMutations: anyHistoricSelected,
+              bulkCoverAvailable: allHistoricSelected,
             }}
             taxonomyCrud={taxonomyCrud}
             matchRuleUi={matchRuleUi}
@@ -1339,6 +1360,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             complexEntry={complexEntry}
             matchRuleUi={matchRuleUi}
             bulkSelection={bulkSelection}
+            coverFlow={coverFlow}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}
             onCreateCompany={onCreateCompany}

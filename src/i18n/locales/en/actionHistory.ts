@@ -164,6 +164,7 @@ const actionHistory = {
     updateFileCategory: "Edited file category",
     deleteFileCategory: "Deleted file category",
     createTransfer: "Created transfer",
+    createCoverTransfer: "Created cover transfer",
     updateTransfer: "Edited transfer",
     deleteTransfer: "Deleted transfer",
     addSheet: "Added sheet",

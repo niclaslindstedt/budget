@@ -8,6 +8,7 @@ import {
 import {
   ArrowLeftRight,
   ArrowRight,
+  BadgeCheck,
   Ban,
   Building2,
   Check,
@@ -64,6 +65,7 @@ export function DescriptionCell({
   placeholder,
   bankDescription,
   lineItems,
+  coveredTransferId,
   onChange,
   onCommit,
   onSetCompany,
@@ -107,6 +109,10 @@ export function DescriptionCell({
   // glyph keyed by the count and the popover lists every line at the
   // bottom. Undefined / empty on rows with no line items.
   lineItems?: readonly CellLineItem[];
+  // When set, this imported transaction is accounted for by a cover
+  // transfer (its id). The cell renders a trailing check glyph that opens
+  // that transfer's info modal. Undefined on every non-covered row.
+  coveredTransferId?: string | null;
   onChange: (value: CellValue) => void;
   onCommit?: (value: CellValue) => void;
   // Pre-bound (no rowId) writer for the row's company. Wired by the
@@ -170,10 +176,27 @@ export function DescriptionCell({
 
   return (
     <td
-      className={`${CELL_BASE} align-middle hover:bg-surface-2 md:w-full ${
+      className={`${CELL_BASE} relative align-middle hover:bg-surface-2 md:w-full ${
         isRecurring ? "text-flag" : "text-fg"
       }`}
     >
+      {coveredTransferId && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            dispatchModal({
+              kind: "open-cover-info",
+              transferId: coveredTransferId,
+            });
+          }}
+          aria-label={t("coverTransfer.coveredGlyphTitle")}
+          title={t("coverTransfer.coveredGlyphTitle")}
+          className="absolute top-1/2 right-1 z-10 inline-flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-3 text-success hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        >
+          <BadgeCheck size={13} aria-hidden focusable={false} />
+        </button>
+      )}
       <DescriptionPopover
         rowId={rowId}
         value={value}

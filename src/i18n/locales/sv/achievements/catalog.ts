@@ -238,6 +238,12 @@ const catalog: AchievementsCatalogEntries = {
     name: "Flyttkarl",
     condition: "Flytta eller kopiera rader mellan månader.",
   },
+  coverYourTracks: {
+    name: "Täck dina spår",
+    condition: "Skapa en täckningsöverföring för att ersätta utgifter.",
+    learnMore:
+      "När du betalar för något från fel konto ersätter en täckningsöverföring det från rätt konto — den summerar utgifterna, genererar ett bankmeddelande och länkar tillbaka till exakt vad den täckte.",
+  },
   splitTheBill: {
     name: "Dela notan",
     condition: "Dela en rad i flera delar.",
