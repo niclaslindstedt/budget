@@ -41,9 +41,16 @@ export type FloatingRect = {
 // How wide the floating element should be.
 // `min`: at least `minPx`, grows to trigger width if larger (pickers).
 // `max`: at most `maxPx`, capped by the viewport minus margins (popovers).
+// `grow`: at least `minPx`, otherwise sized to its content — the panel
+//   grows horizontally with what it holds, capped only by the room left
+//   to the viewport edge (so a long line widens the panel toward the
+//   page edge instead of wrapping into a tall, scrolling column). The
+//   description popover uses this so a long bank memo fills the width
+//   before it ever wraps downward.
 export type FloatingWidth =
   | { kind: "min"; minPx: number }
-  | { kind: "max"; maxPx: number };
+  | { kind: "max"; maxPx: number }
+  | { kind: "grow"; minPx: number };
 
 export type FloatingPlacement = {
   width: FloatingWidth;
@@ -122,8 +129,15 @@ function compute(
   let width: number;
   if (placement.width.kind === "min") {
     width = Math.max(placement.width.minPx, rect.width);
-  } else {
+  } else if (placement.width.kind === "max") {
     width = Math.min(placement.width.maxPx, win.innerWidth - 2 * margin);
+  } else {
+    // `grow`: `width` is only the floor (applied as `min-width`).
+    // Content drives the rendered width; the panel grows up to
+    // `maxWidth` (the room to the viewport edge, computed below), then
+    // wraps downward. Clamp the floor itself to the viewport so a wide
+    // floor on a narrow screen can't push the panel off-screen.
+    width = Math.min(placement.width.minPx, win.innerWidth - 2 * margin);
   }
 
   const scrollX = document ? win.scrollX : 0;
