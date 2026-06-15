@@ -487,9 +487,16 @@ function DescriptionPopover({
   const wasOpenRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Transient "copied" tick on the bank-memo copy button, cleared after
+  // Transient "copied" tick on the bank-text copy button, cleared after
   // a beat so the glyph reverts to the copy icon.
   const [bankTextCopied, setBankTextCopied] = useState(false);
+  // The bank's raw memo for this row, wherever it lives: `bankDescription`
+  // when the user has overridden the description, otherwise the
+  // `placeholder` (the raw bank text seeded as the empty textarea's
+  // placeholder). Either way it's the original statement text the copy
+  // glyph next to the input lets the user lift verbatim. Undefined on
+  // non-history rows (no bank text), which hides the glyph.
+  const bankText = bankDescription ?? placeholder;
 
   // Keep the draft synced from `editValue` while the popover is closed
   // so external updates land cleanly on the next open.
@@ -518,9 +525,9 @@ function DescriptionPopover({
   }
 
   async function handleCopyBankText() {
-    if (!bankDescription) return;
+    if (!bankText) return;
     try {
-      await navigator.clipboard.writeText(bankDescription);
+      await navigator.clipboard.writeText(bankText);
       setBankTextCopied(true);
       setTimeout(() => setBankTextCopied(false), 2000);
     } catch {
@@ -559,38 +566,32 @@ function DescriptionPopover({
             />
           </div>
         )}
-        <ClearableTextarea
-          ref={textareaRef}
-          value={draft}
-          onValueChange={handleDraftChange}
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey &&
-              !e.nativeEvent.isComposing
-            ) {
-              e.preventDefault();
-              setOpen(false);
-            }
-          }}
-          placeholder={placeholder ?? t("cell.descriptionPlaceholder")}
-          rows={1}
-          sizeToContent
-          wrapperClassName="w-full"
-          className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
-        />
-        {bankDescription && (
-          <div className="flex items-start gap-1.5 border-t border-line bg-surface-3 px-2 py-1.5 text-xs text-muted">
-            <Landmark
-              size={12}
-              aria-hidden
-              focusable={false}
-              className="mt-0.5 shrink-0"
-              aria-label={t("cell.originalFromBank")}
-            />
-            <span className="min-w-0 flex-1 font-mono break-words whitespace-pre-wrap">
-              {bankDescription}
-            </span>
+        <div className="flex items-start">
+          <ClearableTextarea
+            ref={textareaRef}
+            value={draft}
+            onValueChange={handleDraftChange}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
+                e.preventDefault();
+                setOpen(false);
+              }
+            }}
+            placeholder={placeholder ?? t("cell.descriptionPlaceholder")}
+            rows={1}
+            sizeToContent
+            wrapperClassName="min-w-0 flex-1"
+            className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
+          />
+          {/* Lift the bank's original memo verbatim — handy on history
+              rows whose description is still the bank text placeholder
+              (no override), so there's no bank-memo line below to copy
+              from. Mirrors the read-only transfer popover's copy glyph. */}
+          {bankText && (
             <button
               type="button"
               onClick={handleCopyBankText}
@@ -604,7 +605,7 @@ function DescriptionPopover({
                   ? t("cell.copiedBankText")
                   : t("cell.copyBankText")
               }
-              className="-my-0.5 -mr-0.5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              className="m-0.5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               {bankTextCopied ? (
                 <Check
@@ -617,6 +618,20 @@ function DescriptionPopover({
                 <Copy size={12} aria-hidden focusable={false} />
               )}
             </button>
+          )}
+        </div>
+        {bankDescription && (
+          <div className="flex items-start gap-1.5 border-t border-line bg-surface-3 px-2 py-1.5 text-xs text-muted">
+            <Landmark
+              size={12}
+              aria-hidden
+              focusable={false}
+              className="mt-0.5 shrink-0"
+              aria-label={t("cell.originalFromBank")}
+            />
+            <span className="min-w-0 flex-1 font-mono break-words whitespace-pre-wrap">
+              {bankDescription}
+            </span>
           </div>
         )}
         {lineItems && lineItems.length > 0 && (
