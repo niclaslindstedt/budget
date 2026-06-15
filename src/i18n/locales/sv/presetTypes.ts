@@ -24,6 +24,7 @@ const presetTypes: PresetTypesCatalog = {
   takeaway: "Hämtmat",
   snacks: "Snacks",
   bakery: "Bageri",
+  sweets: "Godis",
   fuel: "Bränsle",
   "public-transport": "Kollektivtrafik",
   parking: "Parkering",
