@@ -10,6 +10,7 @@ const company = {
   newCompany: "New company",
   editCompany: "Edit company",
   noCompaniesYet: "No companies yet.",
+  suggested: "Suggested",
   name: "Name",
   namePlaceholder: "H&M",
   create: "Create",

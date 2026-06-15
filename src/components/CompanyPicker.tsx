@@ -44,6 +44,14 @@ type Props = {
   // and the row stays hidden.
   onOmitChange?: (next: boolean) => void;
   onCreate: (draft: Omit<Company, "id">) => Company;
+  // Company ids most often paired with the entry's currently-picked
+  // type, in priority order (see `computeTypeCompanyHints`). When
+  // non-empty, the resolved companies render as a one-tap "Suggested"
+  // section atop the alphabetic list so picking a type first short-cuts
+  // straight to that type's usual merchants — they still appear again in
+  // the full sorted list below. Ids that don't resolve to a current
+  // company (deleted) are silently dropped. Empty / absent ⇒ no section.
+  hintCompanyIds?: readonly string[];
   // Render style — kept for parity with `TypePicker`. Today every
   // call site uses "field", but the chip variant is here so a
   // future inline cell uses the same component.
@@ -59,6 +67,7 @@ export function CompanyPicker({
   onSelect,
   onOmitChange,
   onCreate,
+  hintCompanyIds,
   variant = "field",
   placeholder,
 }: Props) {
@@ -73,6 +82,21 @@ export function CompanyPicker({
     () => [...companies].sort((a, b) => a.name.localeCompare(b.name)),
     [companies],
   );
+
+  // Resolve the type's hint ids to current companies, preserving the
+  // ranked order and dropping ids that no longer resolve (deleted). The
+  // suggested band sits atop the alphabetic list; the same companies
+  // remain in that list below, so this is purely a shortcut.
+  const suggested = useMemo(() => {
+    if (!hintCompanyIds || hintCompanyIds.length === 0) return [];
+    const byId = new Map(companies.map((c) => [c.id, c]));
+    const out: Company[] = [];
+    for (const id of hintCompanyIds) {
+      const c = byId.get(id);
+      if (c) out.push(c);
+    }
+    return out;
+  }, [hintCompanyIds, companies]);
 
   const selected = useMemo(
     () => companies.find((c) => c.id === selectedId) ?? null,
@@ -225,6 +249,40 @@ export function CompanyPicker({
                   />
                 )}
               </button>
+            </li>
+          )}
+          {suggested.length > 0 && (
+            <li className="border-b border-line bg-surface-3">
+              <div className="px-3 pt-2 pb-1 text-xs font-bold tracking-wider text-muted uppercase">
+                {t("company.suggested")}
+              </div>
+              <ul className="pb-1">
+                {suggested.map((c) => (
+                  <li key={`hint-${c.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => handlePick(c.id)}
+                      className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <Building2
+                        size={14}
+                        aria-hidden
+                        focusable={false}
+                        className="shrink-0 text-muted"
+                      />
+                      <span className="min-w-0 truncate">{c.name}</span>
+                      {c.id === selectedId && (
+                        <Check
+                          size={14}
+                          className="ml-auto text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </li>
           )}
           {sorted.length === 0 && (

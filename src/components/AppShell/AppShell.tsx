@@ -51,6 +51,7 @@ import { allCategories, allTypes } from "../../data/presets/merge";
 import {
   companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
+  computeTypeCompanyHints,
 } from "../../data/budget/company-type-hints";
 import {
   isRowSavable,
@@ -395,6 +396,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     () => companyTypeSuggestionsFromHints(companyTypeHints),
     [companyTypeHints],
   );
+  // The inverse direction — typeId → most-used companies — surfaced as
+  // the description popover's "Suggested" band when a type is picked
+  // first. Same cheap full-walk as the company → type hints above.
+  const typeCompanyHints = useMemo(() => computeTypeCompanyHints(data), [data]);
 
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
@@ -1178,6 +1183,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                       companies={data.companies}
                       companyTypeSuggestions={companyTypeSuggestions}
                       companyTypeHints={companyTypeHints}
+                      typeCompanyHints={typeCompanyHints}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}
                       onCreateCompany={onCreateCompany}

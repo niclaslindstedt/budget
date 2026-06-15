@@ -99,6 +99,10 @@ type Props = {
   // Surfaced into BudgetContext so the row's inline type picker can
   // render its "Suggested" band, and forwarded to the metadata modal.
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  // typeId → ranked hint companyIds (see `computeTypeCompanyHints`).
+  // Surfaced into BudgetContext so the row's description popover can
+  // render its "Suggested" companies band when a type is picked first.
+  typeCompanyHints: ReadonlyMap<string, readonly string[]>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -264,6 +268,7 @@ export function BudgetPage({
   companies,
   companyTypeSuggestions,
   companyTypeHints,
+  typeCompanyHints,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
@@ -343,6 +348,7 @@ export function BudgetPage({
       companiesById,
       itemsById,
       companyTypeHints,
+      typeCompanyHints,
       onCreateType,
       onCreateCategory,
       onCreateCompany,
@@ -357,6 +363,7 @@ export function BudgetPage({
       companiesById,
       itemsById,
       companyTypeHints,
+      typeCompanyHints,
       onCreateType,
       onCreateCategory,
       onCreateCompany,

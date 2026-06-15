@@ -10,6 +10,7 @@ const company: CompanyCatalog = {
   newCompany: "Nytt företag",
   editCompany: "Redigera företag",
   noCompaniesYet: "Inga företag än.",
+  suggested: "Föreslagna",
   name: "Namn",
   namePlaceholder: "H&M",
   create: "Skapa",

@@ -2816,6 +2816,18 @@ A company's associated types ("suggested type"), ranked manual
 company resolving to one type instant-fills it on pick; several render
 as the "Suggested" band atop `TypePicker`.
 
+### Type company hint
+
+The inverse direction: a type's most-used companies, ranked by learned
+usage count (no manual-pin source exists for this direction), computed
+by `computeTypeCompanyHints` (`src/data/budget/company-type-hints.ts`).
+When a budget row has a type set but no company, the row's description
+popover surfaces these as a "Suggested" band atop the inline
+`CompanyPicker` — picking a type first short-cuts straight to that
+type's usual merchants without scrolling the full alphabetic company
+list (where the same companies still appear). Threaded through
+`BudgetContext.typeCompanyHints` and resolved per-row in `BudgetRow`.
+
 ### Drag-to-reorder
 
 A reusable HTML5 drag primitive (`useDragReorder`,
