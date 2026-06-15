@@ -104,3 +104,17 @@ export function suggestTypeForDescription(
   if (!isNormalisedKeyMeaningful(key)) return null;
   return hints[key]?.typeId ?? null;
 }
+
+// Look up the company a description's merchant hint carries, or null
+// when no hint (or no company on the hint) exists. Used by the
+// recurring-candidate promote flow to preselect the company on the
+// confirm modal — the suggestion is always visible to the user,
+// never silently applied.
+export function suggestCompanyForDescription(
+  hints: Readonly<Record<string, MerchantHint>>,
+  description: string,
+): string | null {
+  const key = normaliseDescription(description);
+  if (!isNormalisedKeyMeaningful(key)) return null;
+  return hints[key]?.companyId ?? null;
+}

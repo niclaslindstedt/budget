@@ -487,6 +487,7 @@ export function describeActionSubject(
 
     // Recurring / transfer collapse.
     case "promoteRecurringCandidate":
+      return name(action.draft.description);
     case "promoteHistoryToRecurring":
     case "collapseTransferPair":
       return name(action.description);

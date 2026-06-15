@@ -47,7 +47,7 @@ import type {
   Transfer,
   UserData,
 } from "./types";
-import type { SheetDraft } from "./action-payloads";
+import type { ComplexEntryDraft, SheetDraft } from "./action-payloads";
 import type { ImportedPoint } from "./import/value-import";
 import type { ParsedBankEntry } from "../storage/banks";
 import { type ItemAction } from "./reducers/item";
@@ -904,15 +904,17 @@ export type Action =
   | {
       // Promote a recurring-detection candidate into a real series of
       // budget rows on the active budget. The action carries the full
-      // payload the reducer needs — description, amount, glyph,
-      // categoryId, dates — so the dispatcher stays a pure function of
-      // its inputs (the candidate + the user's confirmed adjustments).
-      // The reducer also records the chosen typeId as a merchant
-      // hint (keyed by `sourceDescription` so future imports of the same
-      // bank text resolve to it) and adds `key` to
-      // `recurringDismissals` so the candidate disappears from the
-      // panel — consumed candidates don't keep resurfacing on every
-      // subsequent import.
+      // `ComplexEntryDraft` the confirm modal produced so the minted
+      // series is byte-for-byte the same shape as one the user typed by
+      // hand — the reducer mints through the very same
+      // `addRowsFromComplex` path, so every draft field (company, tags,
+      // transfer flag, completed, estimate min/max band, formula) lands
+      // on each row instead of a hand-picked subset drifting out of sync.
+      // It also records the draft's typeId / company as a merchant hint
+      // (keyed by `sourceDescription` so future imports of the same bank
+      // text resolve to it) and adds `key` to `recurringDismissals` so
+      // the candidate disappears from the panel — consumed candidates
+      // don't keep resurfacing on every subsequent import.
       type: "promoteRecurringCandidate";
       sheetId: string;
       itemId: string;
@@ -922,10 +924,9 @@ export type Action =
       // imports of the same merchant, even when the user adjusted the
       // displayed `description` on the promote modal.
       sourceDescription: string;
-      description: string;
-      amount: number;
-      typeId: string | null;
-      dates: string[];
+      // Full confirm-modal draft (description, amount, type, company,
+      // tags, transfer flag, completed, estimate band, formula, dates).
+      draft: ComplexEntryDraft;
       now: number;
     }
   | {
