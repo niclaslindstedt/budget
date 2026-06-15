@@ -14,9 +14,8 @@ import { SavingActionsMenu } from "./SavingActionsMenu";
 type Props = {
   saving: Saving;
   settings: Settings;
-  // Whether this savings account carries imported transactions / has anything
-  // to cut — gates the View / Cut history entries in the "…" menu.
-  hasHistory: boolean;
+  // Whether this savings account has anything to cut — gates the Cut history
+  // entry in the "…" menu.
   canCut: boolean;
   onEditSaving: (savingId: string) => void;
   onDeleteSaving: (savingId: string, name: string) => void;
@@ -29,7 +28,6 @@ type Props = {
 function SavingsRowImpl({
   saving,
   settings,
-  hasHistory,
   canCut,
   onEditSaving,
   onDeleteSaving,
@@ -49,19 +47,31 @@ function SavingsRowImpl({
 
   const rowClass = [
     swiped ? "is-swiped" : "",
-    "border-b border-line last:border-b-0 hover:bg-surface-2",
+    "cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2",
   ]
     .filter(Boolean)
     .join(" ");
+
+  // A tap on the row body opens the read-only history viewer (the same
+  // `HistoryModal` the accounts page uses); a tap on the revealed action
+  // strip is intercepted by each button's own handler (which stops
+  // propagation). When the row is swiped, the same tap retracts the swipe
+  // first instead. Mirrors `AccountRow`.
+  const onRowClick = () => {
+    if (swiped) {
+      setSwiped(false);
+      return;
+    }
+    onViewHistory(saving.id);
+  };
 
   return (
     <tr
       className={rowClass}
       data-row-id={saving.id}
       data-swipe-handled
-      onClick={() => {
-        if (swiped) setSwiped(false);
-      }}
+      onClick={onRowClick}
+      aria-label={t("savingsSheet.viewHistoryAria", { name: saving.name })}
       {...touchHandlers}
     >
       <td className="w-10 px-2.5 py-2 align-middle">
@@ -129,11 +139,9 @@ function SavingsRowImpl({
           </button>
           <SavingActionsMenu
             saving={saving}
-            hasHistory={hasHistory}
             canCut={canCut}
             onUpdateBalance={onUpdateBalance}
             onImportHistory={onImportHistory}
-            onViewHistory={onViewHistory}
             onCutHistory={onCutHistory}
             onEdit={() => onEditSaving(saving.id)}
             onDelete={() => onDeleteSaving(saving.id, saving.name)}

@@ -1,4 +1,4 @@
-import { Download, Eye, Pencil, Scale, Scissors, Trash2 } from "lucide-react";
+import { Download, Pencil, Scale, Scissors, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n";
 import type { Saving } from "../../data/types";
@@ -8,9 +8,6 @@ import { type MenuItem } from "../form/menu";
 
 type Props = {
   saving: Saving;
-  // True when the savings account has imported transactions — gates the
-  // View / Cut entries (which have nothing to act on otherwise).
-  hasHistory: boolean;
   // True when there are transactions or transfers in range to cut.
   canCut: boolean;
   // Open the dated-balance update modal for this savings account.
@@ -18,8 +15,6 @@ type Props = {
   // Import a bank statement into this savings account. The transactions are
   // stored for transfer detection, not surfaced on the Savings page.
   onImportHistory: (savingId: string) => void;
-  // Open the read-only history viewer for the imported transactions.
-  onViewHistory: (savingId: string) => void;
   // Cut imported transactions / transfers before a chosen cutoff date.
   onCutHistory: (savingId: string) => void;
   // Edit / Delete handlers surfaced as menu items ONLY when the action
@@ -34,15 +29,14 @@ type Props = {
 
 // The "…" overflow popover in a savings row's swipe strip. Records a new dated
 // balance, and — since a savings account stores transactions for transfer
-// detection — imports / views / cuts that bank history. Mirrors
-// `AccountActionsMenu`.
+// detection — imports / cuts that bank history. Viewing the history is the
+// row's own tap (see `SavingsRow`), mirroring `AccountActionsMenu` /
+// `AccountRow`.
 export function SavingActionsMenu({
   saving,
-  hasHistory,
   canCut,
   onUpdateBalance,
   onImportHistory,
-  onViewHistory,
   onCutHistory,
   onEdit,
   onDelete,
@@ -81,14 +75,6 @@ export function SavingActionsMenu({
       icon: <Download size={16} aria-hidden focusable={false} />,
       label: t("savingsSheet.importHistory"),
       onClick: () => onImportHistory(saving.id),
-    },
-    {
-      key: "view",
-      icon: <Eye size={16} aria-hidden focusable={false} />,
-      label: t("savingsSheet.viewHistory"),
-      disabled: !hasHistory,
-      title: hasHistory ? undefined : t("savingsSheet.noHistory"),
-      onClick: () => onViewHistory(saving.id),
     },
     {
       key: "cut",

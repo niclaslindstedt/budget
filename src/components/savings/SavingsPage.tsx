@@ -74,8 +74,8 @@ export function SavingsPage({
     [data.savings],
   );
 
-  // Per-saving "…" menu gating: View needs imported transactions; Cut needs
-  // transactions or transfers in range. One pass over transfers.
+  // Per-saving "…" menu gating: Cut needs transactions or transfers in range.
+  // One pass over transfers.
   const cutBySaving = useMemo(() => {
     const m = new Map<string, boolean>();
     for (const tx of data.transfers) {
@@ -240,7 +240,6 @@ export function SavingsPage({
                         key={saving.id}
                         saving={saving}
                         settings={settings}
-                        hasHistory={hasHistory}
                         canCut={hasHistory || cutBySaving.has(saving.id)}
                         onEditSaving={onEditSaving}
                         onDeleteSaving={onRequestDeleteSaving}
