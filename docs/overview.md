@@ -556,6 +556,36 @@ collapsed them all" (a success message) from "nothing was ever detected"
 successful collapse re-detects the now-hidden pairs as absent and reads
 as a failure.
 
+### Cover transfer
+
+A `Transfer` carrying a `cover` payload (`CoverDetails` in
+`src/data/types/accounts.ts`) that reimburses specific imported
+transactions — expenses the user charged to the wrong account (a main
+card) that "belong" to a savings / spending account. Data layer in
+`src/data/accounts/cover-transfer.ts`: `generateCoverMessage` mints the
+≤12-char bank reference (`COVER_MESSAGE_MAX_CHARS`), `coverTotal` sums the
+covered magnitudes, `buildCoverIndex` / `coverKey` map each covered entry
+to its cover transfer (the check-glyph lookup), and
+`attachImportedCoverTransfers` is the silent import-time detector (run from
+`importBankHistory`, mirroring `attachImportedLoanPayments`) that binds a
+posted leg to its pending cover transfer by amount + date span or by the
+reference message in the bank description, hides the leg
+(`collapsedIntoTransferId`), and flips the cover to `completed`. The
+endpoints may be an account **or** a saving — both keep their transactions
+under their id in `UserData.history`. Created via `createCoverTransfer`
+(reduced in `src/data/reducers/transfers.ts`). UI: `useCoverTransferFlow`
+owns the modal state; `BudgetCoverTransferModal` (create — motivation +
+account/savings source picker + live total) and `BudgetCoverInfoModal`
+(read-only — total + message with copy buttons, covered list, motivation,
+status) render in `BudgetModalHost`. Reachable from a history row's "…"
+menu (`BudgetEntryActionsMenu`) and the bulk toolbar (`BulkActionBar`) in
+both the budget tables and the transfer-search modal — the Cover action
+only shows when every selected row is imported (historic), and Edit / Move
+/ Delete are hidden for those (Copy stays). Covered transactions render a
+check glyph after their description (`DescriptionCell`); tapping it — or a
+synthesized cover-transfer row — opens the info modal. The cover index is
+threaded through `BudgetContext`.
+
 ### Rename predictor
 
 `AccountRenamePredictorModal.tsx` — the last step of every import that
