@@ -74,6 +74,7 @@ type Props = {
   onAdd: (
     propertyId: string,
     paymentsByMortgageId: Record<string, MortgagePayment[]>,
+    entryRefs: { accountId: string; entryId: string }[],
   ) => void;
 };
 
@@ -303,6 +304,10 @@ export function MortgageDiscoveryModal({
   // mortgages by their expected share at that month's rate.
   const preview = useMemo(() => {
     const byMortgage: Record<string, MortgagePayment[]> = {};
+    // One ref per fresh combined charge (not per split leg) — the bank
+    // entry the reducer stamps with the Mortgage type + the property's
+    // lender. Skips months whose source account didn't survive the merge.
+    const entryRefs: { accountId: string; entryId: string }[] = [];
     const freshMonthKeys: string[] = [];
     let alreadyAdded = 0;
     const effectiveKeys = selectedKeys ?? defaultSelectedKeys;
@@ -334,6 +339,11 @@ export function MortgageDiscoveryModal({
           if (sourceAccountId) payment.sourceAccountId = sourceAccountId;
           (byMortgage[mortgageId] ??= []).push(payment);
         }
+        if (sourceAccountId)
+          entryRefs.push({
+            accountId: sourceAccountId,
+            entryId: month.entryId,
+          });
         freshMonthKeys.push(month.monthKey);
       }
     }
@@ -344,6 +354,7 @@ export function MortgageDiscoveryModal({
         : monthSpan(sortedKeys[0], sortedKeys[sortedKeys.length - 1]);
     return {
       byMortgage,
+      entryRefs,
       transactions: freshMonthKeys.length,
       alreadyAdded,
       spanMonths,
@@ -365,6 +376,7 @@ export function MortgageDiscoveryModal({
 
   const {
     byMortgage,
+    entryRefs,
     transactions,
     alreadyAdded,
     spanMonths,
@@ -374,7 +386,7 @@ export function MortgageDiscoveryModal({
 
   function handleAdd() {
     if (!property || transactions === 0) return;
-    onAdd(property.id, byMortgage);
+    onAdd(property.id, byMortgage, entryRefs);
     onClose();
   }
 

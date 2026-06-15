@@ -106,7 +106,10 @@ monthly charge moved a lot with it.
 
 Each found transaction is split across the property's mortgages by their
 amortisation and interest, recording one payment per loan that adds up to
-exactly what was paid.
+exactly what was paid. The bank transactions behind those payments are tagged
+with the **Mortgage** type and the property's lender, so the same charges
+carry their metadata into the budget view and search without any extra tagging
+by hand.
 
 ## Payments view
 

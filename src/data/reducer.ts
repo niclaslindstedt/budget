@@ -727,9 +727,14 @@ export type Action =
       // each found combined transaction is split across the property's
       // mortgages, so payments land on several mortgages in one pass (one
       // undo entry, no intermediate re-render). Keyed by mortgage id.
+      // `entryRefs` names the source bank entries behind those payments so
+      // the reducer can stamp them with the Mortgage type + the property's
+      // lender, folded into the same undo step — the metadata reverts with
+      // the payments.
       type: "addMortgagePaymentsForProperty";
       propertyId: string;
       paymentsByMortgageId: Record<string, MortgagePayment[]>;
+      entryRefs?: { accountId: string; entryId: string }[];
     }
   | {
       type: "updateMortgagePayment";

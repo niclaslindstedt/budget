@@ -266,6 +266,86 @@ describe("properties reducer — mortgages and payments", () => {
     expect(revalidate(data).properties[0].mortgages).toEqual(mortgages);
   });
 
+  it("stamps the mortgage type and lender onto the backing bank entries", () => {
+    let data: UserData = {
+      ...freshUserData(),
+      companies: [{ id: "co1", name: "SBAB" }],
+      accounts: [{ id: "acc1", name: "Checking" }],
+      properties: [
+        {
+          ...PROPERTY,
+          companyId: "co1",
+          mortgages: [{ ...MORTGAGE, id: "m1" }],
+        },
+      ],
+      history: {
+        acc1: [
+          {
+            id: "h1",
+            date: "2026-01-28",
+            description: "SBAB AUTOGIRO",
+            amount: -10000,
+            importedAt: 0,
+          },
+        ],
+      },
+    };
+
+    data = reducer(data, {
+      type: "addMortgagePaymentsForProperty",
+      propertyId: "p1",
+      paymentsByMortgageId: {
+        m1: [
+          { id: "a", date: "2026-01-28", amount: 10000, sourceHistoryId: "h1" },
+        ],
+      },
+      entryRefs: [{ accountId: "acc1", entryId: "h1" }],
+    });
+
+    const entry = data.history.acc1[0];
+    expect(entry.userTypeId).toBe("preset-type-mortgage");
+    expect(entry.userCompanyId).toBe("co1");
+    // Payment still recorded, and the stamp survives a persist + reload.
+    expect(data.properties[0].mortgages[0].payments).toHaveLength(1);
+    const reloaded = revalidate(data);
+    expect(reloaded.history.acc1[0].userTypeId).toBe("preset-type-mortgage");
+    expect(reloaded.history.acc1[0].userCompanyId).toBe("co1");
+  });
+
+  it("stamps only the type when the property has no lender", () => {
+    let data: UserData = {
+      ...freshUserData(),
+      accounts: [{ id: "acc1", name: "Checking" }],
+      properties: [{ ...PROPERTY, mortgages: [{ ...MORTGAGE, id: "m1" }] }],
+      history: {
+        acc1: [
+          {
+            id: "h1",
+            date: "2026-01-28",
+            description: "SBAB AUTOGIRO",
+            amount: -10000,
+            importedAt: 0,
+          },
+        ],
+      },
+    };
+
+    data = reducer(data, {
+      type: "addMortgagePaymentsForProperty",
+      propertyId: "p1",
+      paymentsByMortgageId: {
+        m1: [
+          { id: "a", date: "2026-01-28", amount: 10000, sourceHistoryId: "h1" },
+        ],
+      },
+      entryRefs: [{ accountId: "acc1", entryId: "h1" }],
+    });
+
+    const entry = data.history.acc1[0];
+    expect(entry.userTypeId).toBe("preset-type-mortgage");
+    expect("userCompanyId" in entry).toBe(false);
+  });
+
   it("strips a property's lender when the company is deleted", () => {
     let data = reducer(seeded(), {
       type: "addCompany",
