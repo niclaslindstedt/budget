@@ -1,7 +1,6 @@
 import {
   defaultCompletedForDate,
-  propagateCellInSeries,
-  propagateCompanyInSeries,
+  mapSeriesFrom,
   rowsInSeriesFrom,
 } from "../../budget/rows";
 import { shiftIsoToMonth } from "../../fiscal-month";
@@ -15,7 +14,12 @@ import {
 } from "../../sheet";
 import type { AccountBudget, Row, UserRow } from "../../types";
 import type { ItemAction } from "./actions";
-import { applyPatch, clearRowType, setRowType } from "./hints";
+import {
+  applyPatch,
+  clearRowType,
+  setRowType,
+  writeColumnValue,
+} from "./hints";
 
 export type { ItemAction } from "./actions";
 export { applyPatternsAfterCellEdit, hintRecordingsFromBudget } from "./hints";
@@ -26,32 +30,20 @@ export function reduceAccountBudget(
 ): AccountBudget {
   switch (action.type) {
     case "updateCell": {
-      // The `type` column is a virtual view of `row.typeId` — it has
-      // no entry in the row's `cells` map. Route writes into `typeId`
-      // directly so the picker, the description chip, and every
-      // downstream consumer (modals, merchant hints) read from one
-      // source of truth.
-      const targetCol = item.columns.find((c) => c.id === action.columnId);
-      if (targetCol?.type === "type") {
-        return {
-          ...item,
-          rows: item.rows.map((r) => {
-            if (r.id !== action.rowId) return r;
-            const next: Row = { ...r };
-            if (typeof action.value === "string" && action.value !== "") {
-              setRowType(next, action.value);
-            } else {
-              clearRowType(next);
-            }
-            return next;
-          }),
-        };
-      }
+      // Routing of "where does this column's value go" (the `type`
+      // column is virtual and lands on `row.typeId`, everything else on
+      // `row.cells`) lives in `writeColumnValue` so the live edit and
+      // the series-propagation sweep below can never diverge.
       return {
         ...item,
         rows: item.rows.map((r) =>
           r.id === action.rowId
-            ? { ...r, cells: { ...r.cells, [action.columnId]: action.value } }
+            ? writeColumnValue(
+                { ...r },
+                item.columns,
+                action.columnId,
+                action.value,
+              )
             : r,
         ),
       };
@@ -289,27 +281,35 @@ export function reduceAccountBudget(
       if (!anchor) return item;
       const dateCol = findColumnByType(item.columns, "date");
       if (!dateCol) return item;
-      if (action.field === "company") {
-        return {
-          ...item,
-          rows: propagateCompanyInSeries(
-            item.rows,
-            anchor,
-            dateCol.id,
-            typeof action.value === "string" ? action.value : null,
-            action.untilIso,
-          ),
-        };
-      }
+      // Company is the one propagatable field with no backing column —
+      // it is set inline from the description popover — so it sweeps the
+      // row-level `companyId` directly. Every column-backed field
+      // (description, amount, type) reuses `writeColumnValue`, the same
+      // routing the live `updateCell` edit went through.
+      const apply =
+        action.field === "company"
+          ? (r: Row): Row => {
+              const next = { ...r };
+              if (typeof action.value === "string")
+                next.companyId = action.value;
+              else delete next.companyId;
+              return next;
+            }
+          : (r: Row): Row =>
+              writeColumnValue(
+                { ...r },
+                item.columns,
+                action.columnId,
+                action.value,
+              );
       return {
         ...item,
-        rows: propagateCellInSeries(
+        rows: mapSeriesFrom(
           item.rows,
           anchor,
           dateCol.id,
-          action.columnId,
-          action.value,
           action.untilIso,
+          apply,
         ),
       };
     }

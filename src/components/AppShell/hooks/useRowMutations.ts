@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { autoTypeForCompany } from "../../../data/budget/company-type-hints";
+import { SERIES_PROPAGATABLE_COLUMN_TYPES } from "../../../data/budget/rows";
 import { findColumnByType } from "../../../data/sheet";
 import type { Action } from "../../../data/reducer";
 import type {
@@ -192,8 +193,9 @@ export function useRowMutations({
       const col = activeColumns.find((c) => c.id === columnId);
       // Only propagate fields that make sense across every occurrence —
       // date and completed are inherently per-occurrence, balance is
-      // computed.
-      if (!col || (col.type !== "description" && col.type !== "amount")) {
+      // computed. The set is shared with the reducer so the staging gate
+      // can't drift from what propagation knows how to apply.
+      if (!col || !SERIES_PROPAGATABLE_COLUMN_TYPES.has(col.type)) {
         return;
       }
       const { anchorDate, lastSeriesDate } = seriesAnchorDates(
