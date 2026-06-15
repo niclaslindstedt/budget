@@ -41,6 +41,7 @@ export type CategoryIcon =
   | "croissant"
   | "cake"
   | "ice-cream"
+  | "candy"
   | "beer"
   | "wine"
   | "hand-platter"
