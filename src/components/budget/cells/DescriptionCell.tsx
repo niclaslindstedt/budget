@@ -9,13 +9,10 @@ import {
   ArrowLeftRight,
   ArrowRight,
   BadgeCheck,
-  Ban,
-  Building2,
   Check,
   Copy,
   Landmark,
   Package,
-  Repeat,
 } from "lucide-react";
 
 import type { CellValue, Company, EntryType } from "../../../data/types";
@@ -24,9 +21,12 @@ import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
+import {
+  EntryDescriptionContent,
+  resolveEntryDescriptionDisplay,
+} from "../../EntryDescriptionContent";
 import { FloatingPanel } from "../../FloatingPanel";
 import { useModalDispatch } from "../../modal-dispatch";
-import { CompanyPill, LineItemPill } from "../../Pills";
 import { CELL_BASE } from "./constants";
 
 // One owned-item line on a row, resolved + pre-formatted by `BudgetRow`
@@ -238,36 +238,26 @@ export function DescriptionCell({
         onSetNoCompany={pickerEnabled ? onSetNoCompany : undefined}
         onCreateCompany={pickerEnabled ? onCreateCompany : undefined}
         renderTrigger={({ ref, onClick, open, displayValue }) => {
-          const hasValue = displayValue.length > 0;
-          // The fallback rendering applies whenever the cell is showing
-          // a calculated value, even when the popover is closed and
-          // `displayValue` is non-empty. Without `isFallback`, the
-          // trigger reverts to plain description styling as soon as the
-          // popover closes — which is misleading because the row still
-          // has no user-authored description.
-          const fallback = isFallback || !hasValue;
-          // Line items are the most specific annotation, so an item pill
-          // wins the cell whenever the row has line items — even when a
-          // user description is set (the description stays editable in
-          // the popover). The pill shows the first line's item name, a
-          // Package glyph for one and Boxes for many.
-          const showLineItemPill = hasLineItems;
-          const showCompanyPill = fallback && !showLineItemPill && !!company;
-          const showTypeName =
-            fallback && !showLineItemPill && !company && !!entryType;
-          // When BOTH a description and a company are set (and no line
-          // items, which would take over the cell as a pill), prefix the
-          // description text with a low-key Building2 glyph so the
-          // tagged-merchant state is visible at a glance.
-          const showCompanyGlyph =
-            !fallback && hasValue && !!company && !showLineItemPill;
-          // Mirror the Building2 prefix with a Ban glyph when the row's
-          // company is explicitly omitted, so the skipped state is
-          // visible without having to tap the row open. `noCompany` and
-          // `company` are mutually exclusive (CompanyPicker clears one
-          // when the other is set) so this never overlaps the Building2
-          // prefix.
-          const showOmittedGlyph = !!noCompany && !company;
+          // Resolve which face the cell renders through the shared helper
+          // so the read-only reconciliation modal (which reuses
+          // `EntryDescriptionContent`) stays byte-for-byte in step with
+          // the ledger. The aria-label / title below read the same flags.
+          const display = resolveEntryDescriptionDisplay({
+            value: displayValue,
+            isFallback,
+            entryType,
+            company,
+            hasLineItems,
+            noCompany: !!noCompany,
+          });
+          const {
+            hasValue,
+            hasContent,
+            showLineItemPill,
+            showCompanyPill,
+            showTypeName,
+            showOmittedGlyph,
+          } = display;
           const omittedLabel = t("company.omittedLabel");
           // The pill always shows the first line's item name; the "Line
           // items" prefix only earns its place when there is more than
@@ -276,8 +266,6 @@ export function DescriptionCell({
           const lineItemLabel = manyLineItems
             ? `${t("cell.lineItems")}: ${firstLineItemName}`
             : firstLineItemName;
-          const hasContent =
-            showLineItemPill || showCompanyPill || showTypeName || hasValue;
           const ariaLabel = showLineItemPill
             ? lineItemLabel
             : showCompanyPill
@@ -345,46 +333,18 @@ export function DescriptionCell({
               aria-label={ariaLabel}
               title={title}
             >
-              {isRecurring && !showCompanyPill && (
-                <Repeat
-                  size={16}
-                  aria-hidden
-                  focusable={false}
-                  className="shrink-0 text-flag"
-                />
-              )}
-              {showLineItemPill ? (
-                <LineItemPill name={firstLineItemName} many={manyLineItems} />
-              ) : showCompanyPill ? (
-                <CompanyPill name={company!.name} recurring={isRecurring} />
-              ) : showTypeName ? (
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  {showOmittedGlyph && <OmittedGlyph />}
-                  <span
-                    className="min-w-0 truncate"
-                    style={{ color: entryType!.color }}
-                  >
-                    {typeLabel}
-                  </span>
-                </span>
-              ) : hasValue ? (
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  {showCompanyGlyph && (
-                    <Building2
-                      size={12}
-                      aria-hidden
-                      focusable={false}
-                      className="shrink-0"
-                    />
-                  )}
-                  {showOmittedGlyph && <OmittedGlyph />}
-                  <span className="min-w-0 truncate">{displayValue}</span>
-                </span>
-              ) : showOmittedGlyph ? (
-                <OmittedGlyph />
-              ) : !isRecurring ? (
-                <span>…</span>
-              ) : null}
+              <EntryDescriptionContent
+                value={displayValue}
+                isRecurring={isRecurring}
+                entryType={entryType}
+                company={company}
+                display={display}
+                lineItem={
+                  hasLineItems
+                    ? { name: firstLineItemName, many: manyLineItems }
+                    : undefined
+                }
+              />
             </button>
           );
         }}
@@ -673,34 +633,6 @@ function DescriptionPopover({
         )}
       </FloatingPanel>
     </>
-  );
-}
-
-// Composite "company banned" glyph: a Building2 with a Ban circle
-// overlaid on top, so the omitted state reads as "company, but
-// excluded" rather than a generic prohibition mark. Mirrors the role
-// of the Building2 prefix used when a company IS tagged — the two
-// states are mutually exclusive (CompanyPicker clears one when the
-// other is set), so this never co-exists with the bare Building2.
-//
-// Rendered in `text-muted` with thinned strokes so the mark stays
-// quieter than the description text it precedes — the omitted state
-// is meta-information, not the primary content of the cell.
-function OmittedGlyph() {
-  return (
-    <span
-      className="relative inline-flex shrink-0 items-center justify-center text-muted"
-      style={{ width: 12, height: 12 }}
-      aria-hidden
-    >
-      <Building2 size={8} focusable={false} strokeWidth={1.5} />
-      <Ban
-        size={12}
-        focusable={false}
-        className="absolute inset-0"
-        strokeWidth={1.25}
-      />
-    </span>
   );
 }
 

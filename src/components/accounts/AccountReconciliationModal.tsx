@@ -36,6 +36,10 @@ import {
 import { indexById } from "../../utils/indexById";
 import { tintFill } from "../../utils/tint";
 import { Checkbox } from "../form";
+import {
+  EntryDescriptionContent,
+  resolveEntryDescriptionDisplay,
+} from "../EntryDescriptionContent";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 import {
@@ -138,6 +142,18 @@ export function AccountReconciliationModal({
   // through `allTypes` so chips match the rest of the app.
   const typesById = useMemo(
     () => indexById(allTypes(preImportData)),
+    [preImportData],
+  );
+  // Company / item lookups so a matched row's label resolves through the
+  // same company-pill / type-name / line-item fallback the budget table
+  // uses — a row tagged only with a company ("Spotify") reads as that
+  // company here instead of "(no label)".
+  const companiesById = useMemo(
+    () => indexById(preImportData.companies),
+    [preImportData],
+  );
+  const itemsById = useMemo(
+    () => indexById(preImportData.items),
     [preImportData],
   );
   // Lookup tables for rendering. Built from the pre-import snapshot
@@ -333,6 +349,41 @@ export function AccountReconciliationModal({
     onApply({ mergedRowIds, entryOverrides, seriesRules, orphans: orphanOut });
   }
 
+  // Resolve a matched row's label parts (company / type / line item +
+  // display flags) so it renders through `EntryDescriptionContent`
+  // exactly the way the budget table's description cell would — a row
+  // whose name comes from a company pill or type-name fallback reads the
+  // same here instead of collapsing to "(no label)".
+  function describeRowLabel(row: Row, rowDesc: string) {
+    const company = row.companyId
+      ? (companiesById.get(row.companyId) ?? null)
+      : null;
+    const entryType = row.typeId ? (typesById.get(row.typeId) ?? null) : null;
+    const firstLineItem = row.lineItems?.[0];
+    const lineItem = firstLineItem
+      ? {
+          name:
+            itemsById.get(firstLineItem.itemId)?.name ?? t("cell.unknownItem"),
+          many: (row.lineItems?.length ?? 0) > 1,
+        }
+      : undefined;
+    const display = resolveEntryDescriptionDisplay({
+      value: rowDesc,
+      isFallback: false,
+      entryType,
+      company,
+      hasLineItems: !!row.lineItems?.length,
+      noCompany: false,
+    });
+    return {
+      company,
+      entryType,
+      lineItem,
+      display,
+      isRecurring: !!row.seriesId,
+    };
+  }
+
   const candidateRows = allCandidates.map((c) => {
     const lookup = rowsById.get(c.rowId);
     const entry = entriesById.get(c.historyEntryId);
@@ -350,6 +401,7 @@ export function AccountReconciliationModal({
     const isChecked = checked.has(key);
     const seriesId = c.seriesId;
     const seriesRuleAttached = seriesId ? seriesRulesById.has(seriesId) : false;
+    const label = describeRowLabel(lookup.row, rowDesc);
     return (
       <li
         key={key}
@@ -362,8 +414,23 @@ export function AccountReconciliationModal({
           label={
             <span className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5">
               <span className="font-mono text-xs text-muted">{rowDate}</span>
-              <span className="truncate text-fg">
-                {rowDesc || t("reconciliation.noLabel")}
+              <span
+                className={`flex min-w-0 items-center gap-1.5 font-mono ${
+                  label.isRecurring
+                    ? "text-flag"
+                    : label.display.hasContent
+                      ? "text-fg"
+                      : "text-muted"
+                }`}
+              >
+                <EntryDescriptionContent
+                  value={rowDesc}
+                  isRecurring={label.isRecurring}
+                  entryType={label.entryType}
+                  company={label.company}
+                  display={label.display}
+                  lineItem={label.lineItem}
+                />
               </span>
               <span className="font-mono text-fg">
                 {formatAmount(rowAmount, settings)}
@@ -441,6 +508,7 @@ export function AccountReconciliationModal({
       const entryType = lookup.row.typeId
         ? typesById.get(lookup.row.typeId)
         : undefined;
+      const label = describeRowLabel(lookup.row, rowDesc);
       return (
         <li
           key={o.rowId}
@@ -464,8 +532,19 @@ export function AccountReconciliationModal({
             ) : (
               <span className="h-5 w-5 shrink-0" aria-hidden />
             )}
-            <span className="truncate text-fg-bright">
-              {rowDesc || t("reconciliation.noLabel")}
+            <span
+              className={`flex min-w-0 items-center gap-1.5 font-mono ${
+                label.isRecurring ? "text-flag" : "text-fg-bright"
+              }`}
+            >
+              <EntryDescriptionContent
+                value={rowDesc}
+                isRecurring={label.isRecurring}
+                entryType={label.entryType}
+                company={label.company}
+                display={label.display}
+                lineItem={label.lineItem}
+              />
             </span>
             <span className="font-mono text-fg tabular-nums">
               {formatAmount(rowAmount, settings)}
