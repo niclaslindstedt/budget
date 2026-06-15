@@ -543,7 +543,12 @@ hidden.
 ### Reconciliation modal
 
 `AccountReconciliationModal.tsx` — the post-import flow that pairs new
-history entries with existing budget rows.
+history entries with existing budget rows. Each matched / orphan row
+renders its label through the shared `EntryDescriptionContent`
+(`src/components/EntryDescriptionContent.tsx`), the same read-only
+description rendering the budget table's `DescriptionCell` uses, so a row
+named only by a company pill or type-name fallback reads the way it does
+in the ledger instead of collapsing to a bare "(no label)".
 
 ### Transfer collapse modal
 
