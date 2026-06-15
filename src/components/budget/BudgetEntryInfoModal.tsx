@@ -244,7 +244,7 @@ export function BudgetEntryInfoModal({
             <InfoField
               label={t("budget.entryInfoType")}
               display={
-                <span className="flex min-w-0 items-center gap-1.5">
+                <span className="flex min-w-0 items-center justify-end gap-1.5">
                   {view.type && (
                     <CategoryIconGlyph
                       name={view.type.glyph}
@@ -281,7 +281,7 @@ export function BudgetEntryInfoModal({
               <InfoField
                 label={t("budget.entryInfoTags")}
                 display={
-                  <span className="flex flex-wrap gap-1">
+                  <span className="flex flex-wrap justify-end gap-1">
                     {view.rowTags.map((tag) => (
                       <span
                         key={tag.id}
@@ -303,7 +303,7 @@ export function BudgetEntryInfoModal({
               <InfoField
                 label={t("budget.entryInfoRecurring")}
                 display={
-                  <span className="flex items-center gap-1.5 text-fg-bright">
+                  <span className="flex items-center justify-end gap-1.5 text-fg-bright">
                     <Repeat size={14} aria-hidden focusable={false} />
                     {t("budget.entryInfoYes")}
                   </span>
@@ -315,7 +315,7 @@ export function BudgetEntryInfoModal({
               <InfoField
                 label={t("budget.entryInfoTransfer")}
                 display={
-                  <span className="flex items-center gap-1.5 text-fg-bright">
+                  <span className="flex items-center justify-end gap-1.5 text-fg-bright">
                     <ArrowLeftRight size={14} aria-hidden focusable={false} />
                     {t("budget.entryInfoYes")}
                   </span>
@@ -334,7 +334,7 @@ export function BudgetEntryInfoModal({
               <InfoField
                 label={t("budget.entryInfoLineItems")}
                 display={
-                  <span className="flex flex-col gap-0.5">
+                  <span className="flex flex-col items-end gap-0.5">
                     {view.rowLineItems.map((li) => (
                       <span key={li.id} className="truncate text-fg-bright">
                         {li.name}
@@ -349,7 +349,7 @@ export function BudgetEntryInfoModal({
               <InfoField
                 label={t("budget.entryInfoReceipt")}
                 display={
-                  <span className="flex items-center gap-1.5 text-fg-bright">
+                  <span className="flex items-center justify-end gap-1.5 text-fg-bright">
                     <Receipt size={14} aria-hidden focusable={false} />
                     {t("budget.entryInfoYes")}
                   </span>
