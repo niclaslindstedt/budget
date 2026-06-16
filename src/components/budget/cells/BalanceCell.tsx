@@ -1,5 +1,3 @@
-import { Minus, Plus } from "lucide-react";
-
 import type { Settings } from "../../../data/types";
 import { formatNumber } from "../../../utils/format";
 import { plural, useT } from "../../../i18n";
@@ -37,27 +35,13 @@ export function BalanceCell({
   return (
     <td className={`${CELL_BASE} bg-surface-3`} aria-readonly="true">
       <div className="relative flex items-stretch">
-        {/* Non-clickable +/- glyph mirrors AmountCellDisplay so the
-           balance reads in the same visual format as the amount column;
-           sign is conveyed by the glyph rather than baked into the text.
-           Muted on purpose — a colour-matched sign would read as a
-           tappable sign-toggle button (which it is on the editable
-           AmountCell). The number itself keeps its sign colour. Hidden
-           on mobile to claw back column width — the number's sign colour
-           still conveys direction, and balance has no tap-to-toggle
-           affordance so the glyph carries no interactive meaning. */}
+        {/* Balance has no +/- glyph: it's a read-only column with no
+           tap-to-toggle affordance, so the sign carries no interactive
+           meaning. The number's own sign colour (text-negative /
+           text-positive) conveys direction on its own, the same way it
+           does on mobile. */}
         <span
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-6 items-center justify-center text-muted opacity-60 md:flex"
-          aria-hidden
-        >
-          {negative ? (
-            <Minus size={14} aria-hidden focusable={false} />
-          ) : (
-            <Plus size={14} aria-hidden focusable={false} />
-          )}
-        </span>
-        <span
-          className={`flex w-full items-center justify-end px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono tabular-nums whitespace-pre md:pl-6 ${
+          className={`flex w-full items-center justify-end px-[var(--table-cell-px)] py-[var(--table-cell-py)] font-mono tabular-nums whitespace-pre ${
             settings.showCurrency && settings.currencyPosition === "after"
               ? "pr-8"
               : ""
@@ -99,9 +83,7 @@ export function BalanceCell({
           <span
             aria-hidden
             className={`pointer-events-none absolute inset-y-0 ${
-              settings.currencyPosition === "before"
-                ? "left-0 md:left-6"
-                : "right-2"
+              settings.currencyPosition === "before" ? "left-0" : "right-2"
             } flex items-center font-mono text-xs text-muted`}
           >
             {settings.currency}
