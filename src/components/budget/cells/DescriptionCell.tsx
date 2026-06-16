@@ -563,11 +563,14 @@ function DescriptionPopover({
             wrapperClassName="min-w-0 flex-auto"
             className="field-input block h-full w-full resize-none rounded border-0 bg-transparent px-2 py-1.5 font-mono leading-snug whitespace-pre-wrap break-words text-fg outline-none"
           />
-          {/* Lift the bank's original memo verbatim — handy on history
-              rows whose description is still the bank text placeholder
-              (no override), so there's no bank-memo line below to copy
-              from. Mirrors the read-only transfer popover's copy glyph. */}
-          {bankText && (
+          {/* Lift the bank's original memo verbatim — only beside the
+              input when there's no override, i.e. the bank text is still
+              the textarea placeholder and there's no bank-memo line below
+              to copy from. Once the row has an override description the
+              copy glyph moves onto that bottom line (see below) so it
+              copies the text it sits next to rather than the input's.
+              Mirrors the read-only transfer popover's copy glyph. */}
+          {bankText && !bankDescription && (
             <button
               type="button"
               onClick={handleCopyBankText}
@@ -608,6 +611,35 @@ function DescriptionPopover({
             <span className="min-w-0 flex-1 font-mono break-words whitespace-pre-wrap">
               {bankDescription}
             </span>
+            {/* With an override in the input, the copy glyph belongs here
+                — next to the bank memo it copies — rather than beside the
+                description the user authored. */}
+            <button
+              type="button"
+              onClick={handleCopyBankText}
+              aria-label={
+                bankTextCopied
+                  ? t("cell.copiedBankText")
+                  : t("cell.copyBankText")
+              }
+              title={
+                bankTextCopied
+                  ? t("cell.copiedBankText")
+                  : t("cell.copyBankText")
+              }
+              className="-my-0.5 -mr-0.5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:bg-surface-2 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              {bankTextCopied ? (
+                <Check
+                  size={12}
+                  aria-hidden
+                  focusable={false}
+                  className="text-success"
+                />
+              ) : (
+                <Copy size={12} aria-hidden focusable={false} />
+              )}
+            </button>
           </div>
         )}
         {lineItems && lineItems.length > 0 && (

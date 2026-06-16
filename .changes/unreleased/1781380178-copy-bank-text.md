@@ -3,4 +3,4 @@ type: Added
 title: Copy bank text
 ---
 
-The description popover now has a copy button beside the input on history rows, so you can grab the original bank statement text in one tap — even before you've given the row your own description.
+The description popover lets you copy the original bank statement text in one tap on history rows — beside the input before you've given the row your own description, and on the bank-memo line once you have.
