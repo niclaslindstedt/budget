@@ -51,10 +51,14 @@
          derived from `src/seo/routes.ts`. Keep these markers verbatim or
          the splicer will fall back to the homepage payload on every alias.
     -->
-    <title>Budget</title>
+    <title>Budget — local-first budget app</title>
     <meta
       name="description"
-      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+      content="A local-first budget app that tracks accounts, salary, and loans in your browser. Sync to Dropbox or Google Drive, or export JSON. No account, no backend."
+    />
+    <meta
+      name="keywords"
+      content="local-first, budget, personal finance, money management, accounts, salary, loan tracking, savings, net worth, forecasting, spreadsheet, no account, no backend, privacy, offline, pwa, dropbox sync, google drive sync, encrypted, json export, free"
     />
     <link rel="canonical" href="https://budget.niclaslindstedt.se/" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
@@ -63,7 +67,7 @@
     <meta property="og:title" content="Budget — local-first budget app" />
     <meta
       property="og:description"
-      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+      content="A local-first budget app that tracks accounts, salary, and loans in your browser. Sync to Dropbox or Google Drive, or export JSON. No account, no backend."
     />
     <meta property="og:url" content="https://budget.niclaslindstedt.se/" />
     <meta
@@ -78,7 +82,7 @@
     <meta name="twitter:title" content="Budget — local-first budget app" />
     <meta
       name="twitter:description"
-      content="A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking."
+      content="A local-first budget app that tracks accounts, salary, and loans in your browser. Sync to Dropbox or Google Drive, or export JSON. No account, no backend."
     />
     <meta
       name="twitter:image"
@@ -109,7 +113,7 @@
         "@id": "https://budget.niclaslindstedt.se/#website",
         "url": "https://budget.niclaslindstedt.se/",
         "name": "Budget",
-        "description": "A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking.",
+        "description": "A local-first budget app that tracks accounts, salary, and loans in your browser. Sync to Dropbox or Google Drive, or export JSON. No account, no backend.",
         "inLanguage": "en",
         "publisher": { "@id": "https://budget.niclaslindstedt.se/#author" }
       }
@@ -121,7 +125,7 @@
         "@id": "https://budget.niclaslindstedt.se/#app",
         "name": "Budget",
         "url": "https://budget.niclaslindstedt.se/",
-        "description": "A local-first budget app that keeps your data in your browser. Export and import as JSON; no account, no backend, no behavioural tracking.",
+        "description": "A local-first budget app that tracks accounts, salary, and loans in your browser. Sync to Dropbox or Google Drive, or export JSON. No account, no backend.",
         "applicationCategory": "FinanceApplication",
         "operatingSystem": "Any",
         "browserRequirements": "Requires JavaScript. Requires HTML5.",
@@ -135,12 +139,16 @@
         "author": { "@id": "https://budget.niclaslindstedt.se/#author" },
         "publisher": { "@id": "https://budget.niclaslindstedt.se/#author" },
         "screenshot": "https://budget.niclaslindstedt.se/og-default.png",
-        "keywords": "local-first, budget, finance, spreadsheet, no account, no backend, privacy, offline, pwa",
+        "keywords": "local-first, budget, personal finance, money management, accounts, salary, loan tracking, savings, net worth, forecasting, spreadsheet, no account, no backend, privacy, offline, pwa, dropbox sync, google drive sync, encrypted, json export, free",
         "featureList": [
-          "Local-first storage — data lives in your browser",
-          "Spreadsheet-style monthly sheets",
-          "JSON export / import for portability",
-          "Optional Dropbox sync to your own app folder",
+          "Local-first storage — your data lives in your browser",
+          "Track accounts, salary, loans, savings, investments, and properties",
+          "Net-worth insights and budget forecasting",
+          "Spreadsheet-style monthly sheets with running balances",
+          "JSON export / import for full portability",
+          "Optional encrypted sync to your own Dropbox or Google Drive",
+          "Installable PWA that works offline",
+          "English and Swedish, with dark / light themes",
           "No account, no backend, no behavioural tracking"
         ]
       }
@@ -185,13 +193,14 @@
             Budget — a local-first budget app
           </h1>
           <p>
-            Budget is a spreadsheet-style budget app that keeps your data in
-            your browser's local storage. There is no account, no backend, and
-            no behavioural tracking SDK — the production site loads a
-            privacy-friendly page-view counter (GoatCounter) that records
-            aggregated hits only. You can export and import your full ledger as
-            a JSON file, and optionally sync the same bytes to your own Dropbox
-            app folder.
+            Budget is a spreadsheet-style budget app that tracks your accounts,
+            salary, loans, savings, and net worth in your browser's local
+            storage. There is no account, no backend, and no behavioural
+            tracking SDK — the production site loads a privacy-friendly
+            page-view counter (GoatCounter) that records aggregated hits only.
+            You can export and import your full ledger as a JSON file, and
+            optionally sync the same bytes — encrypted — to your own Dropbox or
+            Google Drive.
           </p>
           <p>
             The app needs JavaScript to run. Enable JavaScript and reload, or
@@ -199,7 +208,6 @@
           </p>
           <ul>
             <li><a href="/privacy/">Privacy policy</a></li>
-            <li><a href="/changelog/">Changelog</a></li>
             <li>
               <a href="https://github.com/niclaslindstedt/budget"
                 >Source on GitHub</a

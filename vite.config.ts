@@ -233,7 +233,13 @@ function renderLlmsTxt(routes: readonly RouteSeo[]): string {
   lines.push("");
   lines.push("## Source");
   lines.push("");
-  lines.push(`- [GitHub repository](${REPO_URL}): source, issues, releases.`);
+  lines.push(
+    `- [README](${REPO_URL}#readme): features, install, and configuration.`,
+  );
+  lines.push(
+    `- [GitHub repository](${REPO_URL}): MIT-licensed local-first PWA ` +
+      `built with React, Vite, and TypeScript — source, issues, releases.`,
+  );
   lines.push("");
   return lines.join("\n");
 }

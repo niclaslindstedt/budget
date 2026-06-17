@@ -11,6 +11,8 @@ import {
   AUTHOR_SAME_AS,
   DEFAULT_OG_IMAGE,
   SITE_DESCRIPTION,
+  SITE_FEATURES,
+  SITE_KEYWORDS,
   SITE_LANGUAGE,
   SITE_NAME,
   SITE_URL,
@@ -143,15 +145,8 @@ export const HOME_ROUTE: RouteSeo = {
       author: { "@id": `${SITE_URL}/#author` },
       publisher: { "@id": `${SITE_URL}/#author` },
       screenshot: absoluteUrl(DEFAULT_OG_IMAGE),
-      keywords:
-        "local-first, budget, finance, spreadsheet, no account, no backend, privacy, offline, pwa",
-      featureList: [
-        "Local-first storage — data lives in your browser",
-        "Spreadsheet-style monthly sheets",
-        "JSON export / import for portability",
-        "Optional Dropbox sync to your own app folder",
-        "No account, no backend, no behavioural tracking",
-      ],
+      keywords: SITE_KEYWORDS,
+      featureList: [...SITE_FEATURES],
     },
   ],
 };
@@ -161,12 +156,12 @@ export const PRIVACY_ROUTE: RouteSeo = {
   title: "Privacy — Budget",
   description:
     "How Budget handles your data: it lives in your browser's local " +
-    "storage and, if you opt in, in your own Dropbox app folder. " +
+    "storage and, if you opt in, in your own Dropbox or Google Drive. " +
     "No server, no account on a backend, no behavioural tracking SDK.",
   ogType: "article",
   sitemap: { changefreq: "monthly", priority: 0.5 },
   noscriptBody: noscript("Privacy policy — Budget", [
-    "Budget is a local-first budget app. Your ledger lives in your browser's local storage. There is no backend, no account on a server, and no behavioural tracking SDK. The production site loads a privacy-friendly page-view counter (GoatCounter) that records aggregated hits only. You can optionally sync the same JSON to your own Dropbox app folder.",
+    "Budget is a local-first budget app. Your ledger lives in your browser's local storage. There is no backend, no account on a server, and no behavioural tracking SDK. The production site loads a privacy-friendly page-view counter (GoatCounter) that records aggregated hits only. You can optionally sync the same JSON — encrypted — to your own Dropbox or Google Drive.",
     "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
   ]),
   jsonLd: [
