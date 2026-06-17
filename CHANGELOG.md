@@ -14,6 +14,69 @@ write a fragment.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-17
+
+### Added
+
+- **Amount calculator** — Tap the calculator beside a split amount and type a sum like `100 + 30 + 50` to drop the total straight into the field.
+- **Item appreciation** — Record dated value snapshots for an item from its "…" menu on the Items sheet, so things that appreciate — art, sculptures, collectibles — climb across the net-worth graph instead of sitting flat at their purchase price.
+- **Copy bank text** — The description popover lets you copy the original bank statement text in one tap on history rows — beside the input before you've given the row your own description, and on the bank-memo line once you have.
+- **Import values from a file** — Every "Update value / balance" modal can now import a batch of dated values from a CSV or Excel file — pick the date and value columns on a live preview of the sheet and import years of history at once. [Learn more](feature:batch-value-import)
+- **Update download progress** — The **budget** wordmark in the header now fills with gold from the bottom — like a glass of water — while a new version downloads, and the reload prompt appears once it is full.
+- **Amortisation-plan changes** — A mortgage's amortisation plan can now change over time — add the dates it
+  stepped (e.g. 3% → 2%) like interest-rate changes, and each payment's
+  amortisation follows the plan that was in effect that month, with the
+  difference landing on interest.
+- **Cover transfers** — Reimburse expenses charged to the wrong account with a "cover" transfer from a savings or spending account — it totals the selected imported transactions, generates a short bank reference message, links back to what it covered, is detected automatically on your next import, and moves the spending off the charged account onto the covering account's budget. [Learn more](feature:cover-transfers)
+- **View full transfer descriptions** — Tap a transfer row's description in the budget ledger to open a read-only popover with the full bank description, even when the inline text is truncated.
+- **Estimate range when promoting history** — Promoting a bank-history entry to a recurring series now offers the same exact-or-estimate amount control as other entry modals, so a varying bill can be promoted with a min/max range.
+- **Suggested companies by type** — Set a row's type first and the description popover's company picker now lists that type's most-used companies up top, so you skip scrolling the whole library to reach the merchant you always use for it.
+- **Entry info view** — A read-only info button on every budget and imported row (or a long-press / right-click of the row) opens a full breakdown of the entry — bank text, description, amount, type, company, tags, splits — with copy glyphs for each field and a "Copy all details" button.
+
+### Changed
+
+- **Choose which similar entries get labelled** — Checking "Also apply to N similar entries" in Metadata mode now expands a list of the matched entries, all ticked by default, so you can untick the ones that shouldn't be updated.
+- **Net worth over time** — The Insights net-worth chart stacks each category as its own band — assets above a zero line, other loans below it, and a line tracing your total — with a property's mortgages folded into its band so the two figures that dwarf everything else move together. Tick a band off in the legend to drop it from the stack and rescale the chart, so the smaller balances become readable.
+- **Type exact amounts and dates in search filters** — Click the from / to values above a search filter's amount or date slider to type an exact bound instead of dragging the thumb.
+- **Wider mortgage match tolerance** — The "Find mortgage payments" match-tolerance slider now reaches ±200%, so months with a large rate-driven swing in the charge still count.
+- **Mortgage auto-detection trusts your tags** — A charge you marked as the mortgage, or one whose description matches a payment you already recorded, is now auto-selected as a likely payment even if a month was slipped or missed — only amount-only guesses still require a clean monthly run.
+- **Find mortgage payments across several accounts** — The "Find mortgage payments" walk now has an account dropdown — pre-set to the property's payment account, but you can select several at once, so a loan whose payments moved between accounts over time is still found in one pass.
+- **Paid-off mortgages read as "Paid off"** — A fully-paid mortgage no longer shows a balance, interest, or amortisation per
+  month on its card — it simply reads as paid off, with the recorded payments
+  still a tap away in the payments view.
+- **Yearly percent on the amortisation figure** — A mortgage card's amortisation per month now spells out the annual percent the
+  plan is set in — e.g. "(2% / yr)" — on both the per-loan card (the plan's own
+  percent) and the unified combined card (the blended rate across the loans).
+- **Mortgage payments tag their transactions** — Accepting payments from Find mortgage payments now tags the bank transactions behind them with the Mortgage type and the property's lender, so they carry their metadata into the budget view and search without tagging by hand. [Learn more](feature:properties)
+- **Tap a savings account to view its history** — Open a savings account's imported transaction history by tapping its row — the same viewer the accounts page uses — instead of the "View history" item in the swipe menu.
+- **Wider description popover for long memos** — The budget description popover now grows toward the page edge to fit a long bank memo on one line before wrapping, instead of squeezing it into a narrow column with a scrollbar.
+
+### Fixed
+
+- **Omit company when splitting** — Splitting a bank entry in metadata mode now offers the same "Omit company" option as the single-entry form, so a part with no merchant can be marked as such.
+- **Metadata mode save gating** — In metadata mode, setting only a type now consistently keeps Save disabled with the "pick a company — or Omit company — to save" hint, instead of letting you save a half-labelled entry that never left the queue.
+- **Yearly amortisation label** — The mortgage editor now labels the "% of initial loan" amortisation as "Yearly amortisation", matching how the percentage is applied.
+- **Keep company and type when editing a historic item** — Editing a bank-history entry that already has a company and type connected now opens with both pre-selected, instead of starting from blank pickers.
+- **Net sale profit hidden for sold properties** — A sold property no longer offers the forward-looking Net sale profit estimator in its actions menu.
+- **Mortgage payments slipped across a month boundary** — The "Find mortgage payments" walk no longer drops a payment when a weekend pushes it into the next month, where two charges then share a calendar month — charges at least two weeks apart now count as separate payments.
+- **Mortgage finder no longer mixes up properties** — "Find mortgage payments" now matches charges on their exact bank description, so two properties paid under the same prefix (e.g. "Avibetalning" with different reference numbers) and similar amounts are no longer merged — one property's payments are never offered for another.
+- **Find mortgage payments pre-checks fewer candidates** — Find mortgage payments no longer pre-checks every charge it surfaces when nothing stands out as highly probable — it pre-checks just the leading candidate, so the tail of weak one-off matches is left for you to opt in rather than added by default.
+- **Mortgage payment split on sold properties** — Find mortgage payments now divides a combined charge across a sold property's
+  loans using the balance each loan carried that month — reconstructed from the
+  original loan amount — instead of the balance recorded today, which is zero
+  once the property is sold.
+- **Percent amortisation on the property's total loan** — A mortgage that amortises by an annual percent now takes that percent against
+  the property's **combined** initial loan, not just its own — so a small
+  amortising top-up alongside a large interest-only loan amortises (e.g.) 2% of
+  the whole property's original debt, matching how the Swedish amortisation
+  requirement is set.
+- **Promoted recurring candidates keep every field** — Promoting a detected recurring candidate now mints rows that carry the company, tags, transfer flag, completed state, estimate min/max band, and formula you set in the confirm modal — previously these were silently dropped and only the description, amount, and type survived.
+- **Label-by-pattern preview order** — The matching-entries preview now lists newest first, so the year heading appears only when the list crosses into an earlier year.
+- **Apply a company or type change across a recurring series** — Changing the company or type on a recurring entry now offers to apply the change to every following occurrence, matching how editing the description already works.
+- **Import matches show the row's real label** — The "Match imported entries" modal now labels each matched and orphan row the same way the budget table does — falling back to the company pill or type name when there's no typed description — instead of showing "(no label)".
+- **History column alignment** — The bank-history viewer now keeps its date and description columns aligned across rows on mobile, instead of shifting when a date is shorter.
+- **Cleaner balance column in landscape** — The balance column no longer shows a redundant +/- glyph that crowded the number in landscape — direction is conveyed by the value's colour.
+
 ## [1.4.0] - 2026-06-12
 
 ### Added
