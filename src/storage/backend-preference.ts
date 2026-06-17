@@ -37,13 +37,16 @@ const DROPBOX_REFRESH_PREFIX = "budget.dropbox.refresh.";
 const GDRIVE_TOKEN_PREFIX = "budget.gdrive.token.";
 const ENCRYPTION_PREFIX = "budget.encryption.";
 
-// Per-user opt-in: when on, cloud backends are wrapped with
+// Per-user toggle: when on, cloud backends are wrapped with
 // `withCloudMirror` so a copy of the latest cloud bytes is kept in
-// localStorage and surfaced when the network is unreachable. Default
-// is off — without it the app waits for the cloud to answer before
-// the user can edit, which is the historical contract. Stored per
-// user so a multi-account device can mix offline-tolerant and
-// strictly-online accounts.
+// localStorage. The cached copy is rendered immediately on open and
+// the cloud fetch revalidates in the background (stale-while-
+// revalidate), so the budget appears instantly instead of blanking
+// until the cloud answers; the same cache lets the user keep editing
+// when the network is unreachable. Default is on — opting out is an
+// explicit action from Settings, stored as "off". Stored per user so
+// a multi-account device can mix offline-tolerant and strictly-online
+// accounts.
 const CLOUD_OFFLINE_PREFIX = "budget.cloud.offline.";
 
 function backendKey(userId: string): string {
@@ -130,12 +133,14 @@ export function setEncryption(userId: string, mode: EncryptionMode): void {
   writeRawStorage(mode, encryptionKey(userId));
 }
 
-// Defaults to "off" — the historical contract is that a cloud-backed
-// session waits for the cloud before letting the user edit, so users
-// have to opt in to the local-mirror fallback. Any value other than
-// "on" reads as off (covers missing keys and the legacy "off" value).
+// Defaults to "on" — a cloud-backed session renders its locally
+// cached copy immediately and revalidates against the cloud in the
+// background, so the budget doesn't blank out while the cloud is
+// fetched. Only an explicit "off" (written when the user opts out
+// from Settings) disables it; a missing key reads as on so existing
+// cloud users pick up the cache-first behaviour without re-toggling.
 export function getCloudOfflineMode(userId: string): boolean {
-  return readRawStorage(cloudOfflineKey(userId)) === "on";
+  return readRawStorage(cloudOfflineKey(userId)) !== "off";
 }
 
 export function setCloudOfflineMode(userId: string, on: boolean): void {

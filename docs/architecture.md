@@ -1177,7 +1177,11 @@ IndexedDB while the network round-trip moves to a background
 revalidation that asks the cloud adapter for just the revision token
 (`getRevision` — Dropbox `get_metadata`, Drive metadata ETag) and only
 downloads the full body when the remote actually moved, delivering the
-re-paint through the mirror's synthesized `watch` channel.
+re-paint through the mirror's synthesized `watch` channel. The mirror
+is enabled by default for cloud backends (the per-user
+`budget.cloud.offline.*` preference reads as on unless explicitly set
+to `off` from Settings), so a cloud session paints its cached copy on
+open instead of blanking until the cloud answers.
 `save-chain.ts` coalesces overlapping saves;
 `backend-preference.ts` persists the per-user choice and cloud tokens;
 `backup-index.ts` / `backup-metadata.ts` back the timestamped-backup
