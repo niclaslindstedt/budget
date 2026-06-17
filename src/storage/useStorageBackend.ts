@@ -7,7 +7,6 @@ import type { StorageAdapter } from "./adapter";
 import {
   type BackendId,
   type EncryptionMode,
-  clearCloudOfflineMode,
   clearGdriveToken,
   getBackend,
   getCloudOfflineMode,
@@ -186,12 +185,13 @@ export function useStorageBackend({
     if (auth.kind !== "signed-in") return "encrypted";
     return auth.user.isDefault ? "plaintext" : getEncryption(auth.user.id);
   });
-  // Per-user, per-device opt-in for the cloud-mirror fallback. Off by
-  // default — without it a cloud-backed session waits for the cloud to
-  // answer before letting the user edit, which is the historical
-  // contract. Seeded from the same per-user key as `encryption` above
-  // so the adapter `useMemo` below sees the right wrapping on first
-  // render.
+  // Per-user, per-device toggle for the cloud-mirror fallback. On by
+  // default — a cloud-backed session renders its locally cached copy
+  // immediately and revalidates against the cloud in the background,
+  // so the budget appears instantly instead of blanking until the
+  // cloud answers. Seeded from the same per-user key as `encryption`
+  // above so the adapter `useMemo` below sees the right wrapping on
+  // first render.
   const [cloudOfflineMode, setCloudOfflineModeState] = useState<boolean>(() => {
     if (auth.kind !== "signed-in") return false;
     return getCloudOfflineMode(auth.user.id);
@@ -744,8 +744,11 @@ export function useStorageBackend({
         log.info("cloud-offline: enabling for user");
         setCloudOfflineMode(userId, true);
       } else {
+        // Write an explicit "off" rather than clearing the key — the
+        // default is on, so a cleared key would re-read as enabled and
+        // silently re-arm the mirror on the next load.
         log.info("cloud-offline: disabling for user — clearing mirror");
-        clearCloudOfflineMode(userId);
+        setCloudOfflineMode(userId, false);
         // Fire-and-forget — the UI flips state immediately and the
         // IDB delete settles a moment later.
         void clearCloudMirrorBytes(userId);

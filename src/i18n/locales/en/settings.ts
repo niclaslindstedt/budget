@@ -265,9 +265,9 @@ const settings = {
     reauthAutoOpenTitle: "Auto-open re-auth popup",
     reauthAutoOpenHint:
       "When your cloud session expires, open the cloud sync panel so you can reconnect. Turn off to keep the panel closed and reconnect from the sync status pill yourself.",
-    offlineModeTitle: "Work offline when the cloud is unreachable",
+    offlineModeTitle: "Show cached data instantly and work offline",
     offlineModeHint:
-      "When on, the app keeps a copy of your cloud file on this device and lets you keep editing if the cloud can't be reached. Edits push automatically when the connection comes back; if another device edited in the meantime, you'll be asked which copy to keep.",
+      "On by default. The app keeps a copy of your cloud file on this device, shows it the moment you open the app while the cloud loads in the background, and lets you keep editing if the cloud can't be reached. Edits push automatically when the connection comes back; if another device edited in the meantime, you'll be asked which copy to keep.",
     saveAlsoHere: "Save also here",
     importExport: "Import / export",
     importJson: "Import JSON",

@@ -266,9 +266,9 @@ const settings: SettingsCatalog = {
     reauthAutoOpenTitle: "Öppna återanslutning automatiskt",
     reauthAutoOpenHint:
       "När din molnsession går ut, öppna molnsynkpanelen så att du kan återansluta. Stäng av för att hålla panelen stängd och återansluta från synkstatusen själv.",
-    offlineModeTitle: "Arbeta offline när molnet inte kan nås",
+    offlineModeTitle: "Visa cachad data direkt och arbeta offline",
     offlineModeHint:
-      "När det är på behåller appen en kopia av din molnfil på den här enheten och låter dig fortsätta redigera om molnet inte kan nås. Ändringar skickas automatiskt när anslutningen är tillbaka; om en annan enhet redigerat under tiden får du välja vilken kopia som ska behållas.",
+      "På som standard. Appen behåller en kopia av din molnfil på den här enheten, visar den direkt när du öppnar appen medan molnet laddas i bakgrunden, och låter dig fortsätta redigera om molnet inte kan nås. Ändringar skickas automatiskt när anslutningen är tillbaka; om en annan enhet redigerat under tiden får du välja vilken kopia som ska behållas.",
     saveAlsoHere: "Spara även här",
     importExport: "Importera / exportera",
     importJson: "Importera JSON",
