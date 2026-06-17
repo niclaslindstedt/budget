@@ -1,4 +1,11 @@
 User-agent: *
+Allow: /
+
+# The /preview/ and /branch/ deploy slots share this origin (see the
+# "Preview deploy and data isolation" section in AGENTS.md) but are not
+# canonical copies of the app — keep them out of the index. The builds
+# also emit <meta name="robots" content="noindex,nofollow"> as a belt-
+# and-braces fallback for crawlers that ignore this file.
 Disallow: /preview/
 Disallow: /branch/
 
