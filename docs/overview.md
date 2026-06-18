@@ -2844,6 +2844,11 @@ The merchant a row's money flows to. Single per row via `Row.companyId`.
 Picked with `CompanyPicker`; administered in Settings → Companies
 (`CompaniesAdmin`), where the user can also pin drag-ordered
 `Company.typeIds` (see company type hint) and assign a company category.
+The picker's open list-box supports type-ahead (`useTypeahead`,
+`src/hooks/useTypeahead.ts`): typing characters jumps the roving cursor
+to the first company whose name starts with the buffer, which resets
+after a pause so a fresh prefix starts a new search. Its "New company"
+creator submits on Enter.
 
 ### Company category
 
