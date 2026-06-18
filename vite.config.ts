@@ -10,6 +10,7 @@ import pkg from "./package.json" with { type: "json" };
 import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
+  SHOWCASE_ROUTE,
   resolveNoscriptBody,
   type RouteSeo,
 } from "./src/seo/routes";
@@ -615,7 +616,7 @@ function pwaPlugin(): Plugin[] {
     },
     workbox: {
       // Precache JS, CSS, fonts, icons, and the prerendered SEO
-      // alias HTMLs (`/privacy/`, `/system/`, `/404.html`).
+      // alias HTMLs (`/privacy/`, `/home/`, `/404.html`).
       // `globIgnores` keeps source maps and the discovery files out
       // of precache (they're served from the network just fine, and
       // don't need to be available offline). The pdf.js chunks
@@ -678,7 +679,7 @@ export default defineConfig({
     injectGoatcounter(),
     emitVersionJson(),
     pwaPlugin(),
-    emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE], {
+    emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE, SHOWCASE_ROUTE], {
       noindex: IS_PREVIEW,
     }),
     // After pwaPlugin so `dist/sw.js` exists to be measured.

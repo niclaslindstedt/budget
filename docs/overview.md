@@ -153,6 +153,29 @@ stays one sentence and links here. Authoring flow: a changeset fragment
 sets `doc: <slug>` (see `AGENTS.md` → "Changeset fragments"), and the
 matching `docs/features/<slug>.md` ships in the same PR.
 
+### Homepage
+
+`src/components/HomePage.tsx` — a static **showcase / landing page**
+served at `/home` (and `/preview/home` on the staging slot), separate
+from the SPA itself, which is served at `/`. It exists to satisfy
+Google's OAuth "app homepage" requirements: identify the app and
+brand, describe what every sheet type tracks, explain **why** the app
+requests optional access to a user's own Dropbox (App-folder scope) or
+Google Drive (`drive.file` scope), link to the privacy policy, and
+stay reachable without signing in. The feature list renders from
+`SITE_FEATURES` (`src/seo/siteConfig.ts`); the prose is hand-written.
+
+It is wired exactly like the privacy page: `SHOWCASE_ROUTE` in
+`src/seo/routes.ts` (path `/home/`) is added to the alias list in
+`emitPathAliasWithSeo(...)` in `vite.config.ts`, so the build emits
+`dist/home/index.html` with its own SEO head plus sitemap / `llms.txt`
+entries; the path switch in `src/main.tsx` mounts `HomePage` when the
+pathname ends with `/home`. Like `PrivacyPage` it is hardcoded
+English, not routed through the i18n catalogs. Because it is the
+Google-facing homepage and a compliance surface, it must be kept in
+lockstep with the actual feature set and OAuth scopes — see the "App
+homepage (`/home`)" section in `AGENTS.md`.
+
 ## Budget page
 
 The per-account ledger. Sheet type `"budget"`. Files live in

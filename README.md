@@ -128,6 +128,23 @@ check. See
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Homepage
+
+The app itself is served at the site root; a static showcase /
+homepage lives at
+[budget.niclaslindstedt.se/home](https://budget.niclaslindstedt.se/home)
+([`src/components/HomePage.tsx`](src/components/HomePage.tsx)). It
+identifies the app, describes what every sheet type tracks, and — for
+OAuth verification — explains why the app requests optional access to
+your own Dropbox or Google Drive. It is reachable without signing in
+and links to the privacy policy.
+
+**Keep it current:** when you add, remove, or change a user-facing
+feature, or change what data leaves the device (an OAuth scope, a new
+third-party integration), update `HomePage.tsx` in the same change so
+the homepage keeps describing the app accurately. See the "App
+homepage (`/home`)" section in [`AGENTS.md`](AGENTS.md).
+
 ## Privacy
 
 The deployed site ships a privacy policy at

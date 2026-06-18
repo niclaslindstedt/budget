@@ -65,6 +65,7 @@ to clean up.
 | **Header menu** / **burger menu**                                        | `src/components/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                                                                                                                                                                                          |
 | **Header star**                                                          | `src/components/HeaderStar.tsx`. [→](overview.md#header-star)                                                                                                                                                                                                                          |
 | **Changelog** / **What's new** / **feature doc** / **"Learn more" link** | `src/components/ChangelogModal.tsx` (renders markdown bullets, opens feature docs inline); markdown via `src/components/markdown.ts` + `Markdown.tsx`; feature docs `docs/features/*.md` → `src/generated/feature-docs.ts` (`vite/feature-docs-plugin.ts`). [→](overview.md#changelog) |
+| **Homepage** / **showcase page** / **landing page** / **app homepage**   | `src/components/HomePage.tsx` (served at `/home`); `SHOWCASE_ROUTE` (`src/seo/routes.ts`). [→](overview.md#homepage)                                                                                                                                                                   |
 
 ## Budget page
 
