@@ -2858,10 +2858,14 @@ The merchant a row's money flows to. Single per row via `Row.companyId`.
 Picked with `CompanyPicker`; administered in Settings → Companies
 (`CompaniesAdmin`), where the user can also pin drag-ordered
 `Company.typeIds` (see company type hint) and assign a company category.
-The picker's open list-box supports type-ahead (`useTypeahead`,
-`src/hooks/useTypeahead.ts`): typing characters jumps the roving cursor
-to the first company whose name starts with the buffer, which resets
-after a pause so a fresh prefix starts a new search. Its "New company"
+The picker's open list-box supports type-ahead: typing characters jumps
+the roving cursor to the first company whose name starts with the
+buffer, which resets after a pause so a fresh prefix starts a new
+search. This is shared infrastructure — `useTypeahead`
+(`src/hooks/useTypeahead.ts`) folded into `useRovingTabindex` behind a
+`typeaheadLabels` option, so every name-list picker (type, category,
+company category, subtype, item, tag, employer, property file category)
+gets the same behaviour by passing one label per row. Its "New company"
 creator submits on Enter.
 
 ### Company category

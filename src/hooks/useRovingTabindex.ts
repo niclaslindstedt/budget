@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useTypeahead } from "./useTypeahead";
+
+const NO_LABELS: readonly string[] = [];
+
 // Roving tabindex for a flat 1D list of focusable elements (the
 // listbox / radiogroup / menubar pattern from the WAI-ARIA APG).
 //
@@ -10,6 +14,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // the initial item whenever `active` flips on so the very first key
 // press lands on something sensible. For 2D grids, see
 // `useGridRovingTabindex` below.
+//
+// Pass `typeaheadLabels` (one label per item, same order) to opt the
+// list into type-ahead: printable keystrokes jump the cursor to the
+// first item whose label starts with what's been typed, resetting
+// after a pause. The same `onKeyDown` handles both arrow nav and
+// type-ahead, so call sites wire nothing extra.
 //
 // `active` should toggle when the surface containing the list is
 // open / mounted / focusable — when it flips from false to true we
@@ -28,16 +38,16 @@ export function useRovingTabindex(opts: {
   // for radiogroups where Tab takes you in / out and arrow keys only
   // move the visual selection.
   focusOnMove?: boolean;
+  // One label per item, in the same order as the list. When provided,
+  // the returned `onKeyDown` also drives type-ahead (see `useTypeahead`).
+  // Absent / empty ⇒ no type-ahead.
+  typeaheadLabels?: readonly string[];
 }): {
   cursor: number;
   isCursorAt: (i: number) => boolean;
   registerItem: (i: number) => (el: HTMLElement | null) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
   focusCursor: () => void;
-  // Move the cursor (and focus, when `focusOnMove`) to an arbitrary
-  // index — the entry point type-ahead uses to jump to a matched row
-  // without going through the arrow keys.
-  moveCursorTo: (i: number) => void;
 } {
   const {
     itemCount,
@@ -46,6 +56,7 @@ export function useRovingTabindex(opts: {
     orientation = "vertical",
     wrap = true,
     focusOnMove = true,
+    typeaheadLabels = NO_LABELS,
   } = opts;
   const [cursor, setCursor] = useState(initialIndex);
   const itemsRef = useRef<(HTMLElement | null)[]>([]);
@@ -84,6 +95,11 @@ export function useRovingTabindex(opts: {
     [itemCount, wrap, focusOnMove],
   );
 
+  const { onKeyDown: onTypeaheadKeyDown } = useTypeahead({
+    labels: typeaheadLabels,
+    onMatch: moveTo,
+  });
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLElement>) => {
       const next = orientation === "vertical" ? "ArrowDown" : "ArrowRight";
@@ -100,9 +116,11 @@ export function useRovingTabindex(opts: {
       } else if (e.key === "End") {
         e.preventDefault();
         moveTo(itemCount - 1);
+      } else {
+        onTypeaheadKeyDown(e);
       }
     },
-    [cursor, itemCount, moveTo, orientation],
+    [cursor, itemCount, moveTo, orientation, onTypeaheadKeyDown],
   );
 
   const focusCursor = useCallback(() => {
@@ -117,7 +135,6 @@ export function useRovingTabindex(opts: {
     registerItem,
     onKeyDown,
     focusCursor,
-    moveCursorTo: moveTo,
   };
 }
 

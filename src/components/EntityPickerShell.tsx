@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Plus, Tag, X } from "lucide-react";
 
 import { useRovingTabindex, type FloatingPlacement } from "../hooks";
@@ -36,6 +36,12 @@ type Props<T extends { id: string }> = {
   // it in <li><button role="option"> + the optional trailing checkmark.
   renderOption: (item: T) => ReactNode;
 
+  // Plain-text label for an item, used for type-ahead matching (typing
+  // characters jumps to the first item whose label starts with them).
+  // Omit to disable type-ahead — e.g. when items have no meaningful
+  // textual prefix.
+  getLabel?: (item: T) => string;
+
   // Optional inline creator. The shell calls `done()` to exit
   // creating mode and close the picker; the caller wires the actual
   // onCreate + onSelect logic inside the rendered form's submit
@@ -66,6 +72,7 @@ export function EntityPickerShell<T extends { id: string }>({
   onSelect,
   renderTrigger,
   renderOption,
+  getLabel,
   renderCreator,
   renderHeader,
   labels,
@@ -84,10 +91,15 @@ export function EntityPickerShell<T extends { id: string }>({
     0,
     items.findIndex((it) => it.id === selectedId),
   );
+  const typeaheadLabels = useMemo(
+    () => (getLabel ? items.map(getLabel) : undefined),
+    [getLabel, items],
+  );
   const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
     itemCount: items.length,
     initialIndex: selectedIdx,
     active: open,
+    typeaheadLabels,
   });
   const close = useCallback(() => {
     setOpen(false);

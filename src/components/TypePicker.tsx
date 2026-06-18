@@ -471,6 +471,7 @@ function CategoryPane({
     itemCount: categories.length,
     initialIndex: initialIdx,
     active: true,
+    typeaheadLabels: categories.map((c) => c.name),
   });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
@@ -548,6 +549,7 @@ function TypePane({
     itemCount: types.length,
     initialIndex: initialIdx,
     active: true,
+    typeaheadLabels: types.map((ty) => ty.name),
   });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
@@ -738,6 +740,7 @@ function CategorySelector({
     itemCount: categories.length,
     initialIndex: initialIdx,
     active: open,
+    typeaheadLabels: categories.map((c) => c.name),
   });
   return (
     <div ref={triggerRef} className="relative">

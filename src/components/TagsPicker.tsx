@@ -98,6 +98,7 @@ export function TagsPicker({
     itemCount: sorted.length,
     initialIndex: 0,
     active: open && !creating,
+    typeaheadLabels: sorted.map((tag) => tag.name),
   });
 
   return (

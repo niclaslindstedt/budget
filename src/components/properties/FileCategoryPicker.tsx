@@ -95,6 +95,7 @@ export function FileCategoryPicker({
     itemCount: sorted.length,
     initialIndex: initialIdx,
     active: open && !creating,
+    typeaheadLabels: sorted.map((c) => c.name),
   });
 
   return (

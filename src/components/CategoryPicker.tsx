@@ -83,6 +83,7 @@ export function CategoryPicker({
         );
       }}
       renderOption={(cat) => <CategoryChip category={cat} compact />}
+      getLabel={(cat) => cat.name}
       renderCreator={(done) => (
         <CategoryCreator
           onCancel={done}
