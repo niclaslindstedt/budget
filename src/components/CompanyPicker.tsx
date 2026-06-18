@@ -5,6 +5,7 @@ import type { Company } from "../data/types";
 import {
   useDesktopAutoFocus,
   useRovingTabindex,
+  useTypeahead,
   type FloatingPlacement,
 } from "../hooks";
 import { useT } from "../i18n";
@@ -159,11 +160,27 @@ export function CompanyPicker({
     0,
     sorted.findIndex((c) => c.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
+  const { isCursorAt, registerItem, onKeyDown, moveCursorTo } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+    });
+
+  // Type-ahead: typing characters jumps the cursor to the first company
+  // whose name starts with what's been typed (resetting after a pause).
+  const typeaheadLabels = useMemo(() => sorted.map((c) => c.name), [sorted]);
+  const { onKeyDown: onTypeaheadKeyDown } = useTypeahead({
+    labels: typeaheadLabels,
+    onMatch: moveCursorTo,
   });
+  const handleItemKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      onKeyDown(e);
+      if (!e.defaultPrevented) onTypeaheadKeyDown(e);
+    },
+    [onKeyDown, onTypeaheadKeyDown],
+  );
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -299,7 +316,7 @@ export function CompanyPicker({
                 aria-selected={c.id === selectedId}
                 tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => handlePick(c.id)}
-                onKeyDown={onKeyDown}
+                onKeyDown={handleItemKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <Building2
@@ -380,6 +397,11 @@ function CompanyCreator({
   );
   const canSubmit = trimmed.length > 0 && !duplicate;
 
+  const submit = useCallback(() => {
+    if (!canSubmit) return;
+    onSubmit({ name: trimmed });
+  }, [canSubmit, onSubmit, trimmed]);
+
   return (
     <Modal
       open
@@ -400,6 +422,12 @@ function CompanyCreator({
             ref={inputRef}
             value={name}
             onValueChange={setName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submit();
+              }
+            }}
             placeholder={t("company.namePlaceholder")}
             className="field-input w-full min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg"
           />
@@ -414,14 +442,7 @@ function CompanyCreator({
         <Button variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        <Button
-          variant="primary"
-          onClick={() => {
-            if (!canSubmit) return;
-            onSubmit({ name: trimmed });
-          }}
-          disabled={!canSubmit}
-        >
+        <Button variant="primary" onClick={submit} disabled={!canSubmit}>
           {t("company.create")}
         </Button>
       </Modal.Footer>

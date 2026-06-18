@@ -34,6 +34,10 @@ export function useRovingTabindex(opts: {
   registerItem: (i: number) => (el: HTMLElement | null) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
   focusCursor: () => void;
+  // Move the cursor (and focus, when `focusOnMove`) to an arbitrary
+  // index — the entry point type-ahead uses to jump to a matched row
+  // without going through the arrow keys.
+  moveCursorTo: (i: number) => void;
 } {
   const {
     itemCount,
@@ -107,7 +111,14 @@ export function useRovingTabindex(opts: {
 
   const isCursorAt = useCallback((i: number) => i === cursor, [cursor]);
 
-  return { cursor, isCursorAt, registerItem, onKeyDown, focusCursor };
+  return {
+    cursor,
+    isCursorAt,
+    registerItem,
+    onKeyDown,
+    focusCursor,
+    moveCursorTo: moveTo,
+  };
 }
 
 // 2D variant for grid pickers (ColorPalette, GlyphGrid). The list is
