@@ -3,12 +3,11 @@ import { Pencil, Trash2, Wallet } from "lucide-react";
 
 import { useAmountColumns } from "../../hooks";
 import { useLang, useT } from "../../i18n";
+import { historyStaleness } from "../../data/history";
 import type { Account, Settings } from "../../data/types";
-import {
-  formatBalance,
-  formatCount,
-  formatMonthRange,
-} from "../../utils/format";
+import { formatBalance, formatCount, formatDate } from "../../utils/format";
+import { todayIso } from "../../utils/date";
+import { STALENESS_TEXT_CLASS } from "../history-staleness";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
 import { CategoryIconGlyph } from "../icons";
@@ -19,10 +18,10 @@ type Props = {
   balance: number;
   accountSettings: Settings;
   historyCount: number;
-  // Earliest → latest date across this account's imported transactions, or
-  // null when none have been imported. Rendered as a compact month-year
-  // span in the "Period" column.
-  historyRange: { start: string; end: string } | null;
+  // Date of this account's most recent imported transaction, or null when
+  // none have been imported. Rendered as a full date in the "Last
+  // activity" column and coloured by how stale it is.
+  lastActivity: string | null;
   canCut: boolean;
   canUpdateBalance: boolean;
   onEditAccount: (accountId: string) => void;
@@ -38,7 +37,7 @@ function AccountRowImpl({
   balance,
   accountSettings,
   historyCount,
-  historyRange,
+  lastActivity,
   canCut,
   canUpdateBalance,
   onEditAccount,
@@ -55,6 +54,15 @@ function AccountRowImpl({
   // tap elsewhere in the accounts table only dismisses the swipe — the
   // underlying control still gets a follow-up tap to fire properly.
   const { swiped, setSwiped, touchHandlers } = useRowSwipeAndClaim(account.id);
+
+  // Colour the last-activity date by how stale it is — green (fresh)
+  // through red (a week or more since the last imported transaction).
+  const staleness = lastActivity
+    ? historyStaleness(lastActivity, todayIso())
+    : null;
+  const activityClass = staleness
+    ? STALENESS_TEXT_CLASS[staleness]
+    : "text-muted";
 
   const rowClass = [
     swiped ? "is-swiped" : "",
@@ -157,18 +165,18 @@ function AccountRowImpl({
           {formatCount(historyCount, accountSettings)}
         </span>
       </td>
-      <td className="account-period-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap md:table-cell">
+      <td className="account-activity-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap md:table-cell">
         <span
           title={
-            historyRange === null
+            lastActivity === null
               ? t("accountsSheet.noHistoryImported")
-              : t("accountsSheet.historyRangeTitle")
+              : t("accountsSheet.lastActivityTitle")
           }
-          className={`block ${historyRange === null ? "text-muted" : "text-fg"}`}
+          className={`block ${activityClass}`}
         >
-          {historyRange === null
+          {lastActivity === null
             ? "—"
-            : formatMonthRange(historyRange.start, historyRange.end, lang)}
+            : formatDate(lastActivity, accountSettings.dateFormat, lang)}
         </span>
       </td>
       <td className="swipe-action-cell account-action-cell w-32 p-0 align-middle">

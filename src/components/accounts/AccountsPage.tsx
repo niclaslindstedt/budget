@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
-  CalendarRange,
+  CalendarClock,
   Download,
   Landmark,
   Pencil,
@@ -248,19 +248,19 @@ export function AccountsPage({
                     </th>
                     <th
                       scope="col"
-                      className="account-period-cell hidden px-2.5 py-2 text-left md:table-cell"
-                      aria-label={t("accountsSheet.historyRangeHeader")}
-                      title={t("accountsSheet.historyRangeTitle")}
+                      className="account-activity-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("accountsSheet.lastActivityHeader")}
+                      title={t("accountsSheet.lastActivityTitle")}
                     >
                       <span className="inline-flex items-center gap-1.5 md:gap-2">
-                        <CalendarRange
+                        <CalendarClock
                           size={16}
                           className="shrink-0 text-accent"
                           aria-hidden
                           focusable={false}
                         />
                         <span className="hidden md:inline">
-                          {t("accountsSheet.historyRangeHeader")}
+                          {t("accountsSheet.lastActivityHeader")}
                         </span>
                       </span>
                     </th>
@@ -301,7 +301,8 @@ export function AccountsPage({
                       : settings;
                     const historyEntries = data.history[account.id];
                     const historyCount = historyEntries?.length ?? 0;
-                    const historyRange = historyDateRange(historyEntries);
+                    const lastActivity =
+                      historyDateRange(historyEntries)?.end ?? null;
                     const transfersForAccount =
                       transferCountByAccount.get(account.id) ?? 0;
                     const canCut = historyCount > 0 || transfersForAccount > 0;
@@ -312,7 +313,7 @@ export function AccountsPage({
                         balance={balance}
                         accountSettings={accountSettings}
                         historyCount={historyCount}
-                        historyRange={historyRange}
+                        lastActivity={lastActivity}
                         canCut={canCut}
                         canUpdateBalance={accountsWithBudget.has(account.id)}
                         onEditAccount={onEditAccount}

@@ -1,4 +1,5 @@
 import type { HistoryEntry } from "./types";
+import { diffDaysIso } from "../utils/date";
 
 // The inclusive date span covered by a set of imported bank transactions
 // — the earliest and latest entry date. Consumed by both the Accounts and
@@ -26,4 +27,29 @@ export function historyDateRange(
   }
   if (start === undefined || end === undefined) return null;
   return { start, end };
+}
+
+// How stale an account is, bucketed from the age (in whole days) of its
+// most recent imported transaction — drives the colour of the "Last
+// activity" cell on the Accounts / Savings tables. `today` is passed in
+// (e.g. `todayIso()`) so the classifier stays pure and testable.
+//
+// Buckets, per the recency thresholds the colour key encodes: `fresh` =
+// today or yesterday (≤ 1 day, green), `recent` = 2–3 days (yellow),
+// `aging` = 4–6 days (orange), `stale` = a week or more (≥ 7 days, red).
+// A future-dated entry (negative age) counts as `fresh`. Returns null
+// when `lastIso` isn't a parseable date so callers fall back to a neutral
+// colour.
+export type HistoryStaleness = "fresh" | "recent" | "aging" | "stale";
+
+export function historyStaleness(
+  lastIso: string,
+  today: string,
+): HistoryStaleness | null {
+  const age = diffDaysIso(today, lastIso);
+  if (Number.isNaN(age)) return null;
+  if (age <= 1) return "fresh";
+  if (age <= 3) return "recent";
+  if (age <= 6) return "aging";
+  return "stale";
 }

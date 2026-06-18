@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { historyDateRange } from "../src/data/history";
+import { historyDateRange, historyStaleness } from "../src/data/history";
 import type { HistoryEntry } from "../src/data/types";
-import { formatMonthRange } from "../src/utils/format";
 
 function entry(date: string): HistoryEntry {
   return { id: date, date, description: "x", amount: 0, importedAt: 0 };
@@ -39,24 +38,25 @@ describe("historyDateRange", () => {
   });
 });
 
-describe("formatMonthRange", () => {
-  it("renders a month-year span across two months", () => {
-    expect(formatMonthRange("2025-01-03", "2026-02-28", "en")).toBe(
-      "Jan 2025 – Feb 2026",
-    );
+describe("historyStaleness", () => {
+  const today = "2026-06-18";
+
+  it("buckets by age in whole days", () => {
+    expect(historyStaleness("2026-06-18", today)).toBe("fresh"); // today
+    expect(historyStaleness("2026-06-17", today)).toBe("fresh"); // yesterday
+    expect(historyStaleness("2026-06-16", today)).toBe("recent"); // 2 days
+    expect(historyStaleness("2026-06-15", today)).toBe("recent"); // 3 days
+    expect(historyStaleness("2026-06-14", today)).toBe("aging"); // 4 days
+    expect(historyStaleness("2026-06-12", today)).toBe("aging"); // 6 days
+    expect(historyStaleness("2026-06-11", today)).toBe("stale"); // 7 days
+    expect(historyStaleness("2026-01-01", today)).toBe("stale"); // months
   });
 
-  it("collapses to a single label within one month", () => {
-    expect(formatMonthRange("2025-04-01", "2025-04-30", "en")).toBe("Apr 2025");
+  it("treats a future-dated entry as fresh", () => {
+    expect(historyStaleness("2026-06-20", today)).toBe("fresh");
   });
 
-  it("is language-aware", () => {
-    expect(formatMonthRange("2025-01-03", "2026-02-28", "sv")).toBe(
-      "jan 2025 – feb 2026",
-    );
-  });
-
-  it("returns empty string when neither end parses", () => {
-    expect(formatMonthRange("", "", "en")).toBe("");
+  it("returns null for an unparseable date", () => {
+    expect(historyStaleness("", today)).toBeNull();
   });
 });
