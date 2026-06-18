@@ -125,6 +125,7 @@ export function ItemPicker({
     itemCount: sorted.length,
     initialIndex: initialIdx,
     active: open && !creating,
+    typeaheadLabels: sorted.map((it) => it.name),
   });
 
   return (

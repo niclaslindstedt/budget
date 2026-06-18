@@ -5,7 +5,6 @@ import type { Company } from "../data/types";
 import {
   useDesktopAutoFocus,
   useRovingTabindex,
-  useTypeahead,
   type FloatingPlacement,
 } from "../hooks";
 import { useT } from "../i18n";
@@ -160,27 +159,15 @@ export function CompanyPicker({
     0,
     sorted.findIndex((c) => c.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown, moveCursorTo } =
-    useRovingTabindex({
-      itemCount: sorted.length,
-      initialIndex: initialIdx,
-      active: open && !creating,
-    });
-
-  // Type-ahead: typing characters jumps the cursor to the first company
-  // whose name starts with what's been typed (resetting after a pause).
+  // Type-ahead labels: typing characters jumps the cursor to the first
+  // company whose name starts with what's been typed.
   const typeaheadLabels = useMemo(() => sorted.map((c) => c.name), [sorted]);
-  const { onKeyDown: onTypeaheadKeyDown } = useTypeahead({
-    labels: typeaheadLabels,
-    onMatch: moveCursorTo,
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: sorted.length,
+    initialIndex: initialIdx,
+    active: open && !creating,
+    typeaheadLabels,
   });
-  const handleItemKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLElement>) => {
-      onKeyDown(e);
-      if (!e.defaultPrevented) onTypeaheadKeyDown(e);
-    },
-    [onKeyDown, onTypeaheadKeyDown],
-  );
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -316,7 +303,7 @@ export function CompanyPicker({
                 aria-selected={c.id === selectedId}
                 tabIndex={isCursorAt(idx) ? 0 : -1}
                 onClick={() => handlePick(c.id)}
-                onKeyDown={handleItemKeyDown}
+                onKeyDown={onKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <Building2

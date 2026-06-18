@@ -125,6 +125,7 @@ export function SubtypePicker({
     itemCount: sorted.length,
     initialIndex: initialIdx,
     active: open && !creating,
+    typeaheadLabels: sorted.map((s) => s.name),
   });
 
   return (

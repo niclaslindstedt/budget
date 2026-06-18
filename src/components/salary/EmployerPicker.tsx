@@ -108,6 +108,7 @@ export function EmployerPicker({
     itemCount: sorted.length,
     initialIndex: initialIdx,
     active: open && !creating,
+    typeaheadLabels: sorted.map((e) => e.name),
   });
 
   return (
