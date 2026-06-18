@@ -225,6 +225,86 @@ describe("deriveUnlocks", () => {
     expect(deriveUnlocks(prev, imported, {})).toContain("debtCollector");
   });
 
+  it("fires caseClosed when an imported entry gains a type and a company", () => {
+    const prev = withItem([]);
+    prev.history = {
+      a1: [
+        {
+          id: "h1",
+          date: "2026-05-22",
+          description: "ICA",
+          amount: -200,
+          importedAt: 0,
+          userTypeId: "t1",
+        },
+      ],
+    };
+    const next = withItem([]);
+    next.history = {
+      a1: [
+        {
+          id: "h1",
+          date: "2026-05-22",
+          description: "ICA",
+          amount: -200,
+          importedAt: 0,
+          userTypeId: "t1",
+          userCompanyId: "c1",
+        },
+      ],
+    };
+    expect(deriveUnlocks(prev, next, {})).toContain("caseClosed");
+  });
+
+  it("fires caseClosed via omit-company when no company is set", () => {
+    const prev = withItem([]);
+    prev.history = {
+      a1: [
+        {
+          id: "h1",
+          date: "2026-05-22",
+          description: "ICA",
+          amount: -200,
+          importedAt: 0,
+          userTypeId: "t1",
+        },
+      ],
+    };
+    const next = withItem([]);
+    next.history = {
+      a1: [
+        {
+          id: "h1",
+          date: "2026-05-22",
+          description: "ICA",
+          amount: -200,
+          importedAt: 0,
+          userTypeId: "t1",
+          noCompany: true,
+        },
+      ],
+    };
+    expect(deriveUnlocks(prev, next, {})).toContain("caseClosed");
+  });
+
+  it("does not fire caseClosed for a type without a company or omit-company", () => {
+    const prev = withItem([]);
+    const next = withItem([]);
+    next.history = {
+      a1: [
+        {
+          id: "h1",
+          date: "2026-05-22",
+          description: "ICA",
+          amount: -200,
+          importedAt: 0,
+          userTypeId: "t1",
+        },
+      ],
+    };
+    expect(deriveUnlocks(prev, next, {})).not.toContain("caseClosed");
+  });
+
   it("fires loanRanger when a mortgage records its first payment", () => {
     const prev = withItem([]);
     prev.properties = [

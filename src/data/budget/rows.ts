@@ -440,6 +440,23 @@ export function buildVisibleRows(
   return [...item.rows, ...synthesized];
 }
 
+// A "finished" row is an imported bank transaction (a historic row)
+// the user has fully categorised: it carries a type AND either a
+// company or the explicit "omit company" flag. Finishing is the real
+// confirm signal for imported history — it drives the green row tint
+// and the green Done-column check so the user can scan a statement for
+// what still needs work ("what haven't I finished?"). User-authored,
+// correction, and transfer rows are never "finished": their Done
+// column is a manual confirm that intentionally leaves the row's
+// background unchanged.
+export function isRowFinished(row: Row): boolean {
+  return (
+    row.kind === "historic" &&
+    !!row.typeId &&
+    (!!row.companyId || row.noCompany === true)
+  );
+}
+
 // Past-dated rows default to completed: the user is back-filling
 // entries that already happened ("history items… obviously paid").
 // Today and future rows stay open so the user can mark them done

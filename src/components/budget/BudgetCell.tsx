@@ -75,6 +75,12 @@ type Props = {
   // Rendered fully read-only (no editable description / type), like a
   // transfer row, with the cover glyph in the description cell.
   isCoverItem?: boolean;
+  // Whether the row is "finished" (a fully-categorised imported bank
+  // transaction — see `isRowFinished`). Only the `completed` column on a
+  // history row reads it: the Done check renders from this finished
+  // state, in green, instead of the always-true synthesized completed
+  // value. Undefined on every other column / row kind.
+  finished?: boolean;
   // Threaded from `Row.descriptionPlaceholder`. When set, the
   // resolved description in `value` is a fallback (company / type /
   // bank text) rather than a real user override — `DescriptionCell`
@@ -172,6 +178,7 @@ function CellImpl({
   outgoing,
   isHistory,
   isCoverItem,
+  finished,
   hasFormula,
   hiddenTransferCount = 0,
   transferExpanded = false,
@@ -227,6 +234,12 @@ function CellImpl({
   // shared half through a single helper so the leaves stay in lock-step
   // when their prop contracts change.
   if (isTransfer || isHistory || isCoverItem) {
+    // History Done column: the check reflects whether the row is
+    // "finished" (categorised), not the always-true synthesized
+    // completed value, and renders green to telegraph the confirm.
+    if (isHistory && column.type === "completed") {
+      return <ReadonlyCompletedCell checked={!!finished} tone="success" />;
+    }
     const readonly = renderReadonlyColumn({
       column,
       value,
