@@ -198,4 +198,64 @@ export const PRIVACY_ROUTE: RouteSeo = {
   ],
 };
 
-export const ROUTES: readonly RouteSeo[] = [HOME_ROUTE, PRIVACY_ROUTE];
+// The `/home/` showcase: a static landing page that identifies the
+// app, describes what it does, explains why it requests access to a
+// user's cloud storage, and links to the privacy policy — the surface
+// Google's OAuth verification requires as the app's homepage. Served
+// alongside the app (which lives at `/`); rendered by
+// `src/components/HomePage.tsx`.
+export const SHOWCASE_ROUTE: RouteSeo = {
+  path: "/home/",
+  title: "Budget — local-first budget app",
+  description:
+    "What Budget is, what it tracks (accounts, salary, loans, savings, " +
+    "net worth), and why it asks for optional access to your own Dropbox " +
+    "or Google Drive. Local-first, no account, no backend.",
+  ogType: "website",
+  sitemap: { changefreq: "monthly", priority: 0.8 },
+  noscriptBody: noscript("Budget — a local-first budget app", [
+    "Budget is a spreadsheet-style personal finance app that tracks your accounts, salary, loans, savings, investments, and properties, and rolls them up into your net worth. Everything lives in your own browser — there is no account to create, no backend server, and no behavioural tracking.",
+    "Cloud sync is optional: connect your own Dropbox (App folder scope) or Google Drive (drive.file scope) and the app writes a single encrypted budget.json there. That is the only reason it ever requests access, and you can revoke it at any time.",
+    "This page needs JavaScript to render fully. Enable JavaScript and reload, or read the privacy policy at /privacy/.",
+  ]),
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": `${absoluteUrl("/home/")}#page`,
+      url: absoluteUrl("/home/"),
+      name: "Budget — local-first budget app",
+      description:
+        "What Budget is, what it tracks, and why it asks for optional " +
+        "access to your own Dropbox or Google Drive.",
+      inLanguage: SITE_LANGUAGE,
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#app` },
+      primaryImageOfPage: absoluteUrl(DEFAULT_OG_IMAGE),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${SITE_URL}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "About",
+          item: absoluteUrl("/home/"),
+        },
+      ],
+    },
+  ],
+};
+
+export const ROUTES: readonly RouteSeo[] = [
+  HOME_ROUTE,
+  PRIVACY_ROUTE,
+  SHOWCASE_ROUTE,
+];

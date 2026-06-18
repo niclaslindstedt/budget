@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
+import { HomePage } from "./components/HomePage";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { LanguageRoot } from "./i18n/LanguageRoot";
 import "./styles.css";
@@ -27,15 +28,19 @@ if (!rootElement) {
 }
 
 // Trivial path-based switch. The build emits `dist/privacy/index.html`
-// (see `vite.config.ts`) so GitHub Pages serves the same SPA at
-// `/privacy/`, and this check decides which view to mount. The preview
-// build's page lives one segment deeper (`/preview/privacy/`); the
-// suffix check below matches both.
+// and `dist/home/index.html` (see `vite.config.ts`) so GitHub Pages
+// serves the same SPA at those clean URLs, and these checks decide
+// which view to mount. The preview build's pages live one segment
+// deeper (`/preview/privacy/`, `/preview/home/`); the suffix checks
+// below match both.
 const path = window.location.pathname.replace(/\/$/, "");
 const isPrivacy = path.endsWith("/privacy") || path === "/privacy";
+const isHome = path.endsWith("/home") || path === "/home";
 
 createRoot(rootElement).render(
   <StrictMode>
-    <LanguageRoot>{isPrivacy ? <PrivacyPage /> : <App />}</LanguageRoot>
+    <LanguageRoot>
+      {isPrivacy ? <PrivacyPage /> : isHome ? <HomePage /> : <App />}
+    </LanguageRoot>
   </StrictMode>,
 );
