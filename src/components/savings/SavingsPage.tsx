@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CalendarRange,
+  CalendarClock,
   Coins,
   Landmark,
   LineChart,
@@ -206,19 +206,19 @@ export function SavingsPage({
                     </th>
                     <th
                       scope="col"
-                      className="savings-period-cell hidden px-2.5 py-2 text-left md:table-cell"
-                      aria-label={t("savingsSheet.historyRangeHeader")}
-                      title={t("savingsSheet.historyRangeTitle")}
+                      className="savings-activity-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("savingsSheet.lastActivityHeader")}
+                      title={t("savingsSheet.lastActivityTitle")}
                     >
                       <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
-                        <CalendarRange
+                        <CalendarClock
                           size={16}
                           className="shrink-0 text-accent"
                           aria-hidden
                           focusable={false}
                         />
                         <span className="hidden md:inline">
-                          {t("savingsSheet.historyRangeHeader")}
+                          {t("savingsSheet.lastActivityHeader")}
                         </span>
                       </span>
                     </th>
@@ -260,7 +260,9 @@ export function SavingsPage({
                         key={saving.id}
                         saving={saving}
                         settings={settings}
-                        historyRange={historyDateRange(historyEntries)}
+                        lastActivity={
+                          historyDateRange(historyEntries)?.end ?? null
+                        }
                         canCut={hasHistory || cutBySaving.has(saving.id)}
                         onEditSaving={onEditSaving}
                         onDeleteSaving={onRequestDeleteSaving}
@@ -283,7 +285,7 @@ export function SavingsPage({
                       >
                         <span>{formatBalance(total, settings)}</span>
                       </td>
-                      <td className="savings-period-cell hidden md:table-cell" />
+                      <td className="savings-activity-cell hidden md:table-cell" />
                       <td className="swipe-action-cell savings-action-cell px-2.5 py-2" />
                     </tr>
                   )}

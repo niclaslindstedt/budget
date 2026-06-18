@@ -532,20 +532,22 @@ Bank-statement entries imported from CSV / XLSX ("bank history" /
 "imported entries"). Lives on `UserData.history[accountId]`. Read-only
 — `HistoryEntry` in `src/data/types.ts`.
 
-### History period
+### Last activity
 
-The "Period" column on the Accounts and Savings tables: the date span
-the imported bank history covers, from the earliest to the latest
-transaction date. `historyDateRange` (`src/data/history.ts`) scans
-`UserData.history[id]` for the min / max entry date (hidden entries
-included — they're still part of the statement), and `formatMonthRange`
-(`src/utils/format.ts`) renders it as a compact, language-aware
-month-year span ("Jan 2025 – Jun 2026"), collapsing to a single label
-when both ends fall in the same month. Rendered by `AccountRow.tsx` and
-`SavingsRow.tsx` next to the transaction count; an em-dash placeholder
-shows when nothing has been imported. The cell sits beside the bank
-column and is hidden on phones (portrait and landscape), same as the
-bank cell, so the mobile grid stays compact.
+The "Last activity" column on the Accounts and Savings tables: the full
+date of each account's most recent imported transaction, a quick read on
+whether the account's history is up to date or has gone stale.
+`historyDateRange` (`src/data/history.ts`) scans `UserData.history[id]`
+for the latest entry date (hidden entries included — they're still part
+of the statement), and the cell renders it through `formatDate` in the
+user's date format. `historyStaleness` buckets that date's age in whole
+days against today — `fresh` (today / yesterday), `recent` (2–3 days),
+`aging` (4–6 days), `stale` (a week or more) — and `STALENESS_TEXT_CLASS`
+(`src/components/history-staleness.ts`, shared by both rows) maps the
+bucket to a theme colour: green → yellow → orange → red. An em-dash in
+the muted colour shows when nothing has been imported. The cell sits
+beside the bank column and is hidden on phones (portrait and landscape),
+same as the bank cell, so the mobile grid stays compact.
 
 ### History modal
 

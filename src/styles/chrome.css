@@ -84,7 +84,7 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .budget-table .hidden.md\:inline-flex {
     display: none;
   }
-  /* Accounts table: drop the bank and history-period columns on
+  /* Accounts table: drop the bank and last-activity columns on
      landscape phones so the four-column mobile grid (icon · name ·
      balance · history count) stays intact. Tailwind's `md:table-cell`
      re-shows the cells at width ≥ 768 px — landscape iPhone 12+ reports
@@ -93,7 +93,7 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
      is unlayered. The column header labels lean on the same hidden /
      md:inline pair fixed for the budget sheet above. */
   .accounts-table .account-bank-cell,
-  .accounts-table .account-period-cell {
+  .accounts-table .account-activity-cell {
     display: none;
   }
   .accounts-table .hidden.md\:inline {
@@ -122,11 +122,11 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .salary-table .hidden.md\:inline {
     display: none;
   }
-  /* Savings table: drop the bank and history-period columns on landscape
+  /* Savings table: drop the bank and last-activity columns on landscape
      phones so the three-column mobile grid (icon · name · balance) stays
      intact, the same reason as the accounts bank cell. */
   .savings-table .savings-bank-cell,
-  .savings-table .savings-period-cell {
+  .savings-table .savings-activity-cell {
     display: none;
   }
   .savings-table .hidden.md\:inline {

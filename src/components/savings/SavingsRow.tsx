@@ -2,10 +2,13 @@ import { memo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { currentSavingBalance } from "../../data/savings/value";
+import { historyStaleness } from "../../data/history";
 import type { Saving, Settings } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
 import { useLang, useT } from "../../i18n";
-import { formatBalance, formatMonthRange } from "../../utils/format";
+import { formatBalance, formatDate } from "../../utils/format";
+import { todayIso } from "../../utils/date";
+import { STALENESS_TEXT_CLASS } from "../history-staleness";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { CategoryIconGlyph } from "../icons";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
@@ -14,10 +17,10 @@ import { SavingActionsMenu } from "./SavingActionsMenu";
 type Props = {
   saving: Saving;
   settings: Settings;
-  // Earliest → latest date across this savings account's imported
-  // transactions, or null when none have been imported. Rendered as a
-  // compact month-year span in the "Period" column.
-  historyRange: { start: string; end: string } | null;
+  // Date of this savings account's most recent imported transaction, or
+  // null when none have been imported. Rendered as a full date in the
+  // "Last activity" column and coloured by how stale it is.
+  lastActivity: string | null;
   // Whether this savings account has anything to cut — gates the Cut history
   // entry in the "…" menu.
   canCut: boolean;
@@ -32,7 +35,7 @@ type Props = {
 function SavingsRowImpl({
   saving,
   settings,
-  historyRange,
+  lastActivity,
   canCut,
   onEditSaving,
   onDeleteSaving,
@@ -50,6 +53,15 @@ function SavingsRowImpl({
 
   const balance = currentSavingBalance(saving);
   const color = saving.color;
+
+  // Colour the last-activity date by how stale it is — green (fresh)
+  // through red (a week or more since the last imported transaction).
+  const staleness = lastActivity
+    ? historyStaleness(lastActivity, todayIso())
+    : null;
+  const activityClass = staleness
+    ? STALENESS_TEXT_CLASS[staleness]
+    : "text-muted";
 
   const rowClass = [
     swiped ? "is-swiped" : "",
@@ -115,18 +127,18 @@ function SavingsRowImpl({
           {balance !== undefined ? formatBalance(balance, settings) : "—"}
         </span>
       </td>
-      <td className="savings-period-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap md:table-cell">
+      <td className="savings-activity-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap md:table-cell">
         <span
           title={
-            historyRange === null
+            lastActivity === null
               ? t("savingsSheet.noHistoryImported")
-              : t("savingsSheet.historyRangeTitle")
+              : t("savingsSheet.lastActivityTitle")
           }
-          className={`block ${historyRange === null ? "text-muted" : "text-fg"}`}
+          className={`block ${activityClass}`}
         >
-          {historyRange === null
+          {lastActivity === null
             ? "—"
-            : formatMonthRange(historyRange.start, historyRange.end, lang)}
+            : formatDate(lastActivity, settings.dateFormat, lang)}
         </span>
       </td>
       <td className="swipe-action-cell savings-action-cell w-32 p-0 align-middle">
