@@ -420,6 +420,13 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna historikvyn, klicka på en rad, ändra etikett. Användbart när en stökig handlare har ett bra namn begravt i banktexten.",
   },
+  caseClosed: {
+    name: "Fallet avslutat",
+    condition:
+      "Slutför en importerad transaktion: ge den en typ och antingen ett företag eller 'utelämna företag'.",
+    learnMore:
+      "En slutförd transaktion blir grön med en bock i Klar-kolumnen, så att du snabbt kan se vad som återstår på ett kontoutdrag. Klar-kolumnen är den verkliga bekräftelsesignalen — den blir grön först när en importerad rad är helt kategoriserad.",
+  },
   patternRecognition: {
     name: "Mönsterläsare",
     condition: "Skriv din första matchningsregel.",

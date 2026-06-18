@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeBalances,
   defaultCompletedForDate,
+  isRowFinished,
   isRowHalfDone,
   isRowSavable,
   mapSeriesFrom,
@@ -722,6 +723,46 @@ describe("isRowSavable / isRowHalfDone", () => {
   it("a complete row is not half-done", () => {
     const r = row({ [descCol.id]: "Coffee", [amountCol.id]: -12 });
     expect(isRowHalfDone(r, sheet.columns)).toBe(false);
+  });
+});
+
+describe("isRowFinished", () => {
+  function hist(extra: Partial<Row> = {}): Row {
+    return {
+      kind: "historic",
+      id: "hist:1",
+      cells: {},
+      historyEntryId: "1",
+      ...extra,
+    } as Row;
+  }
+
+  it("finished when a history row has both a type and a company", () => {
+    expect(isRowFinished(hist({ typeId: "t1", companyId: "c1" }))).toBe(true);
+  });
+
+  it("finished when a history row has a type and omit-company", () => {
+    expect(isRowFinished(hist({ typeId: "t1", noCompany: true }))).toBe(true);
+  });
+
+  it("not finished when the type is missing", () => {
+    expect(isRowFinished(hist({ companyId: "c1" }))).toBe(false);
+    expect(isRowFinished(hist({ noCompany: true }))).toBe(false);
+  });
+
+  it("not finished when neither a company nor omit-company is set", () => {
+    expect(isRowFinished(hist({ typeId: "t1" }))).toBe(false);
+  });
+
+  it("non-history rows are never finished, even fully categorised", () => {
+    const user: Row = {
+      kind: "user",
+      id: "r",
+      cells: {},
+      typeId: "t1",
+      companyId: "c1",
+    };
+    expect(isRowFinished(user)).toBe(false);
   });
 });
 

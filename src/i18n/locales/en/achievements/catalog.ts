@@ -422,6 +422,13 @@ const catalog = {
     learnMore:
       "Open the history view, click a row, change its label. Useful when a noisy merchant has a useful name buried in the bank text.",
   },
+  caseClosed: {
+    name: "Case Closed",
+    condition:
+      "Finish an imported transaction: give it a type and either a company or 'omit company'.",
+    learnMore:
+      "A finished transaction turns green with a check in its Done column, so you can scan a statement for what still needs work. The Done column is the real confirm signal — it greens only once an imported row is fully categorised.",
+  },
   patternRecognition: {
     name: "Pattern Recognition",
     condition: "Write your first match rule.",

@@ -213,6 +213,20 @@ cells, action menu. The code type is `Row` in `src/data/types.ts`.
 `BudgetCell.tsx` — one cell. Renders the editor or a readonly chip
 depending on column type and synthesized state.
 
+### Finished row
+
+A **finished** row is an imported bank transaction (a `historic` row)
+the user has fully categorised: it carries a type AND either a company
+or the explicit "omit company" flag (`isRowFinished` in
+`src/data/budget/rows.ts`). Finishing is the real confirm signal for
+imported history — a finished row reads with a green background
+(`tr.is-finished` in `src/styles/components.css`) and a green check in
+its Done column (`ReadonlyCompletedCell` with `tone="success"`), so the
+user can scan a statement for what still needs work ("what haven't I
+finished?"). User-authored, correction, and transfer rows are never
+"finished": their Done column stays a manual confirm checkbox that
+shows a check when ticked but does not tint the row.
+
 ### Column header
 
 `BudgetColumnHeader.tsx` — the draggable header for a budget column.

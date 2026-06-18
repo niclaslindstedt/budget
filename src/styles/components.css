@@ -371,21 +371,24 @@
       justify-content: center;
     }
 
-    /* Done state tint applies on every cell so the entire row reads green */
+    /* Finished-row tint applies on every cell so the entire row reads
+       green. A "finished" row is a fully-categorised imported bank
+       transaction (`isRowFinished`); confirming a user-authored row's
+       Done checkbox does NOT tint it. */
     .budget-table
       > tbody
-      > tr.is-completed:not(.is-swiped)
+      > tr.is-finished:not(.is-swiped)
       > td:not(.action-cell) {
       background: color-mix(in srgb, var(--success) 12%, var(--surface));
     }
   }
 
-  /* Desktop completed row tint. The min-height clause excludes
-     landscape phones so the mobile completed-row rule above (which
+  /* Desktop finished-row tint. The min-height clause excludes
+     landscape phones so the mobile finished-row rule above (which
      skips the absolutely-positioned action-cell) isn't overridden by
      this `> td` selector when both media queries match. */
   @media (min-width: 720px) and (min-height: 501px) {
-    .budget-table > tbody > tr.is-completed > td {
+    .budget-table > tbody > tr.is-finished > td {
       background: color-mix(in srgb, var(--success) 10%, var(--surface));
     }
     .budget-table > tbody > tr.is-selecting-row {

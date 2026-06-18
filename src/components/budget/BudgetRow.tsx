@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { ArrowLeftRight, Info, Pencil, Trash2 } from "lucide-react";
 
-import { isRowSavable } from "../../data/budget/rows";
+import { isRowFinished, isRowSavable } from "../../data/budget/rows";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
 import { useLang, useT } from "../../i18n";
@@ -137,12 +137,15 @@ function BudgetRowImpl({
   // Resolve the four standard columns once per `columns` reference so
   // a balances-map change (which re-renders every row in the workspace)
   // doesn't make each row re-scan the columns array four more times.
-  const { dateCol, descCol, amountCol, completedCol } = useMemo(
+  const { dateCol, descCol, amountCol } = useMemo(
     () => getStandardColumns(columns),
     [columns],
   );
-  const isCompleted =
-    completedCol !== undefined && row.cells[completedCol.id] === true;
+  // A "finished" row — a fully-categorised imported bank transaction —
+  // is the only thing that tints the row green and shows a green Done
+  // check. Non-history rows can still be confirmed via the Done
+  // checkbox, but that no longer changes the row background.
+  const isFinished = isRowFinished(row);
   const isSeries = !!row.seriesId;
   const isTransfer = row.kind === "transfer";
   const isHistory = row.kind === "historic";
@@ -285,7 +288,7 @@ function BudgetRowImpl({
 
   const rowClass = [
     swiped && !selectMode ? "is-swiped" : "",
-    isCompleted ? "is-completed" : "",
+    isFinished ? "is-finished" : "",
     isSeries ? "is-series" : "",
     selectMode ? "is-selecting-row" : "",
     selected ? "is-selected" : "",
@@ -372,6 +375,7 @@ function BudgetRowImpl({
           onSetNoCompany={isHistory ? handleSetNoCompany : undefined}
           isTransfer={isTransfer}
           isCoverItem={isCoverItem}
+          finished={col.type === "completed" ? isFinished : undefined}
           peerName={row.kind === "transfer" ? row.peerAccountName : ""}
           outgoing={isOutgoing}
           isHistory={isHistory}

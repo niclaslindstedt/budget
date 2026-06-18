@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   ArrowRightLeft,
   ArrowUpDown,
+  BadgeCheck,
   Banknote,
   Bookmark,
   BookOpen,
@@ -230,6 +231,17 @@ const hasUserHistoryOverride = (s: UserData) =>
       (e) =>
         typeof e.userTypeId === "string" ||
         (typeof e.userDescription === "string" && e.userDescription !== ""),
+    ),
+  );
+// A "finished" imported transaction: the user has given it a type AND
+// either a company or the explicit "omit company" flag — the same
+// signal `isRowFinished` tints green on the ledger.
+const hasFinishedHistoryEntry = (s: UserData) =>
+  Object.values(s.history).some((arr) =>
+    arr.some(
+      (e) =>
+        typeof e.userTypeId === "string" &&
+        (typeof e.userCompanyId === "string" || e.noCompany === true),
     ),
   );
 // Default column order is date / description / type / amount /
@@ -1207,6 +1219,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.history],
       predicate: (prev, next) =>
         !hasUserHistoryOverride(prev) && hasUserHistoryOverride(next),
+    },
+  },
+  {
+    id: "caseClosed",
+    tier: "pro",
+    glyph: BadgeCheck,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.history],
+      predicate: (prev, next) =>
+        !hasFinishedHistoryEntry(prev) && hasFinishedHistoryEntry(next),
     },
   },
   {
