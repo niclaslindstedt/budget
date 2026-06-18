@@ -219,13 +219,24 @@ A **finished** row is an imported bank transaction (a `historic` row)
 the user has fully categorised: it carries a type AND either a company
 or the explicit "omit company" flag (`isRowFinished` in
 `src/data/budget/rows.ts`). Finishing is the real confirm signal for
-imported history — a finished row reads with a green background
-(`tr.is-finished` in `src/styles/components.css`) and a green check in
-its Done column (`ReadonlyCompletedCell` with `tone="success"`), so the
-user can scan a statement for what still needs work ("what haven't I
-finished?"). User-authored, correction, and transfer rows are never
-"finished": their Done column stays a manual confirm checkbox that
-shows a check when ticked but does not tint the row.
+imported history, so the Done column doubles as a progress scan ("what
+haven't I finished?"):
+
+- **Historic, unfinished** → a **grey** check in the Done column (the
+  transaction already happened, but it still needs a type / company),
+  no row tint.
+- **Historic, finished** → a **green** check plus a **green background
+  wash** across the whole row.
+- **User-authored** (and transfer) rows → a manual Done checkbox that
+  shows a **green** check when ticked but never tints the row.
+
+The check colour is driven by `ReadonlyCompletedCell`'s `tone` prop
+(`success` vs `muted`) for historic rows and `text-success` on the
+editable checkbox for user rows. The row tint (`tr.is-finished`) lives
+in the **unlayered** `src/styles/utilities.css`, not `components.css`:
+every data cell carries `bg-surface` from `CELL_BASE`, which sits in
+Tailwind's `utilities` layer, so the same rule in `@layer components`
+would lose the cascade and paint nothing.
 
 ### Column header
 

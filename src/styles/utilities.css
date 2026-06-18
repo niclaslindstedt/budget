@@ -230,6 +230,32 @@
   transition: background-position 250ms linear;
 }
 
+/* Finished-row tint — the green wash behind a fully-categorised
+   imported bank transaction (`isRowFinished`: a historic row with a
+   type plus a company or "omit company"). Unlayered because every data
+   cell carries `bg-surface` from `CELL_BASE`, which lives in Tailwind's
+   `utilities` layer and would otherwise win over the same rule in
+   `@layer components` — leaving the row untinted. Two viewport variants
+   mirror the surrounding table layout: on mobile the action column is
+   an absolutely-positioned swipe overlay (excluded via
+   `:not(.action-cell)`) and a swiped row drops the tint so the revealed
+   strip reads cleanly; on desktop the action cell is a normal column
+   and gets the wash too. Confirming a user-authored row's Done checkbox
+   never adds `.is-finished`, so those rows stay untinted. */
+@media (max-width: 720px), (max-height: 500px) {
+  .budget-table
+    > tbody
+    > tr.is-finished:not(.is-swiped)
+    > td:not(.action-cell) {
+    background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  }
+}
+@media (min-width: 720px) and (min-height: 501px) {
+  .budget-table > tbody > tr.is-finished > td {
+    background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  }
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the

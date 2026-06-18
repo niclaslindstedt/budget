@@ -234,11 +234,14 @@ function CellImpl({
   // shared half through a single helper so the leaves stay in lock-step
   // when their prop contracts change.
   if (isTransfer || isHistory || isCoverItem) {
-    // History Done column: the check reflects whether the row is
-    // "finished" (categorised), not the always-true synthesized
-    // completed value, and renders green to telegraph the confirm.
+    // History Done column: an imported transaction already happened, so
+    // it always shows a check — the colour is the signal. Green once the
+    // row is "finished" (categorised: a type plus a company or omit),
+    // grey while it still needs work.
     if (isHistory && column.type === "completed") {
-      return <ReadonlyCompletedCell checked={!!finished} tone="success" />;
+      return (
+        <ReadonlyCompletedCell checked tone={finished ? "success" : "muted"} />
+      );
     }
     const readonly = renderReadonlyColumn({
       column,
@@ -396,7 +399,7 @@ function CellImpl({
           <button
             type="button"
             className={`flex h-full min-h-9 w-full cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              checked ? "text-accent" : "text-muted"
+              checked ? "text-success" : "text-muted"
             }`}
             aria-pressed={checked}
             aria-label={checked ? "Mark as not done" : "Mark as done"}
