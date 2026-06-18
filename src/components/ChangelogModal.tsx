@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, Sparkles } from "lucide-react";
 
 import {
@@ -60,6 +60,22 @@ export function ChangelogModal({
   // list; the header grows a back button that clears it. A slug with no
   // matching bundled doc falls through to the changelog view.
   const [docSlug, setDocSlug] = useState<string | null>(null);
+  // The feature-doc view reuses the same scrolling `Modal.Body` element
+  // as the changelog list (React reconciles the two `<Modal>` branches),
+  // so its `scrollTop` carries over. Without managing it, following a
+  // "Learn more" link after scrolling the list — or jumping doc→doc —
+  // drops the reader into the middle of the doc. We pin the same ref on
+  // both branches and, whenever the active slug changes, scroll a freshly
+  // opened doc to the top while restoring the list to exactly where the
+  // reader left it when Back returns to it.
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const listScrollTop = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    el.scrollTop = docSlug ? 0 : listScrollTop.current;
+  }, [docSlug]);
 
   // Reset the expand + drill-down state whenever the modal reopens so a
   // later auto-open after an upgrade starts in compact "what's new" mode
@@ -68,12 +84,19 @@ export function ChangelogModal({
     if (open) {
       setShowAll(since == null);
       setDocSlug(null);
+      listScrollTop.current = 0;
     }
   }, [open, since]);
 
   const openFeature = (slug: string) => {
     if (!FEATURE_DOCS[slug]) return;
     onOpenFeatureDoc?.(slug);
+    // Remember the list's scroll position so Back can restore it. Guard on
+    // the list being visible so a nested "Learn more" jump (doc→doc) keeps
+    // the original list offset instead of overwriting it with the doc's.
+    if (!docSlug && bodyRef.current) {
+      listScrollTop.current = bodyRef.current.scrollTop;
+    }
     setDocSlug(slug);
   };
 
@@ -97,7 +120,7 @@ export function ChangelogModal({
           onBack={() => setDocSlug(null)}
           onClose={onClose}
         />
-        <Modal.Body className="text-sm">
+        <Modal.Body className="text-sm" scrollRef={bodyRef}>
           <Markdown source={activeDoc.body} onOpenFeature={openFeature} />
         </Modal.Body>
         <Modal.Footer>
@@ -131,7 +154,7 @@ export function ChangelogModal({
         title={title}
         onClose={onClose}
       />
-      <Modal.Body className="flex flex-col gap-4 text-sm">
+      <Modal.Body className="flex flex-col gap-4 text-sm" scrollRef={bodyRef}>
         {releases.length === 0 ? (
           <p className="text-muted">{t("changelog.noReleasesYet")}</p>
         ) : (
