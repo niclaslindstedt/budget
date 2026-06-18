@@ -19,6 +19,9 @@ const savingsSheet = {
   updateBalance: "Update balance",
   importHistory: "Import history",
   viewHistoryAria: "View history for {name}",
+  historyRangeHeader: "Period",
+  historyRangeTitle: "Date range of imported transactions",
+  noHistoryImported: "No history imported yet",
   cutHistory: "Cut history",
   nothingToCut: "No history or transactions to cut",
 

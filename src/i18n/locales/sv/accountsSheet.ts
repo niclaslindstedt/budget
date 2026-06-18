@@ -36,6 +36,8 @@ const accountsSheet: AccountsSheetCatalog = {
   moreActions: "Fler åtgärder",
   historyCountHeader: "Transaktioner",
   historyCountTitle: "Importerade transaktioner",
+  historyRangeHeader: "Period",
+  historyRangeTitle: "Datumintervall för importerade transaktioner",
   newTransfer: "Ny överföring",
   needTwoAccounts:
     "Lägg till minst två konton för att registrera en överföring",

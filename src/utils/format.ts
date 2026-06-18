@@ -411,6 +411,25 @@ export function formatMonthLabel(monthKey: string, lang?: Lang): string {
   return `${monthShort(lang, monthNum)} ${y}`;
 }
 
+// Compact month-year span for a date interval: "Jan 2025 – Jun 2026",
+// language-aware, collapsing to a single "Jan 2025" when both ends fall in
+// the same month. Used by the Accounts / Savings tables to show the period
+// their imported bank history covers. Inputs are ISO dates (the day
+// component is ignored). Returns "" when neither end parses so callers can
+// substitute a placeholder.
+export function formatMonthRange(
+  startIso: string,
+  endIso: string,
+  lang?: Lang,
+): string {
+  const start = formatMonthLabel(startIso, lang);
+  const end = formatMonthLabel(endIso, lang);
+  if (start === "" && end === "") return "";
+  if (start === "") return end;
+  if (end === "" || start === end) return start;
+  return `${start} – ${end}`;
+}
+
 // ISO date (`YYYY-MM-DD`, or any string whose first seven chars are
 // `YYYY-MM`) rendered as "MMM YY" ("May 25"), language-aware. The
 // compact x-axis tick for charts that span months — keeps the label

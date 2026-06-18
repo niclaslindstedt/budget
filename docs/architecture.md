@@ -529,6 +529,7 @@ src/
 │   ├── match-rules.ts     # glob matcher for synthesized history rows
 │   ├── rename-patterns.ts # per-account "bank wrote X, user calls it Y" memory
 │   ├── coverage.ts        # fiscal-month coverage of imported history
+│   ├── history.ts         # historyDateRange: earliest→latest imported tx date (cross-page)
 │   ├── hit-count.ts       # reinforce-or-reset counter for memory stores
 │   ├── row-candidate.ts   # Row → RuleCandidate projection (cross-page)
 │   ├── search.ts          # ranked full-text search over rows

@@ -19,6 +19,9 @@ const savingsSheet: SavingsSheetCatalog = {
   updateBalance: "Uppdatera saldo",
   importHistory: "Importera historik",
   viewHistoryAria: "Visa historik för {name}",
+  historyRangeHeader: "Period",
+  historyRangeTitle: "Datumintervall för importerade transaktioner",
+  noHistoryImported: "Ingen historik importerad än",
   cutHistory: "Klipp historik",
   nothingToCut: "Ingen historik eller transaktioner att klippa",
 
