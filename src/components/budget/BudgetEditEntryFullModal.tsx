@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import { Pencil } from "lucide-react";
 
+import { unlock } from "../../data/achievements";
 import { sortRowsByDate } from "../../data/budget/rows";
 import type {
   Category,
@@ -19,6 +20,7 @@ import {
   useStandardColumns,
 } from "../../hooks";
 import { useT } from "../../i18n";
+import { addDaysIso, diffDaysIso } from "../../utils/date";
 import { formatAmount, formatShortDate, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { Checkbox, Button, ClearableInput, Radio, RadioGroup } from "../form";
@@ -286,8 +288,27 @@ export function BudgetEditEntryFullModal({
   const parsedShiftDays = parseInt32(shiftDaysText);
   const shiftDays = parsedShiftDays ?? 0;
 
+  // When the user moves the anchor's date under the "this and all
+  // future" scope, treat that move as a request to shift the whole
+  // upcoming run by the same number of days — not just relabel this
+  // one occurrence. The day delta drives the same `dateShiftDays`
+  // machinery the explicit "Shift days by" field uses, so every future
+  // row slides along with the anchor. An explicit shift still wins if
+  // the user typed one (the two are redundant, so don't double-count).
+  // Past-and-all ("all") scope is deliberately excluded: shifting
+  // already-reconciled history is the same hazard that locks the
+  // amount field under that scope.
+  const dateMoved =
+    date !== "" && initialState.date !== "" && date !== initialState.date;
+  const derivedShiftFromDate =
+    scopeKind === "future" && dateMoved
+      ? diffDaysIso(date, initialState.date)
+      : 0;
+  const effectiveShiftDays = shiftDays !== 0 ? shiftDays : derivedShiftFromDate;
+
   function handleSave() {
     if (!row) return;
+    if (effectiveShiftDays !== 0) unlock("dateShifter");
     // "all" scope explicitly skips the amount — the input is disabled
     // in the UI so the user can see why, but force-null it here too
     // in case anything ever bypasses the disabled state.
@@ -324,7 +345,7 @@ export function BudgetEditEntryFullModal({
         tagIds: tagsTouched ? tagIds : undefined,
         isTransfer: transferTouched ? isTransfer : undefined,
         completed,
-        dateShiftDays: shiftDays,
+        dateShiftDays: effectiveShiftDays,
       },
       scopeKind === "just-this"
         ? { kind: "just-this" }
@@ -510,7 +531,9 @@ export function BudgetEditEntryFullModal({
               <Radio value="all" label={t("editRow.scopeAll")} />
             </RadioGroup>
             <p className="mt-2 text-xs text-muted">
-              {t("editRow.scopeAlwaysJustThis")}
+              {scopeKind === "future"
+                ? t("editRow.scopeFutureDateShift")
+                : t("editRow.scopeAlwaysJustThis")}
             </p>
             {affectedRows.length > 0 && (
               <div className="mt-3 flex flex-col gap-1.5">
@@ -530,10 +553,20 @@ export function BudgetEditEntryFullModal({
                 </div>
                 <ul className="max-h-40 overflow-y-auto rounded border border-line bg-surface">
                   {affectedRows.map((r) => {
-                    const rowDate =
+                    const isAnchor = r.id === row?.id;
+                    const storedDate =
                       dateCol && typeof r.cells[dateCol.id] === "string"
                         ? (r.cells[dateCol.id] as string)
                         : "";
+                    // Preview the dates the save will actually write: the
+                    // anchor takes the typed date, and every other row in
+                    // scope slides by the effective shift so the list shows
+                    // the upcoming run in its post-save positions.
+                    const rowDate = isAnchor
+                      ? date
+                      : storedDate && effectiveShiftDays !== 0
+                        ? addDaysIso(storedDate, effectiveShiftDays)
+                        : storedDate;
                     const rowDesc =
                       descCol && typeof r.cells[descCol.id] === "string"
                         ? (r.cells[descCol.id] as string)
@@ -542,7 +575,6 @@ export function BudgetEditEntryFullModal({
                       amountCol && typeof r.cells[amountCol.id] === "number"
                         ? (r.cells[amountCol.id] as number)
                         : null;
-                    const isAnchor = r.id === row?.id;
                     return (
                       <li
                         key={r.id}

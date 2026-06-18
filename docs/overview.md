@@ -280,7 +280,18 @@ full-row edit is the next entry.
 
 `BudgetEditEntryFullModal.tsx` — the generic full-row edit form (every
 field at once), the "edit-row modal". Opened from the edit (pen) button
-in a row's swipe strip / actions menu.
+in a row's swipe strip / actions menu. For a recurring row a scope
+picker offers "just this" / "this and all future" / "all in series",
+with an explicit **Shift days by** nudge that slides every row in the
+chosen scope. Moving the **date** under the "this and all future"
+scope is itself treated as a shift: the day delta between the old and
+new date slides every upcoming occurrence by the same number of days
+(an explicit Shift-days value still wins if the user typed one), so a
+one-off correction to the anchor's day carries the rest of the run
+with it. The day delta drives the same `dateShiftDays` machinery via
+`editSeries` / `applyPatch`; the anchor is then re-stamped to the exact
+typed date. The "all" scope is excluded from this auto-shift (and locks
+the amount field) so already-reconciled history isn't rewritten.
 
 ### Split entry modal
 
