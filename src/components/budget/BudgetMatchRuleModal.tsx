@@ -177,8 +177,22 @@ export function BudgetMatchRuleModal({
   const patternRef = useRef<HTMLInputElement>(null);
   useDesktopAutoFocus(patternRef, open);
 
+  // Re-seed the form when the modal opens or the source row / rule
+  // actually changes — keyed by id, not by the seed object's identity.
+  // Creating a company / type from inside the modal mutates
+  // `data.companies` / `data.types`, which re-derives the `seedEntry`
+  // memo upstream into a fresh object even though the source row is
+  // unchanged; without this guard that churn would reset the form and
+  // discard the field the user just created.
+  const seedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      seedKeyRef.current = null;
+      return;
+    }
+    const key = `${existing?.id ?? "new"}:${seedEntry?.id ?? "none"}`;
+    if (seedKeyRef.current === key) return;
+    seedKeyRef.current = key;
     dispatch({ kind: "reset", seed: { existing, seedEntry } });
   }, [open, existing, seedEntry]);
 
