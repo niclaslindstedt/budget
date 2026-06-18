@@ -4,8 +4,8 @@ import { Pencil, Trash2 } from "lucide-react";
 import { currentSavingBalance } from "../../data/savings/value";
 import type { Saving, Settings } from "../../data/types";
 import { useAmountColumns } from "../../hooks";
-import { useT } from "../../i18n";
-import { formatBalance } from "../../utils/format";
+import { useLang, useT } from "../../i18n";
+import { formatBalance, formatMonthRange } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { CategoryIconGlyph } from "../icons";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
@@ -14,6 +14,10 @@ import { SavingActionsMenu } from "./SavingActionsMenu";
 type Props = {
   saving: Saving;
   settings: Settings;
+  // Earliest → latest date across this savings account's imported
+  // transactions, or null when none have been imported. Rendered as a
+  // compact month-year span in the "Period" column.
+  historyRange: { start: string; end: string } | null;
   // Whether this savings account has anything to cut — gates the Cut history
   // entry in the "…" menu.
   canCut: boolean;
@@ -28,6 +32,7 @@ type Props = {
 function SavingsRowImpl({
   saving,
   settings,
+  historyRange,
   canCut,
   onEditSaving,
   onDeleteSaving,
@@ -37,6 +42,7 @@ function SavingsRowImpl({
   onCutHistory,
 }: Props) {
   const t = useT();
+  const lang = useLang();
   const { cellClass } = useAmountColumns();
   // A swiped row claims the active-row slot (folded into the hook) so a tap
   // elsewhere dismisses it before firing the underlying control.
@@ -107,6 +113,20 @@ function SavingsRowImpl({
       >
         <span>
           {balance !== undefined ? formatBalance(balance, settings) : "—"}
+        </span>
+      </td>
+      <td className="savings-period-cell hidden px-2.5 py-2 text-left align-middle font-mono text-xs whitespace-nowrap md:table-cell">
+        <span
+          title={
+            historyRange === null
+              ? t("savingsSheet.noHistoryImported")
+              : t("savingsSheet.historyRangeTitle")
+          }
+          className={`block ${historyRange === null ? "text-muted" : "text-fg"}`}
+        >
+          {historyRange === null
+            ? "—"
+            : formatMonthRange(historyRange.start, historyRange.end, lang)}
         </span>
       </td>
       <td className="swipe-action-cell savings-action-cell w-32 p-0 align-middle">

@@ -36,6 +36,8 @@ const accountsSheet = {
   moreActions: "More actions",
   historyCountHeader: "Transactions",
   historyCountTitle: "Imported transactions",
+  historyRangeHeader: "Period",
+  historyRangeTitle: "Date range of imported transactions",
   newTransfer: "New transfer",
   needTwoAccounts: "Add at least two accounts to record a transfer",
   editTransferAria: "Edit transfer: {description}",

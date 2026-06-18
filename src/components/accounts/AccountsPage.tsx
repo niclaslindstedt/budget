@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
+  CalendarRange,
   Download,
   Landmark,
   Pencil,
@@ -13,6 +14,7 @@ import {
 
 import { unlock } from "../../data/achievements";
 import { computeAccountBalances } from "../../data/accounts/balance";
+import { historyDateRange } from "../../data/history";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
@@ -246,6 +248,24 @@ export function AccountsPage({
                     </th>
                     <th
                       scope="col"
+                      className="account-period-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("accountsSheet.historyRangeHeader")}
+                      title={t("accountsSheet.historyRangeTitle")}
+                    >
+                      <span className="inline-flex items-center gap-1.5 md:gap-2">
+                        <CalendarRange
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("accountsSheet.historyRangeHeader")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
                       className="swipe-action-cell account-action-cell w-32 px-2.5 py-2"
                       aria-label={t("budget.rowActions")}
                     >
@@ -267,7 +287,7 @@ export function AccountsPage({
                   {data.accounts.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-3 py-6 text-center text-xs text-muted"
                       >
                         {t("accountsSheet.noAccounts")}
@@ -279,7 +299,9 @@ export function AccountsPage({
                     const accountSettings = account.currency
                       ? { ...settings, currency: account.currency }
                       : settings;
-                    const historyCount = data.history[account.id]?.length ?? 0;
+                    const historyEntries = data.history[account.id];
+                    const historyCount = historyEntries?.length ?? 0;
+                    const historyRange = historyDateRange(historyEntries);
                     const transfersForAccount =
                       transferCountByAccount.get(account.id) ?? 0;
                     const canCut = historyCount > 0 || transfersForAccount > 0;
@@ -290,6 +312,7 @@ export function AccountsPage({
                         balance={balance}
                         accountSettings={accountSettings}
                         historyCount={historyCount}
+                        historyRange={historyRange}
                         canCut={canCut}
                         canUpdateBalance={accountsWithBudget.has(account.id)}
                         onEditAccount={onEditAccount}
@@ -304,7 +327,7 @@ export function AccountsPage({
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={6} className="bg-surface-3 p-0">
+                    <td colSpan={7} className="bg-surface-3 p-0">
                       <button
                         type="button"
                         onClick={onCreateAccount}

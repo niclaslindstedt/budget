@@ -84,15 +84,16 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .budget-table .hidden.md\:inline-flex {
     display: none;
   }
-  /* Accounts table: drop the bank column on landscape phones so the
-     four-column mobile grid (icon · name · balance · history) stays
-     intact. Tailwind's `md:table-cell` re-shows the cell at width
-     ≥ 768 px — landscape iPhone 12+ reports 844 × 390 — and would
-     otherwise auto-place into a second grid row. Layered rules lose
-     to Tailwind's utilities, so this override is unlayered. The
-     column header labels lean on the same hidden / md:inline pair
-     fixed for the budget sheet above. */
-  .accounts-table .account-bank-cell {
+  /* Accounts table: drop the bank and history-period columns on
+     landscape phones so the four-column mobile grid (icon · name ·
+     balance · history count) stays intact. Tailwind's `md:table-cell`
+     re-shows the cells at width ≥ 768 px — landscape iPhone 12+ reports
+     844 × 390 — and they would otherwise auto-place into a second grid
+     row. Layered rules lose to Tailwind's utilities, so this override
+     is unlayered. The column header labels lean on the same hidden /
+     md:inline pair fixed for the budget sheet above. */
+  .accounts-table .account-bank-cell,
+  .accounts-table .account-period-cell {
     display: none;
   }
   .accounts-table .hidden.md\:inline {
@@ -121,10 +122,11 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
   .salary-table .hidden.md\:inline {
     display: none;
   }
-  /* Savings table: drop the bank column on landscape phones so the
-     three-column mobile grid (icon · name · balance) stays intact, the same
-     reason as the accounts bank cell. */
-  .savings-table .savings-bank-cell {
+  /* Savings table: drop the bank and history-period columns on landscape
+     phones so the three-column mobile grid (icon · name · balance) stays
+     intact, the same reason as the accounts bank cell. */
+  .savings-table .savings-bank-cell,
+  .savings-table .savings-period-cell {
     display: none;
   }
   .savings-table .hidden.md\:inline {

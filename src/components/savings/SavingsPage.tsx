@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  CalendarRange,
   Coins,
   Landmark,
   LineChart,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
+import { historyDateRange } from "../../data/history";
 import { currentSavingBalance } from "../../data/savings/value";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useActionsCompaction, useAmountColumns } from "../../hooks";
@@ -204,6 +206,24 @@ export function SavingsPage({
                     </th>
                     <th
                       scope="col"
+                      className="savings-period-cell hidden px-2.5 py-2 text-left md:table-cell"
+                      aria-label={t("savingsSheet.historyRangeHeader")}
+                      title={t("savingsSheet.historyRangeTitle")}
+                    >
+                      <span className="inline-flex items-center justify-start gap-1.5 md:gap-2">
+                        <CalendarRange
+                          size={16}
+                          className="shrink-0 text-accent"
+                          aria-hidden
+                          focusable={false}
+                        />
+                        <span className="hidden md:inline">
+                          {t("savingsSheet.historyRangeHeader")}
+                        </span>
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
                       className="swipe-action-cell savings-action-cell w-32 px-2.5 py-2"
                       aria-label={t("savingsSheet.actions")}
                     >
@@ -225,7 +245,7 @@ export function SavingsPage({
                   {savings.length === 0 && (
                     <tr className="savings-fullspan">
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-3 py-6 text-center text-xs text-muted"
                       >
                         {t("savingsSheet.noAccounts")}
@@ -233,13 +253,14 @@ export function SavingsPage({
                     </tr>
                   )}
                   {savings.map((saving) => {
-                    const hasHistory =
-                      (data.history[saving.id]?.length ?? 0) > 0;
+                    const historyEntries = data.history[saving.id];
+                    const hasHistory = (historyEntries?.length ?? 0) > 0;
                     return (
                       <SavingsRow
                         key={saving.id}
                         saving={saving}
                         settings={settings}
+                        historyRange={historyDateRange(historyEntries)}
                         canCut={hasHistory || cutBySaving.has(saving.id)}
                         onEditSaving={onEditSaving}
                         onDeleteSaving={onRequestDeleteSaving}
@@ -262,13 +283,14 @@ export function SavingsPage({
                       >
                         <span>{formatBalance(total, settings)}</span>
                       </td>
+                      <td className="savings-period-cell hidden md:table-cell" />
                       <td className="swipe-action-cell savings-action-cell px-2.5 py-2" />
                     </tr>
                   )}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={5} className="bg-surface-3 p-0">
+                    <td colSpan={6} className="bg-surface-3 p-0">
                       <button
                         type="button"
                         onClick={onCreateSaving}

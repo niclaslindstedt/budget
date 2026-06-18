@@ -521,6 +521,21 @@ Bank-statement entries imported from CSV / XLSX ("bank history" /
 "imported entries"). Lives on `UserData.history[accountId]`. Read-only
 — `HistoryEntry` in `src/data/types.ts`.
 
+### History period
+
+The "Period" column on the Accounts and Savings tables: the date span
+the imported bank history covers, from the earliest to the latest
+transaction date. `historyDateRange` (`src/data/history.ts`) scans
+`UserData.history[id]` for the min / max entry date (hidden entries
+included — they're still part of the statement), and `formatMonthRange`
+(`src/utils/format.ts`) renders it as a compact, language-aware
+month-year span ("Jan 2025 – Jun 2026"), collapsing to a single label
+when both ends fall in the same month. Rendered by `AccountRow.tsx` and
+`SavingsRow.tsx` next to the transaction count; an em-dash placeholder
+shows when nothing has been imported. The cell sits beside the bank
+column and is hidden on phones (portrait and landscape), same as the
+bank cell, so the mobile grid stays compact.
+
 ### History modal
 
 `HistoryModal.tsx` — the read-only viewer of one account's imported
