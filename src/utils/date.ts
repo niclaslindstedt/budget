@@ -17,6 +17,33 @@ export function addDaysIso(iso: string, days: number): string {
   return `${ty}-${tm}-${td}`;
 }
 
+// Whole-day difference `aDate - bDate` for two `YYYY-MM-DD` ISO dates —
+// positive when `a` is later. Computed in UTC so it never trips over a
+// DST boundary. Returns `NaN` if either string isn't a parseable date,
+// so callers can guard before using the result.
+export function diffDaysIso(a: string, b: string): number {
+  if (a.length < 10 || b.length < 10) return Number.NaN;
+  const ay = Number(a.slice(0, 4));
+  const am = Number(a.slice(5, 7));
+  const ad = Number(a.slice(8, 10));
+  const by = Number(b.slice(0, 4));
+  const bm = Number(b.slice(5, 7));
+  const bd = Number(b.slice(8, 10));
+  if (
+    !Number.isFinite(ay) ||
+    !Number.isFinite(am) ||
+    !Number.isFinite(ad) ||
+    !Number.isFinite(by) ||
+    !Number.isFinite(bm) ||
+    !Number.isFinite(bd)
+  ) {
+    return Number.NaN;
+  }
+  const aMs = Date.UTC(ay, am - 1, ad);
+  const bMs = Date.UTC(by, bm - 1, bd);
+  return Math.round((aMs - bMs) / 86400000);
+}
+
 export function addMonthsIso(iso: string, months: number): string {
   const y = Number(iso.slice(0, 4));
   const m = Number(iso.slice(5, 7));

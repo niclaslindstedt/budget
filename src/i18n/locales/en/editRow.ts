@@ -12,6 +12,8 @@ const editRow = {
   scopeAllAmountDisabled:
     "Amount stays locked under this scope — changing it would rewrite past, already-reconciled entries.",
   scopeAlwaysJustThis: "Date and completed always apply to this row only.",
+  scopeFutureDateShift:
+    "Completed applies to this row only. Changing the date slides every upcoming entry by the same number of days.",
   affectedRows: "Affected rows",
   affectedRowsCountOne: "{n} entry will be updated",
   affectedRowsCountOther: "{n} entries will be updated",

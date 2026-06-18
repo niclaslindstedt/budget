@@ -13,6 +13,8 @@ const editRow: EditRowCatalog = {
     "Beloppet är låst i denna omfattning — att ändra det skulle skriva om tidigare, redan avstämda poster.",
   scopeAlwaysJustThis:
     "Datum och klarmarkering gäller alltid endast för denna post.",
+  scopeFutureDateShift:
+    "Klarmarkering gäller endast denna post. Att ändra datumet flyttar varje kommande post lika många dagar.",
   affectedRows: "Berörda poster",
   affectedRowsCountOne: "{n} post uppdateras",
   affectedRowsCountOther: "{n} poster uppdateras",
