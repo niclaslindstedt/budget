@@ -655,7 +655,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
           />
 
           <div>
-            <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="mb-2 flex items-center gap-2">
               <h3 className="m-0 text-xs font-bold tracking-wider uppercase text-fg-bright">
                 {t("scenarios.monitorsTitle")}
               </h3>
