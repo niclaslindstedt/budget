@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MatchRule, Settings } from "../../data/types";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
@@ -69,8 +69,21 @@ export function useMatchRuleAmountFilter(
   const [exactText, setExactText] = useState("");
   const [exactNegative, setExactNegative] = useState(true);
 
+  // Re-seed only when the modal opens or the source row / rule actually
+  // changes — keyed by id, not by the seed object's identity. Creating a
+  // company / type from inside the modal re-derives the upstream
+  // `seedEntry` memo into a fresh object even though the source row is
+  // unchanged; without this guard that churn would reset the amount
+  // inputs the user had already filled in.
+  const seedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      seedKeyRef.current = null;
+      return;
+    }
+    const key = `${existing?.id ?? "new"}:${seed?.id ?? "none"}`;
+    if (seedKeyRef.current === key) return;
+    seedKeyRef.current = key;
     if (existing) {
       // A rule with both bounds equal collapses to Exact mode (one
       // input). A rule with any other combination of bounds keeps the
