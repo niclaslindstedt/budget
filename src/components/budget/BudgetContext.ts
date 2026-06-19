@@ -43,6 +43,12 @@ export type BudgetContextValue = {
   // picking a type first surfaces that type's most-used companies atop
   // the inline CompanyPicker.
   typeCompanyHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → ranked companyIds (see
+  // `computeDescriptionCompanyHints`). Consumed by the row's description
+  // popover so a merchant the user has tagged with a company before
+  // surfaces that company atop the inline CompanyPicker — before any
+  // type is set. Merged ahead of `typeCompanyHints` into the band.
+  descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;

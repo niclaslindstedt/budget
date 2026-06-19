@@ -19,6 +19,11 @@
 // de-duplicated against the manual set. The combined list is capped (5
 // by default) so the picker's "Suggested" band stays short.
 
+import {
+  isNormalisedKeyMeaningful,
+  normaliseDescription,
+} from "../description-normaliser";
+import { findColumnByType } from "../sheet";
 import type { UserData } from "../types";
 
 export const MAX_COMPANY_TYPE_HINTS = 5;
@@ -183,4 +188,126 @@ export function autoTypeForCompany(
   if (currentTypeId !== null) return undefined;
   if (nextCompanyId === null) return undefined;
   return suggestions.get(nextCompanyId);
+}
+
+export const MAX_DESCRIPTION_COMPANY_HINTS = 5;
+
+// Description → company candidates. Every time the user flags a row or
+// a bank-history entry with a company, that `(description, companyId)`
+// pairing teaches the picker which merchant goes with which company.
+// The description is run through the shared `normaliseDescription` so
+// dates, reference numbers, and currency tokens are stripped and
+// cosmetic statement noise collapses ("KORTKÖP SPOTIFY 12/05" and
+// "SPOTIFY*P34AB" map to one key); the companies most often paired with
+// that key are then ranked by descending usage (ties broken by
+// companyId for determinism) and capped at `max`. The next time a row
+// or entry with the same merchant pattern needs a company, the
+// `CompanyPicker` surfaces these as a one-tap "Suggested" band — the
+// same treatment the type → company hints get, but keyed off the
+// description instead of a picked type, so it works before any type is
+// set. Purely usage-derived (no manual-pin source) and recomputed from
+// data, so the guesses get steadily smarter as more entries are
+// tagged. Keys too short to identify a merchant are skipped, as are
+// rows / entries with no company. The same `(companyId, typeId)`
+// sources the type tallies walk are reused, keyed on the normalised
+// description instead.
+export function computeDescriptionCompanyHints(
+  data: UserData,
+  max: number = MAX_DESCRIPTION_COMPANY_HINTS,
+): ReadonlyMap<string, readonly string[]> {
+  // normalisedKey → (companyId → count)
+  const tallies = new Map<string, Map<string, number>>();
+  const bump = (
+    description: string | undefined,
+    companyId: string | undefined,
+  ) => {
+    if (!description || !companyId) return;
+    const key = normaliseDescription(description);
+    if (!isNormalisedKeyMeaningful(key)) return;
+    let inner = tallies.get(key);
+    if (!inner) {
+      inner = new Map();
+      tallies.set(key, inner);
+    }
+    inner.set(companyId, (inner.get(companyId) ?? 0) + 1);
+  };
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      const descId = findColumnByType(item.columns, "description")?.id;
+      if (!descId) continue;
+      for (const row of item.rows) {
+        const desc = row.cells[descId];
+        if (typeof desc !== "string") continue;
+        bump(desc, row.companyId);
+      }
+    }
+  }
+  for (const list of Object.values(data.history)) {
+    for (const entry of list) {
+      if (entry.splits && entry.splits.length > 0) {
+        for (const split of entry.splits) {
+          bump(entry.description, split.companyId ?? undefined);
+        }
+        continue;
+      }
+      bump(entry.description, entry.userCompanyId);
+    }
+  }
+
+  const out = new Map<string, readonly string[]>();
+  for (const [key, inner] of tallies) {
+    const ranked = [...inner.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, max)
+      .map(([companyId]) => companyId);
+    if (ranked.length > 0) out.set(key, ranked);
+  }
+  return out;
+}
+
+// Resolve a description to its ranked company candidates via the map
+// from `computeDescriptionCompanyHints`. Centralises the normalisation
+// + meaningfulness guard so every CompanyPicker call site looks the
+// merchant up the same way. Empty when the description is blank, too
+// short to be meaningful, or has no learned company pairing yet.
+export function descriptionCompanyHintsFor(
+  hints: ReadonlyMap<string, readonly string[]>,
+  description: string | null | undefined,
+): readonly string[] {
+  if (!description) return [];
+  const key = normaliseDescription(description);
+  if (!isNormalisedKeyMeaningful(key)) return [];
+  return hints.get(key) ?? [];
+}
+
+// Merge description-derived company candidates with type-derived ones
+// into a single ranked, de-duplicated band. Description hits lead —
+// they're the strongest signal (the same merchant the user tagged
+// before) — and the type's usual companies fill the rest, so the
+// `CompanyPicker` "Suggested" band reads "the company you used for this
+// merchant" first, then "companies you tend to use for this type".
+// Capped so the band stays short.
+export function mergeCompanyHintIds(
+  descriptionHintIds: readonly string[],
+  typeHintIds: readonly string[],
+  max: number = MAX_DESCRIPTION_COMPANY_HINTS,
+): readonly string[] {
+  if (descriptionHintIds.length === 0) return typeHintIds.slice(0, max);
+  if (typeHintIds.length === 0) return descriptionHintIds.slice(0, max);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of descriptionHintIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= max) return out;
+  }
+  for (const id of typeHintIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= max) return out;
+  }
+  return out;
 }

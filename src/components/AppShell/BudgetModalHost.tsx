@@ -70,6 +70,11 @@ type Props = {
   // TypePicker can render its "Suggested" band.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → ranked companyIds (see
+  // `computeDescriptionCompanyHints`). Forwarded to the per-entry
+  // history editor so its CompanyPicker surfaces the company the user
+  // has tagged this merchant with before as a "Suggested" band.
+  descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
   sheetId: string;
   itemId: string;
   activeItem: AccountBudget;
@@ -102,6 +107,7 @@ export function BudgetModalHost(props: Props) {
     types,
     companyTypeSuggestions,
     companyTypeHints,
+    descriptionCompanyHints,
     sheetId,
     itemId,
     activeItem,
@@ -744,6 +750,7 @@ export function BudgetModalHost(props: Props) {
         tags={data.tags}
         companyTypeSuggestions={companyTypeSuggestions}
         companyTypeHints={companyTypeHints}
+        descriptionCompanyHints={descriptionCompanyHints}
         settings={effectiveSettings}
         primaryIncomeMerchants={data.primaryIncomeMerchants}
         onClose={() => setHistoryEditPrompt(null)}

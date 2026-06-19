@@ -2950,6 +2950,30 @@ type's usual merchants without scrolling the full alphabetic company
 list (where the same companies still appear). Threaded through
 `BudgetContext.typeCompanyHints` and resolved per-row in `BudgetRow`.
 
+### Description company hint
+
+A merchant's most-used companies, keyed off the **description** rather
+than a picked type, computed by `computeDescriptionCompanyHints`
+(`src/data/budget/company-type-hints.ts`). Every time the user flags a
+budget row or a bank-history entry with a company, that
+`(normalised-description → companyId)` pairing is tallied (the
+description is run through the shared `normaliseDescription`, so dates,
+reference numbers, and currency tokens are stripped and cosmetic
+statement noise collapses); the companies most often paired with a key
+are ranked by descending usage. Purely usage-derived and recomputed
+from data, so the guesses get steadily smarter as more entries are
+tagged — no persisted shape, no migration. When a row or entry needs a
+company, the same merchant surfaces its learned company atop the
+`CompanyPicker` as the "Suggested" band — and unlike the type company
+hint it works **before any type is set**, since it's the merchant text
+itself that drives the suggestion. In the inline row popover it is
+merged ahead of the type company hint via `mergeCompanyHintIds`
+(description hits lead, the type's usual companies fill the rest);
+`descriptionCompanyHintsFor` centralises the normalise + lookup so
+every call site (the inline row picker, the metadata modal, and the
+per-entry `EditHistoryEntryModal`) resolves a description the same way.
+Threaded through `BudgetContext.descriptionCompanyHints`.
+
 ### Drag-to-reorder
 
 A reusable HTML5 drag primitive (`useDragReorder`,

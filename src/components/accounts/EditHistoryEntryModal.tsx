@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
+import { descriptionCompanyHintsFor } from "../../data/budget/company-type-hints";
 import { normaliseDescription } from "../../data/description-normaliser";
 import {
   useAutoTypeForCompany,
@@ -47,6 +48,11 @@ type Props = {
   // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → ranked companyIds (see
+  // `computeDescriptionCompanyHints`). Surfaces the company the user
+  // has tagged this merchant with before as the CompanyPicker's
+  // "Suggested" band, keyed off the entry's raw bank description.
+  descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   primaryIncomeMerchants: readonly PrimaryIncomeMerchant[];
   onClose: () => void;
@@ -82,6 +88,7 @@ export function EditHistoryEntryModal({
   tags,
   companyTypeSuggestions,
   companyTypeHints,
+  descriptionCompanyHints,
   settings,
   primaryIncomeMerchants,
   onClose,
@@ -112,6 +119,14 @@ export function EditHistoryEntryModal({
   const initialIsPrimary = matchedMerchant !== undefined;
   const initialAnchorDay =
     matchedMerchant?.anchorDayOfMonth ?? settings.startOfMonth;
+
+  // The company the user has tagged this merchant with before, surfaced
+  // as the CompanyPicker's "Suggested" band. Keyed off the raw bank
+  // description so it lines up with the normalised memory.
+  const companyHintIds = descriptionCompanyHintsFor(
+    descriptionCompanyHints,
+    entry?.description,
+  );
 
   const [description, setDescription] = useState(initialDescription);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
@@ -209,6 +224,7 @@ export function EditHistoryEntryModal({
               onSelect={handlePickCompany}
               onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
+              hintCompanyIds={companyHintIds}
             />
           </div>
           <div className="flex flex-col gap-1">
