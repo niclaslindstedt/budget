@@ -583,6 +583,7 @@ function pwaPlugin(): Plugin[] {
     injectRegister: null,
     includeAssets: [
       "favicon.svg",
+      "favicon-mark.svg",
       "favicon.ico",
       "apple-touch-icon-180x180.png",
       "og-default.png",
