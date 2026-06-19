@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8e3a6" />
+      <stop offset="45%" stop-color="#e5c07b" />
+      <stop offset="100%" stop-color="#a67a36" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" />
+    </filter>
+  </defs>
+  <g
+    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    font-weight="700"
+    font-size="68"
+    text-anchor="middle"
+  >
+    <text x="32" y="53" fill="#e5c07b" opacity="0.35" filter="url(#glow)">$</text>
+    <text x="32" y="53" fill="url(#gold)">$</text>
+  </g>
+</svg>
