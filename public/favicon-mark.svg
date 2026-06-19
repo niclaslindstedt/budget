@@ -12,10 +12,10 @@
   <g
     font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     font-weight="700"
-    font-size="50"
+    font-size="68"
     text-anchor="middle"
   >
-    <text x="32" y="48" fill="#e5c07b" opacity="0.35" filter="url(#glow)">$</text>
-    <text x="32" y="48" fill="url(#gold)">$</text>
+    <text x="32" y="53" fill="#e5c07b" opacity="0.35" filter="url(#glow)">$</text>
+    <text x="32" y="53" fill="url(#gold)">$</text>
   </g>
 </svg>
