@@ -81,7 +81,11 @@ function hasNumericVersion(v: unknown): v is Versioned {
   );
 }
 
-function stableStringify(value: unknown, indent: number): string {
+// Pretty-print with sorted keys. Exported so segment serialization
+// (`segments.ts`) produces byte-identical output to `serializeUserData`,
+// which is what lets a split-then-merge round-trip be asserted against
+// the whole-blob serialization.
+export function stableStringify(value: unknown, indent: number): string {
   return JSON.stringify(value, stableReplacer, indent);
 }
 
