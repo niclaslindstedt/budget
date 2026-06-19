@@ -428,9 +428,7 @@ function SuggestedTypes({
             type="button"
             aria-pressed={ty.id === selectedId}
             onClick={() => onPick(ty.id)}
-            className={`inline-flex cursor-pointer items-center gap-1 rounded-full border bg-surface px-1.5 py-0.5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              ty.id === selectedId ? "border-accent" : "border-line"
-            }`}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent p-0 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <TypeChip type={ty} compact />
             {ty.id === selectedId && (
