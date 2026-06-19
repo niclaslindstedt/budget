@@ -2,6 +2,10 @@ import { memo, useCallback, useMemo } from "react";
 import { ArrowLeftRight, Info, Pencil, Trash2 } from "lucide-react";
 
 import { isRowFinished, isRowSavable } from "../../data/budget/rows";
+import {
+  descriptionCompanyHintsFor,
+  mergeCompanyHintIds,
+} from "../../data/budget/company-type-hints";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
 import { useLang, useT } from "../../i18n";
@@ -98,6 +102,7 @@ function BudgetRowImpl({
     itemsById,
     companyTypeHints,
     typeCompanyHints,
+    descriptionCompanyHints,
     settings,
     coverTransferIds,
   } = useBudgetContext();
@@ -111,10 +116,9 @@ function BudgetRowImpl({
     () => (row.companyId ? (companyTypeHints.get(row.companyId) ?? []) : []),
     [companyTypeHints, row.companyId],
   );
-  // The row's type → company hint ids, surfaced as the "Suggested" band
-  // in the description popover's inline company picker. Empty when the
-  // row has no type set yet.
-  const companyHintIds = useMemo(
+  // The row's type → company hint ids — that type's most-used
+  // companies. Empty when the row has no type set yet.
+  const typeCompanyHintIds = useMemo(
     () => (row.typeId ? (typeCompanyHints.get(row.typeId) ?? []) : []),
     [typeCompanyHints, row.typeId],
   );
@@ -230,6 +234,23 @@ function BudgetRowImpl({
     descCol && typeof row.cells[descCol.id] === "string"
       ? (row.cells[descCol.id] as string)
       : "";
+  // The "Suggested" companies band for the row's inline picker. The
+  // merchant the user has tagged this description with before leads
+  // (matched on the raw bank text for history rows so it lines up with
+  // the normalised key the memory is built from), then the row's type's
+  // most-used companies fill the rest. Either source may be empty.
+  const descriptionForHint =
+    (row.kind === "historic" ? row.bankDescription : undefined) ??
+    rowDescription;
+  const descriptionCompanyHintIds = useMemo(
+    () =>
+      descriptionCompanyHintsFor(descriptionCompanyHints, descriptionForHint),
+    [descriptionCompanyHints, descriptionForHint],
+  );
+  const companyHintIds = useMemo(
+    () => mergeCompanyHintIds(descriptionCompanyHintIds, typeCompanyHintIds),
+    [descriptionCompanyHintIds, typeCompanyHintIds],
+  );
   const rowDateFormatted = isoDate
     ? formatShortDate(isoDate, settings.shortDateFormat, lang)
     : "";

@@ -14,7 +14,10 @@ import {
   matchingBankDescriptionEntries,
   type HistoryMetadataPatch,
 } from "../../data/budget/pattern-apply";
-import { autoTypeForCompany } from "../../data/budget/company-type-hints";
+import {
+  autoTypeForCompany,
+  descriptionCompanyHintsFor,
+} from "../../data/budget/company-type-hints";
 import {
   budgetMetadataFormReducer,
   EMPTY_METADATA_FORM_FIELDS,
@@ -89,6 +92,11 @@ type Props = {
   // `src/data/budget/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → ranked companyIds (see
+  // `computeDescriptionCompanyHints`). Surfaces the company the user
+  // has tagged the current entry's merchant with before as the
+  // CompanyPicker's "Suggested" band.
+  descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -184,6 +192,7 @@ export function BudgetMetadataModal({
   tags,
   companyTypeSuggestions,
   companyTypeHints,
+  descriptionCompanyHints,
   settings,
   onCreateType,
   onCreateCategory,
@@ -313,6 +322,13 @@ export function BudgetMetadataModal({
       : null;
   const current = reviewEntry ?? liveCurrent;
   const isReviewing = reviewEntry !== null;
+  // The company the user has tagged this merchant with before, surfaced
+  // as the CompanyPicker's "Suggested" band. Keyed off the entry's raw
+  // bank description so it lines up with the normalised memory.
+  const companyHintIds = descriptionCompanyHintsFor(
+    descriptionCompanyHints,
+    current?.description,
+  );
   // Back is reachable whenever there's an older entry to step to: from
   // the live front, any trail entry; while reviewing, any earlier one.
   const canGoBack =
@@ -894,6 +910,7 @@ export function BudgetMetadataModal({
                       dispatchSplit({ kind: "setNoCompany", value })
                     }
                     onCreate={onCreateCompany}
+                    hintCompanyIds={companyHintIds}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -969,6 +986,7 @@ export function BudgetMetadataModal({
                       onSelect={handlePickCompany}
                       onOmitChange={setNoCompany}
                       onCreate={onCreateCompany}
+                      hintCompanyIds={companyHintIds}
                     />
                     <span className="text-xs text-muted">
                       {noCompany

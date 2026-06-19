@@ -51,6 +51,7 @@ import { allCategories, allTypes } from "../../data/presets/merge";
 import {
   companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
+  computeDescriptionCompanyHints,
   computeTypeCompanyHints,
 } from "../../data/budget/company-type-hints";
 import {
@@ -401,6 +402,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // the description popover's "Suggested" band when a type is picked
   // first. Same cheap full-walk as the company → type hints above.
   const typeCompanyHints = useMemo(() => computeTypeCompanyHints(data), [data]);
+  // Description → most-used companies, surfaced as the CompanyPicker's
+  // "Suggested" band wherever a merchant gets tagged (the inline row
+  // popover, the metadata modal, the per-entry history editor) so a
+  // merchant the user has tagged before short-cuts straight to its
+  // usual company — even before a type is picked. Same cheap full-walk
+  // as the hints above.
+  const descriptionCompanyHints = useMemo(
+    () => computeDescriptionCompanyHints(data),
+    [data],
+  );
 
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
@@ -1193,6 +1204,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                       companyTypeSuggestions={companyTypeSuggestions}
                       companyTypeHints={companyTypeHints}
                       typeCompanyHints={typeCompanyHints}
+                      descriptionCompanyHints={descriptionCompanyHints}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}
                       onCreateCompany={onCreateCompany}
@@ -1365,6 +1377,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             types={allTypesMerged}
             companyTypeSuggestions={companyTypeSuggestions}
             companyTypeHints={companyTypeHints}
+            descriptionCompanyHints={descriptionCompanyHints}
             sheetId={sheetId}
             itemId={itemId}
             activeItem={activeItem}
