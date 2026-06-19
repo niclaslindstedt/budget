@@ -21,6 +21,7 @@ import {
 } from "./backend-preference";
 import { withCloudMirror } from "./cloud-mirror";
 import { createDropboxAdapter, startDropboxAuth } from "./dropbox-adapter";
+import { withCompression } from "./compressing-adapter";
 import { withEncryption } from "./encrypting-adapter";
 import { serializeUserData } from "./file";
 import { createFolderAdapter } from "./folder-adapter";
@@ -512,12 +513,15 @@ export function useStorageBackend({
       });
     }
     // Skip the encryption wrapper entirely when the user has opted
-    // out — keeps `loadSync` available on local and writes plaintext
-    // bytes to whichever inner backend is active (including the
-    // cloud backends).
+    // out — writes plaintext bytes (still gzip-compressed) to whichever
+    // inner backend is active (including the cloud backends).
+    // `withCompression` is the outermost layer in both branches:
+    // plaintext → gzip → (encrypt →) store. Compressing before
+    // encrypting matters — ciphertext doesn't compress — so the order
+    // must never flip.
     if (encryption === "plaintext") {
       log.info(`adapter: encryption off — inner=${inner.id}`);
-      return inner;
+      return withCompression(inner);
     }
     if (!passwordRef.current) {
       log.warn(
@@ -526,7 +530,7 @@ export function useStorageBackend({
     } else {
       log.info(`adapter: wrapping ${inner.id} with encryption`);
     }
-    return withEncryption(inner, passwordRef);
+    return withCompression(withEncryption(inner, passwordRef));
   }, [
     auth,
     backend,
