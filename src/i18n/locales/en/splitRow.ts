@@ -14,6 +14,7 @@ const splitRow = {
   descriptionPlaceholder: "What is this part for?",
   amount: "Amount",
   type: "Type",
+  company: "Company",
   addSplit: "Add another split",
   removeSplit: "Remove this split",
   remainder: "Remainder",

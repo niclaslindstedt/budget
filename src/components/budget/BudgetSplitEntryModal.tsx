@@ -5,6 +5,7 @@ import { findColumnByType } from "../../data/sheet";
 import type {
   Category,
   Column,
+  Company,
   EntryType,
   Row,
   Settings,
@@ -17,6 +18,7 @@ import {
   parseAmount,
   withCurrency,
 } from "../../utils/format";
+import { CompanyPicker } from "../CompanyPicker";
 import { Button, ClearableInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TypePicker } from "../TypePicker";
@@ -32,6 +34,7 @@ type SplitDraft = {
   amount: string;
   negative: boolean;
   typeId: string | null;
+  companyId: string | null;
 };
 
 export type { SplitSubmission } from "../../data/action-payloads";
@@ -43,6 +46,7 @@ type Props = {
   columns: Column[];
   categories: readonly Category[];
   types: readonly EntryType[];
+  companies: readonly Company[];
   settings: Settings;
   // Optional pre-fill for the splits list. Used when the row already
   // carries a saved split decomposition (e.g. a history entry whose
@@ -82,6 +86,7 @@ type Props = {
   onRevert?: (rowId: string) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
+  onCreateCompany: (draft: Omit<Company, "id">) => Company;
 };
 
 let nextUiId = 0;
@@ -97,6 +102,7 @@ function makeEmptySplit(negative: boolean): SplitDraft {
     amount: "",
     negative,
     typeId: null,
+    companyId: null,
   };
 }
 
@@ -106,6 +112,7 @@ export function BudgetSplitEntryModal({
   columns,
   categories,
   types,
+  companies,
   settings,
   initialSplits,
   authoritativeAmount,
@@ -115,6 +122,7 @@ export function BudgetSplitEntryModal({
   onRevert,
   onCreateType,
   onCreateCategory,
+  onCreateCompany,
 }: Props) {
   const t = useT();
 
@@ -156,6 +164,7 @@ export function BudgetSplitEntryModal({
           : formatAmountForInput(Math.abs(s.amount), settings),
       negative: s.amount < 0 || (s.amount === 0 && originalNegative),
       typeId: s.typeId,
+      companyId: s.companyId ?? null,
     };
   }
 
@@ -249,6 +258,7 @@ export function BudgetSplitEntryModal({
       description: s.trimmedDesc,
       amount: s.signed ?? 0,
       typeId: s.typeId,
+      companyId: s.companyId,
     }));
     onSplit(row.id, payload, remainderAmount);
   }
@@ -371,6 +381,18 @@ export function BudgetSplitEntryModal({
                       onSelect={(id) => updateSplit(s.uiId, { typeId: id })}
                       onCreate={onCreateType}
                       onCreateCategory={onCreateCategory}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <span className="text-xs text-muted">
+                      {t("splitRow.company")}
+                    </span>
+                    <CompanyPicker
+                      variant="field"
+                      companies={companies}
+                      selectedId={s.companyId}
+                      onSelect={(id) => updateSplit(s.uiId, { companyId: id })}
+                      onCreate={onCreateCompany}
                     />
                   </div>
                 </div>

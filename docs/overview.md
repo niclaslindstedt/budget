@@ -343,8 +343,13 @@ the amount field) so already-reconciled history isn't rewritten.
 
 ### Split entry modal
 
-`BudgetSplitEntryModal.tsx` — splits a bank-history row into multiple
-categorised parts.
+`BudgetSplitEntryModal.tsx` — splits a row into multiple categorised
+parts. Each split carries its own description, amount, type, and
+**company** — useful when a credit-card bill or bankgiro is broken into
+the individual purchases whose actual merchants differ from the parent
+entry's. The picked company rides through `SplitSubmission.companyId`
+onto the new rows (`splitRow` reducer) or onto each
+`HistoryEntrySplit.companyId` for a bank-history split.
 
 ### Complex entry modal
 
@@ -3321,8 +3326,8 @@ recurring". Mints a series and records a merchant hint.
 
 ### Split an entry
 
-`BudgetSplitEntryModal` — break one bank entry into multiple categorised
-rows.
+`BudgetSplitEntryModal` — break one entry into multiple categorised
+rows, each with its own type and company.
 
 ### Collapse a transfer
 

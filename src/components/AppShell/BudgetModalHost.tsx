@@ -291,6 +291,7 @@ export function BudgetModalHost(props: Props) {
           description: s.description,
           amount: s.amount,
           typeId: s.typeId,
+          companyId: s.companyId,
         }));
         if (remainderAmount !== 0) {
           fullSplits.push({
@@ -690,6 +691,7 @@ export function BudgetModalHost(props: Props) {
         columns={activeItem.columns}
         categories={categories}
         types={types}
+        companies={data.companies}
         settings={effectiveSettings}
         initialSplits={splitInitialSplits}
         authoritativeAmount={splitAuthoritativeAmount}
@@ -699,6 +701,7 @@ export function BudgetModalHost(props: Props) {
         onRevert={onSplitRevert}
         onCreateType={onCreateType}
         onCreateCategory={onCreateCategory}
+        onCreateCompany={onCreateCompany}
       />
       <BudgetLineItemsModal
         open={lineItemsPrompt !== null}
