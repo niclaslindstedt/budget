@@ -14,6 +14,7 @@ const splitRow: SplitRowCatalog = {
   descriptionPlaceholder: "Vad gäller den här delen?",
   amount: "Belopp",
   type: "Typ",
+  company: "Företag",
   addSplit: "Lägg till en uppdelning",
   removeSplit: "Ta bort denna uppdelning",
   remainder: "Rest",

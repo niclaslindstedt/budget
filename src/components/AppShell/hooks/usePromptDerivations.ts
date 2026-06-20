@@ -127,6 +127,7 @@ export function usePromptDerivations({
       description: s.description,
       amount: s.amount,
       typeId: s.typeId ?? null,
+      companyId: s.companyId ?? null,
     }));
   }, [splitHistoryEntry]);
 
