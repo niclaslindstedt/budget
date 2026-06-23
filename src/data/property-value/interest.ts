@@ -26,13 +26,18 @@ import type { Property } from "../types";
 import { isoToMonthNum, monthNumToIsoStart } from "../../utils/date";
 
 // The property's share of the housing association's debt, in the user's
-// currency: the per-area figure times the recorded living area. Undefined
-// when no association loan is recorded or the property has no size to multiply
-// by — there is nothing to charge indirect interest on.
+// currency: the per-area figure times the area used to apportion the debt.
+// That area is the association's own lägenhetsförteckning figure
+// (`AssociationLoan.size`) when recorded — it can differ from the measured
+// living area — falling back to the property's measured `size` otherwise.
+// Undefined when no association loan is recorded or neither area is known —
+// there is nothing to charge indirect interest on.
 export function associationLoanShare(property: Property): number | undefined {
   const loan = property.associationLoan;
-  if (!loan || property.size === undefined) return undefined;
-  return loan.loanPerSize * property.size;
+  if (!loan) return undefined;
+  const area = loan.size ?? property.size;
+  if (area === undefined) return undefined;
+  return loan.loanPerSize * area;
 }
 
 // The constant monthly interest on the association-debt share, at the

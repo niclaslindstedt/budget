@@ -39,6 +39,25 @@ describe("associationLoanShare", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("prefers the association-registered size over the measured size", () => {
+    // Measured 82 but registered 80 in the association → apportion on 80.
+    const p = property({
+      size: 82,
+      associationLoan: { loanPerSize: 5_000, rate: 3 },
+    });
+    expect(associationLoanShare(p)).toBe(410_000); // 5,000 × 82
+    p.associationLoan!.size = 80;
+    expect(associationLoanShare(p)).toBe(400_000); // 5,000 × 80
+  });
+
+  it("falls back to the measured size when no registered size is set", () => {
+    const p = property({
+      associationLoan: { loanPerSize: 5_000, rate: 3, size: 80 },
+    });
+    // No Property.size at all, but the association size carries it.
+    expect(associationLoanShare(p)).toBe(400_000);
+  });
 });
 
 describe("cumulativeAssociationInterestAt", () => {
