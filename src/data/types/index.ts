@@ -29,6 +29,7 @@ export type {
 } from "./items";
 
 export type {
+  AssociationLoan,
   FileCategory,
   Mortgage,
   MortgageAmortization,

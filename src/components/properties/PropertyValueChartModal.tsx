@@ -48,18 +48,32 @@ export function PropertyValueChartModal({
 
   const [includeRepairs, setIncludeRepairs] = useState(false);
   const [showNetValue, setShowNetValue] = useState(false);
+  const [includeInterest, setIncludeInterest] = useState(false);
+  const [includeAssociationInterest, setIncludeAssociationInterest] =
+    useState(false);
 
   // Reset the toggles to off whenever the modal opens for a property.
   useResetOnOpen(open, property?.id, () => {
     setIncludeRepairs(false);
     setShowNetValue(false);
+    setIncludeInterest(false);
+    setIncludeAssociationInterest(false);
   });
 
   if (!open || !property) return null;
 
+  // The association-interest leg only makes sense for a property that records
+  // a share of the association's debt; without it the toggle would do nothing.
+  const hasAssociationLoan = property.associationLoan !== undefined;
+
   const points = buildPropertyValueSeries(property, settings, {
     includeRepairs,
     showNetValue,
+    includeInterest,
+    // Gated on the interest toggle (the modal only shows it then) and on the
+    // property actually carrying an association loan.
+    includeAssociationInterest:
+      includeInterest && hasAssociationLoan && includeAssociationInterest,
   });
 
   const hasChart = points.length >= 2;
@@ -155,6 +169,27 @@ export function PropertyValueChartModal({
               label={t("properties.valueChartShowNetValue")}
               description={t("properties.valueChartShowNetValueHint")}
             />
+            <Checkbox
+              checked={includeInterest}
+              onChange={setIncludeInterest}
+              disabled={!hasChart}
+              label={t("properties.valueChartIncludeInterest")}
+              description={t("properties.valueChartIncludeInterestHint")}
+            />
+            {includeInterest && hasAssociationLoan && (
+              <Checkbox
+                checked={includeAssociationInterest}
+                onChange={setIncludeAssociationInterest}
+                disabled={!hasChart}
+                label={t("properties.valueChartIncludeAssociationInterest")}
+                description={t(
+                  "properties.valueChartIncludeAssociationInterestHint",
+                )}
+                // Nested under "Include interest" — indent so the dependency
+                // reads visually.
+                className="ml-5"
+              />
+            )}
           </div>
         </div>
       </Modal.Body>

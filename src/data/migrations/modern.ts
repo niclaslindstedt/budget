@@ -1176,6 +1176,15 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // field is optional and absent on every old export; the v79 validator omits
   // it when missing, so this is a bare additive bump.
   78: (v78) => ({ ...v78, version: 79 }),
+
+  // v79 → v80: a property gains `associationLoan` (`AssociationLoan`), its
+  // share of the housing association's own debt — a figure per kvm / sqft plus
+  // the association's interest rate, the way an årsredovisning reports it. The
+  // value chart deducts the indirect interest that rides the monthly fee so a
+  // high-fee flat no longer looks like pure gain. The field is optional and
+  // absent on every old export; the v80 validator omits it when missing, so
+  // this is a bare additive bump.
+  79: (v79) => ({ ...v79, version: 80 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

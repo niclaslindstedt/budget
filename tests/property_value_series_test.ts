@@ -17,10 +17,17 @@ function property(overrides: Partial<Property>): Property {
 }
 
 const opts = (
-  o: Partial<{ includeRepairs: boolean; showNetValue: boolean }>,
+  o: Partial<{
+    includeRepairs: boolean;
+    showNetValue: boolean;
+    includeInterest: boolean;
+    includeAssociationInterest: boolean;
+  }>,
 ) => ({
   includeRepairs: false,
   showNetValue: false,
+  includeInterest: false,
+  includeAssociationInterest: false,
   ...o,
 });
 
@@ -133,6 +140,66 @@ describe("buildPropertyValueSeries", () => {
     // Net profit (above) plus the cumulative repair spend added back on top.
     // Jan: 78 000 + 0 = 78 000. Jun: 117 000 + 50 000 = 167 000.
     expect(series.map((p) => p.y)).toEqual([78_000, 167_000]);
+  });
+
+  it("deducts cumulative mortgage interest when includeInterest is on", () => {
+    const series = buildPropertyValueSeries(
+      property({
+        purchaseAmount: 1_000_000,
+        purchaseDate: "2024-01-01",
+        valueHistory: [
+          { id: "a", date: "2024-01-01", value: 1_000_000 },
+          { id: "b", date: "2024-04-01", value: 1_000_000 },
+        ],
+        // Interest-only loan: a flat 1,200,000 balance at 6% ⇒ 6,000/month,
+        // so three months of interest (Jan, Feb, Mar) have accrued by Apr.
+        mortgages: [
+          {
+            id: "m1",
+            name: "Loan",
+            loanAmount: 1_200_000,
+            currentBalance: 1_200_000,
+            interestRate: 6,
+            loanStartDate: "2024-01-01",
+            payments: [],
+          },
+        ],
+      }),
+      DEFAULT_SETTINGS,
+      opts({ includeInterest: true }),
+    );
+    // Jan (purchase month): no interest paid yet → unchanged. Apr: three
+    // months × 6,000 = 18,000 deducted.
+    expect(series.map((p) => p.y)).toEqual([1_000_000, 982_000]);
+  });
+
+  it("deducts association interest only with both interest toggles on", () => {
+    const base = {
+      purchaseAmount: 1_000_000,
+      purchaseDate: "2024-01-01",
+      size: 50,
+      // 4,000/kvm × 50 = 200,000 share at 6% ⇒ 1,000/month.
+      associationLoan: { loanPerSize: 4_000, rate: 6 },
+      valueHistory: [
+        { id: "a", date: "2024-01-01", value: 1_000_000 },
+        { id: "b", date: "2024-04-01", value: 1_000_000 },
+      ],
+    };
+    // Interest toggle alone leaves the association leg untouched (no mortgage,
+    // so the curve is flat).
+    const interestOnly = buildPropertyValueSeries(
+      property(base),
+      DEFAULT_SETTINGS,
+      opts({ includeInterest: true }),
+    );
+    expect(interestOnly.map((p) => p.y)).toEqual([1_000_000, 1_000_000]);
+    // Both on: three months × 1,000 = 3,000 deducted by April.
+    const both = buildPropertyValueSeries(
+      property(base),
+      DEFAULT_SETTINGS,
+      opts({ includeInterest: true, includeAssociationInterest: true }),
+    );
+    expect(both.map((p) => p.y)).toEqual([1_000_000, 997_000]);
   });
 
   it("skips snapshots with a malformed date", () => {

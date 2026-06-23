@@ -940,6 +940,10 @@ export function buildSeedUserData(): UserData {
     // A bostadsrätt, so it carries a monthly fee to the housing
     // association on top of the mortgage.
     fee: 2850,
+    // The förening carries its own debt — ~5,800 kr/kvm at 3.2% per the
+    // årsredovisning — so a slice of that 2,850 fee is really indirect loan
+    // interest. The value chart's association-interest toggle surfaces it.
+    associationLoan: { loanPerSize: 5800, rate: 3.2 },
     // Purchase (3,200,000 on 2022-05-15) is synthesised as the first value.
     valueHistory: [{ id: mkId("pval"), date: "2026-05-01", value: 3650000 }],
     mortgages: [

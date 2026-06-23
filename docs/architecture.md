@@ -215,8 +215,9 @@ src/
 │   │   │                       #   LoanPayment, LoanBalancePoint, LoanKind
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment, incl. soldDate /
-│   │   │                       #   soldAmount for one owned in the past),
-│   │   │                       #   PropertyValuePoint,
+│   │   │                       #   soldAmount for one owned in the past,
+│   │   │                       #   associationLoan for indirect förening debt),
+│   │   │                       #   PropertyValuePoint, AssociationLoan,
 │   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
 │   │   │                       #   (source pair optional — manual repairs carry
 │   │   │                       #   own companyId/tagIds), PropertySaleEstimate
@@ -384,9 +385,14 @@ src/
 │   │   │                       #   as its first value; current value = latest by
 │   │   │                       #   date, purchase included; isPropertySoldAt
 │   │   │                       #   (already sold at a date — past ownership)
-│   │   └── series.ts           # buildPropertyValueSeries — market value, value
-│   │                           #   incl. cumulative repairs, and full net sale
-│   │                           #   profit per snapshot (Visualize value chart)
+│   │   ├── series.ts           # buildPropertyValueSeries — market value, value
+│   │   │                       #   incl. cumulative repairs, full net sale profit
+│   │   │                       #   per snapshot, and the two interest deductions
+│   │   │                       #   (Visualize value chart)
+│   │   └── interest.ts         # cumulativeMortgageInterestAt /
+│   │                           #   cumulativeAssociationInterestAt /
+│   │                           #   associationLoanShare — sunk interest the chart
+│   │                           #   deducts (own mortgages + association debt share)
 │   ├── property-transfer/  # properties page — sale-handover export / import
 │   │   ├── manifest.ts         # PropertyExportManifest shape + format / version
 │   │   │                       #   constants (the archive's manifest.json)
@@ -1070,6 +1076,13 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   (expected useful life in years, driving the spending dashboard's
   "spread item costs" mode). A bare version bump — the field is
   optional per item, so a v75 record is absence-tolerant.
+
+- **v79 → v80** — grows `Property` with an optional `associationLoan`
+  (`AssociationLoan`): the property's share of a housing association's
+  own debt, entered per unit of living area plus the association's
+  interest rate. The Visualize-value chart deducts the indirect
+  interest that rides the monthly fee. A bare version bump — the field
+  is optional per property, so a v79 record is absence-tolerant.
 
 ## State management
 

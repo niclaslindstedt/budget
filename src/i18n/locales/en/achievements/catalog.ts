@@ -392,6 +392,12 @@ const catalog = {
     learnMore:
       "From a property's … menu, pick Visualize value to chart its recorded values over time — the app's first visualization. Toggle Include repairs to fold the money you've put in onto the line, and Show net value to overlay what you'd actually take home after broker, advertising, repairs, purchase price, and capital-gains tax. The chart follows your theme: colours, font, corners, and spacing all match.",
   },
+  associationLoan: {
+    name: "Hidden Debt",
+    condition: "Record a property's share of a housing association's loan.",
+    learnMore:
+      "A bostadsrätt's monthly fee often hides a big indirect debt: the housing association's own loans, which you own a slice of through your apartment. In the property editor, enter the loan per square metre and the association's interest rate — both usually found in the årsredovisning. The Visualize-value chart then lets you subtract that hidden interest, so a high-fee flat no longer looks like pure gain.",
+  },
   savingsValueChart: {
     name: "Nest Egg",
     condition: "Visualize your savings over time.",

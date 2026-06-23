@@ -1042,6 +1042,29 @@ shown as a stat on `PropertyCard` (formatted with the currency, like the
 purchase amount). Optional and additive — absent until the user records
 one, so old budgets simply lack it and no migration is needed.
 
+### Association loan
+
+`Property.associationLoan` (`AssociationLoan` in
+`src/data/types/properties.ts`) is the property's share of a housing
+association's own debt — the Swedish bostadsrätt case, where the förening
+carries loans you indirectly own a slice of through your apartment. It is
+not a loan you pay to a bank directly: its interest is baked into the
+monthly fee, which is why a flat with a high `fee` often hides a large
+indirect debt. Entered the way an _årsredovisning_ (annual report) reports
+it — `loanPerSize`, a figure per unit of living area (e.g. 6,000 kr/kvm),
+plus the association's annual interest `rate`. The property's own share is
+`loanPerSize × Property.size` (`associationLoanShare` in
+`src/data/property-value/interest.ts`), and the indirect interest is
+charged on that share at `rate`. Both non-negative. Entered in
+`PropertyEditorModal`; surfaced only by the Visualize-value chart's
+association-interest toggle (see below). Optional and additive — absent
+until the user records one, so old budgets simply lack it. The v80
+validator drops an all-zero loan to absent so it stays byte-identical to a
+property that never set one. It is deliberately **not** folded into the
+Insights net-worth roll-up: it is an indirect liability already reflected
+in the fee, and modelling it as net-worth debt would be a separate
+decision.
+
 ### Sold property
 
 A property owned in the past — `Property.soldDate` (ISO sale date) plus
@@ -1846,7 +1869,7 @@ that mode's inputs; resolved to a fee by `brokerFee` in
 `PropertyValueChartModal.tsx` (`src/components/properties/`) — the app's
 first data visualization, opened from a property card's "… actions
 menu" ("Visualize value"). Plots the recorded market value over time
-(`Property.valueHistory`) as a single line, with two toggles that
+(`Property.valueHistory`) as a single line, with toggles that
 transform that line in place rather than adding more:
 
 - **Include repairs** — adds the cumulative repair spend up to each
@@ -1858,6 +1881,19 @@ transform that line in place rather than adding more:
   what you'd actually take home. Repairs are _deducted_ here, so when
   both toggles are on the added repairs counterbalance the deduction —
   the toggles point opposite ways on purpose.
+- **Include interest paid** — _subtracts_ the cumulative interest paid on
+  the property's own mortgages up to each snapshot
+  (`cumulativeMortgageInterestAt` in
+  `src/data/property-value/interest.ts`, walking each loan month by month
+  from its start at the rate and reconstructed balance in effect that
+  month). Interest is sunk cost, so it pulls the line down and grows over
+  time.
+- **Include association interest** — a sub-toggle revealed only when
+  "Include interest paid" is on _and_ the property records an
+  `associationLoan`. Additionally subtracts the cumulative interest on the
+  property's share of the housing association's debt
+  (`cumulativeAssociationInterestAt`) — the hidden interest paid through
+  the monthly fee, so a high-fee bostadsrätt no longer reads as pure gain.
 
 The series math is the pure `buildPropertyValueSeries`
 (`src/data/property-value/series.ts`), sampled at the value-snapshot

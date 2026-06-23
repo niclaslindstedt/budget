@@ -82,6 +82,13 @@ const properties: PropertiesCatalog = {
   feePlaceholder: "Vad du betalar varje månad",
   feeHint:
     "Återkommande avgift för att äga bostaden, t.ex. en bostadsrättsavgift.",
+  associationLoanLabel: "Föreningslån",
+  associationLoanPerSizeLabel: "Lån",
+  associationLoanPerSizePlaceholder: "t.ex. 6 000",
+  associationLoanRateLabel: "Ränta (%)",
+  associationLoanRatePlaceholder: "t.ex. 3,5",
+  associationLoanHint:
+    "Föreningens egna skulder som du indirekt äger en andel av — anges per yta, med föreningens ränta. Hittas oftast i årsredovisningen. Räntan döljs i din månadsavgift.",
 
   // Update-value modal.
   updateValueTitle: "Uppdatera värde",
@@ -108,6 +115,12 @@ const properties: PropertiesCatalog = {
   valueChartShowNetValue: "Visa nettovärde",
   valueChartShowNetValueHint:
     "Vad du faktiskt får kvar — efter mäklararvode, annonsering, reparationer, inköpspris och vinstskatt.",
+  valueChartIncludeInterest: "Inkludera betald ränta",
+  valueChartIncludeInterestHint:
+    "Dra av räntan du betalat på bostadens bolån, månad för månad — pengar som inte kommer tillbaka.",
+  valueChartIncludeAssociationInterest: "Inkludera föreningsränta",
+  valueChartIncludeAssociationInterestHint:
+    "Dra även av räntan på din andel av föreningens lån — den dolda räntan du betalar via månadsavgiften.",
 
   // Mortgage editor modal.
   newMortgageTitle: "Nytt bolån",

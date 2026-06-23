@@ -1,4 +1,5 @@
 import type {
+  AssociationLoan,
   BrokerCost,
   Mortgage,
   MortgageAmortization,
@@ -381,6 +382,20 @@ function validateMortgage(raw: unknown): Mortgage | null {
   return mortgage;
 }
 
+// Validate the property's share of the housing association's debt. Both
+// fields are coerced non-negative; a malformed / non-object value drops the
+// whole loan to undefined rather than rejecting the property. The loan is
+// dropped entirely when both fields are absent / zero — an all-zero loan is
+// indistinguishable from "not recorded", so it stays byte-identical to a
+// property that never set one.
+function validateAssociationLoan(raw: unknown): AssociationLoan | undefined {
+  if (!isObject(raw)) return undefined;
+  const loanPerSize = nonNegative(raw.loanPerSize);
+  const rate = nonNegative(raw.rate);
+  if (loanPerSize === 0 && rate === 0) return undefined;
+  return { loanPerSize, rate };
+}
+
 // Validate one Property. Required `id` + `name` fail the file (they're
 // load-bearing identity); everything else is dropped-if-malformed so a
 // single bad optional field can't trap an otherwise-valid budget.
@@ -446,6 +461,10 @@ export function validateProperty(
   // Non-negative finite only; a bad value is dropped (the field goes
   // absent) rather than rejecting the file.
   if (isFiniteNumber(raw.fee) && raw.fee >= 0) property.fee = raw.fee;
+  // The property's share of the housing association's debt (indirect debt
+  // whose interest rides the monthly fee). Dropped if malformed or all-zero.
+  const associationLoan = validateAssociationLoan(raw.associationLoan);
+  if (associationLoan) property.associationLoan = associationLoan;
   if (Array.isArray(raw.valueHistory)) {
     const seen = new Set<string>();
     for (const rawPoint of raw.valueHistory) {

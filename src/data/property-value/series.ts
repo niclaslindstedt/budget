@@ -18,7 +18,19 @@
 //    value). When both toggles are on the added repairs counterbalance the
 //    repair deduction inside the net calc — the toggles point opposite ways on
 //    purpose.
+//  - `includeInterest` — subtract the cumulative interest paid on the
+//    property's own mortgages up to each date, so the curve reflects the money
+//    spent on interest that never comes back (it grows over time as more
+//    interest is paid).
+//  - `includeAssociationInterest` — additionally subtract the cumulative
+//    interest on the property's share of the housing association's debt (the
+//    bostadsrätt case, where that interest rides the monthly fee). Only ever
+//    set alongside `includeInterest`; the modal gates the toggle on it.
 
+import {
+  cumulativeAssociationInterestAt,
+  cumulativeMortgageInterestAt,
+} from "./interest";
 import { computePropertySale } from "../tax/engine";
 import type { Property, Settings } from "../types";
 import { resolveValueHistory } from "./value";
@@ -28,6 +40,8 @@ export type SeriesPoint = { x: number; y: number };
 export type PropertyValueSeriesOptions = {
   includeRepairs: boolean;
   showNetValue: boolean;
+  includeInterest: boolean;
+  includeAssociationInterest: boolean;
 };
 
 // Parse an ISO yyyy-mm-dd date to epoch ms (UTC midnight, round-trips back to
@@ -68,6 +82,7 @@ export function buildPropertyValueSeries(
   };
 
   return snapshots.map((s) => {
+    const iso = new Date(s.ms).toISOString().slice(0, 10);
     const cumulativeRepairs = cumulativeRepairsAt(s.ms);
     const base = options.showNetValue
       ? computePropertySale(settings.location, {
@@ -78,7 +93,14 @@ export function buildPropertyValueSeries(
           broker: property.saleEstimate?.broker ?? { mode: "none" },
         }).netProfit
       : s.value;
-    const y = options.includeRepairs ? base + cumulativeRepairs : base;
+    let y = options.includeRepairs ? base + cumulativeRepairs : base;
+    // Interest paid is sunk cost: deduct it so the curve drops by the running
+    // total of interest spent up to this snapshot.
+    if (options.includeInterest) {
+      y -= cumulativeMortgageInterestAt(property, iso);
+      if (options.includeAssociationInterest)
+        y -= cumulativeAssociationInterestAt(property, iso);
+    }
     return { x: s.ms, y };
   });
 }

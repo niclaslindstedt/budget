@@ -272,6 +272,23 @@ export type PropertyRepair = {
   receipts?: RepairReceipt[];
 };
 
+// The property's share of a housing association's own debt — the Swedish
+// bostadsrätt case, where the förening (cooperative) carries loans that you
+// indirectly own a slice of through your apartment. It is not a loan you took
+// or pay to a bank directly: its interest is baked into the monthly fee
+// (`Property.fee`), which is why a flat with a high fee often hides a large
+// indirect debt. Entered the way an årsredovisning (annual report) reports it
+// — a figure *per unit of living area* (`loanPerSize`, e.g. 6,000 kr/kvm) plus
+// the association's annual interest `rate`. The property's own share is
+// `loanPerSize × Property.size`, and the indirect interest is charged on that
+// share at `rate`. Both non-negative. Absent until the user records one; the
+// share resolves to undefined without a recorded `Property.size` to multiply
+// by.
+export type AssociationLoan = {
+  loanPerSize: number; // indirect debt per kvm / sqft (>= 0)
+  rate: number; // the association's annual interest rate, as a percent (>= 0)
+};
+
 // A user-defined category for a property's uploaded files — "Insurance",
 // "Manuals", "Before & after", … Each category becomes a subfolder under a
 // property's `files/` folder in the backend's `properties/` store; a file
@@ -381,6 +398,13 @@ export type Property = {
   // user hasn't recorded one. Additive / optional, so old budgets simply
   // lack it — no migration needed.
   fee?: number;
+  // The property's share of the housing association's own debt — see
+  // `AssociationLoan`. For a Swedish bostadsrätt the förening carries loans
+  // whose interest you pay indirectly through your monthly fee; recording it
+  // here lets the value chart deduct that hidden interest from the property's
+  // apparent gain. Absent until the user records one. Additive / optional, so
+  // old budgets simply lack it — no migration needed beyond the version bump.
+  associationLoan?: AssociationLoan;
   valueHistory: PropertyValuePoint[];
   mortgages: Mortgage[];
   repairs: PropertyRepair[];

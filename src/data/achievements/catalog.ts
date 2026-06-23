@@ -355,6 +355,12 @@ const hasManualRepair = (s: UserData) =>
 const hasSoldProperty = (s: UserData) =>
   s.properties.some((p) => p.soldDate !== undefined);
 
+// A property records its share of a housing association's debt — the
+// bostadsrätt case, where the hidden interest rides the monthly fee. Recorded
+// from the property editor so the value chart can deduct that interest.
+const hasAssociationLoan = (s: UserData) =>
+  s.properties.some((p) => p.associationLoan !== undefined);
+
 // A payslip was added manually — no backing bank transaction or budget row,
 // so it came from the "Add payslip" form rather than a discovery walk.
 const hasManualSalary = (s: UserData) =>
@@ -1170,6 +1176,21 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     glyph: LineChart,
     hasLearnMore: true,
     trigger: { kind: "manual" },
+  },
+  {
+    // The user recorded a property's share of a housing association's debt
+    // (the bostadsrätt case) — entered per area with the association's rate, so
+    // the value chart can deduct the hidden interest paid through the fee.
+    id: "associationLoan",
+    tier: "expert",
+    glyph: HandCoins,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.properties],
+      predicate: (prev, next) =>
+        !hasAssociationLoan(prev) && hasAssociationLoan(next),
+    },
   },
   {
     // The user opened the savings value-over-time chart to see the combined
