@@ -1,9 +1,10 @@
 import { createLogger } from "../utils/logger";
-import type {
-  AdapterCapability,
-  BackupOps,
-  Snapshot,
-  StorageAdapter,
+import {
+  ConflictError,
+  type AdapterCapability,
+  type BackupOps,
+  type Snapshot,
+  type StorageAdapter,
 } from "./adapter";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto";
 
@@ -33,6 +34,31 @@ export function withEncryption(
   inner: StorageAdapter,
   passwordRef: PasswordRef,
 ): StorageAdapter {
+  // Decrypt the bytes carried by a single snapshot, leaving a plaintext
+  // leftover (or, when no password is held, an envelope we can't open)
+  // untouched. Shared by the `load` / `save` conflict paths so the
+  // snapshots inside a `ConflictError` are decoded the same way a normal
+  // load decodes them.
+  async function decryptSnapshot(snap: Snapshot): Promise<Snapshot> {
+    if (!isEncryptedEnvelope(snap.text)) return snap;
+    const password = passwordRef.current;
+    if (!password) return snap;
+    return { ...snap, text: await decryptEnvelope(snap.text, password) };
+  }
+
+  // Re-throw an error from the inner adapter after decoding the bytes it
+  // carries. A `ConflictError` ferries the remote (and, with the cloud
+  // mirror, the local) snapshot out past this wrapper as ciphertext —
+  // decrypt them here so the conflict-resolution modal sees real JSON.
+  async function rethrowDecoded(err: unknown): Promise<never> {
+    if (err instanceof ConflictError) {
+      const remote = await decryptSnapshot(err.remote);
+      const local = err.local ? await decryptSnapshot(err.local) : undefined;
+      throw new ConflictError(remote, local);
+    }
+    throw err;
+  }
+
   const wrappedBackups: BackupOps | undefined = inner.backups
     ? {
         list: () => inner.backups!.list(),
@@ -123,7 +149,16 @@ export function withEncryption(
 
     async load(): Promise<Snapshot | null> {
       log.info(`load: delegate to inner [${inner.id}]`);
-      const snap = await inner.load();
+      let snap: Snapshot | null;
+      try {
+        snap = await inner.load();
+      } catch (err) {
+        // `load` can surface a `ConflictError` (cloud mirror: offline
+        // edits vs a moved remote) — decrypt the carried snapshots
+        // before they leave this wrapper.
+        await rethrowDecoded(err);
+        throw err; // unreachable — rethrowDecoded always throws
+      }
       if (!snap) {
         log.info("load: inner returned null");
         return null;
@@ -169,7 +204,16 @@ export function withEncryption(
         const ms = (performance.now() - start).toFixed(0);
         log.info(`save: encrypt ok (${ms}ms) → ${payload.length} B envelope`);
       }
-      const written = await inner.save(payload, baseRevision);
+      let written: Snapshot;
+      try {
+        written = await inner.save(payload, baseRevision);
+      } catch (err) {
+        // A 409 surfaces as a `ConflictError` carrying the encrypted
+        // remote / local bytes — decrypt them so the conflict modal
+        // parses real JSON instead of an envelope.
+        await rethrowDecoded(err);
+        throw err; // unreachable — rethrowDecoded always throws
+      }
       // The hook compares revisions, not bytes, so it's safe to hand
       // back the plaintext alongside the revision the inner adapter
       // produced for the ciphertext.

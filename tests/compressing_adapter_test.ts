@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { type Snapshot, type StorageAdapter } from "../src/storage/adapter";
+import {
+  ConflictError,
+  type Snapshot,
+  type StorageAdapter,
+} from "../src/storage/adapter";
 import { withCompression } from "../src/storage/compressing-adapter";
-import { isCompressed } from "../src/storage/compression";
+import { compressText, isCompressed } from "../src/storage/compression";
 import { withEncryption } from "../src/storage/encrypting-adapter";
 import { isEncryptedEnvelope } from "../src/storage/crypto";
 
@@ -92,6 +96,68 @@ describe("withCompression", () => {
 
     const loaded = await adapter.load();
     expect(loaded?.text).toBe(plain);
+  });
+
+  it("decompresses both sides of a ConflictError thrown from save", async () => {
+    // The inner adapter (cloud mirror) re-reads the remote on a 409 and
+    // throws a ConflictError carrying *compressed* bytes for both sides.
+    // Without decompressing them here the conflict modal parses gzip as
+    // JSON, fails, and shows a fresh empty budget ("0 entries").
+    const remotePlain = JSON.stringify({ version: 80, sheets: ["remote"] });
+    const localPlain = JSON.stringify({ version: 80, sheets: ["local"] });
+    const remoteBytes = await compressText(remotePlain);
+    const localBytes = await compressText(localPlain);
+
+    const inner: StorageAdapter = {
+      id: "dropbox",
+      label: "Conflicting",
+      capabilities: new Set(),
+      async load(): Promise<Snapshot | null> {
+        return null;
+      },
+      async save(): Promise<Snapshot> {
+        throw new ConflictError(
+          { text: remoteBytes, revision: "remote-rev" },
+          { text: localBytes, revision: "local-rev" },
+        );
+      },
+    };
+    const adapter = withCompression(inner);
+
+    await expect(adapter.save(localPlain)).rejects.toMatchObject({
+      name: "ConflictError",
+      remote: { text: remotePlain, revision: "remote-rev" },
+      local: { text: localPlain, revision: "local-rev" },
+    });
+  });
+
+  it("decompresses a ConflictError thrown from load", async () => {
+    const remotePlain = JSON.stringify({ version: 80, sheets: ["remote"] });
+    const localPlain = JSON.stringify({ version: 80, sheets: ["local"] });
+    const remoteBytes = await compressText(remotePlain);
+    const localBytes = await compressText(localPlain);
+
+    const inner: StorageAdapter = {
+      id: "dropbox",
+      label: "Conflicting",
+      capabilities: new Set(),
+      async load(): Promise<Snapshot | null> {
+        throw new ConflictError(
+          { text: remoteBytes, revision: "remote-rev" },
+          { text: localBytes, revision: "local-rev" },
+        );
+      },
+      async save(text: string): Promise<Snapshot> {
+        return { text, revision: "r2" };
+      },
+    };
+    const adapter = withCompression(inner);
+
+    await expect(adapter.load()).rejects.toMatchObject({
+      name: "ConflictError",
+      remote: { text: remotePlain },
+      local: { text: localPlain },
+    });
   });
 
   it("forwards sibling-file ops untouched", () => {
