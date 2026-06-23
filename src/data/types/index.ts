@@ -30,6 +30,7 @@ export type {
 
 export type {
   AssociationLoan,
+  AssociationLoanChange,
   FileCategory,
   Mortgage,
   MortgageAmortization,

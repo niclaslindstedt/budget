@@ -1,5 +1,6 @@
 import type {
   AssociationLoan,
+  AssociationLoanChange,
   BrokerCost,
   Mortgage,
   MortgageAmortization,
@@ -382,6 +383,31 @@ function validateMortgage(raw: unknown): Mortgage | null {
   return mortgage;
 }
 
+// Validate one effective-dated association-loan change: a non-empty `id`, a
+// blank-or-ISO effective `date`, and non-negative `loanPerSize` / `rate`. A
+// malformed entry drops to null so the caller can skip it (mirrors
+// `validateRateChange`).
+function validateAssociationLoanChange(
+  raw: unknown,
+): AssociationLoanChange | null {
+  if (!isObject(raw)) return null;
+  const { id } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  const date =
+    typeof raw.date === "string" && (raw.date === "" || isIsoDate(raw.date))
+      ? raw.date
+      : null;
+  if (date === null) return null;
+  if (!isFiniteNumber(raw.loanPerSize) || !isFiniteNumber(raw.rate))
+    return null;
+  return {
+    id,
+    date,
+    loanPerSize: nonNegative(raw.loanPerSize),
+    rate: nonNegative(raw.rate),
+  };
+}
+
 // Validate the property's share of the housing association's debt. The
 // `loanPerSize` / `rate` fields are coerced non-negative; a malformed /
 // non-object value drops the whole loan to undefined rather than rejecting the
@@ -390,6 +416,8 @@ function validateMortgage(raw: unknown): Mortgage | null {
 // byte-identical to a property that never set one. The optional association
 // `size` (the lägenhetsförteckning area) is kept only when a positive finite
 // number; absent / zero ⇒ omitted so the share falls back to `Property.size`.
+// Past effective-dated `history` entries are validated leniently (malformed
+// dropped, ids deduped); an emptied list is left absent.
 function validateAssociationLoan(raw: unknown): AssociationLoan | undefined {
   if (!isObject(raw)) return undefined;
   const loanPerSize = nonNegative(raw.loanPerSize);
@@ -397,6 +425,17 @@ function validateAssociationLoan(raw: unknown): AssociationLoan | undefined {
   if (loanPerSize === 0 && rate === 0) return undefined;
   const loan: AssociationLoan = { loanPerSize, rate };
   if (isFiniteNumber(raw.size) && raw.size > 0) loan.size = raw.size;
+  if (Array.isArray(raw.history)) {
+    const seen = new Set<string>();
+    const history: AssociationLoanChange[] = [];
+    for (const rawChange of raw.history) {
+      const change = validateAssociationLoanChange(rawChange);
+      if (!change || seen.has(change.id)) continue;
+      seen.add(change.id);
+      history.push(change);
+    }
+    if (history.length > 0) loan.history = history;
+  }
   return loan;
 }
 

@@ -941,11 +941,22 @@ export function buildSeedUserData(): UserData {
     // association on top of the mortgage.
     fee: 2850,
     // The förening carries its own debt — ~5,800 kr/kvm at 3.2% per the
-    // årsredovisning — so a slice of that 2,850 fee is really indirect loan
-    // interest. The value chart's association-interest toggle surfaces it. The
-    // flat measures 42 kvm but the lägenhetsförteckning registers it at 40, so
-    // the debt is apportioned on the smaller figure.
-    associationLoan: { loanPerSize: 5800, rate: 3.2, size: 40 },
+    // latest årsredovisning — so a slice of that 2,850 fee is really indirect
+    // loan interest. The value chart's association-interest toggle surfaces it.
+    // The flat measures 42 kvm but the lägenhetsförteckning registers it at 40,
+    // so the debt is apportioned on the smaller figure. The figures restate
+    // each year: a lower loan at a low rate originally, stepping up as rates
+    // rose. Headline mirrors the latest entry.
+    associationLoan: {
+      loanPerSize: 5800,
+      rate: 3.2,
+      size: 40,
+      history: [
+        { id: mkId("aloan"), date: "", loanPerSize: 5200, rate: 1.4 },
+        { id: mkId("aloan"), date: "2023-01-01", loanPerSize: 5500, rate: 2.6 },
+        { id: mkId("aloan"), date: "2024-01-01", loanPerSize: 5800, rate: 3.2 },
+      ],
+    },
     // Purchase (3,200,000 on 2022-05-15) is synthesised as the first value.
     valueHistory: [{ id: mkId("pval"), date: "2026-05-01", value: 3650000 }],
     mortgages: [

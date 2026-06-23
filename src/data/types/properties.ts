@@ -288,14 +288,43 @@ export type PropertyRepair = {
 // indirect interest is charged on that share at `rate`. All non-negative.
 // Absent until the user records one; the share resolves to undefined without
 // either an association `size` or a recorded `Property.size` to multiply by.
+//
+// The figures update over the loan's life — a new årsredovisning each year
+// restates the loan per area and the interest rate together — so the loan
+// carries an effective-dated `history`, mirroring a mortgage's `rateHistory`.
+// The latest change by date is the current loan (and is mirrored onto
+// `loanPerSize` / `rate` so the share / current resolvers don't have to walk
+// the list); earlier entries let the chart accrue a historical month's
+// interest at the figures that were in effect that year. Resolve the figures
+// at an arbitrary date with `resolveAssociationLoanAt` in
+// `src/data/property-value/interest.ts`.
 export type AssociationLoan = {
-  loanPerSize: number; // indirect debt per kvm / sqft (>= 0)
-  rate: number; // the association's annual interest rate, as a percent (>= 0)
+  loanPerSize: number; // current indirect debt per kvm / sqft (>= 0)
+  rate: number; // the association's current annual interest rate, as a percent (>= 0)
   // The apartment's area as recorded in the association's
   // lägenhetsförteckning, used to apportion the association's debt. Absent ⇒
   // fall back to the property's measured `size`. Optional because most users
-  // only know the one measured figure; set it when the register differs.
+  // only know the one measured figure; set it when the register differs. The
+  // registered area is a fixed property of the flat, so it is not part of the
+  // yearly `history` — only the loan figure and rate change year to year.
   size?: number; // association-registered area in kvm / sqft (>= 0)
+  // Past effective-dated changes to the loan figure + rate (one per
+  // årsredovisning). The most recent entry is the current loan and is kept in
+  // sync with `loanPerSize` / `rate`; a blank `date` marks the original
+  // figures (effective "from the start"). Absent / empty ⇒ no history
+  // recorded, and the headline figures are used for every date.
+  history?: AssociationLoanChange[];
+};
+
+// One effective-dated change to a property's association loan. The loan per
+// area became `loanPerSize` and the association's annual rate became `rate`%
+// on `date` (or "" for the original figures), holding until the next change.
+// Both change together because the årsredovisning restates them together.
+export type AssociationLoanChange = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd the figures took effect, or "" for the original
+  loanPerSize: number; // indirect debt per kvm / sqft in effect from `date` (>= 0)
+  rate: number; // annual interest rate (percent) in effect from `date` (>= 0)
 };
 
 // A user-defined category for a property's uploaded files — "Insurance",

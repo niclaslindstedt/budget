@@ -100,16 +100,19 @@ const properties = {
   feePlaceholder: "What you pay each month",
   feeHint: "Recurring charge to hold the property, e.g. a bostadsrätt fee.",
   associationLoanLabel: "Association loan",
-  associationLoanPerSizeLabel: "Loan",
+  associationLoanPerSizeLabel: "Loan per area",
   associationLoanPerSizePlaceholder: "e.g. 6 000",
   associationLoanRateLabel: "Interest rate (%)",
   associationLoanRatePlaceholder: "e.g. 3.5",
+  associationLoanChangeDateLabel: "In effect from",
+  associationLoanAddChange: "Add yearly change",
+  associationLoanRemoveChange: "Remove change",
   associationLoanSizeLabel: "Registered size",
   associationLoanSizePlaceholder: "Area in the association register",
   associationLoanSizeHint:
     "The apartment's area in the association's lägenhetsförteckning, if it differs from the measured size. Used to apportion the loan. Leave blank to use the property's size.",
   associationLoanHint:
-    "The housing association's own debt that you indirectly own a share of — entered per area, with the association's interest rate. Usually found in the årsredovisning. Its interest is hidden in your monthly fee.",
+    "The housing association's own debt that you indirectly own a share of — the loan per area and interest rate, usually found in the årsredovisning. Add a change for each year with the date it took effect; the newest is current and a blank date marks the original. Its interest is hidden in your monthly fee.",
 
   // Update-value modal.
   updateValueTitle: "Update value",

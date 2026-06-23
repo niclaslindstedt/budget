@@ -83,16 +83,19 @@ const properties: PropertiesCatalog = {
   feeHint:
     "Återkommande avgift för att äga bostaden, t.ex. en bostadsrättsavgift.",
   associationLoanLabel: "Föreningslån",
-  associationLoanPerSizeLabel: "Lån",
+  associationLoanPerSizeLabel: "Lån per yta",
   associationLoanPerSizePlaceholder: "t.ex. 6 000",
   associationLoanRateLabel: "Ränta (%)",
   associationLoanRatePlaceholder: "t.ex. 3,5",
+  associationLoanChangeDateLabel: "Gäller från",
+  associationLoanAddChange: "Lägg till årlig ändring",
+  associationLoanRemoveChange: "Ta bort ändring",
   associationLoanSizeLabel: "Registrerad yta",
   associationLoanSizePlaceholder: "Yta i lägenhetsförteckningen",
   associationLoanSizeHint:
     "Lägenhetens yta i föreningens lägenhetsförteckning, om den skiljer sig från den uppmätta. Används för att fördela lånet. Lämna tomt för att använda bostadens storlek.",
   associationLoanHint:
-    "Föreningens egna skulder som du indirekt äger en andel av — anges per yta, med föreningens ränta. Hittas oftast i årsredovisningen. Räntan döljs i din månadsavgift.",
+    "Föreningens egna skulder som du indirekt äger en andel av — lånet per yta och räntan, hittas oftast i årsredovisningen. Lägg till en ändring för varje år med datumet det började gälla; den senaste är aktuell och ett tomt datum markerar den ursprungliga. Räntan döljs i din månadsavgift.",
 
   // Update-value modal.
   updateValueTitle: "Uppdatera värde",
