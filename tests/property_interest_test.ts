@@ -5,8 +5,9 @@ import {
   cumulativeAssociationInterestAt,
   cumulativeMortgageInterestAt,
   monthlyAssociationInterest,
+  resolveAssociationLoanAt,
 } from "../src/data/property-value/interest";
-import type { Property } from "../src/data/types";
+import type { AssociationLoan, Property } from "../src/data/types";
 
 function property(overrides: Partial<Property>): Property {
   return {
@@ -80,6 +81,57 @@ describe("cumulativeAssociationInterestAt", () => {
       associationLoan: { loanPerSize: 4_000, rate: 6 },
     });
     expect(cumulativeAssociationInterestAt(p, "2024-04-01")).toBe(0);
+  });
+
+  it("accrues at the figures in effect each month when history is set", () => {
+    const p = property({
+      purchaseDate: "2024-01-01",
+      size: 50,
+      associationLoan: {
+        loanPerSize: 6_000,
+        rate: 6,
+        history: [
+          // Jan–Feb: 4,000/kvm × 50 = 200,000 at 3% ⇒ 500/month.
+          { id: "a", date: "", loanPerSize: 4_000, rate: 3 },
+          // From March: 6,000/kvm × 50 = 300,000 at 6% ⇒ 1,500/month.
+          { id: "b", date: "2024-03-01", loanPerSize: 6_000, rate: 6 },
+        ],
+      },
+    });
+    // Months Jan + Feb at 500 = 1,000 by March 1.
+    expect(cumulativeAssociationInterestAt(p, "2024-03-01")).toBe(1_000);
+    // Plus March + April at 1,500 = 1,000 + 3,000 by May 1.
+    expect(cumulativeAssociationInterestAt(p, "2024-05-01")).toBe(4_000);
+  });
+});
+
+describe("resolveAssociationLoanAt", () => {
+  const loan: AssociationLoan = {
+    loanPerSize: 6_000,
+    rate: 6,
+    history: [
+      { id: "a", date: "", loanPerSize: 4_000, rate: 3 },
+      { id: "b", date: "2024-03-01", loanPerSize: 6_000, rate: 6 },
+    ],
+  };
+
+  it("walks history to the figures in effect on a date", () => {
+    // Before the first change → the original figures.
+    expect(resolveAssociationLoanAt(loan, "2024-02-01")).toEqual({
+      loanPerSize: 4_000,
+      rate: 3,
+    });
+    // On/after the change → the new figures.
+    expect(resolveAssociationLoanAt(loan, "2024-03-01")).toEqual({
+      loanPerSize: 6_000,
+      rate: 6,
+    });
+  });
+
+  it("falls back to the headline figures with no history", () => {
+    expect(
+      resolveAssociationLoanAt({ loanPerSize: 5_000, rate: 2 }, "2024-01-01"),
+    ).toEqual({ loanPerSize: 5_000, rate: 2 });
   });
 });
 

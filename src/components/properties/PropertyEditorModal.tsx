@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { Check, ChevronDown, Home, Wallet } from "lucide-react";
+import { Check, ChevronDown, Home, Plus, Wallet, X } from "lucide-react";
 
 import { newId } from "../../data/sheet";
 import type {
   Account,
   AssociationLoan,
+  AssociationLoanChange,
   Company,
   Property,
   Settings,
@@ -52,6 +53,37 @@ function seedAmount(value: number | undefined, settings: Settings): string {
   return formatAmountForInput(Math.abs(value), settings);
 }
 
+// One editable association-loan period: a (possibly blank) effective date and
+// the loan-per-area + rate as typed text. Each årsredovisning adds one.
+type AssocRow = { id: string; date: string; loanPerSize: string; rate: string };
+
+// Seed the association-loan editor: the stored history when present, else a
+// single row carrying the headline figures (or an empty starter row when the
+// property records no association loan yet).
+function seedAssocRows(
+  property: Property | null,
+  settings: Settings,
+): AssocRow[] {
+  const loan = property?.associationLoan;
+  if (loan?.history && loan.history.length > 0)
+    return loan.history.map((c) => ({
+      id: c.id,
+      date: c.date,
+      loanPerSize: seedAmount(c.loanPerSize, settings),
+      rate: seedAmount(c.rate, settings),
+    }));
+  if (loan)
+    return [
+      {
+        id: newId(),
+        date: "",
+        loanPerSize: seedAmount(loan.loanPerSize, settings),
+        rate: seedAmount(loan.rate, settings),
+      },
+    ];
+  return [{ id: newId(), date: "", loanPerSize: "", rate: "" }];
+}
+
 export function PropertyEditorModal({
   open,
   property,
@@ -75,8 +107,10 @@ export function PropertyEditorModal({
   const [size, setSize] = useState("");
   const [rooms, setRooms] = useState("");
   const [fee, setFee] = useState("");
-  const [associationLoanPerSize, setAssociationLoanPerSize] = useState("");
-  const [associationLoanRate, setAssociationLoanRate] = useState("");
+  // Effective-dated association-loan figures, newest editing at the bottom.
+  // The most recent by date is the current loan; a blank date marks the
+  // original. Mirrors the mortgage editor's rate rows.
+  const [assocRows, setAssocRows] = useState<AssocRow[]>([]);
   const [associationLoanSize, setAssociationLoanSize] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
@@ -91,12 +125,7 @@ export function PropertyEditorModal({
     setSize(seedAmount(property?.size, settings));
     setRooms(seedAmount(property?.rooms, settings));
     setFee(seedAmount(property?.fee, settings));
-    setAssociationLoanPerSize(
-      seedAmount(property?.associationLoan?.loanPerSize, settings),
-    );
-    setAssociationLoanRate(
-      seedAmount(property?.associationLoan?.rate, settings),
-    );
+    setAssocRows(seedAssocRows(property, settings));
     setAssociationLoanSize(
       seedAmount(property?.associationLoan?.size, settings),
     );
@@ -112,21 +141,56 @@ export function PropertyEditorModal({
     return parsed === null ? undefined : Math.abs(parsed);
   }
 
-  // Assemble the association-debt share from the inputs. Kept only when the
-  // per-area figure or rate is non-zero (an all-zero loan is indistinguishable
-  // from "not recorded"); a missing field defaults to 0 so a user can record
-  // just the per-area figure or just the rate and fill the other in later. The
-  // optional registered `size` (the lägenhetsförteckning area) rides along
+  // Collapse the association-loan rows into the current figures + an optional
+  // history, mirroring the mortgage editor's `buildRateTerms`. A row counts
+  // only when both the loan-per-area and rate parse (each årsredovisning
+  // restates both together); the most recent by date is the current loan. A
+  // single original-figures row (blank date) stores only the headline — no
+  // history clutter. The whole loan drops to undefined when nothing parses or
+  // the current figures are both zero (indistinguishable from "not recorded").
+  // The optional registered `size` (the lägenhetsförteckning area) rides along
   // only when set and positive — otherwise the share falls back to the
   // property's measured size.
   function buildAssociationLoan(): AssociationLoan | undefined {
-    const loanPerSize = num(associationLoanPerSize) ?? 0;
-    const rate = num(associationLoanRate) ?? 0;
-    if (loanPerSize === 0 && rate === 0) return undefined;
-    const loan: AssociationLoan = { loanPerSize, rate };
+    const parsed = assocRows
+      .map((r) => ({
+        id: r.id,
+        date: r.date.trim(),
+        loanPerSize: num(r.loanPerSize),
+        rate: num(r.rate),
+      }))
+      .filter(
+        (r): r is AssociationLoanChange =>
+          r.loanPerSize !== undefined && r.rate !== undefined,
+      )
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    if (parsed.length === 0) return undefined;
+    const current = parsed[parsed.length - 1];
+    if (current.loanPerSize === 0 && current.rate === 0) return undefined;
+    const loan: AssociationLoan = {
+      loanPerSize: current.loanPerSize,
+      rate: current.rate,
+    };
     const size = num(associationLoanSize);
     if (size !== undefined && size > 0) loan.size = size;
+    // A single original-figures row is just the headline — skip the history.
+    if (!(parsed.length === 1 && parsed[0].date === "")) loan.history = parsed;
     return loan;
+  }
+
+  function updateAssocRow(id: string, patch: Partial<Omit<AssocRow, "id">>) {
+    setAssocRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    );
+  }
+  function addAssocRow() {
+    setAssocRows((rows) => [
+      ...rows,
+      { id: newId(), date: "", loanPerSize: "", rate: "" },
+    ]);
+  }
+  function removeAssocRow(id: string) {
+    setAssocRows((rows) => rows.filter((r) => r.id !== id));
   }
 
   function handleSubmit() {
@@ -351,37 +415,76 @@ export function PropertyEditorModal({
             <p className="m-0 text-xs font-bold text-fg-bright">
               {t("properties.associationLoanLabel")}
             </p>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">
-                {t("properties.associationLoanPerSizeLabel")}
-              </span>
-              <div className="flex items-center gap-2">
-                <ClearableInput
-                  value={associationLoanPerSize}
-                  onValueChange={setAssociationLoanPerSize}
-                  inputMode="decimal"
-                  placeholder={t(
-                    "properties.associationLoanPerSizePlaceholder",
-                  )}
-                  className={amountInputClass}
-                />
-                <span className="shrink-0 text-sm text-muted">
-                  / {settings.propertySizeUnit}
-                </span>
-              </div>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted">
-                {t("properties.associationLoanRateLabel")}
-              </span>
-              <ClearableInput
-                value={associationLoanRate}
-                onValueChange={setAssociationLoanRate}
-                inputMode="decimal"
-                placeholder={t("properties.associationLoanRatePlaceholder")}
-                className={amountInputClass}
-              />
-            </label>
+            <div className="flex flex-col gap-1.5">
+              {assocRows.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex flex-col gap-1.5 rounded border border-line bg-surface-2 p-2"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={row.date}
+                      onChange={(e) =>
+                        updateAssocRow(row.id, { date: e.target.value })
+                      }
+                      aria-label={t(
+                        "properties.associationLoanChangeDateLabel",
+                      )}
+                      className={`${DATE_INPUT_CLASS} flex-1`}
+                    />
+                    {assocRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeAssocRow(row.id)}
+                        aria-label={t("properties.associationLoanRemoveChange")}
+                        className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-danger"
+                      >
+                        <X size={14} aria-hidden focusable={false} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ClearableInput
+                      value={row.loanPerSize}
+                      onValueChange={(v) =>
+                        updateAssocRow(row.id, { loanPerSize: v })
+                      }
+                      inputMode="decimal"
+                      placeholder={t(
+                        "properties.associationLoanPerSizePlaceholder",
+                      )}
+                      aria-label={t("properties.associationLoanPerSizeLabel")}
+                      className={`${amountInputClass} flex-1`}
+                    />
+                    <span className="shrink-0 text-xs text-muted">
+                      / {settings.propertySizeUnit}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ClearableInput
+                      value={row.rate}
+                      onValueChange={(v) => updateAssocRow(row.id, { rate: v })}
+                      inputMode="decimal"
+                      placeholder={t(
+                        "properties.associationLoanRatePlaceholder",
+                      )}
+                      aria-label={t("properties.associationLoanRateLabel")}
+                      className={`${amountInputClass} flex-1`}
+                    />
+                    <span className="shrink-0 text-xs text-muted">%</span>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addAssocRow}
+                className="inline-flex cursor-pointer items-center gap-1 self-start rounded border-0 bg-transparent px-1 text-xs text-accent hover:underline"
+              >
+                <Plus size={14} aria-hidden focusable={false} />
+                {t("properties.associationLoanAddChange")}
+              </button>
+            </div>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted">
                 {t("properties.associationLoanSizeLabel")}

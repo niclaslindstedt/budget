@@ -1061,12 +1061,28 @@ lägenhetsförteckning figure when recorded — an optional
 flat measured at 82 kvm may be registered as 80, so its debt share is
 lower) — falling back to the property's measured `size` otherwise. All
 non-negative. Entered in `PropertyEditorModal`; surfaced only by the
-Visualize-value chart's association-interest toggle (see below). Optional
-and additive — absent until the user records one, so old budgets simply
-lack it. The v80 validator drops an all-zero loan to absent so it stays
-byte-identical to a property that never set one, and keeps the registered
+Visualize-value chart's association-interest toggle (see below).
+
+The figures restate over the loan's life — a new _årsredovisning_ each year
+gives a fresh loan-per-area and rate — so the loan carries an
+effective-dated `history` (`AssociationLoanChange[]`, both figures changing
+together), mirroring a mortgage's `rateHistory`. The most recent entry by
+date is the current loan, mirrored onto the headline `loanPerSize` / `rate`;
+`resolveAssociationLoanAt(loan, date)` (`src/data/property-value/interest.ts`)
+walks the list to the figures in effect on any date, so
+`cumulativeAssociationInterestAt` accrues each historical month at the
+figures that applied that year. A blank `date` marks the original figures.
+The registered `size` is a fixed property of the flat, so it is **not** part
+of the yearly history — only the loan figure and rate change. The editor
+collapses a single original-figures row to the headline only (no history
+clutter), exactly as the mortgage rate editor does.
+
+Optional and additive — absent until the user records one, so old budgets
+simply lack it. The v80 validator drops an all-zero loan to absent so it
+stays byte-identical to a property that never set one, keeps the registered
 `size` only when positive (otherwise the share falls back to
-`Property.size`). It is deliberately **not** folded into the
+`Property.size`), and validates each `history` entry leniently (malformed
+dropped, ids deduped). It is deliberately **not** folded into the
 Insights net-worth roll-up: it is an indirect liability already reflected
 in the fee, and modelling it as net-worth debt would be a separate
 decision.

@@ -217,8 +217,10 @@ src/
 │   │   ├── properties.ts       # Property (home/apartment, incl. soldDate /
 │   │   │                       #   soldAmount for one owned in the past,
 │   │   │                       #   associationLoan for indirect förening debt),
-│   │   │                       #   PropertyValuePoint, AssociationLoan,
-│   │   │                       #   Mortgage, MortgagePayment, PropertyRepair
+│   │   │                       #   PropertyValuePoint, AssociationLoan +
+│   │   │                       #   AssociationLoanChange (effective-dated yearly
+│   │   │                       #   loan/rate updates), Mortgage, MortgagePayment,
+│   │   │                       #   PropertyRepair
 │   │   │                       #   (source pair optional — manual repairs carry
 │   │   │                       #   own companyId/tagIds), PropertySaleEstimate
 │   │   ├── budget.ts           # Column, Row union (UserRow / CorrectionRow /
@@ -391,8 +393,10 @@ src/
 │   │   │                       #   (Visualize value chart)
 │   │   └── interest.ts         # cumulativeMortgageInterestAt /
 │   │                           #   cumulativeAssociationInterestAt /
-│   │                           #   associationLoanShare — sunk interest the chart
-│   │                           #   deducts (own mortgages + association debt share)
+│   │                           #   associationLoanShare / resolveAssociationLoanAt
+│   │                           #   (figures in effect on a date) — sunk interest
+│   │                           #   the chart deducts (own mortgages + association
+│   │                           #   debt share, accrued at each year's figures)
 │   ├── property-transfer/  # properties page — sale-handover export / import
 │   │   ├── manifest.ts         # PropertyExportManifest shape + format / version
 │   │   │                       #   constants (the archive's manifest.json)

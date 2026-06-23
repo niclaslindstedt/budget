@@ -22,26 +22,56 @@
 
 import { propertyInitialLoanTotal } from "../finance/amortization";
 import { resolveMonthlyInterestAt } from "../finance/interest";
-import type { Property } from "../types";
+import type { AssociationLoan, Property } from "../types";
 import { isoToMonthNum, monthNumToIsoStart } from "../../utils/date";
 
+// The association loan's per-area figure and rate in effect on `date`, walking
+// its effective-dated `history`: the most recent change on or before the date
+// wins; a date before the earliest recorded change uses that earliest entry
+// (the original figures extend backward). Falls back to the headline
+// `loanPerSize` / `rate` when no history is recorded. Mirrors `resolveRateAt`
+// for a mortgage.
+export function resolveAssociationLoanAt(
+  loan: AssociationLoan,
+  date: string,
+): { loanPerSize: number; rate: number } {
+  const history = loan.history;
+  if (history && history.length > 0) {
+    const sorted = [...history].sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+    );
+    let current = sorted[0];
+    for (const change of sorted) {
+      if (change.date <= date) current = change;
+      else break;
+    }
+    return { loanPerSize: current.loanPerSize, rate: current.rate };
+  }
+  return { loanPerSize: loan.loanPerSize, rate: loan.rate };
+}
+
+// The area used to apportion the association's debt: the association's own
+// lägenhetsförteckning figure (`AssociationLoan.size`) when recorded — it can
+// differ from the measured living area — falling back to the property's
+// measured `size`. Undefined when neither is known.
+function associationArea(property: Property): number | undefined {
+  return property.associationLoan?.size ?? property.size;
+}
+
 // The property's share of the housing association's debt, in the user's
-// currency: the per-area figure times the area used to apportion the debt.
-// That area is the association's own lägenhetsförteckning figure
-// (`AssociationLoan.size`) when recorded — it can differ from the measured
-// living area — falling back to the property's measured `size` otherwise.
+// currency: the *current* per-area figure times the apportioning area.
 // Undefined when no association loan is recorded or neither area is known —
 // there is nothing to charge indirect interest on.
 export function associationLoanShare(property: Property): number | undefined {
   const loan = property.associationLoan;
   if (!loan) return undefined;
-  const area = loan.size ?? property.size;
+  const area = associationArea(property);
   if (area === undefined) return undefined;
   return loan.loanPerSize * area;
 }
 
-// The constant monthly interest on the association-debt share, at the
-// association's rate. Undefined when there is no share to charge it on.
+// The monthly interest on the association-debt share at the loan's *current*
+// rate — the headline figure. Undefined when there is no share to charge it on.
 export function monthlyAssociationInterest(
   property: Property,
 ): number | undefined {
@@ -82,20 +112,29 @@ export function cumulativeMortgageInterestAt(
 }
 
 // Cumulative interest on the property's share of the association's debt from
-// the purchase date up to `isoDate` — the constant monthly figure times the
-// whole months elapsed since purchase (at the purchase date you have paid
-// none, mirroring the mortgage leg). Zero when no association loan is
-// recorded, the property has no size, or it has no purchase date to accrue
-// from.
+// the purchase date up to `isoDate`, summed month by month using the loan
+// figure and rate in effect each month (so a yearly årsredovisning update
+// accrues at the figures that applied that year). Interest is summed for the
+// months strictly before `isoDate` — at the purchase date you have paid none,
+// mirroring the mortgage leg. Zero when no association loan is recorded, the
+// property has no apportioning area, or it has no purchase date to accrue from.
 export function cumulativeAssociationInterestAt(
   property: Property,
   isoDate: string,
 ): number {
-  const monthly = monthlyAssociationInterest(property);
-  if (monthly === undefined || !property.purchaseDate) return 0;
-  const months = Math.max(
-    0,
-    isoToMonthNum(isoDate) - isoToMonthNum(property.purchaseDate),
-  );
-  return monthly * months;
+  const loan = property.associationLoan;
+  if (!loan || !property.purchaseDate) return 0;
+  const area = associationArea(property);
+  if (area === undefined) return 0;
+  const startMonth = isoToMonthNum(property.purchaseDate);
+  const endMonth = isoToMonthNum(isoDate);
+  let total = 0;
+  for (let m = startMonth; m < endMonth; m++) {
+    const { loanPerSize, rate } = resolveAssociationLoanAt(
+      loan,
+      monthNumToIsoStart(m),
+    );
+    total += ((rate / 100) * (loanPerSize * area)) / 12;
+  }
+  return total;
 }
