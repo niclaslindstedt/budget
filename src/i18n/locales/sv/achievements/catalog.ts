@@ -390,6 +390,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Välj Visualisera värde i en fastighets …-meny för att rita upp dess registrerade värden över tid — appens första visualisering. Slå på Inkludera reparationer för att lägga pengarna du investerat på linjen, och Visa nettovärde för att lägga till vad du faktiskt får kvar efter mäklararvode, annonsering, reparationer, inköpspris och vinstskatt. Diagrammet följer ditt tema: färger, typsnitt, hörn och avstånd matchar allihop.",
   },
+  associationLoan: {
+    name: "Dold skuld",
+    condition: "Registrera en fastighets andel av föreningens lån.",
+    learnMore:
+      "En bostadsrätts månadsavgift döljer ofta en stor indirekt skuld: föreningens egna lån, som du äger en andel av genom din lägenhet. I fastighetsredigeraren anger du lånet per kvadratmeter och föreningens ränta — båda hittas oftast i årsredovisningen. Diagrammet Visualisera värde låter dig sedan dra av den dolda räntan, så att en lägenhet med hög avgift inte längre ser ut som ren vinst.",
+  },
   savingsValueChart: {
     name: "Sparbössa",
     condition: "Visualisera ditt sparande över tid.",

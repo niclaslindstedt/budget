@@ -69,6 +69,8 @@ export function PropertyEditorModal({
   const [size, setSize] = useState("");
   const [rooms, setRooms] = useState("");
   const [fee, setFee] = useState("");
+  const [associationLoanPerSize, setAssociationLoanPerSize] = useState("");
+  const [associationLoanRate, setAssociationLoanRate] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
     setName(property?.name ?? "");
@@ -82,6 +84,12 @@ export function PropertyEditorModal({
     setSize(seedAmount(property?.size, settings));
     setRooms(seedAmount(property?.rooms, settings));
     setFee(seedAmount(property?.fee, settings));
+    setAssociationLoanPerSize(
+      seedAmount(property?.associationLoan?.loanPerSize, settings),
+    );
+    setAssociationLoanRate(
+      seedAmount(property?.associationLoan?.rate, settings),
+    );
   });
 
   if (!open) return null;
@@ -94,8 +102,20 @@ export function PropertyEditorModal({
     return parsed === null ? undefined : Math.abs(parsed);
   }
 
+  // Assemble the association-debt share from the two inputs. Kept only when at
+  // least one is non-zero (an all-zero loan is indistinguishable from "not
+  // recorded"); a missing field defaults to 0 so a user can record just the
+  // per-area figure or just the rate and fill the other in later.
+  function buildAssociationLoan() {
+    const loanPerSize = num(associationLoanPerSize) ?? 0;
+    const rate = num(associationLoanRate) ?? 0;
+    if (loanPerSize === 0 && rate === 0) return undefined;
+    return { loanPerSize, rate };
+  }
+
   function handleSubmit() {
     if (!canSubmit) return;
+    const associationLoan = buildAssociationLoan();
     const patch: Partial<Omit<Property, "id">> = {
       name: trimmedName,
       // `null` from the picker clears the field via the `undefined` patch.
@@ -111,6 +131,7 @@ export function PropertyEditorModal({
       size: num(size),
       rooms: num(rooms),
       fee: num(fee),
+      associationLoan,
     };
     if (property) {
       onSubmit(property.id, patch);
@@ -137,6 +158,7 @@ export function PropertyEditorModal({
     if (patch.size !== undefined) fresh.size = patch.size;
     if (patch.rooms !== undefined) fresh.rooms = patch.rooms;
     if (patch.fee !== undefined) fresh.fee = patch.fee;
+    if (associationLoan) fresh.associationLoan = associationLoan;
     onCreate(fresh);
   }
 
@@ -308,6 +330,46 @@ export function PropertyEditorModal({
             />
             <p className="m-0 text-xs text-muted">{t("properties.feeHint")}</p>
           </label>
+
+          <div className="flex flex-col gap-3 border-t border-line pt-3">
+            <p className="m-0 text-xs font-bold text-fg-bright">
+              {t("properties.associationLoanLabel")}
+            </p>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.associationLoanPerSizeLabel")}
+              </span>
+              <div className="flex items-center gap-2">
+                <ClearableInput
+                  value={associationLoanPerSize}
+                  onValueChange={setAssociationLoanPerSize}
+                  inputMode="decimal"
+                  placeholder={t(
+                    "properties.associationLoanPerSizePlaceholder",
+                  )}
+                  className={amountInputClass}
+                />
+                <span className="shrink-0 text-sm text-muted">
+                  / {settings.propertySizeUnit}
+                </span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.associationLoanRateLabel")}
+              </span>
+              <ClearableInput
+                value={associationLoanRate}
+                onValueChange={setAssociationLoanRate}
+                inputMode="decimal"
+                placeholder={t("properties.associationLoanRatePlaceholder")}
+                className={amountInputClass}
+              />
+            </label>
+            <p className="m-0 text-xs text-muted">
+              {t("properties.associationLoanHint")}
+            </p>
+          </div>
         </div>
       </Modal.Body>
       <Modal.Footer>

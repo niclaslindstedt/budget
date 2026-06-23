@@ -99,6 +99,13 @@ const properties = {
   feeLabel: "Monthly fee",
   feePlaceholder: "What you pay each month",
   feeHint: "Recurring charge to hold the property, e.g. a bostadsrätt fee.",
+  associationLoanLabel: "Association loan",
+  associationLoanPerSizeLabel: "Loan",
+  associationLoanPerSizePlaceholder: "e.g. 6 000",
+  associationLoanRateLabel: "Interest rate (%)",
+  associationLoanRatePlaceholder: "e.g. 3.5",
+  associationLoanHint:
+    "The housing association's own debt that you indirectly own a share of — entered per area, with the association's interest rate. Usually found in the årsredovisning. Its interest is hidden in your monthly fee.",
 
   // Update-value modal.
   updateValueTitle: "Update value",
@@ -127,6 +134,12 @@ const properties = {
   valueChartShowNetValue: "Show net value",
   valueChartShowNetValueHint:
     "What you'd actually take home — after broker, advertising, repairs, purchase price, and capital-gains tax.",
+  valueChartIncludeInterest: "Include interest paid",
+  valueChartIncludeInterestHint:
+    "Subtract the interest paid on this property's mortgages, accumulating month by month — money spent that doesn't come back.",
+  valueChartIncludeAssociationInterest: "Include association interest",
+  valueChartIncludeAssociationInterestHint:
+    "Also subtract the interest on your share of the association's loan — the hidden interest you pay through the monthly fee.",
 
   // Mortgage editor modal.
   newMortgageTitle: "New mortgage",
