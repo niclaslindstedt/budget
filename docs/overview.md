@@ -1053,14 +1053,20 @@ monthly fee, which is why a flat with a high `fee` often hides a large
 indirect debt. Entered the way an _årsredovisning_ (annual report) reports
 it — `loanPerSize`, a figure per unit of living area (e.g. 6,000 kr/kvm),
 plus the association's annual interest `rate`. The property's own share is
-`loanPerSize × Property.size` (`associationLoanShare` in
+`loanPerSize × area` (`associationLoanShare` in
 `src/data/property-value/interest.ts`), and the indirect interest is
-charged on that share at `rate`. Both non-negative. Entered in
-`PropertyEditorModal`; surfaced only by the Visualize-value chart's
-association-interest toggle (see below). Optional and additive — absent
-until the user records one, so old budgets simply lack it. The v80
-validator drops an all-zero loan to absent so it stays byte-identical to a
-property that never set one. It is deliberately **not** folded into the
+charged on that share at `rate`. The `area` is the association's own
+lägenhetsförteckning figure when recorded — an optional
+`AssociationLoan.size` that can differ from the measured living area (a
+flat measured at 82 kvm may be registered as 80, so its debt share is
+lower) — falling back to the property's measured `size` otherwise. All
+non-negative. Entered in `PropertyEditorModal`; surfaced only by the
+Visualize-value chart's association-interest toggle (see below). Optional
+and additive — absent until the user records one, so old budgets simply
+lack it. The v80 validator drops an all-zero loan to absent so it stays
+byte-identical to a property that never set one, and keeps the registered
+`size` only when positive (otherwise the share falls back to
+`Property.size`). It is deliberately **not** folded into the
 Insights net-worth roll-up: it is an indirect liability already reflected
 in the fee, and modelling it as net-worth debt would be a separate
 decision.

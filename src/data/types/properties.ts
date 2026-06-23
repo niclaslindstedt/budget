@@ -280,13 +280,22 @@ export type PropertyRepair = {
 // indirect debt. Entered the way an årsredovisning (annual report) reports it
 // — a figure *per unit of living area* (`loanPerSize`, e.g. 6,000 kr/kvm) plus
 // the association's annual interest `rate`. The property's own share is
-// `loanPerSize × Property.size`, and the indirect interest is charged on that
-// share at `rate`. Both non-negative. Absent until the user records one; the
-// share resolves to undefined without a recorded `Property.size` to multiply
-// by.
+// `loanPerSize × size`, where `size` is the area the association uses to
+// apportion the debt — the figure in its lägenhetsförteckning (apartment
+// register), which can differ from the measured living area on the property
+// (`Property.size`): a flat measured at 82 kvm may be registered as 80 in the
+// association, so its debt share is lower than the measured area implies. The
+// indirect interest is charged on that share at `rate`. All non-negative.
+// Absent until the user records one; the share resolves to undefined without
+// either an association `size` or a recorded `Property.size` to multiply by.
 export type AssociationLoan = {
   loanPerSize: number; // indirect debt per kvm / sqft (>= 0)
   rate: number; // the association's annual interest rate, as a percent (>= 0)
+  // The apartment's area as recorded in the association's
+  // lägenhetsförteckning, used to apportion the association's debt. Absent ⇒
+  // fall back to the property's measured `size`. Optional because most users
+  // only know the one measured figure; set it when the register differs.
+  size?: number; // association-registered area in kvm / sqft (>= 0)
 };
 
 // A user-defined category for a property's uploaded files — "Insurance",

@@ -87,6 +87,10 @@ const properties: PropertiesCatalog = {
   associationLoanPerSizePlaceholder: "t.ex. 6 000",
   associationLoanRateLabel: "Ränta (%)",
   associationLoanRatePlaceholder: "t.ex. 3,5",
+  associationLoanSizeLabel: "Registrerad yta",
+  associationLoanSizePlaceholder: "Yta i lägenhetsförteckningen",
+  associationLoanSizeHint:
+    "Lägenhetens yta i föreningens lägenhetsförteckning, om den skiljer sig från den uppmätta. Används för att fördela lånet. Lämna tomt för att använda bostadens storlek.",
   associationLoanHint:
     "Föreningens egna skulder som du indirekt äger en andel av — anges per yta, med föreningens ränta. Hittas oftast i årsredovisningen. Räntan döljs i din månadsavgift.",
 

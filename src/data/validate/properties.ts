@@ -382,18 +382,22 @@ function validateMortgage(raw: unknown): Mortgage | null {
   return mortgage;
 }
 
-// Validate the property's share of the housing association's debt. Both
-// fields are coerced non-negative; a malformed / non-object value drops the
-// whole loan to undefined rather than rejecting the property. The loan is
-// dropped entirely when both fields are absent / zero — an all-zero loan is
-// indistinguishable from "not recorded", so it stays byte-identical to a
-// property that never set one.
+// Validate the property's share of the housing association's debt. The
+// `loanPerSize` / `rate` fields are coerced non-negative; a malformed /
+// non-object value drops the whole loan to undefined rather than rejecting the
+// property. The loan is dropped entirely when both are absent / zero — an
+// all-zero loan is indistinguishable from "not recorded", so it stays
+// byte-identical to a property that never set one. The optional association
+// `size` (the lägenhetsförteckning area) is kept only when a positive finite
+// number; absent / zero ⇒ omitted so the share falls back to `Property.size`.
 function validateAssociationLoan(raw: unknown): AssociationLoan | undefined {
   if (!isObject(raw)) return undefined;
   const loanPerSize = nonNegative(raw.loanPerSize);
   const rate = nonNegative(raw.rate);
   if (loanPerSize === 0 && rate === 0) return undefined;
-  return { loanPerSize, rate };
+  const loan: AssociationLoan = { loanPerSize, rate };
+  if (isFiniteNumber(raw.size) && raw.size > 0) loan.size = raw.size;
+  return loan;
 }
 
 // Validate one Property. Required `id` + `name` fail the file (they're

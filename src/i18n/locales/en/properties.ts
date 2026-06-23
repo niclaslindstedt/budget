@@ -104,6 +104,10 @@ const properties = {
   associationLoanPerSizePlaceholder: "e.g. 6 000",
   associationLoanRateLabel: "Interest rate (%)",
   associationLoanRatePlaceholder: "e.g. 3.5",
+  associationLoanSizeLabel: "Registered size",
+  associationLoanSizePlaceholder: "Area in the association register",
+  associationLoanSizeHint:
+    "The apartment's area in the association's lägenhetsförteckning, if it differs from the measured size. Used to apportion the loan. Leave blank to use the property's size.",
   associationLoanHint:
     "The housing association's own debt that you indirectly own a share of — entered per area, with the association's interest rate. Usually found in the årsredovisning. Its interest is hidden in your monthly fee.",
 

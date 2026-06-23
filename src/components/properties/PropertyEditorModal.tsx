@@ -2,7 +2,13 @@ import { useRef, useState } from "react";
 import { Check, ChevronDown, Home, Wallet } from "lucide-react";
 
 import { newId } from "../../data/sheet";
-import type { Account, Company, Property, Settings } from "../../data/types";
+import type {
+  Account,
+  AssociationLoan,
+  Company,
+  Property,
+  Settings,
+} from "../../data/types";
 import { useResetOnOpen, type FloatingPlacement } from "../../hooks";
 import { useT } from "../../i18n";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
@@ -71,6 +77,7 @@ export function PropertyEditorModal({
   const [fee, setFee] = useState("");
   const [associationLoanPerSize, setAssociationLoanPerSize] = useState("");
   const [associationLoanRate, setAssociationLoanRate] = useState("");
+  const [associationLoanSize, setAssociationLoanSize] = useState("");
 
   useResetOnOpen(open, property?.id ?? "__create__", () => {
     setName(property?.name ?? "");
@@ -90,6 +97,9 @@ export function PropertyEditorModal({
     setAssociationLoanRate(
       seedAmount(property?.associationLoan?.rate, settings),
     );
+    setAssociationLoanSize(
+      seedAmount(property?.associationLoan?.size, settings),
+    );
   });
 
   if (!open) return null;
@@ -102,15 +112,21 @@ export function PropertyEditorModal({
     return parsed === null ? undefined : Math.abs(parsed);
   }
 
-  // Assemble the association-debt share from the two inputs. Kept only when at
-  // least one is non-zero (an all-zero loan is indistinguishable from "not
-  // recorded"); a missing field defaults to 0 so a user can record just the
-  // per-area figure or just the rate and fill the other in later.
-  function buildAssociationLoan() {
+  // Assemble the association-debt share from the inputs. Kept only when the
+  // per-area figure or rate is non-zero (an all-zero loan is indistinguishable
+  // from "not recorded"); a missing field defaults to 0 so a user can record
+  // just the per-area figure or just the rate and fill the other in later. The
+  // optional registered `size` (the lägenhetsförteckning area) rides along
+  // only when set and positive — otherwise the share falls back to the
+  // property's measured size.
+  function buildAssociationLoan(): AssociationLoan | undefined {
     const loanPerSize = num(associationLoanPerSize) ?? 0;
     const rate = num(associationLoanRate) ?? 0;
     if (loanPerSize === 0 && rate === 0) return undefined;
-    return { loanPerSize, rate };
+    const loan: AssociationLoan = { loanPerSize, rate };
+    const size = num(associationLoanSize);
+    if (size !== undefined && size > 0) loan.size = size;
+    return loan;
   }
 
   function handleSubmit() {
@@ -365,6 +381,26 @@ export function PropertyEditorModal({
                 placeholder={t("properties.associationLoanRatePlaceholder")}
                 className={amountInputClass}
               />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("properties.associationLoanSizeLabel")}
+              </span>
+              <div className="flex items-center gap-2">
+                <ClearableInput
+                  value={associationLoanSize}
+                  onValueChange={setAssociationLoanSize}
+                  inputMode="decimal"
+                  placeholder={t("properties.associationLoanSizePlaceholder")}
+                  className={amountInputClass}
+                />
+                <span className="shrink-0 text-sm text-muted">
+                  {settings.propertySizeUnit}
+                </span>
+              </div>
+              <p className="m-0 text-xs text-muted">
+                {t("properties.associationLoanSizeHint")}
+              </p>
             </label>
             <p className="m-0 text-xs text-muted">
               {t("properties.associationLoanHint")}
