@@ -19,7 +19,11 @@ const NO_LABELS: readonly string[] = [];
 // list into type-ahead: printable keystrokes jump the cursor to the
 // first item whose label starts with what's been typed, resetting
 // after a pause. The same `onKeyDown` handles both arrow nav and
-// type-ahead, so call sites wire nothing extra.
+// type-ahead, so call sites wire nothing extra. The live buffer is
+// surfaced as `typeaheadQuery` — feed it to `HighlightedLabel` on the
+// cursored option to emphasise the matched characters. Arrow / Home /
+// End navigation and closing the surface clear the buffer so a stale
+// highlight never lingers on a row the user has since moved off.
 //
 // `active` should toggle when the surface containing the list is
 // open / mounted / focusable — when it flips from false to true we
@@ -48,6 +52,9 @@ export function useRovingTabindex(opts: {
   registerItem: (i: number) => (el: HTMLElement | null) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
   focusCursor: () => void;
+  // Live type-ahead buffer ("" when idle / no type-ahead). Pass it to
+  // `HighlightedLabel` on the cursored option.
+  typeaheadQuery: string;
 } {
   const {
     itemCount,
@@ -95,10 +102,20 @@ export function useRovingTabindex(opts: {
     [itemCount, wrap, focusOnMove],
   );
 
-  const { onKeyDown: onTypeaheadKeyDown } = useTypeahead({
+  const {
+    onKeyDown: onTypeaheadKeyDown,
+    query: typeaheadQuery,
+    reset: resetTypeahead,
+  } = useTypeahead({
     labels: typeaheadLabels,
     onMatch: moveTo,
   });
+
+  // Drop any in-progress buffer when the surface closes so re-opening
+  // starts a fresh search with no leftover highlight.
+  useEffect(() => {
+    if (!active) resetTypeahead();
+  }, [active, resetTypeahead]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLElement>) => {
@@ -106,21 +123,32 @@ export function useRovingTabindex(opts: {
       const prev = orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
       if (e.key === next) {
         e.preventDefault();
+        resetTypeahead();
         moveTo(cursor + 1);
       } else if (e.key === prev) {
         e.preventDefault();
+        resetTypeahead();
         moveTo(cursor - 1);
       } else if (e.key === "Home") {
         e.preventDefault();
+        resetTypeahead();
         moveTo(0);
       } else if (e.key === "End") {
         e.preventDefault();
+        resetTypeahead();
         moveTo(itemCount - 1);
       } else {
         onTypeaheadKeyDown(e);
       }
     },
-    [cursor, itemCount, moveTo, orientation, onTypeaheadKeyDown],
+    [
+      cursor,
+      itemCount,
+      moveTo,
+      orientation,
+      onTypeaheadKeyDown,
+      resetTypeahead,
+    ],
   );
 
   const focusCursor = useCallback(() => {
@@ -135,6 +163,7 @@ export function useRovingTabindex(opts: {
     registerItem,
     onKeyDown,
     focusCursor,
+    typeaheadQuery,
   };
 }
 

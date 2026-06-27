@@ -1,5 +1,6 @@
 import type { CategoryIcon } from "../data/types";
 import { tintBorder, tintFill } from "../utils/tint";
+import { HighlightedLabel } from "./HighlightedLabel";
 import { CategoryIconGlyph } from "./icons";
 
 type Props = {
@@ -7,12 +8,21 @@ type Props = {
   color: string;
   icon: CategoryIcon;
   compact?: boolean;
+  // Active type-ahead buffer when this chip is the picker's cursored
+  // option — its matched prefix is highlighted. Absent / "" elsewhere.
+  query?: string;
 };
 
 // Shared pill rendering for entities that carry { name, color, icon } —
 // today CategoryChip and TypeChip, both of which keep their own thin
 // wrappers so the rest of the codebase can keep importing them by name.
-export function EntityChip({ name, color, icon, compact = false }: Props) {
+export function EntityChip({
+  name,
+  color,
+  icon,
+  compact = false,
+  query,
+}: Props) {
   return (
     <span
       className={
@@ -27,7 +37,9 @@ export function EntityChip({ name, color, icon, compact = false }: Props) {
       }}
     >
       <CategoryIconGlyph name={icon} size={compact ? 12 : 13} />
-      <span className="truncate">{name}</span>
+      <span className="truncate">
+        <HighlightedLabel text={name} query={query ?? ""} />
+      </span>
     </span>
   );
 }

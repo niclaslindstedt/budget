@@ -10,6 +10,7 @@ import {
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput } from "./form";
+import { HighlightedLabel } from "./HighlightedLabel";
 import { Modal } from "./Modal";
 import { TypePicker } from "./TypePicker";
 
@@ -121,12 +122,13 @@ export function SubtypePicker({
     0,
     sorted.findIndex((s) => s.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
-    typeaheadLabels: sorted.map((s) => s.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+      typeaheadLabels: sorted.map((s) => s.name),
+    });
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -188,7 +190,12 @@ export function SubtypePicker({
                     focusable={false}
                     className="shrink-0 text-muted"
                   />
-                  <span className="min-w-0 truncate">{s.name}</span>
+                  <span className="min-w-0 truncate">
+                    <HighlightedLabel
+                      text={s.name}
+                      query={isCursorAt(idx) ? typeaheadQuery : ""}
+                    />
+                  </span>
                   {parent && (
                     <span className="ml-1 min-w-0 truncate text-xs text-muted">
                       {parent}

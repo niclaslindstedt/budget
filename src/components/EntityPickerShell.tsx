@@ -34,7 +34,9 @@ type Props<T extends { id: string }> = {
 
   // Inner content of one option row in the dropdown. The shell wraps
   // it in <li><button role="option"> + the optional trailing checkmark.
-  renderOption: (item: T) => ReactNode;
+  // `query` is the live type-ahead buffer when this row is the cursored
+  // option (else ""), so the caller can highlight the matched prefix.
+  renderOption: (item: T, opts: { query: string }) => ReactNode;
 
   // Plain-text label for an item, used for type-ahead matching (typing
   // characters jumps to the first item whose label starts with them).
@@ -95,12 +97,13 @@ export function EntityPickerShell<T extends { id: string }>({
     () => (getLabel ? items.map(getLabel) : undefined),
     [getLabel, items],
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: items.length,
-    initialIndex: selectedIdx,
-    active: open,
-    typeaheadLabels,
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: items.length,
+      initialIndex: selectedIdx,
+      active: open,
+      typeaheadLabels,
+    });
   const close = useCallback(() => {
     setOpen(false);
     setCreating(false);
@@ -195,7 +198,9 @@ export function EntityPickerShell<T extends { id: string }>({
                 onKeyDown={onKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
-                {renderOption(item)}
+                {renderOption(item, {
+                  query: isCursorAt(idx) ? typeaheadQuery : "",
+                })}
                 {item.id === selectedId && (
                   <Check
                     size={14}

@@ -10,6 +10,7 @@ import {
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput } from "./form";
+import { HighlightedLabel } from "./HighlightedLabel";
 import { Modal } from "./Modal";
 
 // Single-tier picker for `Company`. Companies are name-only (no
@@ -162,12 +163,13 @@ export function CompanyPicker({
   // Type-ahead labels: typing characters jumps the cursor to the first
   // company whose name starts with what's been typed.
   const typeaheadLabels = useMemo(() => sorted.map((c) => c.name), [sorted]);
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
-    typeaheadLabels,
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+      typeaheadLabels,
+    });
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -312,7 +314,12 @@ export function CompanyPicker({
                   focusable={false}
                   className="shrink-0 text-muted"
                 />
-                <span className="min-w-0 truncate">{c.name}</span>
+                <span className="min-w-0 truncate">
+                  <HighlightedLabel
+                    text={c.name}
+                    query={isCursorAt(idx) ? typeaheadQuery : ""}
+                  />
+                </span>
                 {c.id === selectedId && (
                   <Check
                     size={14}
