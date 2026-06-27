@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // List-box type-ahead: as the user types printable characters, jump to
 // the first option whose label starts with the accumulated buffer. The
@@ -13,6 +13,14 @@ import { useCallback, useRef } from "react";
 // can move the cursor / focus there. Modifier combos (Ctrl / Meta / Alt)
 // and non-printable keys are left untouched so arrow / Enter / Escape
 // navigation keeps working.
+//
+// The live buffer is also published as `query` (reactive state) so the
+// caller can highlight the matched characters on the active option, and
+// the reset is timer-driven so the highlight disappears on its own after
+// the pause — the user sees the search "start over" without pressing a
+// key. Use `reset()` to drop the buffer eagerly (e.g. when arrow
+// navigation takes over or the surface closes) so a stale highlight
+// never lingers.
 export function useTypeahead(opts: {
   labels: readonly string[];
   onMatch: (index: number) => void;
@@ -21,10 +29,33 @@ export function useTypeahead(opts: {
   timeoutMs?: number;
 }): {
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  // The current search buffer, or "" while idle. Feed it to
+  // `HighlightedLabel` on the matched option to emphasise the match.
+  query: string;
+  // Drop the buffer (and its highlight) immediately.
+  reset: () => void;
 } {
   const { labels, onMatch, timeoutMs = 3000 } = opts;
   const bufferRef = useRef("");
   const lastAtRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [query, setQuery] = useState("");
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    clearTimer();
+    bufferRef.current = "";
+    setQuery("");
+  }, [clearTimer]);
+
+  // Tear down any pending reset timer on unmount.
+  useEffect(() => clearTimer, [clearTimer]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLElement>) => {
@@ -46,13 +77,21 @@ export function useTypeahead(opts: {
       const idx = labels.findIndex((label) =>
         label.trim().toLowerCase().startsWith(next),
       );
+
+      // Publish the buffer so the active option can highlight the match,
+      // and (re)arm the silence timer — the same pause that "starts the
+      // search over" also clears the highlight, with no extra keypress.
+      setQuery(next);
+      clearTimer();
+      timerRef.current = setTimeout(reset, timeoutMs);
+
       if (idx !== -1) {
         e.preventDefault();
         onMatch(idx);
       }
     },
-    [labels, onMatch, timeoutMs],
+    [labels, onMatch, timeoutMs, clearTimer, reset],
   );
 
-  return { onKeyDown };
+  return { onKeyDown, query, reset };
 }

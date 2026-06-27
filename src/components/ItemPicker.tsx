@@ -17,6 +17,7 @@ import {
 import { useT } from "../i18n";
 import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput } from "./form";
+import { HighlightedLabel } from "./HighlightedLabel";
 import { Modal } from "./Modal";
 import { SubtypePicker } from "./SubtypePicker";
 
@@ -121,12 +122,13 @@ export function ItemPicker({
     0,
     sorted.findIndex((it) => it.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
-    typeaheadLabels: sorted.map((it) => it.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+      typeaheadLabels: sorted.map((it) => it.name),
+    });
 
   return (
     <div
@@ -207,7 +209,12 @@ export function ItemPicker({
                   focusable={false}
                   className="shrink-0 text-muted"
                 />
-                <span className="min-w-0 truncate">{it.name}</span>
+                <span className="min-w-0 truncate">
+                  <HighlightedLabel
+                    text={it.name}
+                    query={isCursorAt(idx) ? typeaheadQuery : ""}
+                  />
+                </span>
                 {it.id === selectedId && (
                   <Check
                     size={14}

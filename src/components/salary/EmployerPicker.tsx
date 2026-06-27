@@ -26,6 +26,7 @@ import {
   LISTBOX_OPTION_CLASS,
 } from "../form";
 import { GlyphGrid } from "../GlyphGrid";
+import { HighlightedLabel } from "../HighlightedLabel";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
 
@@ -104,12 +105,13 @@ export function EmployerPicker({
     0,
     sorted.findIndex((e) => e.id === value),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
-    typeaheadLabels: sorted.map((e) => e.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+      typeaheadLabels: sorted.map((e) => e.name),
+    });
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -201,7 +203,12 @@ export function EmployerPicker({
                     size={14}
                   />
                 </span>
-                <span className="min-w-0 truncate">{e.name}</span>
+                <span className="min-w-0 truncate">
+                  <HighlightedLabel
+                    text={e.name}
+                    query={isCursorAt(idx) ? typeaheadQuery : ""}
+                  />
+                </span>
                 {e.id === value && (
                   <Check
                     size={14}

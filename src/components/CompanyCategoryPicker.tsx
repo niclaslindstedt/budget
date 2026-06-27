@@ -75,8 +75,8 @@ export function CompanyCategoryPicker({
           </>
         );
       }}
-      renderOption={(cat) => (
-        <CompanyCategoryChip companyCategory={cat} compact />
+      renderOption={(cat, { query }) => (
+        <CompanyCategoryChip companyCategory={cat} compact query={query} />
       )}
       getLabel={(cat) => cat.name}
       renderCreator={(done) => (
@@ -96,9 +96,11 @@ export function CompanyCategoryPicker({
 export function CompanyCategoryChip({
   companyCategory,
   compact = false,
+  query,
 }: {
   companyCategory: CompanyCategory;
   compact?: boolean;
+  query?: string;
 }) {
   const t = useT();
   return (
@@ -107,6 +109,7 @@ export function CompanyCategoryChip({
       color={companyCategory.color}
       icon={companyCategory.icon}
       compact={compact}
+      query={query}
     />
   );
 }

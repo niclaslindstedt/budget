@@ -12,6 +12,7 @@ import { useT } from "../i18n";
 import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import { Button, ClearableInput } from "./form";
+import { HighlightedLabel } from "./HighlightedLabel";
 import { Modal } from "./Modal";
 
 // Multi-select picker for `Tag`. Unlike `CompanyPicker` / `TypePicker`
@@ -94,12 +95,13 @@ export function TagsPicker({
     setCreating(true);
   }, []);
 
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: 0,
-    active: open && !creating,
-    typeaheadLabels: sorted.map((tag) => tag.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: 0,
+      active: open && !creating,
+      typeaheadLabels: sorted.map((tag) => tag.name),
+    });
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -175,7 +177,12 @@ export function TagsPicker({
                     style={{ backgroundColor: tag.color }}
                     aria-hidden
                   />
-                  <span className="min-w-0 truncate">{tag.name}</span>
+                  <span className="min-w-0 truncate">
+                    <HighlightedLabel
+                      text={tag.name}
+                      query={isCursorAt(idx) ? typeaheadQuery : ""}
+                    />
+                  </span>
                   {checked && (
                     <Check
                       size={14}

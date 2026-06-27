@@ -465,12 +465,13 @@ function CategoryPane({
     0,
     categories.findIndex((c) => c.id === selectedCategoryId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: categories.length,
-    initialIndex: initialIdx,
-    active: true,
-    typeaheadLabels: categories.map((c) => c.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: categories.length,
+      initialIndex: initialIdx,
+      active: true,
+      typeaheadLabels: categories.map((c) => c.name),
+    });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       {categories.length === 0 && (
@@ -488,7 +489,11 @@ function CategoryPane({
             onKeyDown={onKeyDown}
             className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
           >
-            <CategoryChip category={cat} compact />
+            <CategoryChip
+              category={cat}
+              compact
+              query={isCursorAt(idx) ? typeaheadQuery : ""}
+            />
             <ChevronDown
               size={12}
               className="ml-auto shrink-0 -rotate-90 text-muted"
@@ -543,12 +548,13 @@ function TypePane({
     0,
     types.findIndex((t) => t.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: types.length,
-    initialIndex: initialIdx,
-    active: true,
-    typeaheadLabels: types.map((ty) => ty.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: types.length,
+      initialIndex: initialIdx,
+      active: true,
+      typeaheadLabels: types.map((ty) => ty.name),
+    });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       <li>
@@ -582,7 +588,11 @@ function TypePane({
               onKeyDown={onKeyDown}
               className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
-              <TypeChip type={ty} compact />
+              <TypeChip
+                type={ty}
+                compact
+                query={isCursorAt(idx) ? typeaheadQuery : ""}
+              />
               {ty.id === selectedId && (
                 <Check
                   size={14}
@@ -626,9 +636,11 @@ function TypePane({
 export function TypeChip({
   type,
   compact = false,
+  query,
 }: {
   type: EntryType;
   compact?: boolean;
+  query?: string;
 }) {
   const t = useT();
   return (
@@ -637,6 +649,7 @@ export function TypeChip({
       color={type.color}
       icon={type.glyph}
       compact={compact}
+      query={query}
     />
   );
 }
@@ -734,12 +747,13 @@ function CategorySelector({
     0,
     categories.findIndex((c) => c.id === value),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: categories.length,
-    initialIndex: initialIdx,
-    active: open,
-    typeaheadLabels: categories.map((c) => c.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: categories.length,
+      initialIndex: initialIdx,
+      active: open,
+      typeaheadLabels: categories.map((c) => c.name),
+    });
   return (
     <div ref={triggerRef} className="relative">
       <button
@@ -783,7 +797,11 @@ function CategorySelector({
                 onKeyDown={onKeyDown}
                 className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2 py-1 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
-                <CategoryChip category={c} compact />
+                <CategoryChip
+                  category={c}
+                  compact
+                  query={isCursorAt(idx) ? typeaheadQuery : ""}
+                />
                 {c.id === value && (
                   <Check
                     size={14}

@@ -15,6 +15,7 @@ import {
   LISTBOX_CREATE_OPTION_CLASS,
   LISTBOX_OPTION_CLASS,
 } from "../form";
+import { HighlightedLabel } from "../HighlightedLabel";
 import { Modal } from "../Modal";
 
 // Single-tier picker for `FileCategory` — the subfolder an uploaded property
@@ -91,12 +92,13 @@ export function FileCategoryPicker({
     0,
     sorted.findIndex((c) => c.id === selectedId),
   );
-  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
-    itemCount: sorted.length,
-    initialIndex: initialIdx,
-    active: open && !creating,
-    typeaheadLabels: sorted.map((c) => c.name),
-  });
+  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
+    useRovingTabindex({
+      itemCount: sorted.length,
+      initialIndex: initialIdx,
+      active: open && !creating,
+      typeaheadLabels: sorted.map((c) => c.name),
+    });
 
   return (
     <div ref={rootRef} className="relative inline-block w-full">
@@ -171,7 +173,12 @@ export function FileCategoryPicker({
                   focusable={false}
                   className="shrink-0 text-muted"
                 />
-                <span className="min-w-0 truncate">{c.name}</span>
+                <span className="min-w-0 truncate">
+                  <HighlightedLabel
+                    text={c.name}
+                    query={isCursorAt(idx) ? typeaheadQuery : ""}
+                  />
+                </span>
                 {c.id === selectedId && (
                   <Check
                     size={14}

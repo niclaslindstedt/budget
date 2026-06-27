@@ -82,7 +82,9 @@ export function CategoryPicker({
           </>
         );
       }}
-      renderOption={(cat) => <CategoryChip category={cat} compact />}
+      renderOption={(cat, { query }) => (
+        <CategoryChip category={cat} compact query={query} />
+      )}
       getLabel={(cat) => cat.name}
       renderCreator={(done) => (
         <CategoryCreator
@@ -101,9 +103,11 @@ export function CategoryPicker({
 export function CategoryChip({
   category,
   compact = false,
+  query,
 }: {
   category: Category;
   compact?: boolean;
+  query?: string;
 }) {
   const t = useT();
   return (
@@ -112,6 +116,7 @@ export function CategoryChip({
       color={category.color}
       icon={category.icon}
       compact={compact}
+      query={query}
     />
   );
 }

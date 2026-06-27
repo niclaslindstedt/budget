@@ -2945,13 +2945,20 @@ Picked with `CompanyPicker`; administered in Settings → Companies
 `Company.typeIds` (see company type hint) and assign a company category.
 The picker's open list-box supports type-ahead: typing characters jumps
 the roving cursor to the first company whose name starts with the
-buffer, which resets after a pause so a fresh prefix starts a new
-search. This is shared infrastructure — `useTypeahead`
-(`src/hooks/useTypeahead.ts`) folded into `useRovingTabindex` behind a
-`typeaheadLabels` option, so every name-list picker (type, category,
-company category, subtype, item, tag, employer, property file category)
-gets the same behaviour by passing one label per row. Its "New company"
-creator submits on Enter.
+buffer, which resets after a pause (3s) so a fresh prefix starts a new
+search. The matched characters on the cursored option are highlighted
+(bold + underline) via `HighlightedLabel`
+(`src/components/HighlightedLabel.tsx`, splitting logic in
+`src/utils/highlight.ts`), and the buffer reset is timer-driven so the
+highlight clears on its own when the user pauses — they see the search
+"start over" without pressing a key (arrow / Home / End navigation and
+closing the picker also clear it). This is shared infrastructure —
+`useTypeahead` (`src/hooks/useTypeahead.ts`) folded into
+`useRovingTabindex` behind a `typeaheadLabels` option and surfaced as
+`typeaheadQuery`, so every name-list picker (type, category, company
+category, subtype, item, tag, employer, property file category) gets the
+same behaviour by passing one label per row and feeding the query to the
+cursored option. Its "New company" creator submits on Enter.
 
 ### Company category
 
