@@ -68,6 +68,7 @@ type Props = {
   expandedTransferAnchors: ReadonlySet<string>;
   onToggleTransferAnchor: (rowId: string) => void;
   onToggleRowTransfer: (row: Row) => void;
+  onToggleRowIgnored: (row: Row) => void;
   onToggleCollapsed: () => void;
   // Bypass the viewport-proximity gate so the row tree always renders.
   // Used by BudgetPage when a scroll-to-row request targets this month —
@@ -124,6 +125,7 @@ function MonthTableImpl({
   expandedTransferAnchors,
   onToggleTransferAnchor,
   onToggleRowTransfer,
+  onToggleRowIgnored,
   onToggleCollapsed,
   forceMount = false,
   onUpdateCell,
@@ -458,6 +460,7 @@ function MonthTableImpl({
                             onUpdateCell={onUpdateCell}
                             onCommitCell={onCommitCell}
                             onToggleRowTransfer={onToggleRowTransfer}
+                            onToggleRowIgnored={onToggleRowIgnored}
                             onSetFiscalMonthShift={onSetFiscalMonthShift}
                             onToggleSelect={onToggleSelect}
                           />
@@ -479,6 +482,7 @@ function MonthTableImpl({
                         onUpdateCell={onUpdateCell}
                         onCommitCell={onCommitCell}
                         onToggleRowTransfer={onToggleRowTransfer}
+                        onToggleRowIgnored={onToggleRowIgnored}
                         onSetFiscalMonthShift={onSetFiscalMonthShift}
                         onToggleSelect={onToggleSelect}
                       />

@@ -3432,6 +3432,23 @@ account.
 A per-row eye toggle. Sets `Row.isTransfer = true` so the `hideTransfers`
 setting can suppress it. Does NOT mint a Transfer.
 
+### Ignore for statistics
+
+A per-row action in the budget entry "…" menu (`BudgetEntryActionsMenu`,
+`Ban` glyph). Sets `Row.ignored = true` (or `HistoryEntry.ignored` for a
+synthesized history row, via `updateHistoryEntry`). An ignored entry
+stays in the ledger and keeps contributing to the running balance — it's
+real money — but `isActualSpendingRow` drops it from the spending
+dashboard's facts, so it never skews "Visualize spending", the
+income-vs-expenses line, the category donut, or the top-merchants table.
+Distinct from a transfer (which is inter-account noise) and a gift (a
+real expense): use it for a charge that happened but isn't
+representative of the household's own spending — e.g. paying for someone
+else who'll reimburse off-budget. Only `true` is ever persisted; the
+toggle wires through `useRowMutations.onToggleRowIgnored` →
+`toggleRowIgnored` (user rows) / `updateHistoryEntry` (history rows), and
+the flag surfaces in `BudgetEntryInfoModal`.
+
 ### Triage orphans
 
 Tap the orange "{N} entries to move or delete" button on a covered

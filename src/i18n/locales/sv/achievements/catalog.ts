@@ -162,6 +162,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "I kombination med Dölj överföringar påverkar interna flyttar fortfarande saldon men försvinner från utgiftstotaler.",
   },
+  notMyTaste: {
+    name: "Inte min smak",
+    condition: "Ignorera en post i statistiken.",
+    learnMore:
+      "Betalade du för någon annan? Flagga posten som ignorerad: den finns kvar i kontoutdraget och saldot, men snedvrider inte utgiftsdiagrammen — som barnvisor som inte ska forma din smakprofil.",
+  },
   groundhogDay: {
     name: "Måndag igen",
     condition: "Gör en rad återkommande.",

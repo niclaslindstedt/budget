@@ -63,6 +63,11 @@ export function reduceHistory(
           if (action.patch.isTransfer) next.isTransfer = true;
           else delete next.isTransfer;
         }
+        if (action.patch.ignored !== undefined) {
+          // Only persist `true` — absent means "counts in statistics".
+          if (action.patch.ignored) next.ignored = true;
+          else delete next.ignored;
+        }
         if (action.patch.noCompany !== undefined) {
           // Only persist `true` — absent means "company applies".
           if (action.patch.noCompany) next.noCompany = true;
@@ -79,6 +84,7 @@ export function reduceHistory(
           next.userCompanyId === prev.userCompanyId &&
           next.userTagIds === prev.userTagIds &&
           next.isTransfer === prev.isTransfer &&
+          next.ignored === prev.ignored &&
           next.noCompany === prev.noCompany
         ) {
           return prev;

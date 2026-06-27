@@ -33,6 +33,10 @@ const cell = {
   unmarkAsTransfer: "Unmark as transfer",
   markAsTransferTitle:
     "Flag this row as an inter-account transfer so the hide-transfers setting can suppress it",
+  ignoreForStats: "Ignore for statistics",
+  unignoreForStats: "Count in statistics",
+  ignoreForStatsTitle:
+    "Keep this entry in the ledger and running balance, but exclude it from the spending charts",
   formulaResult: "= {value}",
   invalidFormula: "Invalid formula",
   placeholderEllipsis: "…",

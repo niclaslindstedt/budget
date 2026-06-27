@@ -61,6 +61,10 @@ type Props = {
   // rows manage their transfer status through other paths and don't
   // get the button).
   onToggleRowTransfer?: (row: Row) => void;
+  // Flip the row's `ignored` flag (exclude / include in the spending
+  // dashboard). Threaded through to `BudgetEntryActionsMenu`; surfaces
+  // on user-authored and history rows.
+  onToggleRowIgnored?: (row: Row) => void;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Fires after the user finishes editing a cell (blur / discrete select).
   // Used to prompt for series-wide propagation on recurring rows; the
@@ -88,6 +92,7 @@ function BudgetRowImpl({
   onToggleTransferAnchor,
   revealedTransfer = false,
   onToggleRowTransfer,
+  onToggleRowIgnored,
   onUpdateCell,
   onCommitCell,
   onSetFiscalMonthShift,
@@ -547,6 +552,11 @@ function BudgetRowImpl({
               isHistory={isHistory}
               isSeries={isSeries}
               onToggleRowTransfer={onToggleRowTransfer}
+              onToggleRowIgnored={
+                row.kind === "user" || row.kind === "historic"
+                  ? onToggleRowIgnored
+                  : undefined
+              }
               onSetFiscalMonthShift={onSetFiscalMonthShift}
               onEdit={() =>
                 dispatchModal({

@@ -1103,6 +1103,10 @@ export type Action =
         // leaves the row carrying whatever a rule contributes.
         userTagIds?: string[];
         isTransfer?: boolean;
+        // `true` flags the entry as excluded from spending statistics;
+        // `false` clears it; `undefined` leaves it untouched. See
+        // `HistoryEntry.ignored`.
+        ignored?: boolean;
         // `true` stamps the "no company applies" flag so metadata
         // mode stops surfacing the entry over a missing company.
         // `false` clears it. `undefined` leaves the flag untouched.

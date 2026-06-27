@@ -178,6 +178,7 @@ export function describeActionSubject(
     // ones report a count (with a 1-row action still naming the row).
     case "updateCell":
     case "toggleRowTransfer":
+    case "toggleRowIgnored":
     case "convertToRecurring":
     case "editSeries":
     case "propagateCellToFuture":

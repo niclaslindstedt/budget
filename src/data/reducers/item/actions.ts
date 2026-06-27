@@ -33,6 +33,17 @@ export type ItemAction =
       itemId: string;
       rowId: string;
     }
+  | {
+      // Flip a budget row's `ignored` flag (exclude / include in
+      // spending statistics). Mirror of `toggleRowTransfer`: synthesized
+      // history rows manage the flag through `updateHistoryEntry`
+      // instead, so this action only touches user-authored rows in
+      // `item.rows`.
+      type: "toggleRowIgnored";
+      sheetId: string;
+      itemId: string;
+      rowId: string;
+    }
   | { type: "addRow"; sheetId: string; itemId: string; date: string }
   | {
       type: "addRowsFromComplex";

@@ -13,6 +13,7 @@ const actionHistory: ActionHistoryCatalog = {
     addRowsFromComplex: "Lade till komplex post",
     updateCell: "Redigerade en cell",
     toggleRowTransfer: "Växlade överföring",
+    toggleRowIgnored: "Växlade ignorering i statistik",
     convertToRecurring: "Gjorde rad återkommande",
     editSeries: "Redigerade återkommande serie",
     propagateCellToFuture: "Spred cellvärdet till framtida rader",

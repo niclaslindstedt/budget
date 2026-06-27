@@ -781,6 +781,7 @@ type HistoryEntry = {
   fiscalMonthShift?: -1 | 1;
   collapsedIntoTransferId?: string; // backref into UserData.transfers
   isTransfer?: boolean; // user-flagged inter-account transfer
+  ignored?: boolean; // excluded from spending statistics (stays in balance)
   // Per-entry overlays applied on top of MatchRule / MerchantHint in
   // `synthesizeHistoryRow` (highest priority). Set by the pen button on
   // a history row and the inline cells.
@@ -869,7 +870,7 @@ type Column = { id: string; type: ColumnType; label: string };
 
 // Persisted variants share RowBase (id, cells, seriesId, fiscalMonthShift,
 // typeId, typeIdLocked, companyId, tagIds, amountFormula, amountMin/Max,
-// isTransfer). Synthesized variants (HistoricRow, TransferRow) add their
+// isTransfer, ignored). Synthesized variants (HistoricRow, TransferRow) add their
 // own runtime-only fields and never reach storage.
 type Row = UserRow | CorrectionRow | HistoricRow | TransferRow;
 ```
@@ -1087,6 +1088,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   interest rate. The Visualize-value chart deducts the indirect
   interest that rides the monthly fee. A bare version bump — the field
   is optional per property, so a v79 record is absence-tolerant.
+- **v80 → v81** — flags optional `Row.ignored` / `HistoryEntry.ignored`,
+  the "ignore for statistics" toggle: an ignored entry stays in the
+  ledger and running balance but drops out of the spending dashboard's
+  facts. A bare version bump — the field is optional, so a v80 record is
+  absence-tolerant.
 
 ## State management
 

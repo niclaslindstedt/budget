@@ -104,6 +104,10 @@ type Result = {
   // Flip the `isTransfer` flag on a budget row, or on the underlying
   // `HistoryEntry` for a synthesized history row.
   onToggleRowTransfer: (row: Row) => void;
+  // Flip the `ignored` flag (exclude / include in spending statistics)
+  // on a budget row, or on the underlying `HistoryEntry` for a
+  // synthesized history row.
+  onToggleRowIgnored: (row: Row) => void;
   // Open the history-entry edit modal for a synthesized history row.
   onEditHistoryRequest: (row: Row) => void;
   // Patch the underlying `HistoryEntry` for a synthesized history row
@@ -283,6 +287,27 @@ export function useRowMutations({
         return;
       }
       dispatch({ type: "toggleRowTransfer", sheetId, itemId, rowId: row.id });
+    },
+    [dispatch, sheetId, itemId, activeAccountId],
+  );
+
+  const onToggleRowIgnored = useCallback(
+    (row: Row) => {
+      // Mirror of `onToggleRowTransfer`: synthesized history rows carry
+      // their flag on the backing `HistoryEntry`, so route those through
+      // the entry-update path (the flag propagates back via
+      // `synthesizeHistoryRow`). User-authored rows flip in `item.rows`.
+      if (row.kind === "historic") {
+        if (!activeAccountId) return;
+        dispatch({
+          type: "updateHistoryEntry",
+          accountId: activeAccountId,
+          entryId: row.historyEntryId,
+          patch: { ignored: !row.ignored },
+        });
+        return;
+      }
+      dispatch({ type: "toggleRowIgnored", sheetId, itemId, rowId: row.id });
     },
     [dispatch, sheetId, itemId, activeAccountId],
   );
@@ -505,6 +530,7 @@ export function useRowMutations({
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
     onToggleRowTransfer,
+    onToggleRowIgnored,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
     onApplyMetadataToMatchingHistory,

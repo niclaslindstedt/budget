@@ -64,6 +64,21 @@ export function reduceAccountBudget(
       };
     }
 
+    case "toggleRowIgnored": {
+      return {
+        ...item,
+        rows: item.rows.map((r) => {
+          if (r.id !== action.rowId) return r;
+          if (r.ignored) {
+            const next = { ...r };
+            delete next.ignored;
+            return next;
+          }
+          return { ...r, ignored: true };
+        }),
+      };
+    }
+
     case "addRow": {
       const dateCol = findColumnByType(item.columns, "date");
       const date = dateCol && action.date ? action.date : null;

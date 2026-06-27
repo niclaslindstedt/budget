@@ -98,6 +98,7 @@ export function validateRow(
     amountMin,
     amountMax,
     isTransfer,
+    ignored,
     typeIdLocked,
     companyId,
     tagIds,
@@ -168,6 +169,13 @@ export function validateRow(
     // Only persist `true` — stored `false` is indistinguishable from
     // "field absent" and just bloats the snapshot.
     if (isTransfer) row.isTransfer = true;
+  }
+  if (ignored !== undefined) {
+    if (typeof ignored !== "boolean")
+      return fail(`${path}.ignored`, "expected a boolean");
+    // Only persist `true` — stored `false` is indistinguishable from
+    // "field absent" and just bloats the snapshot.
+    if (ignored) row.ignored = true;
   }
   if (typeIdLocked !== undefined) {
     if (typeof typeIdLocked !== "boolean")

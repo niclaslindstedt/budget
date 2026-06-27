@@ -22,6 +22,7 @@ import type { SheetTypeDescriptor } from "./index";
 const BUDGET_ITEM_ACTION_TYPES = [
   "updateCell",
   "toggleRowTransfer",
+  "toggleRowIgnored",
   "addRow",
   "addRowsFromComplex",
   "convertToRecurring",

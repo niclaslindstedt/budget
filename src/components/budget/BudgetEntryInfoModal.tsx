@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
+  Ban,
   Check,
   Copy,
   Info,
@@ -304,6 +305,18 @@ export function BudgetEntryInfoModal({
                 display={
                   <span className="flex items-center justify-end gap-1.5 text-fg-bright">
                     <ArrowLeftRight size={14} aria-hidden focusable={false} />
+                    {t("budget.entryInfoYes")}
+                  </span>
+                }
+                copyValue={null}
+              />
+            )}
+            {row.ignored && (
+              <InfoField
+                label={t("budget.entryInfoIgnored")}
+                display={
+                  <span className="flex items-center justify-end gap-1.5 text-fg-bright">
+                    <Ban size={14} aria-hidden focusable={false} />
                     {t("budget.entryInfoYes")}
                   </span>
                 }
