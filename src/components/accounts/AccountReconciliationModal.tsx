@@ -35,7 +35,7 @@ import {
 } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { tintFill } from "../../utils/tint";
-import { Checkbox } from "../form";
+import { Button, Checkbox } from "../form";
 import {
   EntryDescriptionContent,
   resolveEntryDescriptionDisplay,
@@ -249,6 +249,10 @@ export function AccountReconciliationModal({
   const allCandidatesChecked =
     allCandidateKeys.length > 0 &&
     allCandidateKeys.every((key) => checked.has(key));
+  const selectedCount = useMemo(
+    () => allCandidateKeys.filter((key) => checked.has(key)).length,
+    [allCandidateKeys, checked],
+  );
 
   function applyToSeries(candidate: MatchCandidate) {
     if (!candidate.seriesId) return;
@@ -417,40 +421,59 @@ export function AccountReconciliationModal({
     return (
       <li
         key={key}
-        className="flex flex-col gap-1 border-b border-line px-3 py-2 text-sm last:border-b-0"
+        className={`flex flex-col gap-2 rounded border bg-surface px-3 py-2 transition-colors ${
+          isChecked ? "border-accent/60" : "border-line"
+        }`}
       >
         <Checkbox
           className="w-full"
+          align="center"
           checked={isChecked}
           onChange={() => dispatch({ kind: "toggleCandidate", key })}
           label={
-            <span className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5">
-              <span className="font-mono text-xs text-muted">{rowDate}</span>
-              <span
-                className={`flex min-w-0 items-center gap-1.5 font-mono ${
-                  label.isRecurring
-                    ? "text-flag"
-                    : label.display.hasContent
-                      ? "text-fg"
-                      : "text-muted"
-                }`}
-              >
-                <EntryDescriptionContent
-                  value={rowDesc}
-                  isRecurring={label.isRecurring}
-                  entryType={label.entryType}
-                  company={label.company}
-                  display={label.display}
-                  lineItem={label.lineItem}
-                />
+            <span className="flex flex-col gap-1 text-sm">
+              <span className="grid grid-cols-[3.5rem_auto_1fr_auto] items-baseline gap-x-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  {t("reconciliation.rowSide")}
+                </span>
+                <span className="font-mono text-xs text-path tabular-nums">
+                  {formatShortDate(rowDate, settings.shortDateFormat, lang)}
+                </span>
+                <span
+                  className={`flex min-w-0 items-center gap-1.5 font-mono ${
+                    label.isRecurring
+                      ? "text-flag"
+                      : label.display.hasContent
+                        ? "text-fg-bright"
+                        : "text-muted"
+                  }`}
+                >
+                  <EntryDescriptionContent
+                    value={rowDesc}
+                    isRecurring={label.isRecurring}
+                    entryType={label.entryType}
+                    company={label.company}
+                    display={label.display}
+                    lineItem={label.lineItem}
+                  />
+                </span>
+                <span className="font-mono tabular-nums text-fg">
+                  {formatAmount(rowAmount, settings)}
+                </span>
               </span>
-              <span className="font-mono text-fg">
-                {formatAmount(rowAmount, settings)}
-              </span>
-              <span className="font-mono text-xs text-muted">{entry.date}</span>
-              <span className="truncate text-muted">{entry.description}</span>
-              <span className="font-mono text-fg">
-                {formatAmount(entry.amount, settings)}
+              <span className="grid grid-cols-[3.5rem_auto_1fr_auto] items-baseline gap-x-2 text-muted">
+                <span className="text-[10px] font-semibold uppercase tracking-wide">
+                  {t("reconciliation.bankSide")}
+                </span>
+                <span className="font-mono text-xs text-path tabular-nums">
+                  {formatShortDate(entry.date, settings.shortDateFormat, lang)}
+                </span>
+                <span className="truncate font-mono text-xs">
+                  {entry.description}
+                </span>
+                <span className="font-mono text-xs tabular-nums">
+                  {formatAmount(entry.amount, settings)}
+                </span>
               </span>
             </span>
           }
@@ -524,7 +547,7 @@ export function AccountReconciliationModal({
       return (
         <li
           key={o.rowId}
-          className="flex flex-col gap-1.5 border-b border-line px-3 py-2 text-sm last:border-b-0"
+          className="flex flex-col gap-2 rounded border border-line bg-surface px-3 py-2 text-sm"
         >
           <div className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-2">
             <span className="font-mono text-xs text-muted tabular-nums">
@@ -626,9 +649,9 @@ export function AccountReconciliationModal({
       );
     });
     return (
-      <section key={group.monthKey}>
-        <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line bg-surface px-3 py-2">
-          <h4 className="text-base font-semibold text-fg-bright">
+      <section key={group.monthKey} className="flex flex-col gap-2">
+        <header className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h4 className="text-sm font-semibold text-fg-bright">
             {t("reconciliation.monthCoveredHeader", {
               month: formatMonthLabel(group.monthKey, lang),
             })}
@@ -637,7 +660,7 @@ export function AccountReconciliationModal({
             {t("reconciliation.monthCoveredSubtitle")}
           </span>
         </header>
-        <ul>{items}</ul>
+        <ul className="flex flex-col gap-2">{items}</ul>
       </section>
     );
   });
@@ -657,15 +680,15 @@ export function AccountReconciliationModal({
         title={t("reconciliation.title")}
         onClose={onCancel}
       />
-      <Modal.Body>
+      <Modal.Body className="flex flex-col gap-5">
         {candidateRows.length === 0 && !hasOrphans && (
-          <p className="px-4 py-3 text-sm text-muted">
+          <p className="text-sm text-muted">
             {t("reconciliation.nothingToTriage")}
           </p>
         )}
         {candidateRows.length > 0 && (
           <section>
-            <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2">
+            <div className="mb-2 flex items-center gap-2">
               <h3 className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
                 {t("reconciliation.probableMatches")}
               </h3>
@@ -687,12 +710,15 @@ export function AccountReconciliationModal({
                 </button>
               )}
             </div>
-            <ul>{candidateRows}</ul>
+            <p className="mb-3 text-xs text-muted">
+              {t("reconciliation.hint")}
+            </p>
+            <ul className="flex flex-col gap-2">{candidateRows}</ul>
           </section>
         )}
         {hasOrphans && (
           <section>
-            <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2">
+            <div className="mb-2 flex items-center gap-2">
               <h3 className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
                 {t("reconciliation.predictionsThatDidntPost")}
               </h3>
@@ -740,30 +766,31 @@ export function AccountReconciliationModal({
             {showInfo && (
               <p
                 role="note"
-                className="border-b border-line bg-surface-3 px-3 py-2 text-xs text-muted"
+                className="mb-3 rounded border border-line bg-surface-3 px-3 py-2 text-xs text-muted"
               >
                 {t("reconciliation.orphanHint")}
               </p>
             )}
-            {orphanGroupSections}
+            <div className="flex flex-col gap-3">{orphanGroupSections}</div>
           </section>
         )}
       </Modal.Body>
-      <Modal.Footer>
-        <button
-          type="button"
-          onClick={handleSkipAll}
-          className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-fg"
-        >
-          {t("reconciliation.skipAll")}
-        </button>
-        <button
-          type="button"
-          onClick={handleApply}
-          className="cursor-pointer rounded border border-accent bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent/20"
-        >
-          {t("common.apply")}
-        </button>
+      <Modal.Footer className="justify-between">
+        <span className="text-xs text-muted">
+          {candidateRows.length > 0
+            ? selectedCount === 1
+              ? t("reconciliation.selectedOne", { n: selectedCount })
+              : t("reconciliation.selectedOther", { n: selectedCount })
+            : ""}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleSkipAll}>
+            {t("reconciliation.skipAll")}
+          </Button>
+          <Button variant="primary" onClick={handleApply}>
+            {t("common.apply")}
+          </Button>
+        </div>
       </Modal.Footer>
     </Modal>
   );

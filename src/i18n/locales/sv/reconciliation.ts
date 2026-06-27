@@ -9,6 +9,8 @@ const reconciliation: ReconciliationCatalog = {
   skipAll: "Hoppa över alla",
   checkAll: "Markera alla",
   uncheckAll: "Avmarkera alla",
+  selectedOne: "{n} matchning vald",
+  selectedOther: "{n} matchningar valda",
   applyToSeries: "Använd för hela serien",
   seriesRuleQueued: "Serieregel köad",
   keep: "Behåll",

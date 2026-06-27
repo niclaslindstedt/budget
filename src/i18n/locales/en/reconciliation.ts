@@ -9,6 +9,8 @@ const reconciliation = {
   skipAll: "Skip all",
   checkAll: "Check all",
   uncheckAll: "Uncheck all",
+  selectedOne: "{n} match selected",
+  selectedOther: "{n} matches selected",
   applyToSeries: "Apply to whole series",
   seriesRuleQueued: "Series rule queued",
   keep: "Keep",
