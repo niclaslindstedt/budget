@@ -34,6 +34,10 @@ const cell: CellCatalog = {
   unmarkAsTransfer: "Avmarkera överföring",
   markAsTransferTitle:
     "Markera raden som en överföring mellan konton så att inställningen “Dölj överföringar” kan dölja den",
+  ignoreForStats: "Ignorera i statistik",
+  unignoreForStats: "Räkna med i statistik",
+  ignoreForStatsTitle:
+    "Behåll posten i kontoutdraget och saldot, men exkludera den från utgiftsdiagrammen",
   formulaResult: "= {value}",
   invalidFormula: "Ogiltig formel",
   placeholderEllipsis: "…",

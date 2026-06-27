@@ -78,6 +78,7 @@ function makeRow(
     companyId?: string;
     fiscalMonthShift?: -1 | 1;
     isTransfer?: boolean;
+    ignored?: boolean;
     lineItems?: LineItemLink[];
   } = {},
 ): Row {
@@ -93,6 +94,7 @@ function makeRow(
     companyId: opts.companyId,
     fiscalMonthShift: opts.fiscalMonthShift,
     isTransfer: opts.isTransfer,
+    ignored: opts.ignored,
     lineItems: opts.lineItems,
   };
   switch (kind) {
@@ -162,6 +164,20 @@ describe("isActualSpendingRow", () => {
     expect(
       isActualSpendingRow(
         makeRow("historic", { isTransfer: true }),
+        COMPLETED_COL,
+      ),
+    ).toBe(false);
+  });
+  it("excludes ignored rows on both user and historic kinds", () => {
+    expect(
+      isActualSpendingRow(
+        makeRow("user", { completed: true, ignored: true }),
+        COMPLETED_COL,
+      ),
+    ).toBe(false);
+    expect(
+      isActualSpendingRow(
+        makeRow("historic", { ignored: true }),
         COMPLETED_COL,
       ),
     ).toBe(false);

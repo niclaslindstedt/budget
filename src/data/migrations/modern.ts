@@ -1185,6 +1185,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // absent on every old export; the v80 validator omits it when missing, so
   // this is a bare additive bump.
   79: (v79) => ({ ...v79, version: 80 }),
+
+  // v80 → v81: a budget row / history entry gains optional `ignored`, the
+  // "ignore for statistics" flag set from the entry "…" menu. An ignored
+  // entry stays in the ledger and running balance but drops out of the
+  // spending dashboard's facts. The field is optional and absent on every
+  // old export; the v81 validator omits it when missing, so this is a bare
+  // additive bump.
+  80: (v80) => ({ ...v80, version: 81 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

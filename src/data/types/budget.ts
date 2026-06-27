@@ -77,6 +77,18 @@ type RowBase = {
   // Synthesized transfer rows (kind: "transfer") are implicitly
   // transfers and don't need this flag set.
   isTransfer?: boolean;
+  // True when the user has flagged this row as something that should not
+  // count toward spending statistics — a charge that's real money but
+  // not representative of the household's own spending (e.g. paying for
+  // someone else who'll reimburse off-budget, or a one-off the user
+  // doesn't want skewing the "Visualize spending" charts). Unlike a
+  // transfer, it stays a normal income / expense in the ledger and the
+  // running balance; it's only excluded from the spending dashboard's
+  // facts (`isActualSpendingRow`). Set via the per-row "ignore for
+  // statistics" action and mirrored from `HistoryEntry.ignored` by
+  // `synthesizeHistoryRow`. Only `true` is ever persisted — absent
+  // means "counts normally".
+  ignored?: boolean;
   // True when the user has manually assigned `typeId` for this row
   // (via the type cell picker, the edit-row modal, or any other
   // explicit choice). Locks the row out of automatic pattern-driven

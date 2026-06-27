@@ -483,6 +483,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
     onToggleRowTransfer,
+    onToggleRowIgnored,
     onEditHistoryRequest,
     onUpdateHistoryEntry,
     onApplyMetadataToMatchingHistory,
@@ -1233,6 +1234,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                       onAddRow={onAddRow}
                       onAddComplex={onAddComplex}
                       onToggleRowTransfer={onToggleRowTransfer}
+                      onToggleRowIgnored={onToggleRowIgnored}
                       onSetFiscalMonthShift={onSetFiscalMonthShift}
                       onUpdateHistoryEntry={onUpdateHistoryEntry}
                       onApplyMetadataToMatchingHistory={

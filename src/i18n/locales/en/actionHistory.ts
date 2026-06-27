@@ -22,6 +22,7 @@ const actionHistory = {
     addRowsFromComplex: "Added complex entry",
     updateCell: "Edited a cell",
     toggleRowTransfer: "Toggled transfer",
+    toggleRowIgnored: "Toggled ignore for statistics",
     convertToRecurring: "Converted to recurring",
     editSeries: "Edited recurring series",
     propagateCellToFuture: "Propagated cell to future rows",

@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   ArrowUpDown,
   BadgeCheck,
+  Ban,
   Banknote,
   Bookmark,
   BookOpen,
@@ -172,6 +173,12 @@ const hasCorrection = (s: UserData) =>
   eachRow(s, (r) => r.kind === "correction");
 const hasTransferRow = (s: UserData) =>
   eachRow(s, (r) => r.isTransfer === true);
+// An entry the user flagged "ignore for statistics" — on a user-authored
+// row (`item.rows`) or a synthesized history row (the flag lives on the
+// backing `HistoryEntry`), so check both.
+const hasIgnoredEntry = (s: UserData) =>
+  eachRow(s, (r) => r.ignored === true) ||
+  Object.values(s.history).some((arr) => arr.some((e) => e.ignored === true));
 const hasTypedRow = (s: UserData) =>
   eachRow(s, (r) => typeof r.typeId === "string" && r.typeId !== "");
 const hasTaggedRow = (s: UserData) =>
@@ -738,6 +745,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.sheets],
       predicate: (prev, next) => !hasTransferRow(prev) && hasTransferRow(next),
+    },
+  },
+  {
+    id: "notMyTaste",
+    tier: "intermediate",
+    glyph: Ban,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets, s.history],
+      predicate: (prev, next) =>
+        !hasIgnoredEntry(prev) && hasIgnoredEntry(next),
     },
   },
   {

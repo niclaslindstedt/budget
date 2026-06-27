@@ -1,6 +1,7 @@
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Ban,
   Boxes,
   Copy,
   Eye,
@@ -27,6 +28,11 @@ type Props = {
   isHistory: boolean;
   isSeries: boolean;
   onToggleRowTransfer?: (row: Row) => void;
+  // Flip the `ignored` flag (exclude / include the entry in the
+  // spending dashboard). Wired for both user-authored and history rows;
+  // omitted on synthesized transfer / correction rows that don't carry
+  // spending facts.
+  onToggleRowIgnored?: (row: Row) => void;
   // Manual fiscal-month override. Null clears the override; ±1 sets it.
   // Hidden on synthesized history / transfer rows — they have no
   // editable persisted form and the shift would have nothing to attach
@@ -53,6 +59,7 @@ export function BudgetEntryActionsMenu({
   isHistory,
   isSeries,
   onToggleRowTransfer,
+  onToggleRowIgnored,
   onSetFiscalMonthShift,
   onEdit,
   onDelete,
@@ -131,6 +138,20 @@ export function BudgetEntryActionsMenu({
         ? t("cell.unmarkAsTransfer")
         : t("cell.markAsTransferTitle"),
       onClick: () => onToggleRowTransfer(row),
+    });
+  }
+
+  if (onToggleRowIgnored) {
+    items.push({
+      key: "toggleIgnored",
+      icon: <Ban size={16} aria-hidden focusable={false} />,
+      label: row.ignored
+        ? t("cell.unignoreForStats")
+        : t("cell.ignoreForStats"),
+      title: row.ignored
+        ? t("cell.unignoreForStats")
+        : t("cell.ignoreForStatsTitle"),
+      onClick: () => onToggleRowIgnored(row),
     });
   }
 

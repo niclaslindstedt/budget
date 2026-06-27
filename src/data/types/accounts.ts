@@ -122,6 +122,13 @@ export type HistoryEntry = {
   // matched pair into a single Transfer; this flag stands in when no
   // peer side is available yet.
   isTransfer?: boolean;
+  // True when the user has flagged this bank row as something that
+  // should not count toward spending statistics (set via the per-row
+  // "ignore for statistics" action). The synthesized row picks this up
+  // (`synthesizeHistoryRow`) and the spending dashboard drops it from
+  // its facts, while the running balance and ledger keep it. Only `true`
+  // is ever persisted. See `Row.ignored`.
+  ignored?: boolean;
   // Per-entry user overrides for the synthesized row's description /
   // type. Higher priority than `MatchRule` and `MerchantHint` — set by
   // the per-entry edit modal (pen button on a history row) and the

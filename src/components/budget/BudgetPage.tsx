@@ -166,6 +166,10 @@ type Props = {
   // inter-account transfer so the `hideTransfers` setting can suppress
   // it without converting it into a full Transfer.
   onToggleRowTransfer: (row: Row) => void;
+  // Per-row "ignore for statistics" toggle. Flips `Row.ignored` so the
+  // entry stays in the ledger and running balance but drops out of the
+  // spending dashboard's facts.
+  onToggleRowIgnored: (row: Row) => void;
   onSetFiscalMonthShift: (row: Row, shift: -1 | 1 | null) => void;
   // Inline per-cell write for a synthesized history row. Routed by
   // `BudgetPage` when the user edits the description or type cell on a
@@ -293,6 +297,7 @@ export function BudgetPage({
   onAddRow,
   onAddComplex,
   onToggleRowTransfer,
+  onToggleRowIgnored,
   onSetFiscalMonthShift,
   onUpdateHistoryEntry,
   onApplyMetadataToMatchingHistory,
@@ -805,6 +810,7 @@ export function BudgetPage({
                     expandedTransferAnchors={expandedTransferAnchors}
                     onToggleTransferAnchor={toggleTransferAnchor}
                     onToggleRowTransfer={onToggleRowTransfer}
+                    onToggleRowIgnored={onToggleRowIgnored}
                     onUpdateCell={handleUpdateCell}
                     onCommitCell={handleCommitCell}
                     onAddRow={slotAdd}

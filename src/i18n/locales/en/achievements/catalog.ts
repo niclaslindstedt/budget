@@ -167,6 +167,12 @@ const catalog = {
     learnMore:
       "Combined with Hide transfers, internal moves still affect balances but disappear from the expense totals.",
   },
+  notMyTaste: {
+    name: "Not My Taste",
+    condition: "Ignore an entry for statistics.",
+    learnMore:
+      "Paid for someone else? Flag the entry as ignored: it stays in the ledger and your running balance, but it won't skew the spending charts — like baby songs that shouldn't shape your taste profile.",
+  },
   groundhogDay: {
     name: "Groundhog Day",
     condition: "Make a row recurring.",

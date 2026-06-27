@@ -113,6 +113,11 @@ export function validateHistoryEntry(
       return fail(`${path}.isTransfer`, "expected a boolean");
     if (raw.isTransfer) entry.isTransfer = true;
   }
+  if (raw.ignored !== undefined) {
+    if (typeof raw.ignored !== "boolean")
+      return fail(`${path}.ignored`, "expected a boolean");
+    if (raw.ignored) entry.ignored = true;
+  }
   if (raw.hintIgnored !== undefined) {
     if (typeof raw.hintIgnored !== "boolean")
       return fail(`${path}.hintIgnored`, "expected a boolean");

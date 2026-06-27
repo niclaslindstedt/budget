@@ -385,20 +385,21 @@ deltas, never copies; the real budget is never mutated. Sheet type
 
 ## Workflows / verbs the user might say
 
-| Term                                                               | Refers to                                                                                                   |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| **Add a sheet**                                                    | header Sheet switcher → "New sheet" → `SheetModal`. [→](overview.md#add-a-sheet)                            |
-| **Edit a sheet**                                                   | title "…" menu → `SheetModal`. [→](overview.md#edit-a-sheet)                                                |
-| **Add a row**                                                      | `BudgetAddEntryButton`. [→](overview.md#add-a-row)                                                          |
-| **Promote a history entry**                                        | `BudgetEditEntryModal` → "Make recurring". [→](overview.md#promote-a-history-entry)                         |
-| **Split an entry**                                                 | `BudgetSplitEntryModal`. [→](overview.md#split-an-entry)                                                    |
-| **Collapse a transfer**                                            | `AccountTransferCollapseModal`. [→](overview.md#collapse-a-transfer)                                        |
-| **Import history**                                                 | `AccountActionsMenu` → `ImportHistoryModal` → `AccountReconciliationModal`. [→](overview.md#import-history) |
-| **Cut history**                                                    | `AccountActionsMenu` → `AccountCutHistoryModal`. [→](overview.md#cut-history)                               |
-| **Update balance**                                                 | `AccountsPage` row → "…" → `UpdateBalanceModal`. [→](overview.md#update-balance)                            |
-| **Mark as transfer**                                               | per-row eye toggle, `Row.isTransfer`. [→](overview.md#mark-as-transfer)                                     |
-| **Triage orphans** / **move or delete entries in a covered month** | `AccountReconciliationModal`. [→](overview.md#triage-orphans)                                               |
-| **Sign out** / **switch user**                                     | header burger menu. [→](overview.md#sign-out)                                                               |
+| Term                                                               | Refers to                                                                                                                   |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **Add a sheet**                                                    | header Sheet switcher → "New sheet" → `SheetModal`. [→](overview.md#add-a-sheet)                                            |
+| **Edit a sheet**                                                   | title "…" menu → `SheetModal`. [→](overview.md#edit-a-sheet)                                                                |
+| **Add a row**                                                      | `BudgetAddEntryButton`. [→](overview.md#add-a-row)                                                                          |
+| **Promote a history entry**                                        | `BudgetEditEntryModal` → "Make recurring". [→](overview.md#promote-a-history-entry)                                         |
+| **Split an entry**                                                 | `BudgetSplitEntryModal`. [→](overview.md#split-an-entry)                                                                    |
+| **Collapse a transfer**                                            | `AccountTransferCollapseModal`. [→](overview.md#collapse-a-transfer)                                                        |
+| **Import history**                                                 | `AccountActionsMenu` → `ImportHistoryModal` → `AccountReconciliationModal`. [→](overview.md#import-history)                 |
+| **Cut history**                                                    | `AccountActionsMenu` → `AccountCutHistoryModal`. [→](overview.md#cut-history)                                               |
+| **Update balance**                                                 | `AccountsPage` row → "…" → `UpdateBalanceModal`. [→](overview.md#update-balance)                                            |
+| **Mark as transfer**                                               | per-row eye toggle, `Row.isTransfer`. [→](overview.md#mark-as-transfer)                                                     |
+| **Ignore for statistics** / **ignored entry** / **don't count**    | per-row "…" menu action, `Row.ignored` / `HistoryEntry.ignored`, `toggleRowIgnored`. [→](overview.md#ignore-for-statistics) |
+| **Triage orphans** / **move or delete entries in a covered month** | `AccountReconciliationModal`. [→](overview.md#triage-orphans)                                                               |
+| **Sign out** / **switch user**                                     | header burger menu. [→](overview.md#sign-out)                                                                               |
 
 ## Conventions for editing this file
 
