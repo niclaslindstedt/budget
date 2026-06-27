@@ -29,6 +29,7 @@ export type ReconciliationState = {
 export type ReconciliationAction =
   | { kind: "toggleInfo" }
   | { kind: "toggleCandidate"; key: string }
+  | { kind: "setAllCandidates"; keys: readonly string[]; checked: boolean }
   | {
       kind: "applyToSeries";
       seriesId: string;
@@ -77,6 +78,12 @@ export function reconciliationReducer(
       const next = new Set(state.checked);
       if (next.has(action.key)) next.delete(action.key);
       else next.add(action.key);
+      return { ...state, checked: next };
+    }
+    case "setAllCandidates": {
+      const next = new Set(state.checked);
+      if (action.checked) for (const k of action.keys) next.add(k);
+      else for (const k of action.keys) next.delete(k);
       return { ...state, checked: next };
     }
     case "applyToSeries": {

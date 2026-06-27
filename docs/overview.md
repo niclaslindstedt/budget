@@ -657,7 +657,15 @@ renders its label through the shared `EntryDescriptionContent`
 (`src/components/EntryDescriptionContent.tsx`), the same read-only
 description rendering the budget table's `DescriptionCell` uses, so a row
 named only by a company pill or type-name fallback reads the way it does
-in the ledger instead of collapsing to a bare "(no label)".
+in the ledger instead of collapsing to a bare "(no label)". Matches and
+orphan predictions render as bordered cards in a gapped list (the same
+visual language as the transfer-collapse modal) rather than flush
+bottom-bordered rows, each match card labelling its predicted-vs-bank
+lines. The "Probable matches" section header carries a "Check all" /
+"Uncheck all" toggle (shown only when there is more than one candidate)
+so a long match list doesn't have to be confirmed checkbox by checkbox;
+the label flips to "Uncheck all" once every candidate is selected, and
+the footer shows how many matches are currently selected.
 
 ### Transfer collapse modal
 
