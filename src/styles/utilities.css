@@ -256,6 +256,25 @@
   }
 }
 
+/* `is-ignored` — a row the user flagged "ignore for statistics". Tinted
+   a faint muted grey so it reads as "set aside / doesn't count toward
+   the spending charts" at a glance, distinct from the green
+   `is-finished` wash. Declared AFTER `is-finished` (same specificity,
+   both unlayered) so the muted tint wins on a row that is both finished
+   and ignored — the stronger signal is "this is excluded". Mirrors the
+   finished wash's two viewport variants, including dropping the tint on
+   a swiped mobile row so the revealed action strip reads cleanly. */
+@media (max-width: 720px), (max-height: 500px) {
+  .budget-table > tbody > tr.is-ignored:not(.is-swiped) > td:not(.action-cell) {
+    background: color-mix(in srgb, var(--muted) 22%, var(--surface));
+  }
+}
+@media (min-width: 720px) and (min-height: 501px) {
+  .budget-table > tbody > tr.is-ignored > td {
+    background: color-mix(in srgb, var(--muted) 20%, var(--surface));
+  }
+}
+
 /* `.border-0` is repeated unlayered so it wins over `.field-input`'s
    shorthand `border-width: var(--border-width)`. Without this, the
    transparent textareas that combine `field-input` (for the

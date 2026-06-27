@@ -3447,7 +3447,10 @@ representative of the household's own spending — e.g. paying for someone
 else who'll reimburse off-budget. Only `true` is ever persisted; the
 toggle wires through `useRowMutations.onToggleRowIgnored` →
 `toggleRowIgnored` (user rows) / `updateHistoryEntry` (history rows), and
-the flag surfaces in `BudgetEntryInfoModal`.
+the flag surfaces in `BudgetEntryInfoModal`. In the ledger the row carries
+an `is-ignored` class (`BudgetRow`) that washes it a faint muted grey
+(`src/styles/utilities.css`) so an ignored entry is recognisable at a
+glance — it wins over the green `is-finished` tint when a row is both.
 
 ### Triage orphans
 
