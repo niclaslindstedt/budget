@@ -164,6 +164,7 @@ export function AccountsModalHost(props: Props) {
       <AccountRenamePredictorModal
         open={renamePredictor !== null}
         suggestions={renamePredictor?.suggestions ?? []}
+        settings={effectiveSettings}
         onCancel={onCancelRenamePredictor}
         onCommit={onCommitRenamePredictor}
       />
