@@ -1325,6 +1325,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "duplicateSleuth",
+    tier: "pro",
+    glyph: Layers,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "cleanSplit",
     tier: "pro",
     glyph: Split,

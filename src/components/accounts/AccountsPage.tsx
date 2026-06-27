@@ -4,6 +4,7 @@ import {
   CalendarClock,
   Download,
   Landmark,
+  Layers,
   Pencil,
   Plus,
   Receipt,
@@ -15,10 +16,12 @@ import {
 import { unlock } from "../../data/achievements";
 import { computeAccountBalances } from "../../data/accounts/balance";
 import { historyDateRange } from "../../data/history";
+import type { Action } from "../../data/reducer";
 import type { Settings, Sheet, UserData } from "../../data/types";
 import { useActionsCompaction, useAmountColumns } from "../../hooks";
 import { useT } from "../../i18n";
 import { AccountRow } from "./AccountRow";
+import { AccountDuplicatesModal } from "./AccountDuplicatesModal";
 import { AccountTransfersModal } from "./AccountTransfersModal";
 import { ActionsCompactContext } from "../ActionsCompactContext";
 import { ActiveRowProvider } from "../ActiveRowProvider";
@@ -33,6 +36,11 @@ type Props = {
   sheet: Sheet;
   data: UserData;
   settings: Settings;
+  // Dispatches reducer actions for sheet-level flows that mutate the
+  // workspace directly (today: resolving cross-account duplicate
+  // imports). Per-account row flows still go through the dedicated
+  // callbacks below.
+  dispatch: (action: Action) => void;
   onCreateAccount: () => void;
   onEditAccount: (accountId: string) => void;
   // Opens the delete-account confirmation modal directly, without
@@ -60,6 +68,7 @@ export function AccountsPage({
   sheet,
   data,
   settings,
+  dispatch,
   onCreateAccount,
   onEditAccount,
   onDeleteAccount,
@@ -81,6 +90,10 @@ export function AccountsPage({
   // mirrors the budget page's "Viewing mode" modal so the accounts
   // table stays the headline content of the page.
   const [transfersOpen, setTransfersOpen] = useState(false);
+  // Cross-account duplicate finder, opened from the title menu. Like the
+  // transfer log it lives behind a sheet-local modal so the accounts
+  // table stays the headline content of the page.
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
   // Pre-compute every account's balance once per render. The batched
   // helper walks the sheet tree / transfer log / history once and
   // distributes amounts to each account's running total, replacing the
@@ -136,6 +149,12 @@ export function AccountsPage({
       icon: <ArrowLeftRight size={16} aria-hidden focusable={false} />,
       label: t("sheet.viewTransfers"),
       onClick: () => setTransfersOpen(true),
+    },
+    {
+      key: "duplicates",
+      icon: <Layers size={16} aria-hidden focusable={false} />,
+      label: t("sheet.findDuplicates"),
+      onClick: () => setDuplicatesOpen(true),
     },
     {
       key: "download",
@@ -353,6 +372,14 @@ export function AccountsPage({
         settings={settings}
         onCreateTransfer={onCreateTransfer}
         onEditTransfer={onEditTransfer}
+      />
+
+      <AccountDuplicatesModal
+        open={duplicatesOpen}
+        onClose={() => setDuplicatesOpen(false)}
+        data={data}
+        settings={settings}
+        dispatch={dispatch}
       />
     </ActiveRowProvider>
   );

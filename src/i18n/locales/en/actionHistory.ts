@@ -79,6 +79,7 @@ const actionHistory = {
     deleteAccount: "Deleted account",
     cutAccountHistory: "Trimmed account history",
     correctAccountBalance: "Corrected account balance",
+    resolveDuplicateImports: "Resolved duplicate imports",
     createSaving: "Created savings account",
     updateSaving: "Edited savings account",
     deleteSaving: "Deleted savings account",

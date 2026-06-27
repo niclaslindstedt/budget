@@ -303,6 +303,18 @@ export type Action =
       cutoffDate: string;
     }
   | {
+      // Resolve cross-account duplicate imports (the "Find duplicates"
+      // flow): delete the listed bank-history entries from their
+      // accounts because the same transaction was imported into more
+      // than one account and the user picked a different account as the
+      // owner. Each removal names the account and the entry id to drop;
+      // the owner's copy is simply absent from the list. Touched
+      // accounts have their `openingBalance` re-derived in case the
+      // earliest entry was among those removed.
+      type: "resolveDuplicateImports";
+      removals: ReadonlyArray<{ accountId: string; entryId: string }>;
+    }
+  | {
       // Append a balance-correction row to the first AccountBudget that
       // tracks `accountId`. The amount carries the signed delta needed
       // to bring the account's running total to the user-asserted

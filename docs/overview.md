@@ -404,10 +404,12 @@ from the source row (`resolveEntryLabels`; seed shape in
 
 ### Find conflicts modal
 
-`BudgetFindConflictsModal.tsx` — opened from the title "…" menu
-("duplicate finder" / "duplicates modal"). Folds same-day,
-same-category, near-equal pairs into one row. Detector:
-`src/data/budget/conflicts.ts`.
+`BudgetFindConflictsModal.tsx` — opened from the budget sheet's title
+"…" menu. Folds same-day, same-category, near-equal pairs **within one
+account** (a bank-history row against a parallel user-authored row) into
+one row. Detector: `src/data/budget/conflicts.ts`. Not to be confused
+with the accounts-page **Find duplicates modal**, which spans different
+accounts and is bank-history-only.
 
 ### Visualize spending
 
@@ -648,6 +650,35 @@ the `collapsedIntoTransferId` backref on) its partner bank entry on the
 other account — the same restoration `deleteTransfer` does — so the leg
 reappears and can re-pair on a later import instead of being stranded
 hidden.
+
+### Find duplicates modal
+
+`AccountDuplicatesModal.tsx` — opened from the accounts sheet's title
+"…" menu ("duplicate finder" / "duplicates" / "cross-account
+duplicates"). Finds the same bank transaction imported into **two or
+more different accounts** — the wrong-statement-into-the-wrong-account
+case — by grouping history entries that share a date, a normalised bank
+description, and a signed amount. Detector:
+`src/data/accounts/duplicates.ts` (`findDuplicateImports`), pure and
+bank-history-only. Distinct from the budget-page **Find conflicts
+modal**, which is within one account and can pair a user-authored row.
+
+Per group the user picks which account **owns** the transaction; the
+matching copies in every other account are deleted (the owner keeps
+its). The finder suggests the most likely owner via balance continuity
+(`suggestOwner` / `entryFits`): a copy that lands on a running balance no
+other transaction in that account explains — an unexplained "balance
+jump" — is flagged as the likely mis-import, and the copy whose balance
+reconciles is suggested as owner; ties fall back to the denser
+same-day statement, then the fuller history. Each copy shows a
+`balance fits` / `balance gap` / `no balance` badge so the suspicious
+balance is visible. **Accept all suggestions** resolves every group at
+once. A per-group **Keep all** option marks a false positive (kept for
+the session). Resolution dispatches `resolveDuplicateImports`, which
+deletes the listed entries and re-derives each touched account's
+`openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded
+from candidacy so collapsing a transfer is never mistaken for a
+duplicate.
 
 ### Reconciliation modal
 

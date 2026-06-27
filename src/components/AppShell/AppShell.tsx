@@ -1078,6 +1078,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     sheet={activeSheet}
                     data={data}
                     settings={effectiveSettings}
+                    dispatch={dispatch}
                     onCreateAccount={onOpenCreateAccount}
                     onEditAccount={onOpenEditAccount}
                     onDeleteAccount={onRequestDeleteAccount}

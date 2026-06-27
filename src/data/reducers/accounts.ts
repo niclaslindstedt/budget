@@ -146,6 +146,57 @@ export function reduceAccounts(
       transfers,
     };
   }
+  if (action.type === "resolveDuplicateImports") {
+    if (action.removals.length === 0) return state;
+    // Bucket the entry ids to drop per account so each account's history
+    // is rewritten in a single pass.
+    const removalsByAccount = new Map<string, Set<string>>();
+    for (const { accountId, entryId } of action.removals) {
+      let set = removalsByAccount.get(accountId);
+      if (!set) {
+        set = new Set<string>();
+        removalsByAccount.set(accountId, set);
+      }
+      set.add(entryId);
+    }
+    let historyTouched = false;
+    const touchedAccounts = new Set<string>();
+    const nextHistory: Record<string, HistoryEntry[]> = {};
+    for (const [id, entries] of Object.entries(state.history)) {
+      const toDrop = removalsByAccount.get(id);
+      if (!toDrop || toDrop.size === 0) {
+        nextHistory[id] = entries;
+        continue;
+      }
+      const kept = entries.filter((e) => !toDrop.has(e.id));
+      if (kept.length === entries.length) {
+        nextHistory[id] = entries;
+        continue;
+      }
+      historyTouched = true;
+      touchedAccounts.add(id);
+      nextHistory[id] = kept;
+    }
+    if (!historyTouched) return state;
+    // Re-derive the opening balance of each touched account: deleting a
+    // mis-import that happened to be the earliest entry would otherwise
+    // leave `openingBalance` anchored to a transaction that no longer
+    // exists. Accounts whose earliest entry was untouched recompute to
+    // the same value, so this is safe to run unconditionally.
+    const accounts = state.accounts.map((a) => {
+      if (!touchedAccounts.has(a.id)) return a;
+      const opening = computeOpeningBalanceFromHistory(nextHistory[a.id] ?? []);
+      if (opening === null) {
+        if (a.openingBalance === undefined) return a;
+        const next = { ...a };
+        delete next.openingBalance;
+        return next;
+      }
+      if (a.openingBalance === opening) return a;
+      return { ...a, openingBalance: opening };
+    });
+    return { ...state, history: nextHistory, accounts };
+  }
   if (action.type === "importBankHistory") {
     const existing = state.history[action.accountId] ?? [];
     const mergeResult = mergeHistory(existing, action.entries, action.now);

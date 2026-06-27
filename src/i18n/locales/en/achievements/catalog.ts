@@ -465,6 +465,10 @@ const catalog = {
     learnMore:
       "Sheet title ⋯ menu → Find conflicts. Scans the active budget for same-day, same-category, near-equal pairs and folds them into one row — the bank record wins when there is one, otherwise the row with the richer label keeps its place.",
   },
+  duplicateSleuth: {
+    name: "Duplicate Sleuth",
+    condition: "Resolve a duplicate import from the Find duplicates modal.",
+  },
   cleanSplit: {
     name: "Clean Split",
     condition: "Split a bank-history entry across multiple types.",

@@ -13,6 +13,7 @@ const sheet: SheetCatalog = {
   viewTransfers: "Överföringar",
   metadataMode: "Metadataläge",
   findConflicts: "Hitta dubbletter",
+  findDuplicates: "Hitta dubblettimporter",
   moreActions: "Bladåtgärder",
   moreActionsAria: "Bladåtgärder för {name}",
 };

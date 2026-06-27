@@ -270,6 +270,8 @@ export function describeActionSubject(
     case "cutAccountHistory":
     case "correctAccountBalance":
       return name(byId(next.accounts, action.accountId)?.name);
+    case "resolveDuplicateImports":
+      return count(action.removals.length);
 
     // Savings — single-target actions name the savings account. Edits /
     // balance points read off `next` (the account still exists); the delete
