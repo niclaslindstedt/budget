@@ -1,0 +1,54 @@
+name: Mirror
+
+# Push main to an external git mirror on every commit to main, so the
+# sibling projects (checklist / notes) can `git clone` this repo with
+# full history — even from sandboxes where github.com egress is blocked
+# (403). Provider-agnostic: GitLab, Codeberg / Gitea, Bitbucket,
+# self-hosted.
+#
+# Setup (the job is a no-op until configured):
+#   - variable MIRROR_URL    e.g. `gitlab.com/<ns>/budget.git`
+#   - secret   MIRROR_TOKEN  a push token / PAT with write access
+#   - variable MIRROR_USER   (optional) basic-auth username paired with
+#                            the token; defaults to `oauth2` (GitLab). Use
+#                            `x-token-auth` for Bitbucket, your username
+#                            for Gitea / Codeberg.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never let two mirror pushes race; let an in-flight one finish.
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    # Inert (skipped) until the mirror is configured.
+    if: vars.MIRROR_URL != ''
+    steps:
+      # fetch-depth: 0 so the mirror gets full history and stays cloneable
+      # with history, not just the latest commit.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Push main to the mirror
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+          MIRROR_URL: ${{ vars.MIRROR_URL }}
+          MIRROR_USER: ${{ vars.MIRROR_USER }}
+        run: |
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_URL is set but the MIRROR_TOKEN secret is missing."
+            exit 1
+          fi
+          git push --force \
+            "https://${MIRROR_USER:-oauth2}:${MIRROR_TOKEN}@${MIRROR_URL}" \
+            HEAD:refs/heads/main
