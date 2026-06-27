@@ -315,6 +315,7 @@ function BudgetRowImpl({
   const rowClass = [
     swiped && !selectMode ? "is-swiped" : "",
     isFinished ? "is-finished" : "",
+    row.ignored ? "is-ignored" : "",
     isSeries ? "is-series" : "",
     selectMode ? "is-selecting-row" : "",
     selected ? "is-selected" : "",
