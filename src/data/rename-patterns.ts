@@ -39,6 +39,13 @@ export type RenamePatternStore = Record<
 // `applyImportRenames` to land on the entry's `userDescription`.
 export type RenameSuggestion = {
   entryId: string;
+  // The freshly-imported entry's date and signed amount, carried so the
+  // modal can show the user which transaction each suggestion targets.
+  // The rename memory itself ignores both (it keys only on the
+  // normalised description), so surfacing them is the only way to catch
+  // a wrong match on a merchant that bills varying amounts.
+  date: string;
+  amount: number;
   originalDescription: string;
   suggestedDescription: string;
   // Company learned alongside the description. `undefined` when the
@@ -181,6 +188,8 @@ export function predictRenames(
     }
     out.push({
       entryId: entry.id,
+      date: entry.date,
+      amount: entry.amount,
       originalDescription: entry.description,
       suggestedDescription: pattern.suggestedDescription,
       suggestedCompanyId: pattern.suggestedCompanyId,

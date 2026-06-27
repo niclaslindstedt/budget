@@ -2,8 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { useRefIdentity } from "../../hooks";
-import { useT } from "../../i18n";
+import { useLang, useT } from "../../i18n";
 import type { RenameSuggestion } from "../../data/rename-patterns";
+import type { Settings } from "../../data/types";
+import { formatAmount, formatDate } from "../../utils/format";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 
@@ -41,6 +43,9 @@ export type RenameDecision = {
 type Props = {
   open: boolean;
   suggestions: readonly RenameSuggestion[];
+  // Drives date + amount rendering so the user can verify each
+  // suggestion against the actual bank transaction it targets.
+  settings: Settings;
   // The user closed the dialog without committing (Cancel button, X,
   // Escape, click-outside). Caller drops the staged import unread —
   // matches `AccountReconciliationModal.onCancel`.
@@ -54,10 +59,12 @@ type Props = {
 export function AccountRenamePredictorModal({
   open,
   suggestions,
+  settings,
   onCancel,
   onCommit,
 }: Props) {
   const t = useT();
+  const lang = useLang();
 
   // Local state per suggestion. Checked + edited text are mirrored so
   // the user can toggle a row off, leave its draft text alone, and
@@ -190,6 +197,20 @@ export function AccountRenamePredictorModal({
                       </span>
                       <span className="font-mono text-sm break-words text-fg">
                         {s.originalDescription || "—"}
+                      </span>
+                      <span className="flex items-center gap-2 font-mono text-xs">
+                        <span className="text-meta">
+                          {formatDate(s.date, settings.dateFormat, lang)}
+                        </span>
+                        <span
+                          className={
+                            s.amount < 0 ? "text-negative" : "text-positive"
+                          }
+                        >
+                          {formatAmount(s.amount, settings, {
+                            neverAbbreviate: true,
+                          })}
+                        </span>
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5">

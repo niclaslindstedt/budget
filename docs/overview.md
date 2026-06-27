@@ -724,6 +724,9 @@ opening the info modal.
 
 `AccountRenamePredictorModal.tsx` — the last step of every import that
 has learned renames; each row carries an accept toggle + editable text,
+the freshly-imported entry's date and signed amount (so the user can
+verify the suggestion against the actual transaction — the rename
+memory keys only on the normalised description and ignores the amount),
 with Cancel / Skip / Apply renames in the footer.
 
 ## Items page

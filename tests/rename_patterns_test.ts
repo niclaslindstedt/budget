@@ -157,13 +157,22 @@ describe("predictRenames", () => {
     let patterns: RenamePatternStore = {};
     patterns = recordRename(patterns, "a", "ICA MAXI", "ICA", null, 100);
     const out = predictRenames(patterns, "a", [
-      entry({ id: "e-1", description: "ICA MAXI 19/05/2026" }),
+      entry({
+        id: "e-1",
+        description: "ICA MAXI 19/05/2026",
+        date: "2026-05-19",
+        amount: -349.5,
+      }),
       entry({ id: "e-2", description: "PRESSBYRÅN T-CEN" }),
     ]);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
       entryId: "e-1",
       suggestedDescription: "ICA",
+      // The entry's date + amount ride along so the modal can show the
+      // user which transaction the suggestion targets.
+      date: "2026-05-19",
+      amount: -349.5,
     });
   });
 
