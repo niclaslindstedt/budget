@@ -7,6 +7,8 @@ const reconciliation = {
   probableMatches: "Probable matches",
   predictionsThatDidntPost: "Predictions that didn't post",
   skipAll: "Skip all",
+  checkAll: "Check all",
+  uncheckAll: "Uncheck all",
   applyToSeries: "Apply to whole series",
   seriesRuleQueued: "Series rule queued",
   keep: "Keep",

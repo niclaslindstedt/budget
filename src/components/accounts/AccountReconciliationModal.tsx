@@ -238,6 +238,18 @@ export function AccountReconciliationModal({
     [candidates, seriesExpansions],
   );
 
+  // Keys of every renderable candidate, so the "Check all" toggle can
+  // flip the whole probable-matches list in one dispatch. A candidate
+  // whose row / entry lookup is missing never renders, but adding its
+  // key is harmless — `handleApply` skips it when the lookup is absent.
+  const allCandidateKeys = useMemo(
+    () => allCandidates.map(candidateKey),
+    [allCandidates],
+  );
+  const allCandidatesChecked =
+    allCandidateKeys.length > 0 &&
+    allCandidateKeys.every((key) => checked.has(key));
+
   function applyToSeries(candidate: MatchCandidate) {
     if (!candidate.seriesId) return;
     if (seriesRulesById.has(candidate.seriesId)) return;
@@ -653,9 +665,28 @@ export function AccountReconciliationModal({
         )}
         {candidateRows.length > 0 && (
           <section>
-            <h3 className="border-b border-line bg-surface-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              {t("reconciliation.probableMatches")}
-            </h3>
+            <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2">
+              <h3 className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                {t("reconciliation.probableMatches")}
+              </h3>
+              {allCandidates.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatch({
+                      kind: "setAllCandidates",
+                      keys: allCandidateKeys,
+                      checked: !allCandidatesChecked,
+                    })
+                  }
+                  className="cursor-pointer rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
+                >
+                  {allCandidatesChecked
+                    ? t("reconciliation.uncheckAll")
+                    : t("reconciliation.checkAll")}
+                </button>
+              )}
+            </div>
             <ul>{candidateRows}</ul>
           </section>
         )}
