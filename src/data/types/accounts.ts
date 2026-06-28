@@ -103,6 +103,18 @@ export type HistoryEntry = {
   amount: number;
   balance?: number;
   importedAt: number;
+  // The id of the `HistoryImport` (in `UserData.historyImports[accountId]`)
+  // that first brought this entry in — every entry added in one import
+  // shares it. Lets the cross-account duplicate finder offer "remove the
+  // rest of that import": when a statement is imported into the wrong
+  // account, every row from that session is a mis-import, not just the one
+  // that happened to collide with the real owner's copy. Absent on entries
+  // imported before this field existed (and on hand-built test fixtures);
+  // the session-removal affordance simply falls back to the single matched
+  // entry for those. Fill-once at import — never rewritten by a later
+  // re-import, which dedups against the existing entry and keeps its
+  // original `importId`.
+  importId?: string;
   hidden?: boolean;
   // Optional fiscal-month override for this entry. Mirrors
   // `Row.fiscalMonthShift` — auto-set by the primary-income matcher

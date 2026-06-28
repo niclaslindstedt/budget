@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   duplicateRemovals,
+  duplicateSessionRemovals,
+  duplicateSessions,
   findDuplicateImports,
   historyContext,
   ignoreRulesForGroup,
@@ -306,6 +308,110 @@ describe("findDuplicateImports", () => {
     );
     expect(groups[0].accounts.every((x) => x.fits === null)).toBe(true);
   });
+
+  it("counts an auto-collapsed transfer leg as a valid predecessor", () => {
+    // The genuine owner's predecessor is an internal transfer that the
+    // auto-collapse flow hid (`hidden`, `collapsedIntoTransferId` set). Its
+    // balance is still on the running-balance chain, so the copy that lands
+    // on it must read as fitting — and the other account, where no entry
+    // hands off to that balance, as the stray. Before the continuity set
+    // spanned collapsed legs, the owner's predecessor was invisible and the
+    // real owner was wrongly flagged.
+    const groups = findDuplicateImports(
+      data([account("owner"), account("stray")], {
+        owner: [
+          entry({
+            id: "o_xfer",
+            amount: 9000,
+            balance: 10407,
+            date: "2026-06-18",
+            description: "Internal transfer",
+            hidden: true,
+            collapsedIntoTransferId: "t1",
+          }),
+          entry({
+            id: "o_dup",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "Newspaper",
+          }),
+        ],
+        stray: [
+          entry({
+            id: "s_prev",
+            amount: -67,
+            balance: 10903,
+            date: "2026-06-17",
+            description: "Pharmacy",
+          }),
+          entry({
+            id: "s_dup",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "Newspaper",
+          }),
+        ],
+      }),
+    );
+    expect(groups).toHaveLength(1);
+    const group = groups[0];
+    expect(group.accounts.find((x) => x.accountId === "owner")?.fits).toBe(
+      true,
+    );
+    expect(group.accounts.find((x) => x.accountId === "stray")?.fits).toBe(
+      false,
+    );
+    expect(group.suggestedOwnerId).toBe("owner");
+  });
+});
+
+describe("import-session expansion", () => {
+  const history = {
+    owner: [entry({ id: "o1" })],
+    stray: [
+      entry({ id: "s1", importId: "imp" }),
+      entry({ id: "s2", importId: "imp", description: "Rent", amount: -7000 }),
+      entry({
+        id: "s3",
+        importId: "other",
+        description: "Salary",
+        amount: 25000,
+      }),
+    ],
+  };
+  const [group] = findDuplicateImports(
+    data([account("owner"), account("stray")], history),
+  );
+
+  it("reports the surplus entries a session would sweep out", () => {
+    expect(duplicateSessions(group, "owner", history)).toEqual([
+      { accountId: "stray", importId: "imp", total: 2, matched: 1 },
+    ]);
+  });
+
+  it("removes every entry sharing the mis-import's session", () => {
+    const removals = duplicateSessionRemovals(group, "owner", history);
+    expect(removals.map((r) => `${r.accountId}:${r.entryId}`).sort()).toEqual([
+      "stray:s1",
+      "stray:s2",
+    ]);
+  });
+
+  it("falls back to the matched copy when it carries no session backref", () => {
+    const noBackref = {
+      owner: [entry({ id: "o1" })],
+      stray: [entry({ id: "s1" })],
+    };
+    const [g] = findDuplicateImports(
+      data([account("owner"), account("stray")], noBackref),
+    );
+    expect(duplicateSessions(g, "owner", noBackref)).toEqual([]);
+    expect(duplicateSessionRemovals(g, "owner", noBackref)).toEqual([
+      { accountId: "stray", entryId: "s1" },
+    ]);
+  });
 });
 
 describe("duplicateRemovals", () => {
@@ -402,6 +508,31 @@ describe("ignoreDuplicates reducer", () => {
   });
 });
 
+describe("importBankHistory import session", () => {
+  it("stamps each new entry with the created HistoryImport's id", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      accounts: [account("acc")],
+    };
+    const next = reducer(prev, {
+      type: "importBankHistory",
+      accountId: "acc",
+      bankParserId: "test",
+      filename: "statement.csv",
+      entries: [
+        { date: "2026-05-01", description: "Shop", amount: -100, balance: 900 },
+        { date: "2026-05-02", description: "Café", amount: -40, balance: 860 },
+      ],
+      now: 1,
+    });
+    const record = next.historyImports.acc?.[0];
+    expect(record?.id).toBeTruthy();
+    const entries = next.history.acc;
+    expect(entries).toHaveLength(2);
+    expect(entries.every((e) => e.importId === record!.id)).toBe(true);
+  });
+});
+
 describe("resolveDuplicateImports reducer", () => {
   it("deletes the listed entries and re-anchors the opening balance", () => {
     const prev: UserData = {
@@ -424,6 +555,56 @@ describe("resolveDuplicateImports reducer", () => {
     // b's earliest remaining entry is b0 (2000, after a -300 charge), so
     // the opening balance re-derives to 2300.
     expect(next.accounts.find((x) => x.id === "b")?.openingBalance).toBe(2300);
+  });
+
+  it("restores a stranded transfer partner when a removed entry was collapsed", () => {
+    // Session removal can drag out an entry the auto-collapse flow later
+    // merged into a Transfer. Dropping it must also drop the transfer and
+    // un-hide its partner leg on the other account — otherwise the partner
+    // is stranded `hidden` with a dangling backref. Mirrors cutAccountHistory.
+    const prev: UserData = {
+      ...freshUserData(),
+      accounts: [account("a"), account("b")],
+      transfers: [
+        {
+          id: "t1",
+          date: "2026-04-15",
+          description: "Transfer",
+          amount: 500,
+          fromAccountId: "a",
+          toAccountId: "b",
+        },
+      ],
+      history: {
+        a: [
+          entry({
+            id: "a_leg",
+            amount: -500,
+            date: "2026-04-15",
+            hidden: true,
+            collapsedIntoTransferId: "t1",
+          }),
+        ],
+        b: [
+          entry({
+            id: "b_leg",
+            amount: 500,
+            date: "2026-04-15",
+            hidden: true,
+            collapsedIntoTransferId: "t1",
+          }),
+        ],
+      },
+    };
+    const next = reducer(prev, {
+      type: "resolveDuplicateImports",
+      removals: [{ accountId: "a", entryId: "a_leg" }],
+    });
+    expect(next.history.a).toEqual([]);
+    expect(next.transfers).toEqual([]);
+    const bLeg = next.history.b.find((e) => e.id === "b_leg");
+    expect(bLeg?.hidden).toBeUndefined();
+    expect(bLeg?.collapsedIntoTransferId).toBeUndefined();
   });
 
   it("is a no-op for an empty removal list", () => {

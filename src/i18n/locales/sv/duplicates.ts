@@ -24,6 +24,10 @@ const duplicates: DuplicatesCatalog = {
   contextNone: "Ingen omgivande historik på detta konto.",
   contextThisEntry: "denna transaktion",
   balanceError: "Detta saldo stämmer inte med kontots löpande saldo",
+  removeSessionOne:
+    "Ta även bort den andra {n} posten från samma import (hela kontoutdraget hamnade på fel konto)",
+  removeSessionOther:
+    "Ta även bort de andra {n} posterna från samma import (hela kontoutdraget hamnade på fel konto)",
 };
 
 export default duplicates;

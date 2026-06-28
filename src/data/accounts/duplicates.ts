@@ -123,10 +123,10 @@ export type DuplicateGroup = {
 };
 
 type AccountIndex = {
-  // Every post-transaction balance (öre) the account records. An entry
-  // "fits" here when its pre-balance (`balance - amount`) is itself a
-  // balance in this set — i.e. some entry in the same account is its
-  // immediate statement predecessor, with the running total flowing
+  // Every post-transaction balance (öre) on the account's running-balance
+  // chain. An entry "fits" here when its pre-balance (`balance - amount`)
+  // is itself a balance in this set — i.e. some entry in the same account
+  // is its immediate statement predecessor, with the running total flowing
   // cleanly into it (`predecessor.balance + entry.amount == entry.balance`).
   // A transaction mis-imported into the wrong account lands on a
   // pre-balance no entry there ever held, so it doesn't fit and is flagged
@@ -134,6 +134,14 @@ type AccountIndex = {
   // the whole chain: a real statement's balances are continuous, so the
   // one-step check is both sufficient and robust to whatever order the
   // entries were imported in.
+  //
+  // The set spans the WHOLE chain — every entry the bank posted, including
+  // auto-collapsed transfer legs, hidden rows, and zero-amount notices —
+  // because they all move (or hold) the running balance. The genuine
+  // owner's predecessor is frequently exactly one of those (a salary
+  // deposit or internal transfer that got auto-collapsed into a
+  // `Transfer`); leaving them out broke continuity and made the real
+  // owner's copy read as a stray, flagging the wrong account.
   balances: Set<number>;
   // Total non-collapsed entries — a weak tie-breaker for the owner
   // suggestion (a fuller statement is marginally more likely the home).
@@ -156,12 +164,17 @@ function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
   const balances = new Set<number>();
   let total = 0;
   for (const entry of entries) {
-    if (!isCandidate(entry)) continue;
-    total += 1;
-    byDate.set(entry.date, (byDate.get(entry.date) ?? 0) + 1);
+    // Continuity set: every entry on the running-balance chain, collapsed
+    // transfer legs and hidden rows included (see `AccountIndex.balances`).
     if (typeof entry.balance === "number" && Number.isFinite(entry.balance)) {
       balances.add(cents(entry.balance));
     }
+    // Density tie-breakers count only real, non-collapsed statement
+    // activity — a collapsed transfer leg or zero-amount notice is part of
+    // the balance chain but isn't evidence of which account owns the day.
+    if (!isCandidate(entry)) continue;
+    total += 1;
+    byDate.set(entry.date, (byDate.get(entry.date) ?? 0) + 1);
   }
   return { balances, total, byDate };
 }
@@ -341,6 +354,99 @@ export function duplicateRemovals(
   for (const acc of group.accounts) {
     if (acc.accountId === ownerAccountId) continue;
     for (const entry of acc.entries) {
+      out.push({ accountId: acc.accountId, entryId: entry.id });
+    }
+  }
+  return out;
+}
+
+// One non-owner account's import session that a duplicate resolution can
+// expand into: the session id, how many of its entries are the group's
+// own matched copies, and how many MORE entries that session left in the
+// account. Surfaced so the modal can offer "remove the rest of that
+// import (N more)" — when a statement is imported into the wrong account,
+// every row from that session is a mis-import, not just the colliding one.
+export type DuplicateSession = {
+  accountId: string;
+  importId: string;
+  // Entries this account holds carrying `importId` (the whole session).
+  total: number;
+  // How many of those are the group's matched copies (always >= 1).
+  matched: number;
+};
+
+// The import sessions a resolution would expand into when `ownerAccountId`
+// is kept: for every OTHER account in the group whose matched copies carry
+// an `importId`, the session(s) those copies belong to — but only when the
+// session left MORE entries in the account than the group itself matched
+// (`total > matched`), since that surplus is what "remove the rest of that
+// import" actually removes. Returns an empty list when nothing expands
+// (no `importId` on the copies, or the matched copies are the whole
+// session), so the modal can hide the affordance.
+export function duplicateSessions(
+  group: DuplicateGroup,
+  ownerAccountId: string,
+  history: Record<string, readonly HistoryEntry[]>,
+): DuplicateSession[] {
+  const out: DuplicateSession[] = [];
+  for (const acc of group.accounts) {
+    if (acc.accountId === ownerAccountId) continue;
+    // Count this account's matched copies per import session.
+    const matchedBySession = new Map<string, number>();
+    for (const entry of acc.entries) {
+      if (entry.importId === undefined) continue;
+      matchedBySession.set(
+        entry.importId,
+        (matchedBySession.get(entry.importId) ?? 0) + 1,
+      );
+    }
+    if (matchedBySession.size === 0) continue;
+    const entries = history[acc.accountId] ?? [];
+    for (const [importId, matched] of matchedBySession) {
+      let total = 0;
+      for (const e of entries) if (e.importId === importId) total += 1;
+      if (total > matched) {
+        out.push({ accountId: acc.accountId, importId, total, matched });
+      }
+    }
+  }
+  return out;
+}
+
+// Like `duplicateRemovals`, but every removed copy drags the rest of its
+// import session with it: for each non-owner account, instead of dropping
+// only the matched entries, drop every entry that shares their `importId`.
+// This is the "the whole statement went into the wrong account" path — one
+// mis-import means the entire session is wrong. Matched copies that carry
+// no `importId` (pre-`importId` imports, hand-built fixtures) fall back to
+// removing just themselves, so the result is never narrower than
+// `duplicateRemovals`. Owner copies are always kept.
+export function duplicateSessionRemovals(
+  group: DuplicateGroup,
+  ownerAccountId: string,
+  history: Record<string, readonly HistoryEntry[]>,
+): { accountId: string; entryId: string }[] {
+  if (!group.accounts.some((a) => a.accountId === ownerAccountId)) return [];
+  const out: { accountId: string; entryId: string }[] = [];
+  for (const acc of group.accounts) {
+    if (acc.accountId === ownerAccountId) continue;
+    const sessionIds = new Set<string>();
+    const seen = new Set<string>();
+    for (const entry of acc.entries) {
+      if (entry.importId !== undefined) {
+        sessionIds.add(entry.importId);
+      } else if (!seen.has(entry.id)) {
+        // No session backref — fall back to the lone matched copy.
+        seen.add(entry.id);
+        out.push({ accountId: acc.accountId, entryId: entry.id });
+      }
+    }
+    if (sessionIds.size === 0) continue;
+    for (const entry of history[acc.accountId] ?? []) {
+      if (entry.importId === undefined || !sessionIds.has(entry.importId))
+        continue;
+      if (seen.has(entry.id)) continue;
+      seen.add(entry.id);
       out.push({ accountId: acc.accountId, entryId: entry.id });
     }
   }
