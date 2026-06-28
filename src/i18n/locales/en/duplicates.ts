@@ -6,7 +6,7 @@ import type { Widen } from "./_widen";
 const duplicates = {
   title: "Find duplicates",
   intro:
-    "Transactions imported into more than one account with the same date, bank description, amount, and running balance — the fingerprint of a statement imported into the wrong account. Pick which account each one belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history and check the balances line up.",
+    "Pick which account each transaction belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history — a balance flagged in red doesn't sit on that account's running total.",
   empty: "No duplicate imports found.",
   emptyHint: "Every imported transaction lives in just one account.",
   countOne: "{n} duplicate",
@@ -26,6 +26,7 @@ const duplicates = {
   hideContextAria: "Hide the surrounding bank history",
   contextNone: "No surrounding history on this account.",
   contextThisEntry: "this transaction",
+  balanceError: "This balance doesn't sit on the account's running total",
 } as const;
 
 export type DuplicatesCatalog = Widen<typeof duplicates>;

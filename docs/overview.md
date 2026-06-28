@@ -689,9 +689,12 @@ copy never matches one carrying a balance. Every cross-account duplicate
 is listed regardless of amount — there is no minimum-amount floor.
 Tapping a group header expands an inline **context panel**
 (`historyContext`) showing, per account, the bank rows immediately before
-and after the matched transaction with their balances, so the user can
-eyeball whether the running balance flows cleanly through the matched row
-(it belongs) or jumps over it (a foreign mis-import). **Accept all**
+and after the matched transaction with their balances (newest first, like
+the history viewer), so the user can eyeball whether the running balance
+flows cleanly through the matched row (it belongs) or jumps over it (a
+foreign mis-import). On the account whose copy the finder judged off-chain
+(`fits === false`), the matched row's balance renders as a red warning
+pill — the figure that doesn't reconcile. **Accept all**
 resolves every group at once. A per-group **Keep all** option marks a
 false positive (kept for the session); a per-group **Ignore** button
 (`ignoreDuplicates`, fed by `ignoreRulesForGroup`) records a persistent
