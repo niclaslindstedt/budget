@@ -667,15 +667,21 @@ Per group the user picks which account **owns** the transaction; the
 matching copies in every other account are deleted (the owner keeps
 its). The finder suggests the most likely owner via balance continuity
 (`suggestOwner` / `entryFits` / `buildReachableBalances`): each account's
-running-balance chain is reconstructed by walking forward from its
-opening balance (bank statements are logically ordered — every balance
-is the previous balance plus the entry's signed amount), and a copy is
-flagged as the likely mis-import when its balance is **not** reachable on
-that chain. A whole statement mis-imported into the wrong account is
-internally self-consistent (its entries chain to each other) but never
-connects to the host's opening balance, so it stays off the reachable
-set — which is what distinguishes the genuine copy from the stray one;
-ties fall back to the denser same-day statement, then the fuller
+running-balance chain is reconstructed by walking forward (bank
+statements are logically ordered — every balance is the previous balance
+plus the entry's signed amount), and a copy is flagged as the likely
+mis-import when its balance is **not** reachable on that chain. The walk
+is seeded from the opening balance **and from every native (not
+cross-account-duplicated) entry**, so it re-anchors across the gaps real
+imported history always has — without that, a single opening-only walk
+stalls at the first un-imported stretch and every later genuine entry
+looks unreachable (the bug that flagged a correctly-placed charge as a
+duplicate). A whole statement mis-imported into the wrong account is
+internally self-consistent (its entries chain to each other) but every
+one of its rows is a cross-account duplicate, so none of them seed the
+walk and nothing native chains into them — it stays off the reachable
+set, which is what distinguishes the genuine copy from the stray one.
+Ties fall back to the denser same-day statement, then the fuller
 history. The verdict isn't surfaced as a per-account badge — the
 suggested copy is simply pre-selected. A transaction is only grouped when
 date, normalised description, signed amount, AND running balance all
