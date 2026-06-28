@@ -182,17 +182,22 @@ describe("findDuplicateImports", () => {
   });
 
   it("does not treat a self-consistent mis-imported block as fitting", () => {
-    // The mis-import is a whole foreign statement fragment, so its
-    // entries chain to EACH OTHER perfectly (5000 → 3800). A naive
-    // "is this pre-balance present anywhere?" test reconciles that block
-    // against itself and reports it fits. The real chain must be walked
-    // forward from the account's own opening balance: "b"'s native chain
-    // (2300 → 2000 → 1300) never reaches the foreign block, so the stray
-    // copy is correctly flagged as not fitting and "a" is suggested.
+    // A whole statement (Vattenfall 5000 → ICA 3800) was mis-imported
+    // into "b". Both rows are cross-account duplicates, so neither seeds
+    // "b"'s reachability walk and "b"'s native chain (2300 → 2000 → 1300)
+    // never bridges into the foreign block — both copies are flagged off
+    // "b". In "a" the block IS the genuine statement and connects to the
+    // opening (5800 → 5000 → 3800), so it fits and "a" is suggested.
     const groups = findDuplicateImports(
       data([account("a"), account("b")], {
         a: [
-          entry({ id: "a0", amount: -800, balance: 5000, date: "2026-04-10" }),
+          entry({
+            id: "a0",
+            amount: -800,
+            balance: 5000,
+            date: "2026-04-10",
+            description: "Vattenfall",
+          }),
           entry({ id: "a1", amount: -1200, balance: 3800, date: "2026-04-15" }),
         ],
         b: [
@@ -226,11 +231,82 @@ describe("findDuplicateImports", () => {
         ],
       }),
     );
+    // Two duplicate groups (Vattenfall + ICA); both resolve to "a".
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      expect(group.accounts.find((x) => x.accountId === "a")?.fits).toBe(true);
+      expect(group.accounts.find((x) => x.accountId === "b")?.fits).toBe(false);
+      expect(group.suggestedOwnerId).toBe("a");
+    }
+  });
+
+  it("reaches a genuine entry that sits after a gap in the history", () => {
+    // The regression behind the false "both wrong" flag: a real account's
+    // imported history has gaps (un-imported months), so a single forward
+    // walk from the opening balance stalls early and leaves every later
+    // entry looking unreachable. Here "utgift" opens at 1500 but the next
+    // known rows jump to ~10000 (a gap). The Dagens Nyheter charge (-410 →
+    // 9997) genuinely follows the salary deposit (9000 → 10407): seeding
+    // the walk from that NATIVE deposit bridges the gap, so the charge
+    // fits "utgift". The same charge mis-imported into "lon" (9997 sits on
+    // nothing there) does not fit, so "utgift" is correctly suggested.
+    const groups = findDuplicateImports(
+      data([account("utgift"), account("lon")], {
+        utgift: [
+          entry({
+            id: "u_open",
+            amount: -500,
+            balance: 1000,
+            date: "2026-01-05",
+            description: "Startköp",
+          }),
+          entry({
+            id: "u_dep",
+            amount: 9000,
+            balance: 10407,
+            date: "2026-06-18",
+            description: "Överf N Lindstedt",
+          }),
+          entry({
+            id: "u_dn",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "AB Dagens Nyheter",
+          }),
+        ],
+        lon: [
+          entry({
+            id: "l_apotea",
+            amount: -67,
+            balance: 10903,
+            date: "2026-06-17",
+            description: "Apotea",
+          }),
+          entry({
+            id: "l_loopia",
+            amount: -361,
+            balance: 10542,
+            date: "2026-06-22",
+            description: "Loopia",
+          }),
+          entry({
+            id: "l_dn",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "AB Dagens Nyheter",
+          }),
+        ],
+      }),
+    );
     expect(groups).toHaveLength(1);
     const group = groups[0];
-    expect(group.accounts.find((x) => x.accountId === "a")?.fits).toBe(true);
-    expect(group.accounts.find((x) => x.accountId === "b")?.fits).toBe(false);
-    expect(group.suggestedOwnerId).toBe("a");
+    expect(group.accounts.find((x) => x.accountId === "utgift")?.fits).toBe(
+      true,
+    );
+    expect(group.accounts.find((x) => x.accountId === "lon")?.fits).toBe(false);
+    expect(group.suggestedOwnerId).toBe("utgift");
   });
 
   it("reports null fit when no balance is present (credit-card export)", () => {
