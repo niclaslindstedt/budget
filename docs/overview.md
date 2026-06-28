@@ -664,25 +664,23 @@ bank-history-only. Distinct from the budget-page **Find conflicts
 modal**, which is within one account and can pair a user-authored row.
 
 Per group the user picks which account **owns** the transaction; the
-matching copies in every other account are deleted (the owner keeps
-its). The finder suggests the most likely owner via balance continuity
-(`suggestOwner` / `entryFits` / `buildReachableBalances`): each account's
-running-balance chain is reconstructed by walking forward (bank
-statements are logically ordered — every balance is the previous balance
-plus the entry's signed amount), and a copy is flagged as the likely
-mis-import when its balance is **not** reachable on that chain. The walk
-is seeded from the opening balance **and from every native (not
-cross-account-duplicated) entry**, so it re-anchors across the gaps real
-imported history always has — without that, a single opening-only walk
-stalls at the first un-imported stretch and every later genuine entry
-looks unreachable (the bug that flagged a correctly-placed charge as a
-duplicate). A whole statement mis-imported into the wrong account is
-internally self-consistent (its entries chain to each other) but every
-one of its rows is a cross-account duplicate, so none of them seed the
-walk and nothing native chains into them — it stays off the reachable
-set, which is what distinguishes the genuine copy from the stray one.
-Ties fall back to the denser same-day statement, then the fuller
-history. The verdict isn't surfaced as a per-account badge — the
+matching copies in every other account are deleted (the owner keeps its).
+The finder suggests the most likely owner with a single backward balance
+step (`suggestOwner` / `entryFits`): a copy "fits" an account when its
+pre-balance (`balance - amount`) is itself a balance the account records
+— i.e. a real predecessor entry hands the running total off to it
+(`predecessor.balance + amount == balance`). The stray copy lands on a
+pre-balance no entry in that account ever held, so it doesn't fit and is
+flagged. This is deliberately one step, **not** a walk of the whole chain:
+a statement's balances are continuous, so the immediate predecessor is all
+the signal needed, and the check doesn't depend on import order or on the
+history being gap-free (an earlier whole-chain walk mis-flagged genuine
+charges whenever the reconstructed chain hit any discontinuity). The
+limitation is the converse: a whole statement imported into two accounts
+leaves each copy with a chaining predecessor inside its own account, so
+both "fit" and ownership falls to the tie-breakers (denser same-day
+statement, then fuller history) and the user's pick from the
+surrounding-history view. The verdict isn't surfaced as a per-account badge — the
 suggested copy is simply pre-selected. A transaction is only grouped when
 date, normalised description, signed amount, AND running balance all
 match across accounts: a verbatim mis-import copies the statement row's

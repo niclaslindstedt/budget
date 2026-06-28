@@ -56,8 +56,11 @@ function cents(n: number): number {
 // The balance segment of a duplicate signature: the running balance in
 // öre, or the literal "nb" ("no balance") when the export carried none.
 // Two entries only share a signature when their balances match exactly —
-// the rounding tolerance used by the continuity walk does NOT apply
-// here, because a true mis-import copies the balance byte-for-byte.
+// no rounding tolerance applies here, because a true mis-import copies the
+// balance byte-for-byte, and two unrelated accounts landing on the very
+// same balance after the same-amount transaction on the same day is
+// vanishingly unlikely. That makes the balance the strongest part of the
+// signature.
 function balanceSig(entry: HistoryEntry): string {
   return typeof entry.balance === "number" && Number.isFinite(entry.balance)
     ? String(cents(entry.balance))
@@ -93,14 +96,14 @@ export type DuplicateAccount = {
   // transaction twice on the same day (rare). All of them are deleted
   // together when another account is chosen as owner.
   entries: HistoryEntry[];
-  // Does at least one of this account's matching entries sit on the
-  // account's reconstructed running-balance chain? `true` ⇒ the entry's
-  // balance is reachable by walking the chain forward from the opening
-  // balance, so the transaction genuinely belongs here. `false` ⇒ its
-  // balance is unreachable — a foreign block injected by a mis-import
-  // sits off to the side of the native chain. `null` ⇒ no balance on the
-  // entry to judge by. Not shown in the UI; consumed only by
-  // `suggestOwner` to pick the pre-selected owner.
+  // Does at least one of this account's matching entries have a real
+  // predecessor here — an entry whose balance plus this one's amount
+  // equals this one's balance? `true` ⇒ the running total flows into it,
+  // so the transaction genuinely belongs here. `false` ⇒ it lands on a
+  // pre-balance no entry in this account ever held — the stray
+  // mis-import. `null` ⇒ no balance on the entry to judge by. Drives both
+  // the `suggestOwner` pre-selection and the red balance flag in the
+  // expanded context panel.
   fits: boolean | null;
 };
 
@@ -120,23 +123,23 @@ export type DuplicateGroup = {
 };
 
 type AccountIndex = {
-  // Post-transaction balances (öre) reachable by walking the running
-  // balance forward through this account's native statement chain. The
-  // walk is seeded from the opening balance AND from every native (not
-  // cross-account-duplicated) entry, so it bridges the gaps real imported
-  // history always has — un-imported months would otherwise truncate a
-  // single forward walk at the first break and leave every later entry
-  // looking unreachable. A candidate entry "fits" when its recorded
-  // balance lands in here. A mis-imported block is internally
-  // self-consistent but carries no native seed, so it stays out of the
-  // set — that's what distinguishes the genuine copy from the stray one.
-  // See `buildReachableBalances`.
-  reachable: Set<number>;
+  // Every post-transaction balance (öre) the account records. An entry
+  // "fits" here when its pre-balance (`balance - amount`) is itself a
+  // balance in this set — i.e. some entry in the same account is its
+  // immediate statement predecessor, with the running total flowing
+  // cleanly into it (`predecessor.balance + entry.amount == entry.balance`).
+  // A transaction mis-imported into the wrong account lands on a
+  // pre-balance no entry there ever held, so it doesn't fit and is flagged
+  // as the stray copy. Deliberately a single backward step, NOT a walk of
+  // the whole chain: a real statement's balances are continuous, so the
+  // one-step check is both sufficient and robust to whatever order the
+  // entries were imported in.
+  balances: Set<number>;
   // Total non-collapsed entries — a weak tie-breaker for the owner
   // suggestion (a fuller statement is marginally more likely the home).
   total: number;
   // Count of entries per ISO date — denser days point at the real
-  // statement when balance continuity can't decide.
+  // statement when the balance check can't decide.
   byDate: Map<string, number>;
 };
 
@@ -148,133 +151,37 @@ function isCandidate(entry: HistoryEntry): boolean {
   return entry.collapsedIntoTransferId === undefined && entry.amount !== 0;
 }
 
-function buildAccountIndex(
-  entries: readonly HistoryEntry[],
-  duplicatedIds: ReadonlySet<string>,
-): AccountIndex {
+function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
   const byDate = new Map<string, number>();
-  let openingCents: number | null = null;
-  let earliest: string | undefined;
+  const balances = new Set<number>();
   let total = 0;
-  // Seeds for the reachability walk: the opening balance plus the
-  // pre-balance of every NATIVE entry (one not duplicated into another
-  // account). Seeding from native entries — not just the opening — lets
-  // the walk re-anchor after the gaps real imported history always has,
-  // so a genuine transaction sitting after an un-imported stretch is
-  // still reachable. A mis-imported foreign block has no native entry to
-  // seed from (its entries are all cross-account duplicates), so it never
-  // gets bridged and stays correctly off the chain.
-  const nativeSeeds: number[] = [];
   for (const entry of entries) {
     if (!isCandidate(entry)) continue;
     total += 1;
     byDate.set(entry.date, (byDate.get(entry.date) ?? 0) + 1);
     if (typeof entry.balance === "number" && Number.isFinite(entry.balance)) {
-      const pre = cents(entry.balance) - cents(entry.amount);
-      // The opening balance is the earliest entry's balance minus its
-      // amount — the balance just before the first known transaction.
-      if (earliest === undefined || entry.date < earliest) {
-        earliest = entry.date;
-        openingCents = pre;
-      }
-      if (!duplicatedIds.has(entry.id)) nativeSeeds.push(pre);
+      balances.add(cents(entry.balance));
     }
   }
-  const seeds =
-    openingCents === null ? nativeSeeds : [openingCents, ...nativeSeeds];
-  return {
-    reachable: buildReachableBalances(entries, seeds),
-    total,
-    byDate,
-  };
+  return { balances, total, byDate };
 }
 
-// Reconstruct the account's running-balance chain(s) and return the set
-// of post-balances (öre) reachable from the given `seeds`. Bank
-// statements are logically ordered: each transaction's balance equals the
-// previous balance plus its signed amount. Starting from each seed we
-// repeatedly follow the running total to the next entry whose pre-balance
-// (`balance - amount`) matches it, collecting every balance the chain
-// lands on.
-//
-// This is the discriminating step. The seeds are the opening balance plus
-// every native (not cross-account-duplicated) entry — so the walk
-// re-anchors after gaps and reaches genuine transactions a single
-// opening-only walk would miss the moment one import is absent. A
-// statement mis-imported into the wrong account forms a self-consistent
-// block, but every one of its entries is a cross-account duplicate, so
-// none of them seed the walk and nothing native chains into them: the
-// block stays out of the set. (Two earlier attempts each failed half the
-// problem — "is this pre-balance present anywhere?" credited a foreign
-// block that reconciles against itself; an opening-only forward walk
-// broke at the first gap and dropped real post-gap entries.)
-function buildReachableBalances(
-  entries: readonly HistoryEntry[],
-  seeds: readonly number[],
-): Set<number> {
-  const reachable = new Set<number>();
-  if (seeds.length === 0) return reachable;
-  // Map each entry's pre-balance (öre) to the post-balances of every
-  // entry that picks up from it. A list, not a single value, because
-  // pathological data can post two entries from the same pre-balance;
-  // entries are consumed as the walk visits them so it can't cycle and
-  // each entry is followed at most once across all seeds.
-  const byPre = new Map<number, number[]>();
-  for (const entry of entries) {
-    if (!isCandidate(entry)) continue;
-    if (typeof entry.balance !== "number" || !Number.isFinite(entry.balance)) {
-      continue;
-    }
-    const pre = cents(entry.balance) - cents(entry.amount);
-    const post = cents(entry.balance);
-    const list = byPre.get(pre);
-    if (list) list.push(post);
-    else byPre.set(pre, [post]);
-  }
-  const queue: number[] = [...seeds];
-  while (queue.length > 0) {
-    const running = queue.pop() as number;
-    let post = takeReachable(byPre, running);
-    while (post !== undefined) {
-      if (!reachable.has(post)) {
-        reachable.add(post);
-        queue.push(post);
-      }
-      post = takeReachable(byPre, running);
-    }
-  }
-  return reachable;
-}
-
-// Pop one entry whose pre-balance matches `running` (within the rounding
-// tolerance) from the pre-balance map, returning its post-balance. The
-// matched entry is removed so a shared balance isn't walked twice.
-function takeReachable(
-  byPre: Map<number, number[]>,
-  running: number,
-): number | undefined {
-  for (let d = -BALANCE_TOLERANCE_CENTS; d <= BALANCE_TOLERANCE_CENTS; d += 1) {
-    const list = byPre.get(running + d);
-    if (list && list.length > 0) {
-      const post = list.shift() as number;
-      if (list.length === 0) byPre.delete(running + d);
-      return post;
-    }
-  }
-  return undefined;
-}
-
-// Does this entry sit on its account's reconstructed running-balance
-// chain? `true` when its recorded balance is one the chain reaches (see
-// `buildReachableBalances`), `false` when it's unreachable (the foreign
-// block of a mis-import), `null` when the entry carried no balance.
+// Does the running total flow cleanly into this entry on this account —
+// i.e. is its pre-balance (`balance - amount`) one the account actually
+// records, so a real predecessor hands off to it? `true` when a
+// predecessor balance exists, `false` when the entry lands on a balance
+// no entry there ever held (the stray mis-import), `null` when the entry
+// carried no balance to judge by. One backward step, not a whole-chain
+// walk: a statement's balances are continuous, so the immediate
+// predecessor is all the signal needed and the check doesn't depend on
+// import order or on the history being gap-free.
 function entryFits(entry: HistoryEntry, idx: AccountIndex): boolean | null {
   if (typeof entry.balance !== "number" || !Number.isFinite(entry.balance)) {
     return null;
   }
-  const balance = cents(entry.balance);
+  const pre = cents(entry.balance) - cents(entry.amount);
   for (let d = -BALANCE_TOLERANCE_CENTS; d <= BALANCE_TOLERANCE_CENTS; d += 1) {
-    if (idx.reachable.has(balance + d)) return true;
+    if (idx.balances.has(pre + d)) return true;
   }
   return false;
 }
@@ -299,9 +206,10 @@ function accountFits(
 // can re-suggest after the account set changes and tests can pin the
 // heuristic. Ordering, strongest signal first:
 //
-//   1. Balance reconciles here (`fits === true`) — the transaction sits
-//      on a balance the account's own chain explains. The mis-imported
-//      copy lands on an unexplained jump, so this is the decisive tell.
+//   1. Balance reconciles here (`fits === true`) — a real predecessor in
+//      this account hands the running total off to the transaction. The
+//      mis-imported copy lands on a pre-balance no entry there ever held,
+//      so this is the decisive tell.
 //   2. More entries on the transaction's own date — the genuine
 //      statement clusters that day's activity; a stray import is alone.
 //   3. Fuller history overall.
@@ -358,17 +266,18 @@ type Bucket = {
 // groups newest-first; empty when nothing spans two accounts.
 export function findDuplicateImports(data: UserData): DuplicateGroup[] {
   const accountIds = new Set(data.accounts.map((a) => a.id));
+  const indexByAccount = new Map<string, AccountIndex>();
   const buckets = new Map<string, Bucket>();
   const ignored = buildIgnoreSet(data.duplicateIgnores);
 
-  // Pass 1: bucket every candidate entry by its cross-account signature.
-  // Ignored entries are skipped here (never grouped) but stay in the raw
-  // history so they keep contributing to the balance chain below.
   for (const account of data.accounts) {
     const entries = data.history[account.id];
     if (!entries || entries.length === 0) continue;
+    indexByAccount.set(account.id, buildAccountIndex(entries));
     for (const entry of entries) {
       if (!isCandidate(entry)) continue;
+      // Ignored entries are skipped here (never grouped) but stay in the
+      // index above so they keep counting toward the balance set.
       if (ignored.has(ignoreKey(entry.description, entry.amount))) continue;
       if (typeof entry.date !== "string" || entry.date.length < 10) continue;
       const key = normaliseDescription(entry.description);
@@ -387,27 +296,6 @@ export function findDuplicateImports(data: UserData): DuplicateGroup[] {
       if (list) list.push(entry);
       else bucket.byAccount.set(account.id, [entry]);
     }
-  }
-
-  // The ids of every entry that is the SAME transaction in two or more
-  // accounts — the cross-account duplicates. They're excluded from each
-  // account's native seed set so a mis-imported copy can't seed its own
-  // reachability and falsely "fit".
-  const duplicatedIds = new Set<string>();
-  for (const bucket of buckets.values()) {
-    if (bucket.byAccount.size < 2) continue;
-    for (const entries of bucket.byAccount.values()) {
-      for (const entry of entries) duplicatedIds.add(entry.id);
-    }
-  }
-
-  // Pass 2: build each account's running-balance index, now that we know
-  // which of its entries are duplicated (and so not native seeds).
-  const indexByAccount = new Map<string, AccountIndex>();
-  for (const account of data.accounts) {
-    const entries = data.history[account.id];
-    if (!entries || entries.length === 0) continue;
-    indexByAccount.set(account.id, buildAccountIndex(entries, duplicatedIds));
   }
 
   const out: DuplicateGroup[] = [];

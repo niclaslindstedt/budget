@@ -181,49 +181,41 @@ describe("findDuplicateImports", () => {
     expect(findDuplicateImports(otherAmount)).toHaveLength(1);
   });
 
-  it("does not treat a self-consistent mis-imported block as fitting", () => {
-    // A whole statement (Vattenfall 5000 → ICA 3800) was mis-imported
-    // into "b". Both rows are cross-account duplicates, so neither seeds
-    // "b"'s reachability walk and "b"'s native chain (2300 → 2000 → 1300)
-    // never bridges into the foreign block — both copies are flagged off
-    // "b". In "a" the block IS the genuine statement and connects to the
-    // opening (5800 → 5000 → 3800), so it fits and "a" is suggested.
+  it("treats a copy with a chaining predecessor in both accounts as fitting both", () => {
+    // A whole statement imported into two accounts leaves each copy with a
+    // real predecessor inside its own account (the line above it on the
+    // mis-imported statement). The one-step balance check can't tell those
+    // apart — both fit — so ownership falls to the tie-breakers (and, in
+    // the app, to the user picking from the surrounding-history view). This
+    // is the deliberate trade for not walking the whole chain; the strong
+    // date+description+amount+balance match is what flags the pair at all.
     const groups = findDuplicateImports(
       data([account("a"), account("b")], {
         a: [
           entry({
-            id: "a0",
+            id: "a_prev",
             amount: -800,
             balance: 5000,
             date: "2026-04-10",
-            description: "Vattenfall",
+            description: "Hyra",
           }),
-          entry({ id: "a1", amount: -1200, balance: 3800, date: "2026-04-15" }),
+          entry({
+            id: "a_x",
+            amount: -1200,
+            balance: 3800,
+            date: "2026-04-15",
+          }),
         ],
         b: [
           entry({
-            id: "b0",
-            amount: -300,
-            balance: 2000,
-            date: "2026-04-02",
-            description: "Hyresavi",
-          }),
-          entry({
-            id: "b1",
-            amount: -700,
-            balance: 1300,
-            date: "2026-04-05",
+            id: "b_prev",
+            amount: -200,
+            balance: 5000,
+            date: "2026-04-12",
             description: "Elnät",
           }),
           entry({
-            id: "bf0",
-            amount: -800,
-            balance: 5000,
-            date: "2026-04-10",
-            description: "Vattenfall",
-          }),
-          entry({
-            id: "bf1",
+            id: "b_x",
             amount: -1200,
             balance: 3800,
             date: "2026-04-15",
@@ -231,25 +223,21 @@ describe("findDuplicateImports", () => {
         ],
       }),
     );
-    // Two duplicate groups (Vattenfall + ICA); both resolve to "a".
-    expect(groups).toHaveLength(2);
-    for (const group of groups) {
-      expect(group.accounts.find((x) => x.accountId === "a")?.fits).toBe(true);
-      expect(group.accounts.find((x) => x.accountId === "b")?.fits).toBe(false);
-      expect(group.suggestedOwnerId).toBe("a");
-    }
+    expect(groups).toHaveLength(1);
+    const group = groups[0];
+    expect(group.accounts.find((x) => x.accountId === "a")?.fits).toBe(true);
+    expect(group.accounts.find((x) => x.accountId === "b")?.fits).toBe(true);
   });
 
-  it("reaches a genuine entry that sits after a gap in the history", () => {
-    // The regression behind the false "both wrong" flag: a real account's
-    // imported history has gaps (un-imported months), so a single forward
-    // walk from the opening balance stalls early and leaves every later
-    // entry looking unreachable. Here "utgift" opens at 1500 but the next
-    // known rows jump to ~10000 (a gap). The Dagens Nyheter charge (-410 →
-    // 9997) genuinely follows the salary deposit (9000 → 10407): seeding
-    // the walk from that NATIVE deposit bridges the gap, so the charge
-    // fits "utgift". The same charge mis-imported into "lon" (9997 sits on
-    // nothing there) does not fit, so "utgift" is correctly suggested.
+  it("flags the copy whose predecessor balance is missing", () => {
+    // The real-world case: the Dagens Nyheter charge (-410 → 9997)
+    // genuinely follows the salary deposit (9000 → 10407) in "utgift"
+    // (10407 - 410 = 9997), so its predecessor balance 10407 exists there
+    // and it fits. The same charge mis-imported into "lon" lands on a
+    // pre-balance (10407) no "lon" entry ever held, so it does not fit and
+    // "utgift" is correctly suggested. No whole-history walk is needed —
+    // and the discontinuity earlier in "utgift" (1000 → 10407) is
+    // irrelevant to the one-step check.
     const groups = findDuplicateImports(
       data([account("utgift"), account("lon")], {
         utgift: [
