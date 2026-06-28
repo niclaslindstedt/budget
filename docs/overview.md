@@ -704,9 +704,11 @@ Tapping a group header expands an inline **context panel**
 and after the matched transaction with their balances (newest first, like
 the history viewer), so the user can eyeball whether the running balance
 flows cleanly through the matched row (it belongs) or jumps over it (a
-foreign mis-import). On the account whose copy the finder judged off-chain
-(`fits === false`), the matched row's balance renders as a red warning
-pill — the figure that doesn't reconcile. **Accept all**
+foreign mis-import). The matched row's balance carries an explicit verdict
+pill: **green with a checkmark** when it sits cleanly on the account's
+running total (`fits === true`), **red with a warning** when it doesn't
+(`fits === false`), and plain when there was no balance to judge
+(`fits === null`). **Accept all**
 resolves every group at once. A per-group **Keep all** option marks a
 false positive (kept for the session); a per-group **Ignore** button
 (`ignoreDuplicates`, fed by `ignoreRulesForGroup`) records a persistent

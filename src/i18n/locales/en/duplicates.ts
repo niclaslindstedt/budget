@@ -6,7 +6,7 @@ import type { Widen } from "./_widen";
 const duplicates = {
   title: "Find duplicates",
   intro:
-    "Pick which account each transaction belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history — a balance flagged in red doesn't sit on that account's running total.",
+    "Pick which account each transaction belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history — a balance in green sits cleanly on that account's running total, one flagged in red doesn't.",
   empty: "No duplicate imports found.",
   emptyHint: "Every imported transaction lives in just one account.",
   countOne: "{n} duplicate",
@@ -27,6 +27,7 @@ const duplicates = {
   contextNone: "No surrounding history on this account.",
   contextThisEntry: "this transaction",
   balanceError: "This balance doesn't sit on the account's running total",
+  balanceOk: "This balance sits cleanly on the account's running total",
   removeSessionOne:
     "Also remove the other {n} entry from the same import (the whole statement landed in the wrong account)",
   removeSessionOther:
