@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { Check, CopyCheck, Layers } from "lucide-react";
 
 import {
-  DUPLICATE_DEFAULT_MIN_AMOUNT,
   duplicateRemovals,
   findDuplicateImports,
   type DuplicateGroup,
@@ -31,10 +30,6 @@ type Props = {
 // transaction — keep every copy". Distinct from any real account id.
 const KEEP_ALL = "__keep_all__";
 
-// Min-amount presets — buttons (not a text field) so the modal stays a
-// `centered` card with no soft keyboard. Mirrors the conflict finder.
-const THRESHOLD_PRESETS: ReadonlyArray<number> = [50, 100, 200, 500, 1000];
-
 export function AccountDuplicatesModal({
   open,
   onClose,
@@ -45,9 +40,6 @@ export function AccountDuplicatesModal({
   const t = useT();
   const lang = useLang();
   const toast = useToast();
-  const [minAmount, setMinAmount] = useState<number>(
-    DUPLICATE_DEFAULT_MIN_AMOUNT,
-  );
   // Per-group owner override, keyed by the signature-stable group id.
   // Absent ⇒ fall back to the group's suggested owner. KEEP_ALL ⇒ the
   // user declared it a false positive.
@@ -59,11 +51,8 @@ export function AccountDuplicatesModal({
   const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
 
   const groups = useMemo(
-    () =>
-      findDuplicateImports(data, { minAmount }).filter(
-        (g) => !dismissed.has(g.id),
-      ),
-    [data, minAmount, dismissed],
+    () => findDuplicateImports(data).filter((g) => !dismissed.has(g.id)),
+    [data, dismissed],
   );
 
   const ownerFor = useCallback(
@@ -114,7 +103,6 @@ export function AccountDuplicatesModal({
       onClose={onClose}
       labelledBy="find-duplicates-title"
       size="max-w-2xl"
-      centered
     >
       <Modal.Header
         icon={<Layers size={14} aria-hidden focusable={false} />}
@@ -124,30 +112,6 @@ export function AccountDuplicatesModal({
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">{t("duplicates.intro")}</p>
 
-        <fieldset className="mb-4 flex flex-wrap items-center gap-2 rounded border border-line bg-surface-3 p-3">
-          <legend className="px-1 text-xs text-muted">
-            {t("duplicates.minAmountLabel")}
-          </legend>
-          {THRESHOLD_PRESETS.map((preset) => {
-            const active = preset === minAmount;
-            return (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setMinAmount(preset)}
-                aria-pressed={active}
-                className={
-                  active
-                    ? "cursor-pointer rounded border border-accent bg-accent/15 px-3 py-1 text-sm font-bold text-fg-bright"
-                    : "cursor-pointer rounded border border-line bg-surface-2 px-3 py-1 text-sm text-fg hover:border-fg"
-                }
-              >
-                {formatBalance(preset, settings)}
-              </button>
-            );
-          })}
-        </fieldset>
-
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <h3 className="text-xs font-bold tracking-wider uppercase text-muted">
             {groups.length === 1
@@ -155,16 +119,15 @@ export function AccountDuplicatesModal({
               : t("duplicates.countOther", { n: groups.length })}
           </h3>
           {groups.length > 0 && (
-            <Button
-              variant="primary"
+            <button
+              type="button"
               onClick={() => resolveGroups(groups)}
               aria-label={t("duplicates.acceptAllAria")}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded border border-accent bg-accent/10 px-2 py-1 text-xs font-bold text-accent hover:bg-accent/20"
             >
-              <span className="inline-flex items-center gap-1">
-                <CopyCheck size={14} aria-hidden focusable={false} />
-                {t("duplicates.acceptAll")}
-              </span>
-            </Button>
+              <CopyCheck size={12} aria-hidden focusable={false} />
+              {t("duplicates.acceptAll")}
+            </button>
           )}
         </div>
 

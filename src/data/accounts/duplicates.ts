@@ -75,17 +75,6 @@ export type DuplicateGroup = {
   suggestedOwnerId: string;
 };
 
-export type FindDuplicatesOptions = {
-  // Major units. Groups whose |amount| falls below this are skipped, so
-  // small recurring noise (identical café rounds, fees) doesn't drown
-  // the real mis-imports. Mirrors the conflict finder's min-amount knob.
-  minAmount: number;
-};
-
-// Default for the modal's min-amount control, in major units (kr). Kept
-// here so tests and the modal share one source of truth.
-export const DUPLICATE_DEFAULT_MIN_AMOUNT = 100;
-
 type AccountIndex = {
   // Post-transaction balances (öre) reachable by walking the running
   // balance forward from the opening balance through this account's own
@@ -294,11 +283,7 @@ type Bucket = {
 // are scanned (savings share the history id-space but the user imports
 // statements per bank account, so they're out of scope here). Returns
 // groups newest-first; empty when nothing spans two accounts.
-export function findDuplicateImports(
-  data: UserData,
-  options: FindDuplicatesOptions,
-): DuplicateGroup[] {
-  const { minAmount } = options;
+export function findDuplicateImports(data: UserData): DuplicateGroup[] {
   const accountIds = new Set(data.accounts.map((a) => a.id));
   const indexByAccount = new Map<string, AccountIndex>();
   const buckets = new Map<string, Bucket>();
@@ -309,7 +294,6 @@ export function findDuplicateImports(
     indexByAccount.set(account.id, buildAccountIndex(entries));
     for (const entry of entries) {
       if (!isCandidate(entry)) continue;
-      if (Math.abs(entry.amount) < minAmount) continue;
       if (typeof entry.date !== "string" || entry.date.length < 10) continue;
       const key = normaliseDescription(entry.description);
       if (!isNormalisedKeyMeaningful(key)) continue;
