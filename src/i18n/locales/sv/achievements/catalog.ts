@@ -463,6 +463,10 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Bladrubrikens ⋯-meny → Hitta dubbletter. Letar efter par i den aktiva budgeten med samma datum, samma kategori och ungefär samma belopp och slår ihop dem till en rad — bankposten vinner när en sådan finns, annars behåller raden med tydligare etikett sin plats.",
   },
+  duplicateSleuth: {
+    name: "Dubblettdetektiv",
+    condition: "Lös en dubblettimport från Hitta dubblettimporter.",
+  },
   cleanSplit: {
     name: "Ren delning",
     condition: "Dela en bankhistorikpost över flera typer.",

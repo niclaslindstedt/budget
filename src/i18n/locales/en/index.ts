@@ -45,6 +45,7 @@ import importHistory from "./importHistory";
 import reconciliation from "./reconciliation";
 import renamePredictor from "./renamePredictor";
 import conflicts from "./conflicts";
+import duplicates from "./duplicates";
 import matchRule from "./matchRule";
 import recurring from "./recurring";
 import recurrenceForm from "./recurrenceForm";
@@ -132,6 +133,7 @@ export const en = {
   reconciliation,
   renamePredictor,
   conflicts,
+  duplicates,
   matchRule,
   recurring,
   recurrenceForm,

@@ -308,7 +308,7 @@ src/
 │   │   │                       #   donut shares, income vs expenses, top
 │   │   │                       #   merchants) for BudgetSpendingModal
 │   │   ├── cells.ts            # generic Row.cells readers
-│   │   ├── conflicts.ts        # duplicate-finder (findConflicts, pickWinner)
+│   │   ├── conflicts.ts        # within-account conflict finder (findConflicts, pickWinner)
 │   │   ├── pattern-apply.ts    # cross-sheet match-rule application
 │   │   ├── pattern-derive.ts   # glob-pattern seed from a row description
 │   │   ├── recurring-detection.ts  # "looks recurring" candidate detector
@@ -318,6 +318,7 @@ src/
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
+│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
 │   ├── import/

@@ -19,6 +19,7 @@ const sheet = {
   viewTransfers: "Transfers",
   metadataMode: "Metadata mode",
   findConflicts: "Find conflicts",
+  findDuplicates: "Find duplicates",
   moreActions: "Sheet actions",
   moreActionsAria: "Sheet actions for {name}",
 } as const;
