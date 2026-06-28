@@ -9,7 +9,7 @@ const duplicates: DuplicatesCatalog = {
   countOne: "{n} dubblett",
   countOther: "{n} dubbletter",
   ownerLabel: "Ägare",
-  keepAll: "Behåll alla (inte en dubblett)",
+  skip: "Hoppa över",
   resolve: "Lös",
   resolveAria: "Ta bort dubblettkopiorna och behåll den valda ägaren",
   acceptAll: "Acceptera alla",

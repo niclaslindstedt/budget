@@ -715,9 +715,12 @@ foreign mis-import). The matched row's balance carries an explicit verdict
 pill: **green with a checkmark** when it sits cleanly on the account's
 running total (`fits === true`), **red with a warning** when it doesn't
 (`fits === false`), and plain when there was no balance to judge
-(`fits === null`). **Accept all**
-resolves every group at once. A per-group **Keep all** option marks a
-false positive (kept for the session); a per-group **Ignore** button
+(`fits === null`). The owner is only pre-selected when at least one
+account's balance reconciles; when every copy mismatches (or there is no
+balance to judge) the group defaults to **Skip**, so a blind guess never
+deletes a copy. **Accept all**
+resolves every group at once. A per-group **Skip** option keeps every copy
+(the group drops from the list for the session); a per-group **Ignore** button
 (`ignoreDuplicates`, fed by `ignoreRulesForGroup`) records a persistent
 `UserData.duplicateIgnores` rule keyed by the EXACT bank description and
 amount, so the charge is skipped on every future import — cleared from

@@ -12,7 +12,7 @@ const duplicates = {
   countOne: "{n} duplicate",
   countOther: "{n} duplicates",
   ownerLabel: "Owner",
-  keepAll: "Keep all (not a duplicate)",
+  skip: "Skip",
   resolve: "Resolve",
   resolveAria: "Delete the duplicate copies, keeping the chosen owner",
   acceptAll: "Accept all",
