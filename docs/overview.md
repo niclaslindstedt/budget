@@ -745,6 +745,22 @@ it removes and un-hides the partner leg on the other account (mirroring
 `cutAccountHistory` / `deleteTransfer`), so the partner is never stranded
 `hidden` with a dangling backref.
 
+The same resolver also runs **at import time**, not just from the menu.
+After any import commits, `useImportFlow` stamps the import's `now` into
+`ImportFlowState.duplicatesCheckAt` and derives `importDuplicateGroups` —
+the cross-account groups holding a row with that `importedAt` (every
+freshly-added entry carries it). When non-empty, `AccountsModalHost`
+auto-opens `AccountDuplicatesModal` with `filterImportedAt` set, so it
+shows only the duplicates this import introduced, under import-specific
+copy ("Duplicates in this import"). The user picks the true owner exactly
+as in the menu flow, and the copies consolidate there: owner = the import
+target keeps the new row and removes the older copies elsewhere; owner =
+an existing account removes the just-imported copies — both via the same
+`resolveDuplicateImports`. An effect clears `duplicatesCheckAt` once the
+list empties (all resolved, or none found) so the finder stops re-running.
+The full menu-opened surface is the same component with `filterImportedAt`
+absent.
+
 ### Reconciliation modal
 
 `AccountReconciliationModal.tsx` — the post-import flow that pairs new

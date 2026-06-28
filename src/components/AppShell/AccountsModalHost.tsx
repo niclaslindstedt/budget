@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { AccountModal } from "../accounts/AccountModal";
 import { AccountCutHistoryModal } from "../accounts/AccountCutHistoryModal";
+import { AccountDuplicatesModal } from "../accounts/AccountDuplicatesModal";
 import { AccountReconciliationModal } from "../accounts/AccountReconciliationModal";
 import { AccountRenamePredictorModal } from "../accounts/AccountRenamePredictorModal";
 import { AccountTransferCollapseModal } from "../accounts/AccountTransferCollapseModal";
@@ -12,6 +13,7 @@ import { HistoryModal } from "../accounts/HistoryModal";
 import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
 import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
 import type { Category, EntryType, Settings, UserData } from "../../data/types";
+import type { Action } from "../../data/reducer";
 import { useT } from "../../i18n";
 import type { useAccountDialog } from "./hooks/useAccountDialog";
 import type { useImportFlow } from "./hooks/useImportFlow";
@@ -26,6 +28,7 @@ type Props = {
   accountDialog: ReturnType<typeof useAccountDialog>;
   importFlow: ReturnType<typeof useImportFlow>;
   transferFlow: ReturnType<typeof useTransferFlow>;
+  dispatch: (action: Action) => void;
   onCreateType: ReturnType<typeof useTaxonomyCrud>["onCreateType"];
   onCreateCategory: ReturnType<typeof useTaxonomyCrud>["onCreateCategory"];
 };
@@ -39,6 +42,7 @@ export function AccountsModalHost(props: Props) {
     accountDialog,
     importFlow,
     transferFlow,
+    dispatch,
     onCreateType,
     onCreateCategory,
   } = props;
@@ -84,6 +88,9 @@ export function AccountsModalHost(props: Props) {
     renamePredictor,
     onCommitRenamePredictor,
     onCancelRenamePredictor,
+    importDuplicateGroups,
+    importDuplicatesAt,
+    clearImportDuplicates,
   } = importFlow;
   const {
     transferRequest,
@@ -167,6 +174,18 @@ export function AccountsModalHost(props: Props) {
         settings={effectiveSettings}
         onCancel={onCancelRenamePredictor}
         onCommit={onCommitRenamePredictor}
+      />
+      {/* Import-scoped duplicate resolver — auto-opens after a commit when
+          the freshly-imported rows collide with rows in another account.
+          Same component as the menu-opened "Find duplicates", filtered to
+          this import's `importedAt`. */}
+      <AccountDuplicatesModal
+        open={importDuplicateGroups.length > 0}
+        onClose={clearImportDuplicates}
+        data={data}
+        settings={effectiveSettings}
+        dispatch={dispatch}
+        filterImportedAt={importDuplicatesAt ?? undefined}
       />
       <AccountCutHistoryModal
         open={cutHistoryAccount !== null}

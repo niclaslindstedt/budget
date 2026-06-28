@@ -1363,6 +1363,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             accountDialog={accountDialog}
             importFlow={importFlow}
             transferFlow={transferFlow}
+            dispatch={dispatch}
             onCreateType={onCreateType}
             onCreateCategory={onCreateCategory}
           />

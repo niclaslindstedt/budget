@@ -23,6 +23,12 @@ export type ImportFlowState = {
   reconciliation: ReconciliationState | null;
   manualTriage: ManualTriageState | null;
   renamePredictor: RenamePredictorState | null;
+  // After a commit, the import's `now` timestamp — every entry it added
+  // carries it as `importedAt`. Drives the post-import cross-account
+  // duplicate check: if the freshly-imported rows collide with rows in
+  // another account, the duplicate resolver auto-opens scoped to them.
+  // null = no pending check.
+  duplicatesCheckAt: number | null;
 };
 
 export const initialImportFlowState: ImportFlowState = {
@@ -32,6 +38,7 @@ export const initialImportFlowState: ImportFlowState = {
   reconciliation: null,
   manualTriage: null,
   renamePredictor: null,
+  duplicatesCheckAt: null,
 };
 
 export type ImportFlowAction =
@@ -41,6 +48,7 @@ export type ImportFlowAction =
   | { kind: "setManualTriage"; value: ManualTriageState | null }
   | { kind: "setReconciliation"; value: ReconciliationState | null }
   | { kind: "setRenamePredictor"; value: RenamePredictorState | null }
+  | { kind: "setDuplicatesCheck"; value: number | null }
   // Close the import-history modal and open whatever the matcher
   // pipeline decided in one transition. Commit path leaves both targets
   // null (the modal just closes, the data reducer commits separately);
@@ -71,6 +79,8 @@ export function importFlowReducer(
       return { ...state, reconciliation: action.value };
     case "setRenamePredictor":
       return { ...state, renamePredictor: action.value };
+    case "setDuplicatesCheck":
+      return { ...state, duplicatesCheckAt: action.value };
     case "stageImport":
       return {
         ...state,

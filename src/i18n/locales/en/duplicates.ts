@@ -5,6 +5,9 @@ import type { Widen } from "./_widen";
 // and are always bank history on both sides.
 const duplicates = {
   title: "Find duplicates",
+  importTitle: "Duplicates in this import",
+  importIntro:
+    "Some rows you just imported already exist in another account. Pick the true owner for each — the copies in the other accounts are removed so every transaction lands in just one place.",
   intro:
     "Pick which account each transaction belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history — a balance in green sits cleanly on that account's running total, one flagged in red doesn't.",
   empty: "No duplicate imports found.",
