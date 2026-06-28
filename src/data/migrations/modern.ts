@@ -1193,6 +1193,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // old export; the v81 validator omits it when missing, so this is a bare
   // additive bump.
   80: (v80) => ({ ...v80, version: 81 }),
+
+  // v81 → v82: introduces `UserData.duplicateIgnores`, the "not a
+  // duplicate" rules the cross-account duplicate finder consults to skip
+  // a legitimate same-day, same-amount charge that posts to two accounts
+  // (a recurring card payment). Seeds empty; old exports simply lack it
+  // and a fresh-empty default passes the v82 validator unchanged. Bare
+  // additive bump.
+  81: (v81) => ({ ...v81, version: 82, duplicateIgnores: [] }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

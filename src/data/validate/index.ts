@@ -7,6 +7,7 @@ import type {
   Category,
   Company,
   CompanyCategory,
+  DuplicateIgnore,
   Employer,
   EntryType,
   FileCategory,
@@ -568,6 +569,26 @@ export function validateUserData(raw: unknown): Result<UserData> {
     raw.itemFindExclusionPatterns,
   );
 
+  // "Not a duplicate" rules for the cross-account duplicate finder.
+  // Each is a {description, amount} pair; malformed entries are dropped
+  // and exact duplicates collapsed so a hand-edited file can't bloat the
+  // lookup set the finder builds from them.
+  const duplicateIgnores: DuplicateIgnore[] = [];
+  const seenIgnores = new Set<string>();
+  const rawIgnores = Array.isArray(raw.duplicateIgnores)
+    ? raw.duplicateIgnores
+    : [];
+  for (const rawIgnore of rawIgnores) {
+    if (!isObject(rawIgnore)) continue;
+    const { description, amount } = rawIgnore;
+    if (typeof description !== "string" || description === "") continue;
+    if (typeof amount !== "number" || !Number.isFinite(amount)) continue;
+    const key = `${description}|${amount}`;
+    if (seenIgnores.has(key)) continue;
+    seenIgnores.add(key);
+    duplicateIgnores.push({ description, amount });
+  }
+
   // User-authored wildcard match rules. Like merchant hints, each
   // rule is advisory and independent — a bogus entry is silently
   // dropped rather than rejecting the load. Duplicate ids collapse
@@ -713,6 +734,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       transferCollapseDismissals,
       ignoredItemEntryIds,
       itemFindExclusionPatterns,
+      duplicateIgnores,
       matchRules,
       seriesMatchRules,
       renamePatterns,

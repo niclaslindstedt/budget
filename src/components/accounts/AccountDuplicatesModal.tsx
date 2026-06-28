@@ -1,13 +1,27 @@
 import { useCallback, useMemo, useState } from "react";
-import { Check, CopyCheck, Layers } from "lucide-react";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CopyCheck,
+  Layers,
+} from "lucide-react";
 
 import {
   duplicateRemovals,
   findDuplicateImports,
+  historyContext,
+  ignoreRulesForGroup,
   type DuplicateGroup,
 } from "../../data/accounts/duplicates";
 import { unlock } from "../../data/achievements";
-import type { Account, Settings, UserData } from "../../data/types";
+import type {
+  Account,
+  HistoryEntry,
+  Settings,
+  UserData,
+} from "../../data/types";
 import type { Action } from "../../data/reducer";
 import { useLang, useT } from "../../i18n";
 import { formatBalance, formatShortDate } from "../../utils/format";
@@ -95,6 +109,25 @@ export function AccountDuplicatesModal({
     [dispatch, ownerFor, t, toast],
   );
 
+  // Mark a group "not a duplicate, ever": persist {description, amount}
+  // ignore rules so the finder skips this charge on every future import,
+  // then drop it from the list this session.
+  const ignoreGroup = useCallback(
+    (group: DuplicateGroup) => {
+      dispatch({
+        type: "ignoreDuplicates",
+        ignores: ignoreRulesForGroup(group),
+      });
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.add(group.id);
+        return next;
+      });
+      toast.push({ kind: "success", message: t("duplicates.ignored") });
+    },
+    [dispatch, t, toast],
+  );
+
   if (!open) return null;
 
   return (
@@ -145,6 +178,7 @@ export function AccountDuplicatesModal({
                 key={group.id}
                 group={group}
                 accountsById={accountsById}
+                history={data.history}
                 settings={settings}
                 lang={lang}
                 selectedOwner={ownerFor(group)}
@@ -152,6 +186,7 @@ export function AccountDuplicatesModal({
                   setOwners((prev) => ({ ...prev, [group.id]: owner }))
                 }
                 onResolve={() => resolveGroups([group])}
+                onIgnore={() => ignoreGroup(group)}
                 t={t}
               />
             ))}
@@ -170,27 +205,57 @@ export function AccountDuplicatesModal({
 type CardProps = {
   group: DuplicateGroup;
   accountsById: Map<string, Account>;
+  history: Record<string, HistoryEntry[]>;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   selectedOwner: string;
   onSelectOwner: (owner: string) => void;
   onResolve: () => void;
+  onIgnore: () => void;
   t: ReturnType<typeof useT>;
 };
 
 function DuplicateCard({
   group,
   accountsById,
+  history,
   settings,
   lang,
   selectedOwner,
   onSelectOwner,
   onResolve,
+  onIgnore,
   t,
 }: CardProps) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <li className="rounded border border-line bg-surface-2">
-      <header className="flex flex-wrap items-baseline gap-2 border-b border-line bg-surface-3 px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-label={
+          expanded
+            ? t("duplicates.hideContextAria")
+            : t("duplicates.showContextAria")
+        }
+        className="flex w-full flex-wrap items-baseline gap-2 border-b border-line bg-surface-3 px-3 py-1.5 text-left hover:bg-surface-2"
+      >
+        {expanded ? (
+          <ChevronDown
+            size={12}
+            className="shrink-0 self-center text-muted"
+            aria-hidden
+            focusable={false}
+          />
+        ) : (
+          <ChevronRight
+            size={12}
+            className="shrink-0 self-center text-muted"
+            aria-hidden
+            focusable={false}
+          />
+        )}
         <span className="font-mono text-xs text-muted">
           {formatShortDate(group.date, settings.shortDateFormat, lang)}
         </span>
@@ -204,7 +269,24 @@ function DuplicateCard({
         >
           {formatBalance(group.amount, settings)}
         </span>
-      </header>
+      </button>
+
+      {expanded && (
+        <div className="flex flex-col gap-2 border-b border-line bg-surface px-3 py-2">
+          {group.accounts.map((acc) => (
+            <ContextPanel
+              key={acc.accountId}
+              account={accountsById.get(acc.accountId)}
+              accountId={acc.accountId}
+              entries={history[acc.accountId] ?? []}
+              targetId={acc.entries[0]?.id ?? ""}
+              settings={settings}
+              lang={lang}
+              t={t}
+            />
+          ))}
+        </div>
+      )}
 
       <div
         role="radiogroup"
@@ -248,7 +330,16 @@ function DuplicateCard({
         </button>
       </div>
 
-      <footer className="flex items-center justify-end border-t border-line bg-surface-3 px-3 py-1.5">
+      <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-3 px-3 py-1.5">
+        <button
+          type="button"
+          onClick={onIgnore}
+          aria-label={t("duplicates.ignoreAria")}
+          className="inline-flex cursor-pointer items-center gap-1 rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-danger hover:text-danger"
+        >
+          <Ban size={12} aria-hidden focusable={false} />
+          {t("duplicates.ignore")}
+        </button>
         <Button
           variant="primary"
           onClick={onResolve}
@@ -276,6 +367,106 @@ function OwnerRadio({ selected }: { selected: boolean }) {
     >
       {selected && <Check size={11} focusable={false} />}
     </span>
+  );
+}
+
+// The matched transaction plus the bank rows immediately before and
+// after it on this account, with balances — so the user can see at a
+// glance whether the running balance flows cleanly through the matched
+// row (it belongs here) or jumps over it (a foreign mis-import). This is
+// the manual counterpart to the balance-continuity heuristic the finder
+// already uses to pre-select the owner.
+function ContextPanel({
+  account,
+  accountId,
+  entries,
+  targetId,
+  settings,
+  lang,
+  t,
+}: {
+  account: Account | undefined;
+  accountId: string;
+  entries: HistoryEntry[];
+  targetId: string;
+  settings: Settings;
+  lang: ReturnType<typeof useLang>;
+  t: ReturnType<typeof useT>;
+}) {
+  const ctx = historyContext(entries, targetId);
+  return (
+    <div className="flex flex-col gap-1">
+      {account ? (
+        <AccountChip account={account} />
+      ) : (
+        <span className="text-xs text-muted">{accountId}</span>
+      )}
+      {ctx === null ? (
+        <p className="px-1 text-xs text-muted">{t("duplicates.contextNone")}</p>
+      ) : (
+        <div className="divide-y divide-line rounded border border-line">
+          {ctx.before && (
+            <ContextRow entry={ctx.before} settings={settings} lang={lang} />
+          )}
+          <ContextRow
+            entry={ctx.target}
+            settings={settings}
+            lang={lang}
+            highlight
+            highlightLabel={t("duplicates.contextThisEntry")}
+          />
+          {ctx.after && (
+            <ContextRow entry={ctx.after} settings={settings} lang={lang} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One bank-history row in the context panel: date, description, signed
+// amount, and the running balance the bank reported after it. The
+// matched transaction is highlighted with an accent strip so it stands
+// out between its neighbours.
+function ContextRow({
+  entry,
+  settings,
+  lang,
+  highlight,
+  highlightLabel,
+}: {
+  entry: HistoryEntry;
+  settings: Settings;
+  lang: ReturnType<typeof useLang>;
+  highlight?: boolean;
+  highlightLabel?: string;
+}) {
+  return (
+    <div
+      aria-label={highlight ? highlightLabel : undefined}
+      className={`flex items-baseline gap-2 px-2 py-1 text-xs ${
+        highlight ? "border-l-2 border-l-accent bg-accent/10" : ""
+      }`}
+    >
+      <span className="shrink-0 font-mono text-muted">
+        {formatShortDate(entry.date, settings.shortDateFormat, lang)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-fg">
+        {entry.description || "—"}
+      </span>
+      <span
+        className={`shrink-0 font-mono tabular-nums ${
+          entry.amount < 0 ? "text-negative" : "text-positive"
+        }`}
+      >
+        {formatBalance(entry.amount, settings)}
+      </span>
+      <span className="w-20 shrink-0 text-right font-mono tabular-nums text-muted">
+        {typeof entry.balance === "number"
+          ? formatBalance(entry.balance, settings)
+          : "—"}
+      </span>
+    </div>
   );
 }
 

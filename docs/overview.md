@@ -676,14 +676,28 @@ internally self-consistent (its entries chain to each other) but never
 connects to the host's opening balance, so it stays off the reachable
 set — which is what distinguishes the genuine copy from the stray one;
 ties fall back to the denser same-day statement, then the fuller
-history. The verdict isn't surfaced in the UI — the suggested copy is
-simply pre-selected, and the per-account rows are intentionally compact
-(account chip + selection dot, no balance figure, since both copies
-carry the identical statement balance). Every cross-account duplicate is
-listed regardless of amount — there is no minimum-amount floor.
-**Accept all** resolves every group at once. A per-group **Keep all**
-option marks a false positive (kept for the session). Resolution
-dispatches
+history. The verdict isn't surfaced as a per-account badge — the
+suggested copy is simply pre-selected. A transaction is only grouped when
+date, normalised description, signed amount, AND running balance all
+match across accounts: a verbatim mis-import copies the statement row's
+balance too, so the two copies share it, whereas a mere coincidence (a
+recurring card payment posting the same amount on the same day to two
+accounts) lands each account on its own running total and is therefore
+NOT flagged. Balance-less credit-card exports bucket under a "no balance"
+sentinel so two such copies still match each other, but a balance-less
+copy never matches one carrying a balance. Every cross-account duplicate
+is listed regardless of amount — there is no minimum-amount floor.
+Tapping a group header expands an inline **context panel**
+(`historyContext`) showing, per account, the bank rows immediately before
+and after the matched transaction with their balances, so the user can
+eyeball whether the running balance flows cleanly through the matched row
+(it belongs) or jumps over it (a foreign mis-import). **Accept all**
+resolves every group at once. A per-group **Keep all** option marks a
+false positive (kept for the session); a per-group **Ignore** button
+(`ignoreDuplicates`, fed by `ignoreRulesForGroup`) records a persistent
+`UserData.duplicateIgnores` rule keyed by the EXACT bank description and
+amount, so the charge is skipped on every future import — cleared from
+the Memory settings tab (`clearDuplicateIgnores`). Resolution dispatches
 `resolveDuplicateImports`, which
 deletes the listed entries and re-derives each touched account's
 `openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded

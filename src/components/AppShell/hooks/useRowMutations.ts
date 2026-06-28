@@ -99,6 +99,7 @@ type Result = {
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
   // Flip the `isTransfer` flag on a budget row, or on the underlying
@@ -258,6 +259,10 @@ export function useRowMutations({
   );
   const onClearTransferDismissals = useCallback(
     () => dispatch({ type: "clearTransferDismissals" }),
+    [dispatch],
+  );
+  const onClearDuplicateIgnores = useCallback(
+    () => dispatch({ type: "clearDuplicateIgnores" }),
     [dispatch],
   );
   const onClearIgnoredItemEntries = useCallback(
@@ -527,6 +532,7 @@ export function useRowMutations({
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
+    onClearDuplicateIgnores,
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
     onToggleRowTransfer,

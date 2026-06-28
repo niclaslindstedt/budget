@@ -80,6 +80,8 @@ const actionHistory = {
     cutAccountHistory: "Trimmed account history",
     correctAccountBalance: "Corrected account balance",
     resolveDuplicateImports: "Resolved duplicate imports",
+    ignoreDuplicates: "Ignored duplicates",
+    clearDuplicateIgnores: "Cleared ignored duplicates",
     createSaving: "Created savings account",
     updateSaving: "Edited savings account",
     deleteSaving: "Deleted savings account",

@@ -1,8 +1,22 @@
 // Cross-account duplicate finder for imported bank history. Scans every
 // account's `UserData.history[accountId]` and groups transactions that
 // appear in TWO OR MORE different accounts with the same date, the same
-// normalised bank description, and the same signed amount — the
-// signature of "I imported the wrong bank statement into this account".
+// normalised bank description, the same signed amount, AND the same
+// running balance — the signature of "I imported the wrong bank
+// statement into this account".
+//
+// Balance is part of the signature, not just a tie-breaker: a genuine
+// mis-import copies the statement row verbatim, balance included, so the
+// two copies carry an IDENTICAL balance. A mere coincidence — the same
+// merchant charging the same amount on the same day to two different
+// accounts (a recurring card payment) — lands each account on its own
+// running total, so the balances differ and the pair is NOT flagged.
+// That single extra field is what stops the finder drowning the user in
+// false positives. Entries that carry no balance (some credit-card
+// exports omit it) bucket together under a "no balance" sentinel, so two
+// balance-less copies still match each other; the per-charge ignore list
+// (`UserData.duplicateIgnores`) mops up whatever coincidences slip
+// through that gap.
 //
 // Sibling of `src/data/budget/conflicts.ts`, but the two solve
 // different problems and must not be conflated:
@@ -27,7 +41,7 @@ import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
 } from "../description-normaliser";
-import type { HistoryEntry, UserData } from "../types";
+import type { DuplicateIgnore, HistoryEntry, UserData } from "../types";
 
 // Balance figures are stored in major units (kr) with decimals, so all
 // continuity comparisons happen in integer minor units (öre) to keep
@@ -37,6 +51,36 @@ const BALANCE_TOLERANCE_CENTS = 1;
 
 function cents(n: number): number {
   return Math.round(n * 100);
+}
+
+// The balance segment of a duplicate signature: the running balance in
+// öre, or the literal "nb" ("no balance") when the export carried none.
+// Two entries only share a signature when their balances match exactly —
+// the rounding tolerance used by the continuity walk does NOT apply
+// here, because a true mis-import copies the balance byte-for-byte.
+function balanceSig(entry: HistoryEntry): string {
+  return typeof entry.balance === "number" && Number.isFinite(entry.balance)
+    ? String(cents(entry.balance))
+    : "nb";
+}
+
+// Lookup key for the "not a duplicate" ignore list: EXACT raw bank
+// description (not the lossy normalised key the groups are built from)
+// plus the signed amount in öre. Exact so silencing one recurring charge
+// can't accidentally suppress a different transaction that merely
+// normalises to the same merchant.
+function ignoreKey(description: string, amount: number): string {
+  return `${description}|${cents(amount)}`;
+}
+
+function buildIgnoreSet(
+  ignores: readonly DuplicateIgnore[] | undefined,
+): Set<string> {
+  const set = new Set<string>();
+  for (const rule of ignores ?? []) {
+    set.add(ignoreKey(rule.description, rule.amount));
+  }
+  return set;
 }
 
 // One account's stake in a duplicate group: every entry it holds that
@@ -287,6 +331,7 @@ export function findDuplicateImports(data: UserData): DuplicateGroup[] {
   const accountIds = new Set(data.accounts.map((a) => a.id));
   const indexByAccount = new Map<string, AccountIndex>();
   const buckets = new Map<string, Bucket>();
+  const ignored = buildIgnoreSet(data.duplicateIgnores);
 
   for (const account of data.accounts) {
     const entries = data.history[account.id];
@@ -294,10 +339,15 @@ export function findDuplicateImports(data: UserData): DuplicateGroup[] {
     indexByAccount.set(account.id, buildAccountIndex(entries));
     for (const entry of entries) {
       if (!isCandidate(entry)) continue;
+      // Honoured here, not in `buildAccountIndex` / candidacy: an ignored
+      // entry is still a real transaction on its account's balance chain,
+      // so it must keep contributing to the reachable-balance walk above
+      // — it just never forms a duplicate group of its own.
+      if (ignored.has(ignoreKey(entry.description, entry.amount))) continue;
       if (typeof entry.date !== "string" || entry.date.length < 10) continue;
       const key = normaliseDescription(entry.description);
       if (!isNormalisedKeyMeaningful(key)) continue;
-      const sig = `${entry.date}|${key}|${cents(entry.amount)}`;
+      const sig = `${entry.date}|${key}|${cents(entry.amount)}|${balanceSig(entry)}`;
       let bucket = buckets.get(sig);
       if (!bucket) {
         bucket = {
@@ -360,4 +410,59 @@ export function duplicateRemovals(
     }
   }
   return out;
+}
+
+// The {description, amount} ignore rules to add when the user marks a
+// group "not a duplicate": one per DISTINCT raw bank description across
+// the group's entries (they all share the amount). Storing every spelling
+// — not just the representative — means a future import of the same
+// charge is suppressed whichever variant the bank writes that month.
+export function ignoreRulesForGroup(group: DuplicateGroup): DuplicateIgnore[] {
+  const seen = new Set<string>();
+  const out: DuplicateIgnore[] = [];
+  for (const acc of group.accounts) {
+    for (const entry of acc.entries) {
+      if (seen.has(entry.description)) continue;
+      seen.add(entry.description);
+      out.push({ description: entry.description, amount: group.amount });
+    }
+  }
+  return out;
+}
+
+// The statement neighbours of `targetId` within one account's history:
+// the entry immediately before and after it, so the user can eyeball
+// whether the matched transaction's balance fits between them (it does
+// on the account that genuinely owns it; a foreign mis-import leaves a
+// visible jump). Ordered by date, then by original import order as a
+// stable tie-break — for a single imported statement that array order IS
+// the bank's own order, so same-day entries keep their statement
+// sequence. Returns the target plus up to one neighbour on each side;
+// `null` neighbours mean the target is at an edge of the history.
+export type HistoryContext = {
+  before: HistoryEntry | null;
+  target: HistoryEntry;
+  after: HistoryEntry | null;
+};
+
+export function historyContext(
+  entries: readonly HistoryEntry[],
+  targetId: string,
+): HistoryContext | null {
+  const ordered = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) =>
+      a.entry.date < b.entry.date
+        ? -1
+        : a.entry.date > b.entry.date
+          ? 1
+          : a.index - b.index,
+    );
+  const pos = ordered.findIndex((o) => o.entry.id === targetId);
+  if (pos === -1) return null;
+  return {
+    before: pos > 0 ? ordered[pos - 1].entry : null,
+    target: ordered[pos].entry,
+    after: pos < ordered.length - 1 ? ordered[pos + 1].entry : null,
+  };
 }

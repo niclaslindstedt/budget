@@ -56,6 +56,7 @@ export function freshUserData(): UserData {
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
+    duplicateIgnores: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},

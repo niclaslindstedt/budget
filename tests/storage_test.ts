@@ -67,6 +67,7 @@ function sampleData(): UserData {
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
+    duplicateIgnores: [],
     matchRules: [],
     seriesMatchRules: [],
     renamePatterns: {},
@@ -159,6 +160,7 @@ describe("serializeUserData", () => {
       transferCollapseDismissals: b.transferCollapseDismissals,
       ignoredItemEntryIds: b.ignoredItemEntryIds,
       itemFindExclusionPatterns: b.itemFindExclusionPatterns,
+      duplicateIgnores: b.duplicateIgnores,
       matchRules: b.matchRules,
       seriesMatchRules: b.seriesMatchRules,
       renamePatterns: b.renamePatterns,
@@ -177,12 +179,13 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 38)).toEqual([
+    expect(topKeys.slice(0, 39)).toEqual([
       "accounts",
       "activeSheetId",
       "categories",
       "companies",
       "companyCategories",
+      "duplicateIgnores",
       "employers",
       "fileCategories",
       "hiddenPresetCategoryIds",

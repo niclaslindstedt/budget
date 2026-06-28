@@ -84,6 +84,7 @@ export const SEGMENT_FIELDS = {
     "transferCollapseDismissals",
     "ignoredItemEntryIds",
     "itemFindExclusionPatterns",
+    "duplicateIgnores",
   ],
   history: ["history", "historyImports"],
 } satisfies Record<SegmentId, (keyof UserData)[]>;

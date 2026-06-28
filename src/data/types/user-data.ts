@@ -1,5 +1,6 @@
 import type {
   Account,
+  DuplicateIgnore,
   HistoryEntry,
   HistoryImport,
   Transfer,
@@ -38,7 +39,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 81;
+  version: 82;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -212,6 +213,15 @@ export type UserData = {
   // recurring charge (rent, a budget transfer) is dismissed in one tap.
   // Cleared via the Items settings tab.
   itemFindExclusionPatterns: string[];
+  // "Not a duplicate" rules for the cross-account duplicate finder — see
+  // `DuplicateIgnore`. Each pairs an EXACT raw bank description with a
+  // signed amount; `findDuplicateImports` excludes any matching history
+  // entry from candidacy so a legitimate same-day, same-amount charge
+  // that posts to two accounts (a recurring card payment) stops being
+  // flagged on every import. Created from the "Ignore" button on a
+  // duplicate card; cleared via the Memory settings tab. Empty on a
+  // fresh budget.
+  duplicateIgnores: DuplicateIgnore[];
   // Wildcard-pattern overlays for synthesized history rows. Each
   // rule is created from the history-row pattern button; the rule
   // labels every matching entry (past + future imports) with the

@@ -50,6 +50,7 @@ export type {
   Account,
   CoverDetails,
   CoveredExpense,
+  DuplicateIgnore,
   HistoryEntry,
   HistoryEntrySplit,
   HistoryImport,

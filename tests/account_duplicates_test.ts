@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   duplicateRemovals,
   findDuplicateImports,
+  historyContext,
+  ignoreRulesForGroup,
 } from "../src/data/accounts/duplicates";
 import { describeActionSubject } from "../src/data/action-summary";
 import { reducer } from "../src/data/reducer";
@@ -89,10 +91,12 @@ describe("findDuplicateImports", () => {
   });
 
   it("suggests the account where the balance reconciles", () => {
-    // Account "a" carries a coherent chain: 5000 → 3800 (the -1200
-    // ICA charge lands on a balance another entry explains). Account
-    // "b" has the same charge land on 9999 with nothing leaving the
-    // balance at 11199 — an unexplained jump, so it's the mis-import.
+    // A verbatim mis-import copies the statement row's balance too, so
+    // both copies carry the SAME balance (3800) — that shared balance is
+    // what lets them group at all. Account "a" carries a coherent chain
+    // (5000 → 3800: the -1200 ICA charge lands on a balance another entry
+    // explains). Account "b"'s native chain (2300 → 2000) never reaches
+    // 3800, so its copy is the stray one.
     const groups = findDuplicateImports(
       data([account("a"), account("b")], {
         a: [
@@ -101,7 +105,7 @@ describe("findDuplicateImports", () => {
         ],
         b: [
           entry({ id: "b0", amount: -300, balance: 2000, date: "2026-04-12" }),
-          entry({ id: "b1", amount: -1200, balance: 9999 }),
+          entry({ id: "b1", amount: -1200, balance: 3800 }),
         ],
       }),
     );
@@ -112,6 +116,69 @@ describe("findDuplicateImports", () => {
     const b = group.accounts.find((x) => x.accountId === "b");
     expect(a?.fits).toBe(true);
     expect(b?.fits).toBe(false);
+  });
+
+  it("does not flag a coincidence whose balances differ", () => {
+    // The core false-positive guard: a recurring card payment that
+    // legitimately posts the same amount on the same day to two accounts
+    // lands each account on its own running total, so the balances
+    // differ. Only date + description + amount match — not balance — so
+    // the pair is NOT flagged.
+    const groups = findDuplicateImports(
+      data([account("a"), account("b")], {
+        a: [entry({ id: "a1", amount: -99, balance: 4200 })],
+        b: [entry({ id: "b1", amount: -99, balance: 8800 })],
+      }),
+    );
+    expect(groups).toHaveLength(0);
+  });
+
+  it("flags balance-less copies but not when only one carries a balance", () => {
+    // Two credit-card exports with no running balance still match each
+    // other (both bucket under the "no balance" sentinel)...
+    const both = findDuplicateImports(
+      data([account("a"), account("b")], {
+        a: [entry({ id: "a1", amount: -250, description: "Klarna" })],
+        b: [entry({ id: "b1", amount: -250, description: "Klarna" })],
+      }),
+    );
+    expect(both).toHaveLength(1);
+    // ...but a balance-less copy never matches one that carries a balance,
+    // since the balance segments ("nb" vs the öre figure) differ.
+    const mixed = findDuplicateImports(
+      data([account("a"), account("b")], {
+        a: [entry({ id: "a1", amount: -250, description: "Klarna" })],
+        b: [
+          entry({
+            id: "b1",
+            amount: -250,
+            description: "Klarna",
+            balance: 700,
+          }),
+        ],
+      }),
+    );
+    expect(mixed).toHaveLength(0);
+  });
+
+  it("skips entries matching a duplicate-ignore rule", () => {
+    const base = data([account("a"), account("b")], {
+      a: [entry({ id: "a1", description: "Kortbetalning", amount: -349 })],
+      b: [entry({ id: "b1", description: "Kortbetalning", amount: -349 })],
+    });
+    expect(findDuplicateImports(base)).toHaveLength(1);
+    // Same data, but the user has ignored this exact charge — gone.
+    const ignored = {
+      ...base,
+      duplicateIgnores: [{ description: "Kortbetalning", amount: -349 }],
+    } as unknown as UserData;
+    expect(findDuplicateImports(ignored)).toHaveLength(0);
+    // A rule with a different amount does not suppress it.
+    const otherAmount = {
+      ...base,
+      duplicateIgnores: [{ description: "Kortbetalning", amount: -350 }],
+    } as unknown as UserData;
+    expect(findDuplicateImports(otherAmount)).toHaveLength(1);
   });
 
   it("does not treat a self-consistent mis-imported block as fitting", () => {
@@ -201,6 +268,73 @@ describe("duplicateRemovals", () => {
       }),
     );
     expect(duplicateRemovals(group, "nope")).toEqual([]);
+  });
+});
+
+describe("historyContext", () => {
+  it("returns the statement neighbours around the target with balances", () => {
+    const entries: HistoryEntry[] = [
+      entry({ id: "e0", date: "2026-04-10", amount: -800, balance: 5000 }),
+      entry({ id: "e1", date: "2026-04-15", amount: -1200, balance: 3800 }),
+      entry({ id: "e2", date: "2026-04-18", amount: -200, balance: 3600 }),
+    ];
+    const ctx = historyContext(entries, "e1");
+    expect(ctx?.before?.id).toBe("e0");
+    expect(ctx?.target.id).toBe("e1");
+    expect(ctx?.after?.id).toBe("e2");
+    expect(ctx?.target.balance).toBe(3800);
+  });
+
+  it("returns null neighbours at the edges and null when not found", () => {
+    const entries: HistoryEntry[] = [
+      entry({ id: "e0", date: "2026-04-10" }),
+      entry({ id: "e1", date: "2026-04-15" }),
+    ];
+    const first = historyContext(entries, "e0");
+    expect(first?.before).toBeNull();
+    expect(first?.after?.id).toBe("e1");
+    expect(historyContext(entries, "missing")).toBeNull();
+  });
+});
+
+describe("ignoreRulesForGroup", () => {
+  it("emits one rule per distinct exact description, sharing the amount", () => {
+    const [group] = findDuplicateImports(
+      data([account("a"), account("b")], {
+        a: [entry({ id: "a1", description: "Kortköp ICA", amount: -349 })],
+        b: [entry({ id: "b1", description: "KORTKÖP ICA", amount: -349 })],
+      }),
+    );
+    const rules = ignoreRulesForGroup(group);
+    expect(rules).toEqual([
+      { description: "Kortköp ICA", amount: -349 },
+      { description: "KORTKÖP ICA", amount: -349 },
+    ]);
+  });
+});
+
+describe("ignoreDuplicates reducer", () => {
+  it("appends ignore rules, de-duplicating, and clears them", () => {
+    const prev = freshUserData();
+    const next = reducer(prev, {
+      type: "ignoreDuplicates",
+      ignores: [
+        { description: "Kortbetalning", amount: -349 },
+        { description: "Kortbetalning", amount: -349 },
+      ],
+    });
+    expect(next.duplicateIgnores).toEqual([
+      { description: "Kortbetalning", amount: -349 },
+    ]);
+    // Re-ignoring the same pair is a no-op (same reference back).
+    const again = reducer(next, {
+      type: "ignoreDuplicates",
+      ignores: [{ description: "Kortbetalning", amount: -349 }],
+    });
+    expect(again).toBe(next);
+    // Clearing wipes the list.
+    const cleared = reducer(next, { type: "clearDuplicateIgnores" });
+    expect(cleared.duplicateIgnores).toEqual([]);
   });
 });
 

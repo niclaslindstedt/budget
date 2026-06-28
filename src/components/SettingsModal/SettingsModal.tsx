@@ -112,6 +112,9 @@ type Props = {
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
+  // Count of "not a duplicate" rules the user created from the
+  // duplicate finder, surfaced (with a clear-all) in the Memory tab.
+  duplicateIgnoreCount: number;
   // Count of history entries the user ignored from the Items sheet's
   // "Find items" scan, surfaced (with a clear-all) in the Items tab.
   ignoredItemEntryCount: number;
@@ -151,6 +154,7 @@ type Props = {
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
   // Category / type admin. The list of presets lives in code
@@ -274,6 +278,7 @@ export function SettingsModal({
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
+  duplicateIgnoreCount,
   ignoredItemEntryCount,
   itemFindExclusionCount,
   data,
@@ -296,6 +301,7 @@ export function SettingsModal({
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
+  onClearDuplicateIgnores,
   onClearIgnoredItemEntries,
   onClearItemFindExclusions,
   onCreateCategory,
@@ -622,9 +628,11 @@ export function SettingsModal({
                 merchantHintCount={merchantHintCount}
                 recurringDismissalCount={recurringDismissalCount}
                 transferDismissalCount={transferDismissalCount}
+                duplicateIgnoreCount={duplicateIgnoreCount}
                 onClearMerchantHints={onClearMerchantHints}
                 onClearRecurringDismissals={onClearRecurringDismissals}
                 onClearTransferDismissals={onClearTransferDismissals}
+                onClearDuplicateIgnores={onClearDuplicateIgnores}
               />
             )}
             {activeTab === "developer" && <DeveloperTab />}

@@ -318,7 +318,7 @@ src/
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
-│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner)
+│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner, historyContext, ignoreRulesForGroup)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
 │   ├── import/
@@ -710,6 +710,10 @@ type UserData = {
   // similar"; the scanner drops every entry whose resolved description
   // collapses to one of these (past + future imports).
   itemFindExclusionPatterns: string[];
+  // "Not a duplicate" rules for the cross-account duplicate finder, keyed
+  // by EXACT bank description + signed amount; the finder skips matching
+  // entries on every import. Cleared from the Memory settings tab.
+  duplicateIgnores: DuplicateIgnore[];
   // User-authored wildcard rules that relabel synthesized history rows.
   matchRules: MatchRule[];
   // Auto-reconciliation rules learned from "Apply to whole series" in
@@ -1094,6 +1098,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   ledger and running balance but drops out of the spending dashboard's
   facts. A bare version bump — the field is optional, so a v80 record is
   absence-tolerant.
+- **v81 → v82** — adds `UserData.duplicateIgnores: []`, the "not a
+  duplicate" rules (EXACT bank description + amount) the cross-account
+  duplicate finder skips on every import. Seeds empty; a v81 record
+  simply lacks it and a fresh-empty default passes the v82 validator
+  unchanged.
 
 ## State management
 
