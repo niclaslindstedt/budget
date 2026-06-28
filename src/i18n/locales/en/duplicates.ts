@@ -13,16 +13,6 @@ const duplicates = {
   countOne: "{n} duplicate",
   countOther: "{n} duplicates",
   ownerLabel: "Owner",
-  suggestedBadge: "suggested",
-  // Per-account balance verdicts, shown next to each copy.
-  reconcilesBadge: "balance fits",
-  reconcilesTitle: "This account's balance chain explains this transaction.",
-  gapBadge: "balance gap",
-  gapTitle:
-    "This account's balance jumps here with no transaction to explain it — a likely wrong import.",
-  noBalanceBadge: "no balance",
-  noBalanceTitle: "This statement carried no running balance to check.",
-  balanceLabel: "Balance",
   keepAll: "Keep all (not a duplicate)",
   resolve: "Resolve",
   resolveAria: "Delete the duplicate copies, keeping the chosen owner",

@@ -176,7 +176,7 @@ export function AccountDuplicatesModal({
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2">
             {groups.map((group) => (
               <DuplicateCard
                 key={group.id}
@@ -227,7 +227,7 @@ function DuplicateCard({
 }: CardProps) {
   return (
     <li className="rounded border border-line bg-surface-2">
-      <header className="flex flex-wrap items-baseline gap-2 border-b border-line bg-surface-3 px-3 py-2">
+      <header className="flex flex-wrap items-baseline gap-2 border-b border-line bg-surface-3 px-3 py-1.5">
         <span className="font-mono text-xs text-muted">
           {formatShortDate(group.date, settings.shortDateFormat, lang)}
         </span>
@@ -251,10 +251,6 @@ function DuplicateCard({
         {group.accounts.map((acc) => {
           const account = accountsById.get(acc.accountId);
           const selected = selectedOwner === acc.accountId;
-          const isSuggested = group.suggestedOwnerId === acc.accountId;
-          const accountSettings = account?.currency
-            ? { ...settings, currency: account.currency }
-            : settings;
           return (
             <button
               key={acc.accountId}
@@ -262,60 +258,16 @@ function DuplicateCard({
               role="radio"
               aria-checked={selected}
               onClick={() => onSelectOwner(acc.accountId)}
-              className={`flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left ${
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
                 selected ? "bg-accent/10" : "hover:bg-surface-3"
               }`}
             >
-              <span
-                aria-hidden
-                className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                  selected
-                    ? "border-accent bg-accent text-page-bg"
-                    : "border-line"
-                }`}
-              >
-                {selected && <Check size={11} focusable={false} />}
-              </span>
+              <OwnerRadio selected={selected} />
               {account ? (
                 <AccountChip account={account} />
               ) : (
                 <span className="text-sm text-fg">{acc.accountId}</span>
               )}
-              {isSuggested && (
-                <span className="rounded bg-accent/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-accent">
-                  {t("duplicates.suggestedBadge")}
-                </span>
-              )}
-              {acc.fits === true ? (
-                <span
-                  className="rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-success"
-                  title={t("duplicates.reconcilesTitle")}
-                >
-                  {t("duplicates.reconcilesBadge")}
-                </span>
-              ) : acc.fits === false ? (
-                <span
-                  className="rounded bg-danger/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-danger"
-                  title={t("duplicates.gapTitle")}
-                >
-                  {t("duplicates.gapBadge")}
-                </span>
-              ) : (
-                <span
-                  className="rounded bg-surface-3 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-muted"
-                  title={t("duplicates.noBalanceTitle")}
-                >
-                  {t("duplicates.noBalanceBadge")}
-                </span>
-              )}
-              <span className="ml-auto shrink-0 text-right font-mono text-xs tabular-nums text-muted">
-                {acc.balance !== null && (
-                  <>
-                    {t("duplicates.balanceLabel")}{" "}
-                    {formatBalance(acc.balance, accountSettings)}
-                  </>
-                )}
-              </span>
             </button>
           );
         })}
@@ -324,27 +276,16 @@ function DuplicateCard({
           role="radio"
           aria-checked={selectedOwner === KEEP_ALL}
           onClick={() => onSelectOwner(KEEP_ALL)}
-          className={`flex w-full items-center gap-2 px-3 py-2 text-left ${
+          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
             selectedOwner === KEEP_ALL ? "bg-accent/10" : "hover:bg-surface-3"
           }`}
         >
-          <span
-            aria-hidden
-            className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-              selectedOwner === KEEP_ALL
-                ? "border-accent bg-accent text-page-bg"
-                : "border-line"
-            }`}
-          >
-            {selectedOwner === KEEP_ALL && (
-              <Check size={11} focusable={false} />
-            )}
-          </span>
+          <OwnerRadio selected={selectedOwner === KEEP_ALL} />
           <span className="text-sm text-muted">{t("duplicates.keepAll")}</span>
         </button>
       </div>
 
-      <footer className="flex items-center justify-end border-t border-line bg-surface-3 px-3 py-2">
+      <footer className="flex items-center justify-end border-t border-line bg-surface-3 px-3 py-1.5">
         <Button
           variant="primary"
           onClick={onResolve}
@@ -357,6 +298,21 @@ function DuplicateCard({
         </Button>
       </footer>
     </li>
+  );
+}
+
+// The selection dot in front of each owner choice — filled accent with a
+// check when picked, hollow outline otherwise.
+function OwnerRadio({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+        selected ? "border-accent bg-accent text-page-bg" : "border-line"
+      }`}
+    >
+      {selected && <Check size={11} focusable={false} />}
+    </span>
   );
 }
 

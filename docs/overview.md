@@ -666,15 +666,23 @@ modal**, which is within one account and can pair a user-authored row.
 Per group the user picks which account **owns** the transaction; the
 matching copies in every other account are deleted (the owner keeps
 its). The finder suggests the most likely owner via balance continuity
-(`suggestOwner` / `entryFits`): a copy that lands on a running balance no
-other transaction in that account explains — an unexplained "balance
-jump" — is flagged as the likely mis-import, and the copy whose balance
-reconciles is suggested as owner; ties fall back to the denser
-same-day statement, then the fuller history. Each copy shows a
-`balance fits` / `balance gap` / `no balance` badge so the suspicious
-balance is visible. **Accept all suggestions** resolves every group at
-once. A per-group **Keep all** option marks a false positive (kept for
-the session). Resolution dispatches `resolveDuplicateImports`, which
+(`suggestOwner` / `entryFits` / `buildReachableBalances`): each account's
+running-balance chain is reconstructed by walking forward from its
+opening balance (bank statements are logically ordered — every balance
+is the previous balance plus the entry's signed amount), and a copy is
+flagged as the likely mis-import when its balance is **not** reachable on
+that chain. A whole statement mis-imported into the wrong account is
+internally self-consistent (its entries chain to each other) but never
+connects to the host's opening balance, so it stays off the reachable
+set — which is what distinguishes the genuine copy from the stray one;
+ties fall back to the denser same-day statement, then the fuller
+history. The verdict isn't surfaced in the UI — the suggested copy is
+simply pre-selected, and the per-account rows are intentionally compact
+(account chip + selection dot, no balance figure, since both copies
+carry the identical statement balance). **Accept all suggestions**
+resolves every group at once. A per-group **Keep all** option marks a
+false positive (kept for the session). Resolution dispatches
+`resolveDuplicateImports`, which
 deletes the listed entries and re-derives each touched account's
 `openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded
 from candidacy so collapsing a transfer is never mistaken for a

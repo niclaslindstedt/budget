@@ -10,16 +10,6 @@ const duplicates: DuplicatesCatalog = {
   countOne: "{n} dubblett",
   countOther: "{n} dubbletter",
   ownerLabel: "Ägare",
-  suggestedBadge: "föreslås",
-  reconcilesBadge: "saldo stämmer",
-  reconcilesTitle: "Kontots saldokedja förklarar den här transaktionen.",
-  gapBadge: "saldoglapp",
-  gapTitle:
-    "Kontots saldo hoppar här utan någon transaktion som förklarar det — sannolikt en felimport.",
-  noBalanceBadge: "inget saldo",
-  noBalanceTitle:
-    "Den här kontoutdraget hade inget löpande saldo att kontrollera.",
-  balanceLabel: "Saldo",
   keepAll: "Behåll alla (inte en dubblett)",
   resolve: "Lös",
   resolveAria: "Ta bort dubblettkopiorna och behåll den valda ägaren",

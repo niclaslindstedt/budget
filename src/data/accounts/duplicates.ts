@@ -49,16 +49,14 @@ export type DuplicateAccount = {
   // transaction twice on the same day (rare). All of them are deleted
   // together when another account is chosen as owner.
   entries: HistoryEntry[];
-  // The running balance recorded on the (first) entry, or null when the
-  // export carried none (e.g. credit cards). Shown so the user can see
-  // the differing balances side by side.
-  balance: number | null;
-  // Does at least one of this account's matching entries fit its own
-  // balance chain? `true` ⇒ some other entry leaves the balance exactly
-  // where this one picks up (or it sits on the opening balance), so the
-  // transaction genuinely belongs here. `false` ⇒ it lands on a balance
-  // no other transaction explains — the unexplained jump that flags a
-  // mis-import. `null` ⇒ no balance on the entry to judge by.
+  // Does at least one of this account's matching entries sit on the
+  // account's reconstructed running-balance chain? `true` ⇒ the entry's
+  // balance is reachable by walking the chain forward from the opening
+  // balance, so the transaction genuinely belongs here. `false` ⇒ its
+  // balance is unreachable — a foreign block injected by a mis-import
+  // sits off to the side of the native chain. `null` ⇒ no balance on the
+  // entry to judge by. Not shown in the UI; consumed only by
+  // `suggestOwner` to pick the pre-selected owner.
   fits: boolean | null;
 };
 
@@ -89,12 +87,14 @@ export type FindDuplicatesOptions = {
 export const DUPLICATE_DEFAULT_MIN_AMOUNT = 100;
 
 type AccountIndex = {
-  // Set of post-transaction balances (öre) present in the account, used
-  // to test whether a candidate entry's pre-balance is reachable.
-  postBalances: Set<number>;
-  // Opening balance (öre) anchoring the earliest entry, or null when the
-  // account has never been seeded from history.
-  openingCents: number | null;
+  // Post-transaction balances (öre) reachable by walking the running
+  // balance forward from the opening balance through this account's own
+  // entries — its native statement chain. A candidate entry "fits" when
+  // its recorded balance lands in here. A mis-imported block is
+  // internally self-consistent but does NOT connect to this chain, so
+  // its balances stay out of the set — that's what distinguishes the
+  // genuine copy from the stray one. See `buildReachableBalances`.
+  reachable: Set<number>;
   // Total non-collapsed entries — a weak tie-breaker for the owner
   // suggestion (a fuller statement is marginally more likely the home).
   total: number;
@@ -112,7 +112,6 @@ function isCandidate(entry: HistoryEntry): boolean {
 }
 
 function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
-  const postBalances = new Set<number>();
   const byDate = new Map<string, number>();
   let openingCents: number | null = null;
   let earliest: string | undefined;
@@ -122,7 +121,6 @@ function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
     total += 1;
     byDate.set(entry.date, (byDate.get(entry.date) ?? 0) + 1);
     if (typeof entry.balance === "number" && Number.isFinite(entry.balance)) {
-      postBalances.add(cents(entry.balance));
       // The opening balance is the earliest entry's balance minus its
       // amount — the balance just before the first known transaction.
       if (earliest === undefined || entry.date < earliest) {
@@ -131,28 +129,90 @@ function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
       }
     }
   }
-  return { postBalances, openingCents, total, byDate };
+  return {
+    reachable: buildReachableBalances(entries, openingCents),
+    total,
+    byDate,
+  };
 }
 
-// Does this entry reconcile against its account's balance chain? It does
-// when some OTHER transaction in the account leaves the balance exactly
-// where this one picks up (`pre = balance - amount`), or when `pre` is
-// the account's opening balance. Order-independent on purpose: bank
-// exports don't carry a reliable intra-day ordering, so we ask "is the
-// pre-balance reachable?" rather than reconstructing a sequence.
+// Reconstruct the account's running-balance chain and return the set of
+// post-balances (öre) it reaches. Bank statements are logically ordered:
+// each transaction's balance equals the previous balance plus its signed
+// amount. So starting from the opening balance we repeatedly follow the
+// running total to the next entry whose pre-balance (`balance - amount`)
+// matches it, collecting every balance the chain lands on.
+//
+// This is the discriminating step. A statement mis-imported into the
+// wrong account forms a self-consistent block — its entries chain to
+// each OTHER perfectly — but it does not connect to the host account's
+// opening balance, so the walk never reaches it and its balances stay
+// out of the set. (The earlier "is this pre-balance present anywhere in
+// the account?" test could not tell the two apart: a foreign block
+// reconciles against itself, so almost everything looked like it fit.)
+function buildReachableBalances(
+  entries: readonly HistoryEntry[],
+  openingCents: number | null,
+): Set<number> {
+  const reachable = new Set<number>();
+  if (openingCents === null) return reachable;
+  // Map each entry's pre-balance (öre) to the post-balances of every
+  // entry that picks up from it. A list, not a single value, because
+  // pathological data can post two entries from the same pre-balance;
+  // entries are consumed as the walk visits them so the loop can't cycle.
+  const byPre = new Map<number, number[]>();
+  let count = 0;
+  for (const entry of entries) {
+    if (!isCandidate(entry)) continue;
+    if (typeof entry.balance !== "number" || !Number.isFinite(entry.balance)) {
+      continue;
+    }
+    count += 1;
+    const pre = cents(entry.balance) - cents(entry.amount);
+    const post = cents(entry.balance);
+    const list = byPre.get(pre);
+    if (list) list.push(post);
+    else byPre.set(pre, [post]);
+  }
+  let running = openingCents;
+  for (let step = 0; step < count; step += 1) {
+    const post = takeReachable(byPre, running);
+    if (post === undefined) break;
+    reachable.add(post);
+    running = post;
+  }
+  return reachable;
+}
+
+// Pop one entry whose pre-balance matches `running` (within the rounding
+// tolerance) from the pre-balance map, returning its post-balance. The
+// matched entry is removed so a shared balance isn't walked twice.
+function takeReachable(
+  byPre: Map<number, number[]>,
+  running: number,
+): number | undefined {
+  for (let d = -BALANCE_TOLERANCE_CENTS; d <= BALANCE_TOLERANCE_CENTS; d += 1) {
+    const list = byPre.get(running + d);
+    if (list && list.length > 0) {
+      const post = list.shift() as number;
+      if (list.length === 0) byPre.delete(running + d);
+      return post;
+    }
+  }
+  return undefined;
+}
+
+// Does this entry sit on its account's reconstructed running-balance
+// chain? `true` when its recorded balance is one the chain reaches (see
+// `buildReachableBalances`), `false` when it's unreachable (the foreign
+// block of a mis-import), `null` when the entry carried no balance.
 function entryFits(entry: HistoryEntry, idx: AccountIndex): boolean | null {
   if (typeof entry.balance !== "number" || !Number.isFinite(entry.balance)) {
     return null;
   }
-  const pre = cents(entry.balance) - cents(entry.amount);
-  if (
-    idx.openingCents !== null &&
-    Math.abs(pre - idx.openingCents) <= BALANCE_TOLERANCE_CENTS
-  ) {
-    return true;
-  }
+  const balance = cents(entry.balance);
   for (let d = -BALANCE_TOLERANCE_CENTS; d <= BALANCE_TOLERANCE_CENTS; d += 1) {
-    if (idx.postBalances.has(pre + d)) return true;
+    if (idx.reachable.has(balance + d)) return true;
   }
   return false;
 }
@@ -276,13 +336,9 @@ export function findDuplicateImports(
     for (const [accountId, entries] of bucket.byAccount) {
       if (!accountIds.has(accountId)) continue;
       const idx = indexByAccount.get(accountId);
-      const withBalance = entries.find(
-        (e) => typeof e.balance === "number" && Number.isFinite(e.balance),
-      );
       accounts.push({
         accountId,
         entries,
-        balance: withBalance?.balance ?? null,
         fits: idx ? accountFits(entries, idx) : null,
       });
     }
