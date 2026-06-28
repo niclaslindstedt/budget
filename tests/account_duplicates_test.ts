@@ -365,6 +365,140 @@ describe("findDuplicateImports", () => {
     );
     expect(group.suggestedOwnerId).toBe("owner");
   });
+
+  it("anchors on the last non-duplicate so a mis-imported block can't self-validate", () => {
+    // A two-row statement (Shop One, Shop Two) is genuine in "right" and
+    // mis-imported as a contiguous block into "wrong". Inside the block
+    // each row chains into the previous one in BOTH accounts (the balances
+    // were copied verbatim), so checking the immediate predecessor would
+    // wrongly validate the second row in "wrong" too. Anchoring on the last
+    // genuine row — and carrying the block's amounts forward — tells them
+    // apart: in "right" the genuine 5000 flows into the block, in "wrong"
+    // the genuine 9000 does not.
+    const groups = findDuplicateImports(
+      data([account("right"), account("wrong")], {
+        right: [
+          entry({
+            id: "r_anchor",
+            amount: 100,
+            balance: 5000,
+            date: "2026-06-01",
+            description: "Native R",
+          }),
+          entry({
+            id: "r_d1",
+            amount: -1000,
+            balance: 4000,
+            date: "2026-06-02",
+            description: "Shop One",
+          }),
+          entry({
+            id: "r_d2",
+            amount: -500,
+            balance: 3500,
+            date: "2026-06-03",
+            description: "Shop Two",
+          }),
+        ],
+        wrong: [
+          entry({
+            id: "w_anchor",
+            amount: 200,
+            balance: 9000,
+            date: "2026-06-01",
+            description: "Native W",
+          }),
+          entry({
+            id: "w_d1",
+            amount: -1000,
+            balance: 4000,
+            date: "2026-06-02",
+            description: "Shop One",
+          }),
+          entry({
+            id: "w_d2",
+            amount: -500,
+            balance: 3500,
+            date: "2026-06-03",
+            description: "Shop Two",
+          }),
+        ],
+      }),
+    );
+    // Both rows form their own duplicate group; both are owned by "right",
+    // and the second row in "wrong" is NOT validated by the first.
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      expect(group.accounts.find((x) => x.accountId === "right")?.fits).toBe(
+        true,
+      );
+      expect(group.accounts.find((x) => x.accountId === "wrong")?.fits).toBe(
+        false,
+      );
+      expect(group.suggestedOwnerId).toBe("right");
+    }
+  });
+
+  it("ignores a matching balance elsewhere in history that isn't the anchor", () => {
+    // The copy lands on 9997 after a -410 charge (pre-balance 10407). The
+    // "wrong" account DID hold 10407 once, weeks earlier, but the row
+    // directly chaining into the copy is 10903 — which doesn't add up. A
+    // set-membership test would call this a fit; anchoring on the genuine
+    // predecessor correctly flags it, so "right" (where 10407 is the real
+    // predecessor) owns the transaction.
+    const groups = findDuplicateImports(
+      data([account("right"), account("wrong")], {
+        right: [
+          entry({
+            id: "r_pred",
+            amount: 9000,
+            balance: 10407,
+            date: "2026-06-18",
+            description: "Deposit",
+          }),
+          entry({
+            id: "r_dup",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "Newspaper",
+          }),
+        ],
+        wrong: [
+          entry({
+            id: "w_old",
+            amount: -100,
+            balance: 10407,
+            date: "2026-05-02",
+            description: "Old charge",
+          }),
+          entry({
+            id: "w_pred",
+            amount: -67,
+            balance: 10903,
+            date: "2026-06-17",
+            description: "Pharmacy",
+          }),
+          entry({
+            id: "w_dup",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "Newspaper",
+          }),
+        ],
+      }),
+    );
+    expect(groups).toHaveLength(1);
+    const group = groups[0];
+    expect(group.accounts.find((x) => x.accountId === "right")?.fits).toBe(
+      true,
+    );
+    expect(group.accounts.find((x) => x.accountId === "wrong")?.fits).toBe(
+      false,
+    );
+    expect(group.suggestedOwnerId).toBe("right");
+  });
 });
 
 describe("import-session expansion", () => {

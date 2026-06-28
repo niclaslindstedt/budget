@@ -665,31 +665,38 @@ modal**, which is within one account and can pair a user-authored row.
 
 Per group the user picks which account **owns** the transaction; the
 matching copies in every other account are deleted (the owner keeps its).
-The finder suggests the most likely owner with a single backward balance
-step (`suggestOwner` / `entryFits`): a copy "fits" an account when its
-pre-balance (`balance - amount`) is itself a balance the account records
-— i.e. a real predecessor entry hands the running total off to it
-(`predecessor.balance + amount == balance`). The stray copy lands on a
-pre-balance no entry in that account ever held, so it doesn't fit and is
-flagged. The continuity set spans the account's **whole running-balance
-chain** — every entry the bank posted, auto-collapsed transfer legs
+The finder suggests the most likely owner by balance continuity
+(`suggestOwner` / `AccountIndex.fitById`): a copy "fits" an account when
+the account's last **non-duplicate** entry before it — carried forward
+across any intervening mis-imported duplicates — hands the running total
+off to it (`anchor.balance + Σ(amounts of the duplicates between anchor
+and copy, copy included) == copy.balance`). The stray copy lands on a
+balance the account's own genuine history never produced, so it doesn't
+fit and is flagged. Two subtleties make the anchor the **last
+non-duplicate**, not the immediate row, and the check **not** a set
+membership:
+
+- A whole statement mis-imported into the wrong account is a contiguous
+  block of duplicates whose balances were copied verbatim, so the block
+  chains into _itself_. Checking the immediate predecessor would validate
+  every duplicate after the first in the wrong account too; anchoring on
+  the last genuine row — and summing the skipped duplicates' amounts —
+  is the only thing that distinguishes the owner (its genuine chain flows
+  into the block) from the mis-import (it doesn't).
+- An earlier version asked only whether the pre-balance existed _anywhere_
+  in the account's balance set. Over months of history a wrong account
+  coincidentally holds that balance at some unrelated point, so every copy
+  "fit", ownership fell to the tie-breakers, and the balance painted green
+  on the wrong account.
+
+The chain spans every entry the bank posted — auto-collapsed transfer legs
 (`collapsedIntoTransferId`) and hidden rows included — because they all
-move (or hold) the running total. The genuine owner's predecessor is
-frequently exactly such a collapsed leg (a salary deposit or internal
-transfer); leaving them out of the chain broke continuity and made the
-real owner's copy read as the stray, flagging the wrong account and
-pre-selecting the wrong owner. This is deliberately one step, **not** a
-walk of the whole chain:
-a statement's balances are continuous, so the immediate predecessor is all
-the signal needed, and the check doesn't depend on import order or on the
-history being gap-free (an earlier whole-chain walk mis-flagged genuine
-charges whenever the reconstructed chain hit any discontinuity). The
-limitation is the converse: a whole statement imported into two accounts
-leaves each copy with a chaining predecessor inside its own account, so
-both "fit" and ownership falls to the tie-breakers (denser same-day
-statement, then fuller history) and the user's pick from the
-surrounding-history view. The verdict isn't surfaced as a per-account badge — the
-suggested copy is simply pre-selected. A transaction is only grouped when
+move (or hold) the running total, and a non-duplicate one is a valid
+anchor (the genuine owner's predecessor is frequently a salary deposit or
+internal transfer that got collapsed into a `Transfer`). When the balance
+genuinely can't decide (a copy with no non-duplicate anchor on either
+side), ownership falls to the tie-breakers — denser same-day statement,
+then fuller history. A transaction is only grouped when
 date, normalised description, signed amount, AND running balance all
 match across accounts: a verbatim mis-import copies the statement row's
 balance too, so the two copies share it, whereas a mere coincidence (a

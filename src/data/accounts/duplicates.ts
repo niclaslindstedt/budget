@@ -96,14 +96,16 @@ export type DuplicateAccount = {
   // transaction twice on the same day (rare). All of them are deleted
   // together when another account is chosen as owner.
   entries: HistoryEntry[];
-  // Does at least one of this account's matching entries have a real
-  // predecessor here — an entry whose balance plus this one's amount
-  // equals this one's balance? `true` ⇒ the running total flows into it,
-  // so the transaction genuinely belongs here. `false` ⇒ it lands on a
-  // pre-balance no entry in this account ever held — the stray
-  // mis-import. `null` ⇒ no balance on the entry to judge by. Drives both
-  // the `suggestOwner` pre-selection and the red balance flag in the
-  // expanded context panel.
+  // Does at least one of this account's matching entries reconcile against
+  // the account's genuine chain — i.e. does the last NON-duplicate entry
+  // before it, carried forward across any intervening mis-imported
+  // duplicates, hand the running total off to it? `true` ⇒ the genuine
+  // chain flows into it, so the transaction belongs here. `false` ⇒ it
+  // lands on a balance the account's own history never produced — the
+  // stray mis-import. `null` ⇒ no balance (or no genuine anchor) to judge
+  // by. Drives both the `suggestOwner` pre-selection and the green / red
+  // balance pill in the expanded context panel. See `AccountIndex.fitById`
+  // for why the anchor is the last non-duplicate, not the immediate row.
   fits: boolean | null;
 };
 
@@ -123,26 +125,37 @@ export type DuplicateGroup = {
 };
 
 type AccountIndex = {
-  // Every post-transaction balance (öre) on the account's running-balance
-  // chain. An entry "fits" here when its pre-balance (`balance - amount`)
-  // is itself a balance in this set — i.e. some entry in the same account
-  // is its immediate statement predecessor, with the running total flowing
-  // cleanly into it (`predecessor.balance + entry.amount == entry.balance`).
-  // A transaction mis-imported into the wrong account lands on a
-  // pre-balance no entry there ever held, so it doesn't fit and is flagged
-  // as the stray copy. Deliberately a single backward step, NOT a walk of
-  // the whole chain: a real statement's balances are continuous, so the
-  // one-step check is both sufficient and robust to whatever order the
-  // entries were imported in.
+  // Per-entry continuity verdict, keyed by entry id: does the running total
+  // flow cleanly from the last NON-duplicate entry before it into this
+  // entry — i.e. does
+  //   anchor.balance + Σ(amounts of the duplicates between anchor and entry,
+  //                       this entry included) == entry.balance ?
+  //   - `true`  — the genuine row before the (possibly multi-row)
+  //               mis-import block chains in: the transaction belongs here.
+  //   - `false` — it does NOT add up: the entry lands on a balance the
+  //               account's own history never produced — a mis-import.
+  //   - `null`  — nothing to judge by (no balance, or no non-duplicate
+  //               entry precedes it to anchor on).
   //
-  // The set spans the WHOLE chain — every entry the bank posted, including
-  // auto-collapsed transfer legs, hidden rows, and zero-amount notices —
-  // because they all move (or hold) the running balance. The genuine
-  // owner's predecessor is frequently exactly one of those (a salary
-  // deposit or internal transfer that got auto-collapsed into a
-  // `Transfer`); leaving them out broke continuity and made the real
-  // owner's copy read as a stray, flagging the wrong account.
-  balances: Set<number>;
+  // The anchor is the last NON-duplicate entry, NOT the immediate
+  // predecessor. A whole statement mis-imported into the wrong account is a
+  // contiguous block of duplicates that chains into ITSELF (each row's
+  // balance was copied verbatim from the real statement), so checking the
+  // immediate predecessor falsely validates every duplicate after the
+  // first. Anchoring on the last genuine row — and summing the skipped
+  // duplicates' amounts across the gap — is the only thing that tells the
+  // owner (where the genuine chain flows into the block) from the
+  // mis-import (where it doesn't). It is also NOT membership in the set of
+  // every balance the account ever held: over months of history a wrong
+  // account coincidentally holds the pre-balance at some unrelated point,
+  // so the set test painted every copy green and let ownership fall to the
+  // tie-breakers. The chain is ordered exactly like `historyContext` (date
+  // asc, then original import order). Auto-collapsed transfer legs, hidden
+  // rows, and zero-amount notices stay in the chain because they all move
+  // (or hold) the running total — and a non-duplicate one is a valid
+  // anchor (a salary deposit / internal transfer that got collapsed into a
+  // `Transfer` is frequently the genuine owner's predecessor).
+  fitById: Map<string, boolean | null>;
   // Total non-collapsed entries — a weak tie-breaker for the owner
   // suggestion (a fuller statement is marginally more likely the home).
   total: number;
@@ -159,15 +172,57 @@ function isCandidate(entry: HistoryEntry): boolean {
   return entry.collapsedIntoTransferId === undefined && entry.amount !== 0;
 }
 
-function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
+function hasBalance(
+  entry: HistoryEntry,
+): entry is HistoryEntry & { balance: number } {
+  return typeof entry.balance === "number" && Number.isFinite(entry.balance);
+}
+
+function buildAccountIndex(
+  entries: readonly HistoryEntry[],
+  duplicateIds: ReadonlySet<string>,
+): AccountIndex {
+  // Order the WHOLE running-balance chain by date, then original import
+  // order — identical to `historyContext`, so a copy's verdict here lines
+  // up with the before/target/after the user sees in the context panel.
+  const ordered = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) =>
+      a.entry.date < b.entry.date
+        ? -1
+        : a.entry.date > b.entry.date
+          ? 1
+          : a.index - b.index,
+    );
   const byDate = new Map<string, number>();
-  const balances = new Set<number>();
+  const fitById = new Map<string, boolean | null>();
   let total = 0;
-  for (const entry of entries) {
-    // Continuity set: every entry on the running-balance chain, collapsed
-    // transfer legs and hidden rows included (see `AccountIndex.balances`).
-    if (typeof entry.balance === "number" && Number.isFinite(entry.balance)) {
-      balances.add(cents(entry.balance));
+  // Single forward pass tracking the last NON-duplicate balance as the
+  // anchor, plus the signed sum of every duplicate amount seen since it.
+  // A duplicate's verdict is then `anchor + sumSinceAnchor + amount ==
+  // balance` — the genuine row's balance carried forward across the whole
+  // mis-import block, not the block's own internally-consistent chain.
+  let anchorBalance: number | null = null;
+  let sumSinceAnchor = 0;
+  for (let i = 0; i < ordered.length; i += 1) {
+    const entry = ordered[i].entry;
+    if (duplicateIds.has(entry.id)) {
+      if (!hasBalance(entry) || anchorBalance === null) {
+        fitById.set(entry.id, null);
+      } else {
+        const expected = anchorBalance + sumSinceAnchor + cents(entry.amount);
+        fitById.set(
+          entry.id,
+          Math.abs(expected - cents(entry.balance)) <= BALANCE_TOLERANCE_CENTS,
+        );
+      }
+      // Carry this duplicate's amount forward so the next duplicate in the
+      // same block is measured from the same genuine anchor.
+      sumSinceAnchor += cents(entry.amount);
+    } else if (hasBalance(entry)) {
+      // A genuine row: it becomes the new anchor and resets the run.
+      anchorBalance = cents(entry.balance);
+      sumSinceAnchor = 0;
     }
     // Density tie-breakers count only real, non-collapsed statement
     // activity — a collapsed transfer leg or zero-amount notice is part of
@@ -176,27 +231,7 @@ function buildAccountIndex(entries: readonly HistoryEntry[]): AccountIndex {
     total += 1;
     byDate.set(entry.date, (byDate.get(entry.date) ?? 0) + 1);
   }
-  return { balances, total, byDate };
-}
-
-// Does the running total flow cleanly into this entry on this account —
-// i.e. is its pre-balance (`balance - amount`) one the account actually
-// records, so a real predecessor hands off to it? `true` when a
-// predecessor balance exists, `false` when the entry lands on a balance
-// no entry there ever held (the stray mis-import), `null` when the entry
-// carried no balance to judge by. One backward step, not a whole-chain
-// walk: a statement's balances are continuous, so the immediate
-// predecessor is all the signal needed and the check doesn't depend on
-// import order or on the history being gap-free.
-function entryFits(entry: HistoryEntry, idx: AccountIndex): boolean | null {
-  if (typeof entry.balance !== "number" || !Number.isFinite(entry.balance)) {
-    return null;
-  }
-  const pre = cents(entry.balance) - cents(entry.amount);
-  for (let d = -BALANCE_TOLERANCE_CENTS; d <= BALANCE_TOLERANCE_CENTS; d += 1) {
-    if (idx.balances.has(pre + d)) return true;
-  }
-  return false;
+  return { fitById, total, byDate };
 }
 
 // Roll the per-entry verdict up to the account: `true` if any matching
@@ -208,7 +243,7 @@ function accountFits(
 ): boolean | null {
   let sawFalse = false;
   for (const entry of entries) {
-    const fit = entryFits(entry, idx);
+    const fit = idx.fitById.get(entry.id) ?? null;
     if (fit === true) return true;
     if (fit === false) sawFalse = true;
   }
@@ -219,10 +254,10 @@ function accountFits(
 // can re-suggest after the account set changes and tests can pin the
 // heuristic. Ordering, strongest signal first:
 //
-//   1. Balance reconciles here (`fits === true`) — a real predecessor in
-//      this account hands the running total off to the transaction. The
-//      mis-imported copy lands on a pre-balance no entry there ever held,
-//      so this is the decisive tell.
+//   1. Balance reconciles here (`fits === true`) — the account's last
+//      genuine row hands the running total off to the transaction. The
+//      mis-imported copy lands on a balance the account's own history never
+//      produced, so this is the decisive tell.
 //   2. More entries on the transaction's own date — the genuine
 //      statement clusters that day's activity; a stray import is alone.
 //   3. Fuller history overall.
@@ -279,18 +314,19 @@ type Bucket = {
 // groups newest-first; empty when nothing spans two accounts.
 export function findDuplicateImports(data: UserData): DuplicateGroup[] {
   const accountIds = new Set(data.accounts.map((a) => a.id));
-  const indexByAccount = new Map<string, AccountIndex>();
   const buckets = new Map<string, Bucket>();
   const ignored = buildIgnoreSet(data.duplicateIgnores);
 
+  // Pass 1 — bucket every candidate entry by its cross-account signature
+  // (date + normalised description + signed amount + running balance).
   for (const account of data.accounts) {
     const entries = data.history[account.id];
     if (!entries || entries.length === 0) continue;
-    indexByAccount.set(account.id, buildAccountIndex(entries));
     for (const entry of entries) {
       if (!isCandidate(entry)) continue;
-      // Ignored entries are skipped here (never grouped) but stay in the
-      // index above so they keep counting toward the balance set.
+      // Ignored entries are never grouped, but they stay genuine on the
+      // chain (a legitimate recurring charge posting to two accounts), so
+      // the continuity walk below still anchors on them.
       if (ignored.has(ignoreKey(entry.description, entry.amount))) continue;
       if (typeof entry.date !== "string" || entry.date.length < 10) continue;
       const key = normaliseDescription(entry.description);
@@ -309,6 +345,28 @@ export function findDuplicateImports(data: UserData): DuplicateGroup[] {
       if (list) list.push(entry);
       else bucket.byAccount.set(account.id, [entry]);
     }
+  }
+
+  // The set of entries that ARE duplicates — those whose signature bucket
+  // spans two or more accounts. The continuity walk anchors on entries
+  // OUTSIDE this set (the account's genuine rows), so a contiguous block of
+  // mis-imported duplicates cannot validate itself off its own copied
+  // balances.
+  const duplicateIds = new Set<string>();
+  for (const bucket of buckets.values()) {
+    if (bucket.byAccount.size < 2) continue;
+    for (const list of bucket.byAccount.values()) {
+      for (const entry of list) duplicateIds.add(entry.id);
+    }
+  }
+
+  // Pass 2 — build per-account continuity indexes now that the duplicate
+  // set is known.
+  const indexByAccount = new Map<string, AccountIndex>();
+  for (const account of data.accounts) {
+    const entries = data.history[account.id];
+    if (!entries || entries.length === 0) continue;
+    indexByAccount.set(account.id, buildAccountIndex(entries, duplicateIds));
   }
 
   const out: DuplicateGroup[] = [];
