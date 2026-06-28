@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DUPLICATE_DEFAULT_MIN_AMOUNT,
   duplicateRemovals,
   findDuplicateImports,
 } from "../src/data/accounts/duplicates";
@@ -31,8 +30,6 @@ function data(
   return { accounts, history } as unknown as UserData;
 }
 
-const opts = { minAmount: DUPLICATE_DEFAULT_MIN_AMOUNT };
-
 describe("findDuplicateImports", () => {
   it("flags the same transaction imported into two accounts", () => {
     const groups = findDuplicateImports(
@@ -40,7 +37,6 @@ describe("findDuplicateImports", () => {
         a: [entry({ id: "a1" })],
         b: [entry({ id: "b1" })],
       }),
-      opts,
     );
     expect(groups).toHaveLength(1);
     expect(groups[0].accounts.map((x) => x.accountId).sort()).toEqual([
@@ -55,7 +51,6 @@ describe("findDuplicateImports", () => {
         a: [entry({ id: "a1" })],
         b: [entry({ id: "b1", description: "Spotify AB", amount: -119 })],
       }),
-      opts,
     );
     expect(groups).toHaveLength(0);
   });
@@ -69,7 +64,6 @@ describe("findDuplicateImports", () => {
         a: [entry({ id: "a1", description: "Swish Anna", amount: -500 })],
         b: [entry({ id: "b1", description: "Swish Anna", amount: 500 })],
       }),
-      opts,
     );
     expect(groups).toHaveLength(0);
   });
@@ -80,20 +74,18 @@ describe("findDuplicateImports", () => {
         a: [entry({ id: "a1", collapsedIntoTransferId: "t1" })],
         b: [entry({ id: "b1" })],
       }),
-      opts,
     );
     expect(groups).toHaveLength(0);
   });
 
-  it("respects the minimum-amount floor", () => {
+  it("flags small-amount duplicates (no minimum-amount floor)", () => {
     const groups = findDuplicateImports(
       data([account("a"), account("b")], {
         a: [entry({ id: "a1", amount: -50, description: "Kiosk" })],
         b: [entry({ id: "b1", amount: -50, description: "Kiosk" })],
       }),
-      { minAmount: 100 },
     );
-    expect(groups).toHaveLength(0);
+    expect(groups).toHaveLength(1);
   });
 
   it("suggests the account where the balance reconciles", () => {
@@ -112,7 +104,6 @@ describe("findDuplicateImports", () => {
           entry({ id: "b1", amount: -1200, balance: 9999 }),
         ],
       }),
-      opts,
     );
     expect(groups).toHaveLength(1);
     const group = groups[0];
@@ -167,7 +158,6 @@ describe("findDuplicateImports", () => {
           }),
         ],
       }),
-      opts,
     );
     expect(groups).toHaveLength(1);
     const group = groups[0];
@@ -182,7 +172,6 @@ describe("findDuplicateImports", () => {
         a: [entry({ id: "a1" })],
         b: [entry({ id: "b1" })],
       }),
-      opts,
     );
     expect(groups[0].accounts.every((x) => x.fits === null)).toBe(true);
   });
@@ -196,7 +185,6 @@ describe("duplicateRemovals", () => {
         b: [entry({ id: "b1" })],
         c: [entry({ id: "c1" })],
       }),
-      opts,
     );
     const removals = duplicateRemovals(group, "a");
     expect(removals.map((r) => `${r.accountId}:${r.entryId}`).sort()).toEqual([
@@ -211,7 +199,6 @@ describe("duplicateRemovals", () => {
         a: [entry({ id: "a1" })],
         b: [entry({ id: "b1" })],
       }),
-      opts,
     );
     expect(duplicateRemovals(group, "nope")).toEqual([]);
   });

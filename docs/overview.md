@@ -679,9 +679,11 @@ ties fall back to the denser same-day statement, then the fuller
 history. The verdict isn't surfaced in the UI — the suggested copy is
 simply pre-selected, and the per-account rows are intentionally compact
 (account chip + selection dot, no balance figure, since both copies
-carry the identical statement balance). **Accept all suggestions**
-resolves every group at once. A per-group **Keep all** option marks a
-false positive (kept for the session). Resolution dispatches
+carry the identical statement balance). Every cross-account duplicate is
+listed regardless of amount — there is no minimum-amount floor.
+**Accept all** resolves every group at once. A per-group **Keep all**
+option marks a false positive (kept for the session). Resolution
+dispatches
 `resolveDuplicateImports`, which
 deletes the listed entries and re-derives each touched account's
 `openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded
