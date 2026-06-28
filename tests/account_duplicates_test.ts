@@ -123,6 +123,59 @@ describe("findDuplicateImports", () => {
     expect(b?.fits).toBe(false);
   });
 
+  it("does not treat a self-consistent mis-imported block as fitting", () => {
+    // The mis-import is a whole foreign statement fragment, so its
+    // entries chain to EACH OTHER perfectly (5000 → 3800). A naive
+    // "is this pre-balance present anywhere?" test reconciles that block
+    // against itself and reports it fits. The real chain must be walked
+    // forward from the account's own opening balance: "b"'s native chain
+    // (2300 → 2000 → 1300) never reaches the foreign block, so the stray
+    // copy is correctly flagged as not fitting and "a" is suggested.
+    const groups = findDuplicateImports(
+      data([account("a"), account("b")], {
+        a: [
+          entry({ id: "a0", amount: -800, balance: 5000, date: "2026-04-10" }),
+          entry({ id: "a1", amount: -1200, balance: 3800, date: "2026-04-15" }),
+        ],
+        b: [
+          entry({
+            id: "b0",
+            amount: -300,
+            balance: 2000,
+            date: "2026-04-02",
+            description: "Hyresavi",
+          }),
+          entry({
+            id: "b1",
+            amount: -700,
+            balance: 1300,
+            date: "2026-04-05",
+            description: "Elnät",
+          }),
+          entry({
+            id: "bf0",
+            amount: -800,
+            balance: 5000,
+            date: "2026-04-10",
+            description: "Vattenfall",
+          }),
+          entry({
+            id: "bf1",
+            amount: -1200,
+            balance: 3800,
+            date: "2026-04-15",
+          }),
+        ],
+      }),
+      opts,
+    );
+    expect(groups).toHaveLength(1);
+    const group = groups[0];
+    expect(group.accounts.find((x) => x.accountId === "a")?.fits).toBe(true);
+    expect(group.accounts.find((x) => x.accountId === "b")?.fits).toBe(false);
+    expect(group.suggestedOwnerId).toBe("a");
+  });
+
   it("reports null fit when no balance is present (credit-card export)", () => {
     const groups = findDuplicateImports(
       data([account("a"), account("b")], {
