@@ -113,6 +113,7 @@ type Props = {
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
   onSaveSettings: (draft: Settings) => void;
@@ -140,6 +141,7 @@ export function UniversalModalHost(props: Props) {
     onClearMerchantHints,
     onClearRecurringDismissals,
     onClearTransferDismissals,
+    onClearDuplicateIgnores,
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
     onSaveSettings,
@@ -523,6 +525,7 @@ export function UniversalModalHost(props: Props) {
         merchantHintCount={Object.keys(data.merchantHints).length}
         recurringDismissalCount={data.recurringDismissals.length}
         transferDismissalCount={data.transferCollapseDismissals.length}
+        duplicateIgnoreCount={data.duplicateIgnores.length}
         ignoredItemEntryCount={data.ignoredItemEntryIds.length}
         itemFindExclusionCount={data.itemFindExclusionPatterns.length}
         data={data}
@@ -548,6 +551,7 @@ export function UniversalModalHost(props: Props) {
         onClearMerchantHints={onClearMerchantHints}
         onClearRecurringDismissals={onClearRecurringDismissals}
         onClearTransferDismissals={onClearTransferDismissals}
+        onClearDuplicateIgnores={onClearDuplicateIgnores}
         onClearIgnoredItemEntries={onClearIgnoredItemEntries}
         onClearItemFindExclusions={onClearItemFindExclusions}
         onCreateCategory={onCreateCategory}

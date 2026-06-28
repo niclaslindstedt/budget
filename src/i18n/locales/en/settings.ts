@@ -434,6 +434,9 @@ const settings = {
     dismissedTransferTitle: "Dismissed transfer pairs",
     dismissedTransferHint:
       "Pairs you said are not transfers. Clear the list to see suggestions again.",
+    duplicateIgnoreTitle: "Ignored duplicates",
+    duplicateIgnoreHint:
+      "Charges you said are not duplicates. Clear the list to have the duplicate finder flag them again.",
     clearDismissed: "Clear list",
     none: "None remembered yet.",
     matchRulesTitle: "Pattern rules",

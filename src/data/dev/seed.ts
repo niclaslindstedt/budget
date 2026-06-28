@@ -1703,6 +1703,7 @@ export function buildSeedUserData(): UserData {
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
+    duplicateIgnores: [],
     matchRules,
     seriesMatchRules: [],
     renamePatterns,

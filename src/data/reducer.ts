@@ -315,6 +315,18 @@ export type Action =
       removals: ReadonlyArray<{ accountId: string; entryId: string }>;
     }
   | {
+      // Record "not a duplicate" rules for the cross-account duplicate
+      // finder: each {description, amount} pair tells the finder to skip
+      // any history entry whose EXACT bank description and signed amount
+      // match, on past and future imports alike. Created from the
+      // "Ignore" button on a duplicate card so a legitimate recurring
+      // charge that posts to two accounts stops being flagged. Appended
+      // and de-duplicated; cleared via `clearDuplicateIgnores`.
+      type: "ignoreDuplicates";
+      ignores: ReadonlyArray<{ description: string; amount: number }>;
+    }
+  | { type: "clearDuplicateIgnores" }
+  | {
       // Append a balance-correction row to the first AccountBudget that
       // tracks `accountId`. The amount carries the signed delta needed
       // to bring the account's running total to the user-asserted

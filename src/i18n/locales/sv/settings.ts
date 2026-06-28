@@ -434,6 +434,9 @@ const settings: SettingsCatalog = {
     dismissedTransferTitle: "Avvisade överföringspar",
     dismissedTransferHint:
       "Par du markerat som ej överföringar. Rensa listan för att se förslagen igen.",
+    duplicateIgnoreTitle: "Ignorerade dubbletter",
+    duplicateIgnoreHint:
+      "Transaktioner du markerat som ej dubbletter. Rensa listan för att låta dubblettsökaren flagga dem igen.",
     clearDismissed: "Rensa listan",
     none: "Inget ihågkommet än.",
     matchRulesTitle: "Mönsterregler",

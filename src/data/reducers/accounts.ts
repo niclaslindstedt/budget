@@ -14,7 +14,12 @@ import {
   mergeHistory,
 } from "../../storage/banks";
 import type { Action } from "../reducer";
-import type { CorrectionRow, HistoryEntry, UserData } from "../types";
+import type {
+  CorrectionRow,
+  DuplicateIgnore,
+  HistoryEntry,
+  UserData,
+} from "../types";
 
 // Bank-detail back-fill shared by the account and savings branches of
 // an import. Fill `bank` / `clearing` / `accountNumber` from what the
@@ -196,6 +201,29 @@ export function reduceAccounts(
       return { ...a, openingBalance: opening };
     });
     return { ...state, history: nextHistory, accounts };
+  }
+  if (action.type === "ignoreDuplicates") {
+    if (action.ignores.length === 0) return state;
+    // Append, skipping pairs already present so a re-ignore is a no-op.
+    const seen = new Set(
+      state.duplicateIgnores.map((r) => `${r.description}|${r.amount}`),
+    );
+    const additions: DuplicateIgnore[] = [];
+    for (const rule of action.ignores) {
+      const key = `${rule.description}|${rule.amount}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      additions.push({ description: rule.description, amount: rule.amount });
+    }
+    if (additions.length === 0) return state;
+    return {
+      ...state,
+      duplicateIgnores: [...state.duplicateIgnores, ...additions],
+    };
+  }
+  if (action.type === "clearDuplicateIgnores") {
+    if (state.duplicateIgnores.length === 0) return state;
+    return { ...state, duplicateIgnores: [] };
   }
   if (action.type === "importBankHistory") {
     const existing = state.history[action.accountId] ?? [];

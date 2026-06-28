@@ -220,6 +220,22 @@ export type HistoryEntry = {
   receiptPath?: string;
 };
 
+// A "this pair is not a duplicate, stop flagging it" rule for the
+// cross-account duplicate finder. Keyed by the EXACT raw bank
+// description and the signed amount — not the lossy normalised key the
+// finder groups by — so the user can silence one specific recurring
+// charge (a monthly card payment that legitimately posts to two
+// accounts) without suppressing every transaction that happens to
+// normalise to the same merchant. Any history entry whose raw
+// `description` and `amount` match a rule is excluded from candidacy in
+// `findDuplicateImports`, on past and future imports alike. Created from
+// the "Ignore" button on a duplicate card; cleared from the Memory
+// settings tab so a misclick is recoverable.
+export type DuplicateIgnore = {
+  description: string;
+  amount: number;
+};
+
 // Per-account metadata recorded each time the user imports a file.
 // Lets the History modal show "imported `statement.xlsx` on 2026-05-17
 // covering 2025-05 to 2026-05, 312 entries" and is the hook a future

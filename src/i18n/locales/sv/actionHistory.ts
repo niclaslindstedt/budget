@@ -71,6 +71,8 @@ const actionHistory: ActionHistoryCatalog = {
     cutAccountHistory: "Beskar kontohistorik",
     correctAccountBalance: "Korrigerade kontosaldo",
     resolveDuplicateImports: "Löste dubblettimporter",
+    ignoreDuplicates: "Ignorerade dubbletter",
+    clearDuplicateIgnores: "Rensade ignorerade dubbletter",
     createSaving: "Skapade sparkonto",
     updateSaving: "Redigerade sparkonto",
     deleteSaving: "Tog bort sparkonto",

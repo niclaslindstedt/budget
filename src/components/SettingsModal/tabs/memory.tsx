@@ -5,16 +5,20 @@ export function MemoryTab({
   merchantHintCount,
   recurringDismissalCount,
   transferDismissalCount,
+  duplicateIgnoreCount,
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
+  onClearDuplicateIgnores,
 }: {
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
+  duplicateIgnoreCount: number;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
+  onClearDuplicateIgnores: () => void;
 }) {
   const t = useT();
   return (
@@ -51,6 +55,17 @@ export function MemoryTab({
         }
         buttonLabel={t("settings.memory.clearDismissed")}
         onClear={onClearTransferDismissals}
+      />
+      <ClearRow
+        label={t("settings.memory.duplicateIgnoreTitle")}
+        count={duplicateIgnoreCount}
+        hint={
+          duplicateIgnoreCount === 0
+            ? t("settings.memory.none")
+            : t("settings.memory.duplicateIgnoreHint")
+        }
+        buttonLabel={t("settings.memory.clearDismissed")}
+        onClear={onClearDuplicateIgnores}
       />
     </Section>
   );
