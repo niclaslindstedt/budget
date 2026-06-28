@@ -43,8 +43,8 @@ type Props = {
   dispatch: (action: Action) => void;
 };
 
-// Sentinel owner selection meaning "these aren't really the same
-// transaction — keep every copy". Distinct from any real account id.
+// Sentinel owner selection — the "Skip" choice, meaning "don't resolve
+// this group: keep every copy". Distinct from any real account id.
 const KEEP_ALL = "__keep_all__";
 
 export function AccountDuplicatesModal({
@@ -58,8 +58,8 @@ export function AccountDuplicatesModal({
   const lang = useLang();
   const toast = useToast();
   // Per-group owner override, keyed by the signature-stable group id.
-  // Absent ⇒ fall back to the group's suggested owner. KEEP_ALL ⇒ the
-  // user declared it a false positive.
+  // Absent ⇒ fall back to the default (the suggested owner when a balance
+  // reconciles, else Skip). KEEP_ALL ⇒ the user chose Skip.
   const [owners, setOwners] = useState<Record<string, string>>({});
   // Groups the user resolved as "keep all" this session — hidden from
   // the list since no data changed to make them drop out naturally.
@@ -79,8 +79,17 @@ export function AccountDuplicatesModal({
   );
 
   const ownerFor = useCallback(
-    (group: DuplicateGroup): string =>
-      owners[group.id] ?? group.suggestedOwnerId,
+    (group: DuplicateGroup): string => {
+      const picked = owners[group.id];
+      if (picked !== undefined) return picked;
+      // Only pre-select an owner when at least one account's balance
+      // actually reconciles. When every copy's balance mismatches (or there
+      // is no balance to judge), the finder can't tell who owns it — default
+      // to Skip so "Accept all" never deletes a copy on a blind guess.
+      return group.accounts.some((a) => a.fits === true)
+        ? group.suggestedOwnerId
+        : KEEP_ALL;
+    },
     [owners],
   );
 
@@ -359,7 +368,7 @@ function DuplicateCard({
           }`}
         >
           <OwnerRadio selected={selectedOwner === KEEP_ALL} />
-          <span className="text-sm text-muted">{t("duplicates.keepAll")}</span>
+          <span className="text-sm text-muted">{t("duplicates.skip")}</span>
         </button>
       </div>
 
