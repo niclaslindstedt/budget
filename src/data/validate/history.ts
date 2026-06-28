@@ -41,6 +41,15 @@ export function validateHistoryEntry(
     importedAt,
   };
   if (balance !== undefined) entry.balance = balance;
+  if (raw.importId !== undefined) {
+    // The import-session backref — see `HistoryEntry.importId`. A dangling
+    // id (the `HistoryImport` record was pruned, e.g. by a history cut) is
+    // harmless: the session-removal lookup just finds no siblings, so keep
+    // any non-empty string rather than cross-checking it.
+    if (typeof raw.importId !== "string" || raw.importId === "")
+      return fail(`${path}.importId`, "expected a non-empty string");
+    entry.importId = raw.importId;
+  }
   if (raw.hidden !== undefined) {
     if (typeof raw.hidden !== "boolean")
       return fail(`${path}.hidden`, "expected a boolean");

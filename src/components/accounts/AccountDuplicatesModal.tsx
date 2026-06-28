@@ -11,6 +11,8 @@ import {
 
 import {
   duplicateRemovals,
+  duplicateSessionRemovals,
+  duplicateSessions,
   findDuplicateImports,
   historyContext,
   ignoreRulesForGroup,
@@ -62,6 +64,12 @@ export function AccountDuplicatesModal({
   // Groups the user resolved as "keep all" this session — hidden from
   // the list since no data changed to make them drop out naturally.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  // Per-group opt-in to "remove the rest of that import" — when set, the
+  // matched copies drag their whole import session out with them. Keyed by
+  // the group id; absent / false ⇒ remove only the matched copies.
+  const [expandSession, setExpandSession] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
 
@@ -86,7 +94,11 @@ export function AccountDuplicatesModal({
           keptIds.push(group.id);
           continue;
         }
-        removals.push(...duplicateRemovals(group, owner));
+        removals.push(
+          ...(expandSession[group.id]
+            ? duplicateSessionRemovals(group, owner, data.history)
+            : duplicateRemovals(group, owner)),
+        );
       }
       if (removals.length > 0) {
         dispatch({ type: "resolveDuplicateImports", removals });
@@ -107,7 +119,7 @@ export function AccountDuplicatesModal({
         });
       }
     },
-    [dispatch, ownerFor, t, toast],
+    [data.history, dispatch, expandSession, ownerFor, t, toast],
   );
 
   // Mark a group "not a duplicate, ever": persist {description, amount}
@@ -186,6 +198,10 @@ export function AccountDuplicatesModal({
                 onSelectOwner={(owner) =>
                   setOwners((prev) => ({ ...prev, [group.id]: owner }))
                 }
+                expandSession={expandSession[group.id] ?? false}
+                onToggleExpandSession={(next) =>
+                  setExpandSession((prev) => ({ ...prev, [group.id]: next }))
+                }
                 onResolve={() => resolveGroups([group])}
                 onIgnore={() => ignoreGroup(group)}
                 t={t}
@@ -211,6 +227,8 @@ type CardProps = {
   lang: ReturnType<typeof useLang>;
   selectedOwner: string;
   onSelectOwner: (owner: string) => void;
+  expandSession: boolean;
+  onToggleExpandSession: (next: boolean) => void;
   onResolve: () => void;
   onIgnore: () => void;
   t: ReturnType<typeof useT>;
@@ -224,11 +242,24 @@ function DuplicateCard({
   lang,
   selectedOwner,
   onSelectOwner,
+  expandSession,
+  onToggleExpandSession,
   onResolve,
   onIgnore,
   t,
 }: CardProps) {
   const [expanded, setExpanded] = useState(false);
+  // Extra entries the chosen owner's resolution would sweep out with the
+  // rest of each mis-imported session — only when a non-owner copy carries
+  // an import backref and that session left more rows than the group
+  // matched. KEEP_ALL deletes nothing, so it never expands.
+  const sessionExtra = useMemo(() => {
+    if (selectedOwner === KEEP_ALL) return 0;
+    return duplicateSessions(group, selectedOwner, history).reduce(
+      (sum, s) => sum + (s.total - s.matched),
+      0,
+    );
+  }, [group, selectedOwner, history]);
   return (
     <li className="rounded border border-line bg-surface-2">
       <button
@@ -331,6 +362,22 @@ function DuplicateCard({
           <span className="text-sm text-muted">{t("duplicates.keepAll")}</span>
         </button>
       </div>
+
+      {sessionExtra > 0 && (
+        <label className="flex cursor-pointer items-start gap-2 border-b border-line bg-surface px-3 py-1.5 text-xs text-muted hover:text-fg">
+          <input
+            type="checkbox"
+            checked={expandSession}
+            onChange={(e) => onToggleExpandSession(e.target.checked)}
+            className="mt-0.5 shrink-0 accent-accent"
+          />
+          <span>
+            {sessionExtra === 1
+              ? t("duplicates.removeSessionOne", { n: sessionExtra })
+              : t("duplicates.removeSessionOther", { n: sessionExtra })}
+          </span>
+        </label>
+      )}
 
       <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-3 px-3 py-1.5">
         <button

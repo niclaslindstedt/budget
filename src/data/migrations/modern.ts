@@ -1201,6 +1201,14 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // and a fresh-empty default passes the v82 validator unchanged. Bare
   // additive bump.
   81: (v81) => ({ ...v81, version: 82, duplicateIgnores: [] }),
+
+  // v82 → v83: a history entry gains optional `importId`, the backref to
+  // the `HistoryImport` session that first brought it in. Lets the
+  // cross-account duplicate finder remove a whole mis-imported statement,
+  // not just the one colliding row. The field is optional and absent on
+  // every old export; the v83 validator omits it when missing, so this is
+  // a bare additive bump.
+  82: (v82) => ({ ...v82, version: 83 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

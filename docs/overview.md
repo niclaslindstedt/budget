@@ -671,7 +671,15 @@ pre-balance (`balance - amount`) is itself a balance the account records
 — i.e. a real predecessor entry hands the running total off to it
 (`predecessor.balance + amount == balance`). The stray copy lands on a
 pre-balance no entry in that account ever held, so it doesn't fit and is
-flagged. This is deliberately one step, **not** a walk of the whole chain:
+flagged. The continuity set spans the account's **whole running-balance
+chain** — every entry the bank posted, auto-collapsed transfer legs
+(`collapsedIntoTransferId`) and hidden rows included — because they all
+move (or hold) the running total. The genuine owner's predecessor is
+frequently exactly such a collapsed leg (a salary deposit or internal
+transfer); leaving them out of the chain broke continuity and made the
+real owner's copy read as the stray, flagging the wrong account and
+pre-selecting the wrong owner. This is deliberately one step, **not** a
+walk of the whole chain:
 a statement's balances are continuous, so the immediate predecessor is all
 the signal needed, and the check doesn't depend on import order or on the
 history being gap-free (an earlier whole-chain walk mis-flagged genuine
@@ -710,6 +718,20 @@ deletes the listed entries and re-derives each touched account's
 `openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded
 from candidacy so collapsing a transfer is never mistaken for a
 duplicate.
+
+When a whole bank statement landed in the wrong account, the offending
+copy is just one row of a larger mis-import. Every history entry carries
+an `importId` backref to the `HistoryImport` session that first added it
+(stamped at import time), so when a non-owner copy belongs to a session
+that left more rows in the account than the group itself matched, the
+card offers a **"remove the rest of that import (N more)"** checkbox
+(`duplicateSessions` / `duplicateSessionRemovals`). Ticking it expands the
+resolution to drop the entire mis-imported session in that account, not
+just the colliding row. Because a swept-up entry can itself be a collapsed
+transfer leg, `resolveDuplicateImports` also drops any transfer whose leg
+it removes and un-hides the partner leg on the other account (mirroring
+`cutAccountHistory` / `deleteTransfer`), so the partner is never stranded
+`hidden` with a dangling backref.
 
 ### Reconciliation modal
 

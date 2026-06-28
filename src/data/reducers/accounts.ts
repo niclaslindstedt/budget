@@ -164,23 +164,53 @@ export function reduceAccounts(
       }
       set.add(entryId);
     }
+    // A removed entry may be a collapsed transfer leg — the "remove the
+    // rest of that import" path can sweep up entries the auto-collapse flow
+    // later merged into a `Transfer`. Capture those transfer ids so we can
+    // drop the transfer and restore its partner leg on the OTHER account,
+    // mirroring `cutAccountHistory` / `deleteTransfer`. Without this the
+    // partner stays `hidden` with a dangling `collapsedIntoTransferId` —
+    // invisible in its account and excluded from transfer detection forever.
+    const removedTransferIds = new Set<string>();
+    for (const [id, entries] of Object.entries(state.history)) {
+      const toDrop = removalsByAccount.get(id);
+      if (!toDrop || toDrop.size === 0) continue;
+      for (const e of entries) {
+        if (toDrop.has(e.id) && e.collapsedIntoTransferId !== undefined)
+          removedTransferIds.add(e.collapsedIntoTransferId);
+      }
+    }
     let historyTouched = false;
     const touchedAccounts = new Set<string>();
     const nextHistory: Record<string, HistoryEntry[]> = {};
     for (const [id, entries] of Object.entries(state.history)) {
       const toDrop = removalsByAccount.get(id);
-      if (!toDrop || toDrop.size === 0) {
-        nextHistory[id] = entries;
-        continue;
+      const kept =
+        toDrop && toDrop.size > 0
+          ? entries.filter((e) => !toDrop.has(e.id))
+          : entries;
+      const dropped = kept.length !== entries.length;
+      if (dropped) {
+        historyTouched = true;
+        touchedAccounts.add(id);
       }
-      const kept = entries.filter((e) => !toDrop.has(e.id));
-      if (kept.length === entries.length) {
-        nextHistory[id] = entries;
-        continue;
-      }
-      historyTouched = true;
-      touchedAccounts.add(id);
-      nextHistory[id] = kept;
+      // Restore any surviving leg whose transfer is being removed.
+      let restoredTouched = false;
+      const restored = kept.map((entry) => {
+        if (
+          entry.collapsedIntoTransferId === undefined ||
+          !removedTransferIds.has(entry.collapsedIntoTransferId)
+        ) {
+          return entry;
+        }
+        restoredTouched = true;
+        const next: HistoryEntry = { ...entry };
+        delete next.collapsedIntoTransferId;
+        delete next.hidden;
+        return next;
+      });
+      if (restoredTouched) historyTouched = true;
+      nextHistory[id] = dropped || restoredTouched ? restored : entries;
     }
     if (!historyTouched) return state;
     // Re-derive the opening balance of each touched account: deleting a
@@ -200,7 +230,11 @@ export function reduceAccounts(
       if (a.openingBalance === opening) return a;
       return { ...a, openingBalance: opening };
     });
-    return { ...state, history: nextHistory, accounts };
+    const transfers =
+      removedTransferIds.size > 0
+        ? state.transfers.filter((tx) => !removedTransferIds.has(tx.id))
+        : state.transfers;
+    return { ...state, history: nextHistory, accounts, transfers };
   }
   if (action.type === "ignoreDuplicates") {
     if (action.ignores.length === 0) return state;
@@ -237,6 +271,20 @@ export function reduceAccounts(
     const merchants = state.primaryIncomeMerchants;
     const addedIds = mergeResult.addedIds;
     let merged = mergeResult.merged;
+    // Mint the import-session id up front so every freshly-added entry can
+    // carry it as `importId` and the `HistoryImport` audit record below
+    // can reuse the same value. The cross-account duplicate finder reads
+    // it back to offer "remove the rest of that import". Only genuinely
+    // new entries are stamped; a re-imported row dedups and keeps the
+    // `importId` from the session that first brought it in.
+    const importSessionId = newId();
+    if (addedIds.size > 0) {
+      merged = merged.map((entry) =>
+        addedIds.has(entry.id)
+          ? { ...entry, importId: importSessionId }
+          : entry,
+      );
+    }
     if (merchants.length > 0 && addedIds.size > 0) {
       // Index merchants once outside the per-entry loop so each entry's
       // primary-income lookup is O(1) rather than a linear scan.
@@ -299,7 +347,7 @@ export function reduceAccounts(
     // pushes the earliest date back further.
     const opening = computeOpeningBalanceFromHistory(merged);
     const importRecord = {
-      id: newId(),
+      id: importSessionId,
       importedAt: action.now,
       filename: action.filename,
       bankParserId: action.bankParserId,

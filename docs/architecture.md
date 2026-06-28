@@ -318,7 +318,7 @@ src/
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
-│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner, historyContext, ignoreRulesForGroup)
+│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner, historyContext, ignoreRulesForGroup, duplicateSessions, duplicateSessionRemovals)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
 │   ├── import/
@@ -782,6 +782,7 @@ type HistoryEntry = {
   amount: number; // signed (negative = outgoing)
   balance?: number; // omitted for credit-card exports (e.g. Bank Norwegian)
   importedAt: number; // unix ms of first import
+  importId?: string; // backref into UserData.historyImports[accountId] (import session)
   hidden?: boolean; // shelved noise OR collapsed-into-transfer
   fiscalMonthShift?: -1 | 1;
   collapsedIntoTransferId?: string; // backref into UserData.transfers
@@ -1103,6 +1104,11 @@ Current `LATEST_VERSION` is `52`. The chain has fifty-one steps:
   duplicate finder skips on every import. Seeds empty; a v81 record
   simply lacks it and a fresh-empty default passes the v82 validator
   unchanged.
+- **v82 → v83** — flags optional `HistoryEntry.importId`, the backref to
+  the `HistoryImport` session that first added the entry. Lets the
+  cross-account duplicate finder remove a whole mis-imported statement,
+  not just the colliding row. A bare version bump — the field is optional,
+  so a v82 record is absence-tolerant.
 
 ## State management
 

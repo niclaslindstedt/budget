@@ -27,6 +27,10 @@ const duplicates = {
   contextNone: "No surrounding history on this account.",
   contextThisEntry: "this transaction",
   balanceError: "This balance doesn't sit on the account's running total",
+  removeSessionOne:
+    "Also remove the other {n} entry from the same import (the whole statement landed in the wrong account)",
+  removeSessionOther:
+    "Also remove the other {n} entries from the same import (the whole statement landed in the wrong account)",
 } as const;
 
 export type DuplicatesCatalog = Widen<typeof duplicates>;
