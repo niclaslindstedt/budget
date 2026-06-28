@@ -423,11 +423,14 @@ function OwnerRadio({ selected }: { selected: boolean }) {
 // after it on this account, with balances — so the user can see at a
 // glance whether the running balance flows cleanly through the matched
 // row (it belongs here) or jumps over it (a foreign mis-import). Newest
-// first (descending), matching the bank-history viewer. When the finder
-// has judged this account's copy off-chain (`fits === false`), the
-// matched row's balance is flagged red — that is the figure that doesn't
-// reconcile. This is the manual counterpart to the balance-continuity
-// heuristic the finder uses to pre-select the owner.
+// first (descending), matching the bank-history viewer. The matched
+// row's balance carries an explicit verdict: green check pill when it sits
+// cleanly on the account's running total (`fits === true`, a real
+// predecessor hands off to it), red warning pill when it doesn't
+// (`fits === false`, the figure that doesn't reconcile), plain when there
+// was no balance to judge (`fits === null`). This is the manual
+// counterpart to the balance-continuity heuristic the finder uses to
+// pre-select the owner.
 function ContextPanel({
   account,
   accountId,
@@ -470,6 +473,8 @@ function ContextPanel({
             highlightLabel={t("duplicates.contextThisEntry")}
             balanceError={fits === false}
             balanceErrorLabel={t("duplicates.balanceError")}
+            balanceOk={fits === true}
+            balanceOkLabel={t("duplicates.balanceOk")}
           />
           {ctx.before && (
             <ContextRow entry={ctx.before} settings={settings} lang={lang} />
@@ -484,7 +489,8 @@ function ContextPanel({
 // amount, and the running balance the bank reported after it. The
 // matched transaction is highlighted with an accent strip so it stands
 // out between its neighbours; `balanceError` renders its balance as a red
-// warning pill when that figure doesn't sit on the account's chain.
+// warning pill when that figure doesn't sit on the account's chain, while
+// `balanceOk` renders it as a green check pill when it reconciles cleanly.
 function ContextRow({
   entry,
   settings,
@@ -493,6 +499,8 @@ function ContextRow({
   highlightLabel,
   balanceError,
   balanceErrorLabel,
+  balanceOk,
+  balanceOkLabel,
 }: {
   entry: HistoryEntry;
   settings: Settings;
@@ -501,6 +509,8 @@ function ContextRow({
   highlightLabel?: string;
   balanceError?: boolean;
   balanceErrorLabel?: string;
+  balanceOk?: boolean;
+  balanceOkLabel?: string;
 }) {
   const hasBalance = typeof entry.balance === "number";
   return (
@@ -530,6 +540,16 @@ function ContextRow({
             className="inline-flex items-center gap-1 rounded-full border border-danger bg-danger/10 px-1.5 font-mono tabular-nums text-danger"
           >
             <AlertTriangle size={10} aria-hidden focusable={false} />
+            {formatBalance(entry.balance as number, settings)}
+          </span>
+        </span>
+      ) : balanceOk && hasBalance ? (
+        <span className="flex w-24 shrink-0 justify-end">
+          <span
+            aria-label={balanceOkLabel}
+            className="inline-flex items-center gap-1 rounded-full border border-success bg-success/10 px-1.5 font-mono tabular-nums text-success"
+          >
+            <Check size={10} aria-hidden focusable={false} />
             {formatBalance(entry.balance as number, settings)}
           </span>
         </span>
