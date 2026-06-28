@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Ban,
   Check,
   ChevronDown,
@@ -280,6 +281,7 @@ function DuplicateCard({
               accountId={acc.accountId}
               entries={history[acc.accountId] ?? []}
               targetId={acc.entries[0]?.id ?? ""}
+              fits={acc.fits}
               settings={settings}
               lang={lang}
               t={t}
@@ -373,14 +375,18 @@ function OwnerRadio({ selected }: { selected: boolean }) {
 // The matched transaction plus the bank rows immediately before and
 // after it on this account, with balances — so the user can see at a
 // glance whether the running balance flows cleanly through the matched
-// row (it belongs here) or jumps over it (a foreign mis-import). This is
-// the manual counterpart to the balance-continuity heuristic the finder
-// already uses to pre-select the owner.
+// row (it belongs here) or jumps over it (a foreign mis-import). Newest
+// first (descending), matching the bank-history viewer. When the finder
+// has judged this account's copy off-chain (`fits === false`), the
+// matched row's balance is flagged red — that is the figure that doesn't
+// reconcile. This is the manual counterpart to the balance-continuity
+// heuristic the finder uses to pre-select the owner.
 function ContextPanel({
   account,
   accountId,
   entries,
   targetId,
+  fits,
   settings,
   lang,
   t,
@@ -389,6 +395,7 @@ function ContextPanel({
   accountId: string;
   entries: HistoryEntry[];
   targetId: string;
+  fits: boolean | null;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   t: ReturnType<typeof useT>;
@@ -405,8 +412,8 @@ function ContextPanel({
         <p className="px-1 text-xs text-muted">{t("duplicates.contextNone")}</p>
       ) : (
         <div className="divide-y divide-line rounded border border-line">
-          {ctx.before && (
-            <ContextRow entry={ctx.before} settings={settings} lang={lang} />
+          {ctx.after && (
+            <ContextRow entry={ctx.after} settings={settings} lang={lang} />
           )}
           <ContextRow
             entry={ctx.target}
@@ -414,9 +421,11 @@ function ContextPanel({
             lang={lang}
             highlight
             highlightLabel={t("duplicates.contextThisEntry")}
+            balanceError={fits === false}
+            balanceErrorLabel={t("duplicates.balanceError")}
           />
-          {ctx.after && (
-            <ContextRow entry={ctx.after} settings={settings} lang={lang} />
+          {ctx.before && (
+            <ContextRow entry={ctx.before} settings={settings} lang={lang} />
           )}
         </div>
       )}
@@ -427,20 +436,26 @@ function ContextPanel({
 // One bank-history row in the context panel: date, description, signed
 // amount, and the running balance the bank reported after it. The
 // matched transaction is highlighted with an accent strip so it stands
-// out between its neighbours.
+// out between its neighbours; `balanceError` renders its balance as a red
+// warning pill when that figure doesn't sit on the account's chain.
 function ContextRow({
   entry,
   settings,
   lang,
   highlight,
   highlightLabel,
+  balanceError,
+  balanceErrorLabel,
 }: {
   entry: HistoryEntry;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   highlight?: boolean;
   highlightLabel?: string;
+  balanceError?: boolean;
+  balanceErrorLabel?: string;
 }) {
+  const hasBalance = typeof entry.balance === "number";
   return (
     <div
       aria-label={highlight ? highlightLabel : undefined}
@@ -461,11 +476,23 @@ function ContextRow({
       >
         {formatBalance(entry.amount, settings)}
       </span>
-      <span className="w-20 shrink-0 text-right font-mono tabular-nums text-muted">
-        {typeof entry.balance === "number"
-          ? formatBalance(entry.balance, settings)
-          : "—"}
-      </span>
+      {balanceError && hasBalance ? (
+        <span className="flex w-24 shrink-0 justify-end">
+          <span
+            aria-label={balanceErrorLabel}
+            className="inline-flex items-center gap-1 rounded-full border border-danger bg-danger/10 px-1.5 font-mono tabular-nums text-danger"
+          >
+            <AlertTriangle size={10} aria-hidden focusable={false} />
+            {formatBalance(entry.balance as number, settings)}
+          </span>
+        </span>
+      ) : (
+        <span className="w-24 shrink-0 text-right font-mono tabular-nums text-muted">
+          {typeof entry.balance === "number"
+            ? formatBalance(entry.balance, settings)
+            : "—"}
+        </span>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import type { DuplicatesCatalog } from "../en/duplicates";
 const duplicates: DuplicatesCatalog = {
   title: "Hitta dubblettimporter",
   intro:
-    "Transaktioner som importerats till mer än ett konto med samma datum, bankbeskrivning, belopp och saldo — kännetecknet på en kontoutdrag importerat till fel konto. Välj vilket konto var och en hör till; kopiorna i de andra kontona tas bort. Tryck på en rad för att se omgivande bankhistorik och kontrollera att saldona stämmer.",
+    "Välj vilket konto varje transaktion hör till; kopiorna i de andra kontona tas bort. Tryck på en rad för att se omgivande bankhistorik — ett saldo markerat i rött stämmer inte med kontots löpande saldo.",
   empty: "Inga dubblettimporter hittades.",
   emptyHint: "Varje importerad transaktion finns bara på ett konto.",
   countOne: "{n} dubblett",
@@ -23,6 +23,7 @@ const duplicates: DuplicatesCatalog = {
   hideContextAria: "Dölj omgivande bankhistorik",
   contextNone: "Ingen omgivande historik på detta konto.",
   contextThisEntry: "denna transaktion",
+  balanceError: "Detta saldo stämmer inte med kontots löpande saldo",
 };
 
 export default duplicates;
