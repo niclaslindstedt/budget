@@ -747,9 +747,17 @@ amount, so the charge is skipped on every future import — cleared from
 the Memory settings tab (`clearDuplicateIgnores`). Resolution dispatches
 `resolveDuplicateImports`, which
 deletes the listed entries and re-derives each touched account's
-`openingBalance`. Transfer legs (`collapsedIntoTransferId`) are excluded
-from candidacy so collapsing a transfer is never mistaken for a
-duplicate.
+`openingBalance`. It also carries any categorisation done on the losing
+copies onto the surviving owner copy: the modal computes a fill-blanks
+patch per owner entry from the removed copies (`migrateMetadata` /
+`duplicateMetadataMigrations` — `userDescription` / `userTypeId` /
+`userCompanyId` / `userTagIds` / `userSeriesId` / `splits` / `lineItems` /
+`receiptPath` / `fiscalMonthShift` / `isTransfer` / `ignored` /
+`hintIgnored` / `noCompany`, never overwriting a field the owner already
+has), and the reducer applies it through the `metadataPatches` payload — so
+time spent categorising on the wrong account isn't lost. Transfer legs
+(`collapsedIntoTransferId`) are excluded from candidacy so collapsing a
+transfer is never mistaken for a duplicate.
 
 When a whole bank statement landed in the wrong account, the offending
 copy is just one row of a larger mis-import. Every history entry carries

@@ -496,6 +496,94 @@ export function duplicateBatchRemovals(
   return out;
 }
 
+// User-authored overlay fields carried from a removed duplicate copy onto
+// the surviving owner copy, so time spent categorising a transaction on the
+// wrong account isn't wasted when it's consolidated. Fill-blanks only — a
+// field already set on the owner is never overwritten. `hidden` is left out
+// on purpose: it's display state (shelving / transfer collapse), not
+// categorisation, and migrating it could silently hide the owner's row.
+const MIGRATABLE_FIELDS = [
+  "userDescription",
+  "userTypeId",
+  "userCompanyId",
+  "userTagIds",
+  "userSeriesId",
+  "splits",
+  "lineItems",
+  "receiptPath",
+  "fiscalMonthShift",
+  "isTransfer",
+  "ignored",
+  "hintIgnored",
+  "noCompany",
+] as const;
+
+function copyBlankField<K extends keyof HistoryEntry>(
+  patch: Partial<HistoryEntry>,
+  owner: HistoryEntry,
+  sources: readonly HistoryEntry[],
+  field: K,
+): void {
+  if (owner[field] !== undefined) return;
+  for (const src of sources) {
+    if (src[field] !== undefined) {
+      patch[field] = src[field];
+      return;
+    }
+  }
+}
+
+// The fill-blanks patch to apply to `owner` from `sources` — every
+// migratable field the owner lacks but a removed copy carries. Empty when
+// the owner already has everything (or the sources carry nothing).
+export function migrateMetadata(
+  owner: HistoryEntry,
+  sources: readonly HistoryEntry[],
+): Partial<HistoryEntry> {
+  const patch: Partial<HistoryEntry> = {};
+  for (const field of MIGRATABLE_FIELDS) {
+    copyBlankField(patch, owner, sources, field);
+  }
+  return patch;
+}
+
+// The metadata patches to apply when `group` resolves to `ownerAccountId`:
+// for each surviving owner copy, the fill-blanks overlay drawn from the
+// copies in every OTHER account (which are about to be deleted). Empty when
+// the owner already carries everything or nothing is being removed.
+export function duplicateMetadataMigrations(
+  group: DuplicateGroup,
+  ownerAccountId: string,
+): { accountId: string; entryId: string; patch: Partial<HistoryEntry> }[] {
+  const owner = group.accounts.find((a) => a.accountId === ownerAccountId);
+  if (!owner) return [];
+  const sources = group.accounts
+    .filter((a) => a.accountId !== ownerAccountId)
+    .flatMap((a) => a.entries);
+  if (sources.length === 0) return [];
+  const out: {
+    accountId: string;
+    entryId: string;
+    patch: Partial<HistoryEntry>;
+  }[] = [];
+  for (const ownerEntry of owner.entries) {
+    const patch = migrateMetadata(ownerEntry, sources);
+    if (Object.keys(patch).length > 0) {
+      out.push({ accountId: ownerAccountId, entryId: ownerEntry.id, patch });
+    }
+  }
+  return out;
+}
+
+// Batch version of `duplicateMetadataMigrations` over many groups resolving
+// to the same owner — the import-time single-owner picker's path.
+export function duplicateBatchMetadataMigrations(
+  groups: readonly DuplicateGroup[],
+  ownerAccountId: string,
+): { accountId: string; entryId: string; patch: Partial<HistoryEntry> }[] {
+  return groups.flatMap((g) => duplicateMetadataMigrations(g, ownerAccountId));
+}
+
 // The strongest owner signal for an import that created cross-account
 // duplicates. A bank statement is the COMPLETE record of one account over
 // its date range, so the true owner is the account whose history within

@@ -213,6 +213,38 @@ export function reduceAccounts(
       nextHistory[id] = dropped || restoredTouched ? restored : entries;
     }
     if (!historyTouched) return state;
+    // Carry fill-blanks metadata from the removed copies onto the surviving
+    // owner copies, so categorising on the wrong account isn't wasted. The
+    // patch only contains fields the owner lacked (computed by the caller),
+    // so the spread never clobbers existing owner metadata. Owner accounts
+    // aren't in `touchedAccounts` (their copy is kept), so this is the only
+    // thing that rewrites them — and it changes no balance / date / amount.
+    if (action.metadataPatches && action.metadataPatches.length > 0) {
+      const patchByAccount = new Map<
+        string,
+        Map<string, Partial<HistoryEntry>>
+      >();
+      for (const { accountId, entryId, patch } of action.metadataPatches) {
+        let byEntry = patchByAccount.get(accountId);
+        if (!byEntry) {
+          byEntry = new Map();
+          patchByAccount.set(accountId, byEntry);
+        }
+        byEntry.set(entryId, patch);
+      }
+      for (const [id, byEntry] of patchByAccount) {
+        const entries = nextHistory[id];
+        if (!entries) continue;
+        let touched = false;
+        const patched = entries.map((entry) => {
+          const patch = byEntry.get(entry.id);
+          if (!patch) return entry;
+          touched = true;
+          return { ...entry, ...patch };
+        });
+        if (touched) nextHistory[id] = patched;
+      }
+    }
     // Re-derive the opening balance of each touched account: deleting a
     // mis-import that happened to be the earliest entry would otherwise
     // leave `openingBalance` anchored to a transaction that no longer

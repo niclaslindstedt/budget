@@ -11,6 +11,7 @@ import {
 
 import {
   duplicateBatchOwners,
+  duplicateMetadataMigrations,
   duplicateRemovals,
   duplicateSessionRemovals,
   duplicateSessions,
@@ -140,6 +141,8 @@ export function AccountDuplicatesModal({
   const resolveGroups = useCallback(
     (toResolve: readonly DuplicateGroup[]) => {
       const removals: { accountId: string; entryId: string }[] = [];
+      const metadataPatches: ReturnType<typeof duplicateMetadataMigrations> =
+        [];
       const keptIds: string[] = [];
       for (const group of toResolve) {
         const owner = ownerFor(group);
@@ -152,9 +155,16 @@ export function AccountDuplicatesModal({
             ? duplicateSessionRemovals(group, owner, data.history)
             : duplicateRemovals(group, owner)),
         );
+        // Salvage any categorisation done on the losing copies onto the
+        // owner copy (fill-blanks).
+        metadataPatches.push(...duplicateMetadataMigrations(group, owner));
       }
       if (removals.length > 0) {
-        dispatch({ type: "resolveDuplicateImports", removals });
+        dispatch({
+          type: "resolveDuplicateImports",
+          removals,
+          metadataPatches,
+        });
         unlock("duplicateSleuth");
         toast.push({
           kind: "success",
