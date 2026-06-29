@@ -971,14 +971,21 @@
       grid-template-columns: var(--viewer-row-template);
       align-items: center;
       width: 100%;
-      /* `HistoryModal` opts into `.swipe-table` to reveal a delete strip
-         per row; `position: relative` + `overflow: hidden` establishes the
-         containing block its absolutely-positioned `.swipe-action-cell`
-         anchors to (mirrors `.budget-table` / `.mortgage-payments-table`).
-         `BudgetViewerModal` shares the class but renders no action cell, so
-         these are inert there. */
+    }
+    /* `HistoryModal` opts into `.swipe-table` to reveal a delete strip per
+       row; `position: relative` establishes the containing block its
+       absolutely-positioned `.swipe-action-cell` anchors to. Crucially we
+       do NOT add `overflow: hidden` here — the at-rest strip
+       (`translateX(100%)`) and the swiped row's left-shifted cells are both
+       clipped by the modal body's own `overflow-x-hidden`, so per-row
+       clipping is redundant. Worse, a per-row `overflow: hidden` grid cell
+       inside the modal's momentum-scroll body (`overscroll-contain`) traps
+       the touch on iOS standalone PWAs, freezing scroll and leaving the
+       swiped row stuck. `BudgetViewerModal` shares `.budget-viewer-table`
+       but not `.swipe-table`, so it is untouched. */
+    .budget-viewer-table.swipe-table > thead > tr,
+    .budget-viewer-table.swipe-table > tbody > tr:not(.budget-viewer-fullspan) {
       position: relative;
-      overflow: hidden;
     }
     .budget-viewer-table > thead > tr > th,
     .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) > td {
