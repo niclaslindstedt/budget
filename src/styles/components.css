@@ -971,6 +971,14 @@
       grid-template-columns: var(--viewer-row-template);
       align-items: center;
       width: 100%;
+      /* `HistoryModal` opts into `.swipe-table` to reveal a delete strip
+         per row; `position: relative` + `overflow: hidden` establishes the
+         containing block its absolutely-positioned `.swipe-action-cell`
+         anchors to (mirrors `.budget-table` / `.mortgage-payments-table`).
+         `BudgetViewerModal` shares the class but renders no action cell, so
+         these are inert there. */
+      position: relative;
+      overflow: hidden;
     }
     .budget-viewer-table > thead > tr > th,
     .budget-viewer-table > tbody > tr:not(.budget-viewer-fullspan) > td {

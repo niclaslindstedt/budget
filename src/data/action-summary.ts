@@ -482,6 +482,11 @@ export function describeActionSubject(
       return name(
         historyEntryDescription(next, action.accountId, action.entryId),
       );
+    case "deleteHistoryEntry":
+      // The entry is gone in `next`, so read its label off `prev`.
+      return name(
+        historyEntryDescription(prev, action.accountId, action.entryId),
+      );
     case "applyImportRenames":
       return action.renames.length === 1
         ? name(

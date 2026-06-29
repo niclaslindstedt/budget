@@ -81,6 +81,7 @@ export function AccountsModalHost(props: Props) {
     onCancelImportOverlap,
     viewHistoryAccount,
     setViewHistoryForId,
+    onDeleteHistoryEntry,
     cutHistoryAccount,
     setCutHistoryForId,
     onConfirmCutHistory,
@@ -241,6 +242,7 @@ export function AccountsModalHost(props: Props) {
         }
         settings={effectiveSettings}
         onCancel={() => setViewHistoryForId(null)}
+        onDeleteEntry={onDeleteHistoryEntry}
       />
       <AccountTransferCollapseModal
         open={transferModalOpen}

@@ -304,6 +304,20 @@ export type Action =
       cutoffDate: string;
     }
   | {
+      // Delete a single imported bank-history entry from an account,
+      // straight from the read-only History modal (the "account history
+      // page"). Removes the entry from `UserData.history[accountId]`; if
+      // it was a collapsed transfer leg, drops that transfer and restores
+      // the partner leg on the other account, and the account's
+      // `openingBalance` is re-derived in case the deleted row was the
+      // earliest. The budget sheet's synthesized history rows derive from
+      // `UserData.history`, so they update automatically — there is no
+      // matching delete on the budget page.
+      type: "deleteHistoryEntry";
+      accountId: string;
+      entryId: string;
+    }
+  | {
       // Resolve cross-account duplicate imports (the "Find duplicates"
       // flow): delete the listed bank-history entries from their
       // accounts because the same transaction was imported into more

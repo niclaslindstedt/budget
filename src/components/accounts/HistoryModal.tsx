@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { History } from "lucide-react";
+import { History, Trash2 } from "lucide-react";
 
+import { useRowSwipe } from "../../hooks/useRowSwipe";
 import { sortHistoryByBalance } from "../../data/accounts/history-order";
 import { ageFloorIso } from "../../data/search";
 import type {
@@ -28,10 +29,13 @@ import {
 } from "../../utils/format";
 import { monthColorVar, monthNumberFromKey } from "../../utils/monthColor";
 import { amountRangeIO, monthRangeIO } from "../form";
+import { ActiveRowProvider } from "../ActiveRowProvider";
 import { ColumnIcon } from "../icons";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { Modal } from "../Modal";
 import { ModalSearchBar } from "../ModalSearchBar";
 import { ModalSearchControls } from "../ModalSearchControls";
+import { useClaimActiveRow } from "../useClaimActiveRow";
 
 type Props = {
   open: boolean;
@@ -39,6 +43,9 @@ type Props = {
   entries: readonly HistoryEntry[];
   settings: Settings;
   onCancel: () => void;
+  // Delete a single imported bank entry. Only wired from this read-only
+  // viewer — the budget page's synthesized history rows have no delete.
+  onDeleteEntry: (entryId: string) => void;
 };
 
 // Read-only viewer for an account's imported history. Shows only the
@@ -55,9 +62,14 @@ export function HistoryModal({
   entries,
   settings,
   onCancel,
+  onDeleteEntry,
 }: Props) {
   const t = useT();
   const lang = useLang();
+
+  // The entry awaiting delete confirmation, or null. Cleared when the
+  // modal closes so a stale prompt never reopens on the next account.
+  const [pendingDelete, setPendingDelete] = useState<HistoryEntry | null>(null);
 
   // Viewer-local sort order, seeded from the persisted preference and
   // reset whenever the modal closes — viewing is ephemeral, so steering
@@ -97,6 +109,7 @@ export function HistoryModal({
       setAmountMax(null);
       setDateMin(null);
       setDateMax(null);
+      setPendingDelete(null);
     }
   }, [open, settings.transactionSortOrder]);
   const accountSettings = useMemo(
@@ -390,152 +403,274 @@ export function HistoryModal({
             {t("history.searchNoResults")}
           </p>
         ) : (
-          <table
-            className="budget-viewer-table w-full border-collapse text-sm"
-            style={
-              {
-                "--viewer-row-template": mobileGridTemplate,
-              } as CSSProperties
-            }
-          >
-            {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
+          <ActiveRowProvider>
+            <table
+              className="budget-viewer-table swipe-table w-full border-collapse text-sm"
+              style={
+                {
+                  "--viewer-row-template": mobileGridTemplate,
+                  // Single delete button — half the default three-button strip.
+                  "--swipe-strip-width": "64px",
+                } as CSSProperties
+              }
+            >
+              {/* `top: -1px` closes a subpixel-rounded hairline on iOS Safari
                 where scrolled rows would otherwise bleed through above the
                 sticky band. Mirrors the `.budget-table > thead` trick. */}
-            <thead
-              className="sticky z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted"
-              style={{ top: "-1px" }}
-            >
-              <tr className="border-b border-line">
-                <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
-                  <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon type="date" className="shrink-0 text-accent" />
-                    <span className="hidden md:inline">
-                      {t("history.date")}
-                    </span>
-                  </span>
-                </th>
-                <th className="px-2 pt-2.5 pb-1.5 text-left md:w-full md:pl-4">
-                  <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon
-                      type="description"
-                      className="shrink-0 text-accent"
-                    />
-                    <span className="hidden md:inline">
-                      {t("history.description")}
-                    </span>
-                  </span>
-                </th>
-                <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:px-2">
-                  <span className="inline-flex items-center gap-1.5 md:gap-2">
-                    <ColumnIcon
-                      type="amount"
-                      className="shrink-0 text-accent"
-                    />
-                    <span className="hidden md:inline">
-                      {t("history.amount")}
-                    </span>
-                  </span>
-                </th>
-                {hasAnyBalance && (
-                  <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:pr-2 md:pl-4">
+              <thead
+                className="sticky z-10 bg-surface-3 text-xs tracking-wider uppercase text-muted"
+                style={{ top: "-1px" }}
+              >
+                <tr className="border-b border-line">
+                  <th className="px-1 pt-2.5 pb-1.5 text-center whitespace-nowrap md:px-2 md:text-left">
                     <span className="inline-flex items-center gap-1.5 md:gap-2">
                       <ColumnIcon
-                        type="balance"
+                        type="date"
                         className="shrink-0 text-accent"
                       />
                       <span className="hidden md:inline">
-                        {t("history.balance")}
+                        {t("history.date")}
                       </span>
                     </span>
                   </th>
-                )}
-              </tr>
-            </thead>
-            {/* One <tbody> per month so each month-header tr's
+                  <th className="px-2 pt-2.5 pb-1.5 text-left md:w-full md:pl-4">
+                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                      <ColumnIcon
+                        type="description"
+                        className="shrink-0 text-accent"
+                      />
+                      <span className="hidden md:inline">
+                        {t("history.description")}
+                      </span>
+                    </span>
+                  </th>
+                  <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:px-2">
+                    <span className="inline-flex items-center gap-1.5 md:gap-2">
+                      <ColumnIcon
+                        type="amount"
+                        className="shrink-0 text-accent"
+                      />
+                      <span className="hidden md:inline">
+                        {t("history.amount")}
+                      </span>
+                    </span>
+                  </th>
+                  {hasAnyBalance && (
+                    <th className="px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:pr-2 md:pl-4">
+                      <span className="inline-flex items-center gap-1.5 md:gap-2">
+                        <ColumnIcon
+                          type="balance"
+                          className="shrink-0 text-accent"
+                        />
+                        <span className="hidden md:inline">
+                          {t("history.balance")}
+                        </span>
+                      </span>
+                    </th>
+                  )}
+                  {/* Trailing actions column. On mobile it's an absolute
+                    swipe-revealed overlay (reserves no grid track); on
+                    desktop it's a narrow real column. */}
+                  <th className="swipe-action-cell px-1 pt-2.5 pb-1.5 text-right whitespace-nowrap md:w-16 md:px-2">
+                    <span className="inline-flex items-center justify-end gap-1.5 md:gap-2">
+                      <Trash2
+                        size={13}
+                        className="shrink-0 text-accent"
+                        aria-hidden
+                        focusable={false}
+                      />
+                      <span className="sr-only md:not-sr-only">
+                        {t("history.actions")}
+                      </span>
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              {/* One <tbody> per month so each month-header tr's
                 sticky containing block ends at the next month — gives
                 the natural slide-off-as-next-arrives behaviour without
                 stacking every label at the same offset. */}
-            {groups.map((group) => {
-              const colSpan = 3 + (hasAnyBalance ? 1 : 0);
-              const monthNum = monthNumberFromKey(group.monthKey);
-              const monthColor =
-                monthNum !== null ? monthColorVar(monthNum) : undefined;
-              const monthColorStyle: CSSProperties | undefined = monthColor
-                ? { color: monthColor }
-                : undefined;
-              return (
-                <tbody key={group.monthKey}>
-                  <tr className="budget-viewer-fullspan budget-viewer-month-header">
-                    <td
-                      colSpan={colSpan}
-                      className={`border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase ${monthColor ? "" : "text-muted"}`}
-                      style={monthColorStyle}
-                    >
-                      <span className="flex h-7 items-center">
-                        {formatYearMonth(group.monthKey, lang)}
-                      </span>
-                    </td>
-                  </tr>
-                  {group.entries.map((e) => {
-                    const entryMonthNum = monthNumberFromKey(e.date);
-                    const entryMonthColor =
-                      entryMonthNum !== null
-                        ? monthColorVar(entryMonthNum)
-                        : undefined;
-                    const dateStyle: CSSProperties | undefined = entryMonthColor
-                      ? { color: entryMonthColor }
-                      : undefined;
-                    return (
-                      <tr
-                        key={e.id}
-                        className={`border-b border-line last:border-b-0 ${
-                          e.hidden ? "opacity-50" : ""
-                        }`}
+              {groups.map((group) => {
+                // date · description · amount (· balance) · actions.
+                const colSpan = 3 + (hasAnyBalance ? 1 : 0) + 1;
+                const monthNum = monthNumberFromKey(group.monthKey);
+                const monthColor =
+                  monthNum !== null ? monthColorVar(monthNum) : undefined;
+                const monthColorStyle: CSSProperties | undefined = monthColor
+                  ? { color: monthColor }
+                  : undefined;
+                return (
+                  <tbody key={group.monthKey}>
+                    <tr className="budget-viewer-fullspan budget-viewer-month-header">
+                      <td
+                        colSpan={colSpan}
+                        className={`border-b border-line bg-surface-2 px-2 text-xs font-bold tracking-wider uppercase ${monthColor ? "" : "text-muted"}`}
+                        style={monthColorStyle}
                       >
-                        <td
-                          className={`px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap md:px-2 ${entryMonthColor ? "" : "text-muted"}`}
-                          style={dateStyle}
-                        >
-                          {formatShortDate(
-                            e.date,
-                            settings.shortDateFormat,
-                            lang,
-                          )}
-                        </td>
-                        <td className="px-2 py-1.5 align-top break-words md:pl-4">
-                          {e.description}
-                        </td>
-                        <td
-                          className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
-                            e.amount < 0 ? "text-negative" : "text-positive"
-                          }`}
-                        >
-                          {formatBalance(e.amount, accountSettings)}
-                        </td>
-                        {hasAnyBalance && (
-                          <td
-                            className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:pr-2 md:pl-4 ${
-                              e.balance === undefined
-                                ? "text-muted"
-                                : e.balance < 0
-                                  ? "text-negative"
-                                  : "text-positive"
-                            }`}
-                          >
-                            {e.balance !== undefined
-                              ? formatBalance(e.balance, accountSettings)
-                              : ""}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              );
-            })}
-          </table>
+                        <span className="flex h-7 items-center">
+                          {formatYearMonth(group.monthKey, lang)}
+                        </span>
+                      </td>
+                    </tr>
+                    {group.entries.map((e) => (
+                      <HistoryRow
+                        key={e.id}
+                        entry={e}
+                        accountSettings={accountSettings}
+                        shortDateFormat={settings.shortDateFormat}
+                        lang={lang}
+                        hasAnyBalance={hasAnyBalance}
+                        deleteLabel={t("history.deleteEntry")}
+                        onDelete={() => setPendingDelete(e)}
+                      />
+                    ))}
+                  </tbody>
+                );
+              })}
+            </table>
+          </ActiveRowProvider>
         )}
       </Modal.Body>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={t("history.deleteEntryTitle")}
+        description={
+          pendingDelete ? (
+            <div className="flex flex-col gap-2">
+              <p className="m-0">{t("history.deleteEntryHint")}</p>
+              <div className="flex flex-wrap items-baseline gap-2 rounded border border-line bg-surface-2 px-2.5 py-1.5 text-xs">
+                <span className="font-mono text-muted">
+                  {formatShortDate(
+                    pendingDelete.date,
+                    settings.shortDateFormat,
+                    lang,
+                  )}
+                </span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    pendingDelete.amount < 0 ? "text-negative" : "text-positive"
+                  }`}
+                >
+                  {formatBalance(pendingDelete.amount, accountSettings)}
+                </span>
+                <span className="min-w-0 break-words text-fg">
+                  {pendingDelete.description || "—"}
+                </span>
+              </div>
+            </div>
+          ) : null
+        }
+        actions={[
+          {
+            label: t("history.deleteEntry"),
+            tone: "danger",
+            onSelect: () => {
+              if (pendingDelete) onDeleteEntry(pendingDelete.id);
+              setPendingDelete(null);
+            },
+          },
+        ]}
+        onCancel={() => setPendingDelete(null)}
+      />
     </Modal>
   );
 }
+
+type HistoryRowProps = {
+  entry: HistoryEntry;
+  accountSettings: Settings;
+  shortDateFormat: Settings["shortDateFormat"];
+  lang: ReturnType<typeof useLang>;
+  hasAnyBalance: boolean;
+  deleteLabel: string;
+  onDelete: () => void;
+};
+
+// One bank-history row. Desktop keeps the delete button inline in the
+// trailing actions column; on mobile the row swipes left to reveal it
+// from behind, mirroring the budget / accounts / mortgage-payments
+// tables (see the `.swipe-table` rules in styles/components.css). The
+// raw bank fields stay read-only — only the delete affordance is new.
+function HistoryRowImpl({
+  entry,
+  accountSettings,
+  shortDateFormat,
+  lang,
+  hasAnyBalance,
+  deleteLabel,
+  onDelete,
+}: HistoryRowProps) {
+  const { swiped, setSwiped, touchHandlers } = useRowSwipe();
+  // A swiped row exposes its delete button; claim the active-row slot so a
+  // tap elsewhere only retracts the swipe instead of also firing whatever
+  // sits under the finger.
+  useClaimActiveRow(entry.id, swiped, () => setSwiped(false));
+
+  const entryMonthNum = monthNumberFromKey(entry.date);
+  const entryMonthColor =
+    entryMonthNum !== null ? monthColorVar(entryMonthNum) : undefined;
+  const dateStyle: CSSProperties | undefined = entryMonthColor
+    ? { color: entryMonthColor }
+    : undefined;
+
+  return (
+    <tr
+      className={`border-b border-line last:border-b-0 ${
+        entry.hidden ? "opacity-50" : ""
+      }${swiped ? " is-swiped" : ""}`}
+      data-row-id={entry.id}
+      data-swipe-handled
+      {...touchHandlers}
+    >
+      <td
+        className={`px-1 py-1.5 align-top font-mono text-xs whitespace-nowrap md:px-2 ${entryMonthColor ? "" : "text-muted"}`}
+        style={dateStyle}
+      >
+        {formatShortDate(entry.date, shortDateFormat, lang)}
+      </td>
+      <td className="px-2 py-1.5 align-top break-words md:pl-4">
+        {entry.description}
+      </td>
+      <td
+        className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:px-2 ${
+          entry.amount < 0 ? "text-negative" : "text-positive"
+        }`}
+      >
+        {formatBalance(entry.amount, accountSettings)}
+      </td>
+      {hasAnyBalance && (
+        <td
+          className={`px-1 py-1.5 text-right align-top font-mono tabular-nums whitespace-nowrap md:pr-2 md:pl-4 ${
+            entry.balance === undefined
+              ? "text-muted"
+              : entry.balance < 0
+                ? "text-negative"
+                : "text-positive"
+          }`}
+        >
+          {entry.balance !== undefined
+            ? formatBalance(entry.balance, accountSettings)
+            : ""}
+        </td>
+      )}
+      <td className="swipe-action-cell md:w-16 md:p-0 md:align-middle">
+        <div className="flex h-full w-full items-stretch justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSwiped(false);
+              onDelete();
+            }}
+            aria-label={deleteLabel}
+            className="action-btn action-btn-delete inline-flex h-full flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white md:text-muted md:hover:bg-surface-2 md:hover:text-danger"
+          >
+            <Trash2 size={16} aria-hidden focusable={false} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// Memoised so a swipe on one row doesn't re-render every sibling.
+const HistoryRow = memo(HistoryRowImpl);

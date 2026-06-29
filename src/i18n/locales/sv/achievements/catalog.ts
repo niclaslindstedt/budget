@@ -471,6 +471,10 @@ const catalog: AchievementsCatalogEntries = {
     name: "Ren delning",
     condition: "Dela en bankhistorikpost över flera typer.",
   },
+  cleanSlate: {
+    name: "Rent bord",
+    condition: "Ta bort en bankhistorikpost från ett kontos historikvy.",
+  },
   cloudWalker: {
     name: "Molnvandrare",
     condition: "Anslut en molnbackend (Dropbox, Google Drive eller Mapp).",

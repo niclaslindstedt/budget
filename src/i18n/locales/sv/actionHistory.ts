@@ -186,6 +186,7 @@ const actionHistory: ActionHistoryCatalog = {
     updateHistoryEntry: "Redigerade historikpost",
     applyMetadataToMatchingHistory: "Märkte matchande poster",
     splitHistoryEntry: "Delade upp historikpost",
+    deleteHistoryEntry: "Tog bort historikpost",
     applyReconciliation: "Tillämpade avstämning",
     applyImportRenames: "Tillämpade föreslagna omdöpningar",
     setSeriesPrimaryIncome: "Satte primär inkomst",

@@ -28,6 +28,7 @@ import {
   Combine,
   CopyCheck,
   Download,
+  Eraser,
   Eye,
   EyeOff,
   FileLock2,
@@ -1340,6 +1341,14 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         !hasSplitHistoryEntry(prev) && hasSplitHistoryEntry(next),
     },
+  },
+  {
+    // Fired manually from the history viewer's per-row delete — a count
+    // drop alone can't distinguish a single delete from a cut / dedupe.
+    id: "cleanSlate",
+    tier: "pro",
+    glyph: Eraser,
+    trigger: { kind: "manual" },
   },
   {
     id: "cloudWalker",

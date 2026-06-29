@@ -152,6 +152,60 @@ export function reduceAccounts(
       transfers,
     };
   }
+  if (action.type === "deleteHistoryEntry") {
+    const { accountId, entryId } = action;
+    const entries = state.history[accountId];
+    if (!entries) return state;
+    const target = entries.find((e) => e.id === entryId);
+    if (!target) return state;
+    const remaining = entries.filter((e) => e.id !== entryId);
+    const nextHistory: Record<string, HistoryEntry[]> = {
+      ...state.history,
+      [accountId]: remaining,
+    };
+    // The deleted entry may be a collapsed transfer leg. Dropping it must
+    // also drop the transfer it was merged into and restore the partner
+    // leg on the OTHER account, mirroring `cutAccountHistory` /
+    // `resolveDuplicateImports`. Without this the partner stays `hidden`
+    // with a dangling `collapsedIntoTransferId` — invisible in its account
+    // and excluded from transfer detection forever.
+    const removedTransferId = target.collapsedIntoTransferId;
+    if (removedTransferId !== undefined) {
+      for (const [id, accountEntries] of Object.entries(nextHistory)) {
+        let touched = false;
+        const restored = accountEntries.map((entry) => {
+          if (entry.collapsedIntoTransferId !== removedTransferId) return entry;
+          touched = true;
+          const next: HistoryEntry = { ...entry };
+          delete next.collapsedIntoTransferId;
+          delete next.hidden;
+          return next;
+        });
+        if (touched) nextHistory[id] = restored;
+      }
+    }
+    // Re-derive the opening balance: deleting the earliest entry would
+    // otherwise leave `openingBalance` anchored to a transaction that no
+    // longer exists. An account whose earliest entry was untouched
+    // recomputes to the same value, so this is safe to run unconditionally.
+    const accounts = state.accounts.map((a) => {
+      if (a.id !== accountId) return a;
+      const opening = computeOpeningBalanceFromHistory(remaining);
+      if (opening === null) {
+        if (a.openingBalance === undefined) return a;
+        const next = { ...a };
+        delete next.openingBalance;
+        return next;
+      }
+      if (a.openingBalance === opening) return a;
+      return { ...a, openingBalance: opening };
+    });
+    const transfers =
+      removedTransferId !== undefined
+        ? state.transfers.filter((tx) => tx.id !== removedTransferId)
+        : state.transfers;
+    return { ...state, history: nextHistory, accounts, transfers };
+  }
   if (action.type === "resolveDuplicateImports") {
     if (action.removals.length === 0) return state;
     // Bucket the entry ids to drop per account so each account's history

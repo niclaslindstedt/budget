@@ -38,6 +38,30 @@ describe("describeActionSubject", () => {
     });
   });
 
+  it("names a deleted history entry by its description off the previous state", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      accounts: [{ id: "acc1", name: "Checking" }],
+      history: {
+        acc1: [
+          {
+            id: "h1",
+            date: "2026-05-01",
+            description: "Grocery store",
+            amount: -120,
+            importedAt: 0,
+          },
+        ],
+      },
+    };
+    expect(
+      describe2(
+        { type: "deleteHistoryEntry", accountId: "acc1", entryId: "h1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Grocery store" });
+  });
+
   it("counts a multi-row action", () => {
     const fresh = freshUserData();
     const action: Action = {

@@ -23,6 +23,7 @@ const history = {
   description: "Description",
   amount: "Amount",
   balance: "Balance",
+  actions: "Actions",
   type: "Type",
   searchPlaceholder: "Search history",
   searchNoResults: "No entries match the search.",
