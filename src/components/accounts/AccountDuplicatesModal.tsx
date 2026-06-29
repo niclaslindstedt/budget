@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import {
+  balanceSitsLocally,
   duplicateBatchOwners,
   duplicateMetadataMigrations,
   duplicateRemovals,
@@ -401,7 +402,6 @@ function DuplicateCard({
               accountId={acc.accountId}
               entries={history[acc.accountId] ?? []}
               targetId={acc.entries[0]?.id ?? ""}
-              fits={acc.fits}
               settings={settings}
               lang={lang}
               t={t}
@@ -512,21 +512,21 @@ export function OwnerRadio({ selected }: { selected: boolean }) {
 // after it on this account, with balances — so the user can see at a
 // glance whether the running balance flows cleanly through the matched
 // row (it belongs here) or jumps over it (a foreign mis-import). Newest
-// first (descending), matching the bank-history viewer. The matched
-// row's balance carries an explicit verdict: green check pill when it sits
-// cleanly on the account's running total (`fits === true`, a real
-// predecessor hands off to it), red warning pill when it doesn't
-// (`fits === false`, the figure that doesn't reconcile), plain when there
-// was no balance to judge (`fits === null`). This is the manual
-// counterpart to the balance-continuity heuristic the finder uses to
-// pre-select the owner.
+// first (descending), matching the bank-history viewer. The matched row's
+// balance carries an explicit verdict drawn from those very rows
+// (`balanceSitsLocally`): green check pill when it sits cleanly on the
+// running total between its immediate neighbours, red warning pill when it
+// doesn't (a visible jump), plain when there was no neighbouring balance to
+// judge. The pill answers what the user can verify on screen; the deeper
+// genuine-anchor verdict (`acc.fits`) drives owner PRE-SELECTION instead, so
+// a whole statement imported into two accounts reads green on both while the
+// group still defaults to Skip until the user picks an owner.
 function ContextPanel({
   account,
   accountId,
   entries,
-  targetId,
-  fits,
   settings,
+  targetId,
   lang,
   t,
 }: {
@@ -534,12 +534,12 @@ function ContextPanel({
   accountId: string;
   entries: HistoryEntry[];
   targetId: string;
-  fits: boolean | null;
   settings: Settings;
   lang: ReturnType<typeof useLang>;
   t: ReturnType<typeof useT>;
 }) {
   const ctx = historyContext(entries, targetId);
+  const localFit = ctx ? balanceSitsLocally(ctx) : null;
   return (
     <div className="flex flex-col gap-1">
       {account ? (
@@ -560,9 +560,9 @@ function ContextPanel({
             lang={lang}
             highlight
             highlightLabel={t("duplicates.contextThisEntry")}
-            balanceError={fits === false}
+            balanceError={localFit === false}
             balanceErrorLabel={t("duplicates.balanceError")}
-            balanceOk={fits === true}
+            balanceOk={localFit === true}
             balanceOkLabel={t("duplicates.balanceOk")}
           />
           {ctx.before && (

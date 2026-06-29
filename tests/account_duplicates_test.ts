@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  balanceSitsLocally,
   duplicateBatchOwners,
   duplicateBatchRemovals,
   duplicateMetadataMigrations,
@@ -604,6 +605,68 @@ describe("historyContext", () => {
     expect(first?.before).toBeNull();
     expect(first?.after?.id).toBe("e1");
     expect(historyContext(entries, "missing")).toBeNull();
+  });
+});
+
+describe("balanceSitsLocally", () => {
+  // The pill the user reads against the three visible rows: it trusts the
+  // IMMEDIATE neighbours (even duplicate ones), unlike the ownership verdict
+  // which anchors on the nearest genuine row. This is what makes a whole
+  // statement imported into two accounts read green on the visible chain in
+  // both — the reported case where the figure clearly sits on the running
+  // total yet showed a warning.
+  it("is green when the balance sits between its immediate neighbours", () => {
+    const entries: HistoryEntry[] = [
+      entry({ id: "before", date: "2026-06-08", amount: -20, balance: 9204 }),
+      entry({ id: "target", date: "2026-06-08", amount: -121, balance: 9083 }),
+      entry({ id: "after", date: "2026-06-08", amount: -20, balance: 9063 }),
+    ];
+    const ctx = historyContext(entries, "target")!;
+    // 9204 − 121 = 9083 (back) and 9083 − 20 = 9063 (forward) both hold.
+    expect(balanceSitsLocally(ctx)).toBe(true);
+  });
+
+  it("is red when the matched row jumps over its neighbours", () => {
+    const entries: HistoryEntry[] = [
+      entry({ id: "before", date: "2026-06-17", amount: -67, balance: 10903 }),
+      entry({ id: "target", date: "2026-06-22", amount: -410, balance: 9997 }),
+      entry({ id: "after", date: "2026-06-22", amount: -361, balance: 10542 }),
+    ];
+    const ctx = historyContext(entries, "target")!;
+    // 10903 − 410 = 10493 ≠ 9997 and 9997 − 361 = 9636 ≠ 10542 — a visible jump.
+    expect(balanceSitsLocally(ctx)).toBe(false);
+  });
+
+  it("is green from a single neighbour at the edge of history", () => {
+    const onlyBefore: HistoryEntry[] = [
+      entry({ id: "before", date: "2026-06-18", amount: 9000, balance: 10407 }),
+      entry({ id: "target", date: "2026-06-22", amount: -410, balance: 9997 }),
+    ];
+    expect(balanceSitsLocally(historyContext(onlyBefore, "target")!)).toBe(
+      true,
+    );
+    const onlyAfter: HistoryEntry[] = [
+      entry({ id: "target", date: "2026-06-22", amount: -410, balance: 9997 }),
+      entry({ id: "after", date: "2026-06-24", amount: -369, balance: 9628 }),
+    ];
+    expect(balanceSitsLocally(historyContext(onlyAfter, "target")!)).toBe(true);
+  });
+
+  it("is null when no neighbour carries a balance to judge by", () => {
+    const noBalances: HistoryEntry[] = [
+      entry({ id: "before", date: "2026-06-08", balance: undefined }),
+      entry({ id: "target", date: "2026-06-09", amount: -121, balance: 9083 }),
+      entry({ id: "after", date: "2026-06-10", balance: undefined }),
+    ];
+    expect(
+      balanceSitsLocally(historyContext(noBalances, "target")!),
+    ).toBeNull();
+    // And null when the target itself has no balance.
+    const noTarget: HistoryEntry[] = [
+      entry({ id: "before", date: "2026-06-08", amount: -20, balance: 9204 }),
+      entry({ id: "target", date: "2026-06-09", balance: undefined }),
+    ];
+    expect(balanceSitsLocally(historyContext(noTarget, "target")!)).toBeNull();
   });
 });
 
