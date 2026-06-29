@@ -679,23 +679,35 @@ modal**, which is within one account and can pair a user-authored row.
 Per group the user picks which account **owns** the transaction; the
 matching copies in every other account are deleted (the owner keeps its).
 The finder suggests the most likely owner by balance continuity
-(`suggestOwner` / `AccountIndex.fitById`): a copy "fits" an account when
-the account's last **non-duplicate** entry before it — carried forward
-across any intervening mis-imported duplicates — hands the running total
-off to it (`anchor.balance + Σ(amounts of the duplicates between anchor
-and copy, copy included) == copy.balance`). The stray copy lands on a
-balance the account's own genuine history never produced, so it doesn't
-fit and is flagged. Two subtleties make the anchor the **last
-non-duplicate**, not the immediate row, and the check **not** a set
-membership:
+(`suggestOwner` / `AccountIndex.fitById`): a copy "fits" an account when a
+**non-duplicate** entry on EITHER side of the mis-import block hands the
+running total into or out of it. The backward check anchors on the last
+genuine row before the copy, carried forward across any intervening
+duplicates (`anchor.balance + Σ(amounts from the anchor up to and
+including the copy) == copy.balance`); the forward check anchors on the
+first genuine row after the block
+(`copy.balance + Σ(amounts from the copy up to and including that row) ==
+that row's balance`). The stray copy lands on a balance the account's own
+genuine history never produced on either side, so it doesn't fit and is
+flagged. Three subtleties shape the check — the anchor is the **nearest
+non-duplicate**, not the immediate neighbour; **both directions** count;
+and it is **not** a set membership:
 
 - A whole statement mis-imported into the wrong account is a contiguous
   block of duplicates whose balances were copied verbatim, so the block
-  chains into _itself_. Checking the immediate predecessor would validate
-  every duplicate after the first in the wrong account too; anchoring on
-  the last genuine row — and summing the skipped duplicates' amounts —
-  is the only thing that distinguishes the owner (its genuine chain flows
-  into the block) from the mis-import (it doesn't).
+  chains into _itself_. Checking the immediate neighbour would validate
+  every duplicate in the wrong account too; anchoring on the nearest
+  genuine row — and summing the skipped duplicates' amounts across the
+  gap — is what distinguishes the owner (its genuine chain flows into or
+  out of the block) from the mis-import (it doesn't).
+- The owner's only genuine neighbour is often **after** the charge, not
+  before: a ledger whose genuine rows are the salary deposits and
+  transfers between runs of card charges leaves many a charge with no
+  genuine predecessor but a genuine successor it hands the running total
+  off to (a charge posted right before a deposit lands 1407, then +9000
+  reaches the genuine 10407). A backward-only anchor flagged every such
+  charge on the true owner as a mismatch, so only the first copy after a
+  genuine deposit was detected; the forward anchor reconciles the rest.
 - An earlier version asked only whether the pre-balance existed _anywhere_
   in the account's balance set. Over months of history a wrong account
   coincidentally holds that balance at some unrelated point, so every copy
@@ -705,7 +717,7 @@ membership:
 The chain spans every entry the bank posted — auto-collapsed transfer legs
 (`collapsedIntoTransferId`) and hidden rows included — because they all
 move (or hold) the running total, and a non-duplicate one is a valid
-anchor (the genuine owner's predecessor is frequently a salary deposit or
+anchor (the genuine owner's neighbour is frequently a salary deposit or
 internal transfer that got collapsed into a `Transfer`). When the balance
 genuinely can't decide (a copy with no non-duplicate anchor on either
 side), ownership falls to the tie-breakers — denser same-day statement,

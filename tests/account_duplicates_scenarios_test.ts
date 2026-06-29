@@ -373,6 +373,131 @@ describe("duplicate finder — realistic scenarios", () => {
     expect(accIn(dn, "wrong").fits).toBe(true);
   });
 
+  it("owns the charge when its only genuine neighbour comes AFTER it", () => {
+    // The reported regression. On the true owner two card charges sit with NO
+    // genuine row before them — each predecessor is itself a duplicate
+    // (another charge from the same statement) — but a genuine salary deposit
+    // lands right after: 8118 − 2620 = 5498, − 4091 = 1407, then + 9000 =
+    // 10407. A backward-only anchor never reaches that genuine 10407 and
+    // flagged the owner's copies as mismatches; the forward anchor sees the
+    // block hand the running total off to the deposit, so both fit.
+    const owner = chain(8118, [
+      { id: "o_food", date: "2026-06-10", desc: "Matbudget A", amount: -2620 },
+      { id: "o_x", date: "2026-06-16", desc: "Matbudget B", amount: -4091 },
+      { id: "o_dep", date: "2026-06-18", desc: "Lön", amount: 9000 },
+    ]);
+    // The same two charges were mis-imported into another account, where they
+    // are interleaved with that account's own genuine rows and connect to
+    // neither side: 10970 − 67 ≠ 5498 and 10903 − 4091 ≠ 1407.
+    const stray = [
+      ...chain(10970, [
+        { id: "s_a", date: "2026-06-12", desc: "Apotek", amount: -67 },
+        { id: "s_b", date: "2026-06-20", desc: "Loopia", amount: -361 },
+      ]),
+      row({
+        id: "s_food",
+        date: "2026-06-10",
+        description: "Matbudget A",
+        amount: -2620,
+        balance: 5498,
+      }),
+      row({
+        id: "s_x",
+        date: "2026-06-16",
+        description: "Matbudget B",
+        amount: -4091,
+        balance: 1407,
+      }),
+    ];
+    const groups = findDuplicateImports(
+      data([account("owner"), account("stray")], { owner, stray }),
+    );
+    const food = groups.find((g) => g.description === "Matbudget A")!;
+    const x = groups.find((g) => g.description === "Matbudget B")!;
+    // Both charges fit the owner via the forward anchor (no genuine row
+    // precedes them) and the stray via neither.
+    expect(accIn(food, "owner").fits).toBe(true);
+    expect(accIn(food, "stray").fits).toBe(false);
+    expect(accIn(x, "owner").fits).toBe(true);
+    expect(accIn(x, "stray").fits).toBe(false);
+    expect(food.suggestedOwnerId).toBe("owner");
+    expect(x.suggestedOwnerId).toBe("owner");
+  });
+
+  it("forward anchor still rejects a stray block that connects on neither side", () => {
+    // A whole statement mis-imported as a contiguous block: its rows chain
+    // into ONE ANOTHER but not into the host account's genuine rows on either
+    // side. The block must carry the SAME balances in both accounts to group
+    // at all, so both copies read 4000 / 3500. In "right" the genuine 5000
+    // flows in; in "wrong" neither the genuine predecessor (9000) nor the
+    // non-connecting successor (8800) reconciles, so the block stays a
+    // mismatch.
+    const right: HistoryEntry[] = [
+      row({
+        id: "r_anchor",
+        date: "2026-06-01",
+        description: "Native R",
+        amount: 100,
+        balance: 5000,
+      }),
+      row({
+        id: "r_d1",
+        date: "2026-06-02",
+        description: "Shop One",
+        amount: -1000,
+        balance: 4000,
+      }),
+      row({
+        id: "r_d2",
+        date: "2026-06-03",
+        description: "Shop Two",
+        amount: -500,
+        balance: 3500,
+      }),
+    ];
+    const wrong: HistoryEntry[] = [
+      row({
+        id: "w_anchor",
+        date: "2026-06-01",
+        description: "Native W",
+        amount: 200,
+        balance: 9000,
+      }),
+      row({
+        id: "w_d1",
+        date: "2026-06-02",
+        description: "Shop One",
+        amount: -1000,
+        balance: 4000,
+      }),
+      row({
+        id: "w_d2",
+        date: "2026-06-03",
+        description: "Shop Two",
+        amount: -500,
+        balance: 3500,
+      }),
+      // A genuine row AFTER the block that does NOT chain from it (the block
+      // ends on 3500; 3500 − 200 = 3300, not 8800).
+      row({
+        id: "w_after",
+        date: "2026-06-05",
+        description: "Native W2",
+        amount: -200,
+        balance: 8800,
+      }),
+    ];
+    const groups = findDuplicateImports(
+      data([account("right"), account("wrong")], { right, wrong }),
+    );
+    expect(groups).toHaveLength(2);
+    for (const g of groups) {
+      expect(accIn(g, "right").fits).toBe(true);
+      expect(accIn(g, "wrong").fits).toBe(false);
+      expect(g.suggestedOwnerId).toBe("right");
+    }
+  });
+
   it("suggestOwner prefers the fitting account over a denser non-fit", () => {
     // Even if the stray account has more activity on the day, the account
     // where the balance reconciles wins.
