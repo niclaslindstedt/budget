@@ -106,6 +106,9 @@ export function reduceAccountBudget(
         // explicit pick so future description edits don't reroute it.
         if (draft.typeId) setRowType(row, draft.typeId);
         if (draft.companyId) row.companyId = draft.companyId;
+        // Mutually exclusive with `companyId` (the modal sends only one),
+        // so a flagged row never carries a company alongside the omit.
+        else if (draft.noCompany) row.noCompany = true;
         if (draft.tagIds && draft.tagIds.length > 0) {
           row.tagIds = [...draft.tagIds];
         }
@@ -356,7 +359,19 @@ export function reduceAccountBudget(
           }
           if (action.patch.companyId !== undefined) {
             if (action.patch.companyId === null) delete next.companyId;
-            else next.companyId = action.patch.companyId;
+            else {
+              next.companyId = action.patch.companyId;
+              // A real company wins over a prior "omit" decision.
+              delete next.noCompany;
+            }
+          }
+          if (action.patch.noCompany !== undefined) {
+            // Only persist `true`; assigning a company above already
+            // dropped any stale flag, so an omit + company in one patch
+            // resolves to the company.
+            if (action.patch.noCompany && next.companyId === undefined)
+              next.noCompany = true;
+            else delete next.noCompany;
           }
           if (action.patch.tagIds !== undefined) {
             // An array replaces the row's tags; a non-empty result

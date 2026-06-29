@@ -222,8 +222,9 @@ type Props = {
   // budget rows through `bulkUpdate` and history rows through
   // `updateHistoryEntry` (with `noCompany` cleared on assignment).
   onSetRowCompany: (row: Row, companyId: string | null) => void;
-  // Row-level "omit company" writer; only meaningful for synthesized
-  // history rows (the only shape carrying `entry.noCompany`).
+  // Row-level "omit company" writer. Routes user-authored rows through
+  // `bulkUpdate` (persisting `Row.noCompany`) and synthesized history
+  // rows through `updateHistoryEntry` (`entry.noCompany`).
   onSetRowNoCompany: (row: Row, next: boolean) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;

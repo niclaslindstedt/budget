@@ -29,10 +29,10 @@ type Props = {
   // company is assigned). Pre-bound to a per-row closure here so
   // `BudgetCell` and the inline picker stay agnostic of row type.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
-  // Row-level "omit company" writer. Only synthesized history rows
-  // carry the underlying flag, so the parent's handler is a no-op for
-  // user-authored budget rows; the cell wiring suppresses the picker's
-  // `onOmitChange` for those rows anyway, so the no-op never fires.
+  // Row-level "omit company" writer. Routed by the parent (BudgetPage)
+  // so user-authored rows dispatch `bulkUpdate` and synthesized history
+  // rows dispatch `updateHistoryEntry`. A no-op for correction / transfer
+  // rows, whose cell wiring leaves `onOmitChange` unset so it never fires.
   onSetRowNoCompany: (row: Row, next: boolean) => void;
   selectMode: boolean;
   selected: boolean;
@@ -158,6 +158,10 @@ function BudgetRowImpl({
   const isSeries = !!row.seriesId;
   const isTransfer = row.kind === "transfer";
   const isHistory = row.kind === "historic";
+  // The "Omit company" option surfaces on user-authored and synthesized
+  // history rows (both carry / mirror a `noCompany` flag). Correction and
+  // transfer rows have no company concept, so the picker stays plain.
+  const canOmitCompany = row.kind === "user" || row.kind === "historic";
   // Cover-transfer overlay. A synthesized cover-transfer row opens the
   // read-only info modal on tap. A "covered" historic row (reimbursed from
   // another account) shows a check glyph that opens the same modal. An
@@ -396,10 +400,8 @@ function BudgetRowImpl({
           entryType={entryType}
           company={company}
           onSetCompany={handleSetCompany}
-          noCompany={
-            row.kind === "historic" ? (row.noCompany ?? false) : undefined
-          }
-          onSetNoCompany={isHistory ? handleSetNoCompany : undefined}
+          noCompany={canOmitCompany ? (row.noCompany ?? false) : undefined}
+          onSetNoCompany={canOmitCompany ? handleSetNoCompany : undefined}
           isTransfer={isTransfer}
           isCoverItem={isCoverItem}
           finished={col.type === "completed" ? isFinished : undefined}

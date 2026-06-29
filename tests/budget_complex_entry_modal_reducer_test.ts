@@ -144,6 +144,37 @@ describe("budgetComplexEntryModalReducer", () => {
     expect(keepsType.typeId).toBe("t1");
   });
 
+  it("keeps the omit flag and a picked company mutually exclusive", () => {
+    const base = makeInitial();
+    expect(base.noCompany).toBe(false);
+
+    // Enabling omit clears any picked company.
+    const omitted = budgetComplexEntryModalReducer(
+      { ...base, companyId: "c1" },
+      { kind: "setNoCompany", value: true },
+    );
+    expect(omitted.noCompany).toBe(true);
+    expect(omitted.companyId).toBeNull();
+
+    // Picking a real company lowers the omit flag.
+    const picked = budgetComplexEntryModalReducer(omitted, {
+      kind: "pickCompany",
+      companyId: "c2",
+      autoTypeId: undefined,
+    });
+    expect(picked.companyId).toBe("c2");
+    expect(picked.noCompany).toBe(false);
+
+    // Clearing the company (null) leaves the omit flag untouched.
+    const cleared = budgetComplexEntryModalReducer(picked, {
+      kind: "pickCompany",
+      companyId: null,
+      autoTypeId: undefined,
+    });
+    expect(cleared.companyId).toBeNull();
+    expect(cleared.noCompany).toBe(false);
+  });
+
   it("toggles the sign and formula mode", () => {
     const base = makeInitial();
     expect(

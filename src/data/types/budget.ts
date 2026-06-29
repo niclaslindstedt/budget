@@ -105,6 +105,17 @@ type RowBase = {
   // to the company name; when no company is set, it falls back to the
   // type name; absent both, to the raw bank text for history rows.
   companyId?: string;
+  // Explicit "this row has no company, on purpose" flag. Distinct from
+  // a merely-absent `companyId` (which reads as "not decided yet"): when
+  // set, the description cell renders the "omitted" glyph instead of the
+  // company fallback, and pattern auto-categorisation won't overlay a
+  // company. Mutually exclusive with `companyId` — assigning a company
+  // clears this. Set by the "Omit company" option on the add-entry
+  // modal, the row editor, and the inline description-cell picker for
+  // user-authored rows; on synthesized `historic` rows it mirrors
+  // `HistoryEntry.noCompany` (propagated by `synthesizeHistoryRow`).
+  // Only `true` is ever persisted — absent means "no explicit omit".
+  noCompany?: boolean;
   // Optional references to reusable `Tag`s in `UserData.tags`. A row can
   // carry several user-defined labels that cut across categories/types
   // (e.g. "Vacation 2026", "Reimbursable"). Persisted only when
@@ -204,10 +215,10 @@ export type HistoricRow = RowBase & {
   // string as the placeholder when the user opens it to type a real
   // description.
   descriptionPlaceholder?: string;
-  // Mirror of `HistoryEntry.noCompany`, propagated by
-  // `synthesizeHistoryRow` so the description popover's inline picker
-  // can offer "Omit company" with the right initial state.
-  noCompany?: boolean;
+  // `noCompany` (declared on `RowBase`) mirrors `HistoryEntry.noCompany`
+  // on these synthesized rows, propagated by `synthesizeHistoryRow` so
+  // the description popover's inline picker can offer "Omit company"
+  // with the right initial state.
 };
 
 // Runtime-only row synthesized by `synthesizeTransferRow` when a

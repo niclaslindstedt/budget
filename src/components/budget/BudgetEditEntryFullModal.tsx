@@ -102,6 +102,9 @@ export type EditRowPatch = {
   // `undefined` = don't touch the row's company; `null` = clear it;
   // a string sets the companyId.
   companyId: string | null | undefined;
+  // `undefined` = don't touch the row's omit flag; `true` flags the row
+  // as having no company on purpose; `false` clears the flag.
+  noCompany: boolean | undefined;
   // `undefined` = leave the row's tags alone; an array replaces them
   // (empty array clears tags).
   tagIds: string[] | undefined;
@@ -188,6 +191,7 @@ export function BudgetEditEntryFullModal({
     date,
     typeId,
     companyId,
+    noCompany,
     tagIds,
     isTransfer,
     completed,
@@ -326,6 +330,7 @@ export function BudgetEditEntryFullModal({
     const patchMin = skipAmount ? undefined : span.amountMin;
     const patchMax = skipAmount ? undefined : span.amountMax;
     const companyTouched = companyId !== initialState.companyId;
+    const noCompanyTouched = noCompany !== initialState.noCompany;
     const transferTouched = isTransfer !== initialState.isTransfer;
     // Compare tags as sets — the picker appends on toggle, so order is
     // not meaningful. Only send `tagIds` when the membership changed.
@@ -342,6 +347,7 @@ export function BudgetEditEntryFullModal({
         date,
         typeId,
         companyId: companyTouched ? companyId : undefined,
+        noCompany: noCompanyTouched ? noCompany : undefined,
         tagIds: tagsTouched ? tagIds : undefined,
         isTransfer: transferTouched ? isTransfer : undefined,
         completed,
@@ -375,7 +381,11 @@ export function BudgetEditEntryFullModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
+              noCompany={noCompany}
               onSelect={handlePickCompany}
+              onOmitChange={(value) =>
+                dispatch({ kind: "setNoCompany", value })
+              }
               onCreate={onCreateCompany}
             />
           </div>

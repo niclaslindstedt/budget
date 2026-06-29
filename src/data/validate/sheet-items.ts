@@ -101,6 +101,7 @@ export function validateRow(
     ignored,
     typeIdLocked,
     companyId,
+    noCompany,
     tagIds,
     lineItems,
     receiptPath,
@@ -188,6 +189,14 @@ export function validateRow(
     // Drop dangling company references silently — a deleted Company
     // shouldn't trap the row. Same contract as `typeId`.
     if (knownCompanyIds.has(companyId)) row.companyId = companyId;
+  }
+  if (noCompany !== undefined) {
+    if (typeof noCompany !== "boolean")
+      return fail(`${path}.noCompany`, "expected a boolean");
+    // Only persist `true` — absent means "no explicit omit". A row that
+    // carries a real `companyId` ignores the flag (company wins), so a
+    // stale `true` alongside a company is harmless but we still drop it.
+    if (noCompany && row.companyId === undefined) row.noCompany = true;
   }
   if (tagIds !== undefined && tagIds !== null) {
     if (!Array.isArray(tagIds))

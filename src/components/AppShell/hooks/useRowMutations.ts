@@ -157,7 +157,8 @@ type Result = {
   // `updateHistoryEntry` and falls through to a single-row `bulkUpdate`
   // for user-authored budget rows.
   onSetRowCompany: (row: Row, companyId: string | null) => void;
-  // Row-level "omit company" writer for synthesized history rows.
+  // Row-level "omit company" writer for user-authored budget rows
+  // (`bulkUpdate`) and synthesized history rows (`updateHistoryEntry`).
   onSetRowNoCompany: (row: Row, next: boolean) => void;
   // Stage the confirm-delete prompt for a correction (divider) row.
   onCorrectionDeleteRequest: (row: Row) => void;
@@ -469,28 +470,44 @@ export function useRowMutations({
   );
 
   // Row-level "omit company" writer fired by the description popover's
-  // inline CompanyPicker when the user picks "Omit company". Only the
-  // synthesized history row carries the flag; user-authored budget rows
-  // have no equivalent so the prop chain leaves the picker without an
-  // `onOmitChange` and the option doesn't surface there.
+  // inline CompanyPicker when the user picks "Omit company". Routes
+  // synthesized history rows through `updateHistoryEntry` (clearing any
+  // company override) and user-authored budget rows through a single-row
+  // `bulkUpdate`. Correction / transfer rows carry no company concept,
+  // so the prop chain leaves the picker without an `onOmitChange` there.
   const onSetRowNoCompany = useCallback(
     (row: Row, next: boolean) => {
-      if (row.kind !== "historic" || !activeAccountId) return;
-      const patch: {
-        noCompany: boolean;
-        userCompanyId?: string | null;
-      } = { noCompany: next };
-      // Enabling omit contradicts any explicit company override on the
-      // entry — clear it so the resolver doesn't keep tagging the row.
-      if (next) patch.userCompanyId = null;
+      if (row.kind === "historic") {
+        if (!activeAccountId) return;
+        const patch: {
+          noCompany: boolean;
+          userCompanyId?: string | null;
+        } = { noCompany: next };
+        // Enabling omit contradicts any explicit company override on the
+        // entry — clear it so the resolver doesn't keep tagging the row.
+        if (next) patch.userCompanyId = null;
+        dispatch({
+          type: "updateHistoryEntry",
+          accountId: activeAccountId,
+          entryId: row.historyEntryId,
+          patch,
+        });
+        return;
+      }
+      if (row.kind !== "user") return;
       dispatch({
-        type: "updateHistoryEntry",
-        accountId: activeAccountId,
-        entryId: row.historyEntryId,
-        patch,
+        type: "bulkUpdate",
+        sheetId,
+        itemId,
+        rowIds: [row.id],
+        // Enabling omit also clears any company on the row (the reducer
+        // keeps the two mutually exclusive).
+        patch: next
+          ? { noCompany: true, companyId: null }
+          : { noCompany: false },
       });
     },
-    [dispatch, activeAccountId],
+    [dispatch, sheetId, itemId, activeAccountId],
   );
 
   const onCorrectionDeleteRequest = useCallback(

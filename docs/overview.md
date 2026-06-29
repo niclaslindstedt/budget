@@ -354,7 +354,12 @@ onto the new rows (`splitRow` reducer) or onto each
 ### Complex entry modal
 
 `BudgetComplexEntryModal.tsx` — the recurring + categorised entry
-creator. Supports `amountFormula`.
+creator. Supports `amountFormula`. Its company picker offers the same
+"Omit company" option as the history surfaces: choosing it flags every
+minted row `noCompany` (held mutually exclusive with a picked company)
+so a user-authored entry can record "no company, on purpose". The same
+toggle is reachable afterwards from the row editor
+(`BudgetEditEntryFullModal`) and the inline description-cell picker.
 
 ### Amount span
 

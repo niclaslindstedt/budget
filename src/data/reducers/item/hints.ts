@@ -149,7 +149,15 @@ export function applyPatch<R extends Row>(
       delete next.companyId;
     } else {
       next.companyId = patch.companyId;
+      // A real company wins over a prior "omit" decision.
+      delete next.noCompany;
     }
+  }
+  // Tri-state like companyId: undefined = don't touch, true = omit,
+  // false = clear. A company assigned above already dropped the flag.
+  if (patch.noCompany !== undefined) {
+    if (patch.noCompany && next.companyId === undefined) next.noCompany = true;
+    else delete next.noCompany;
   }
   // `undefined` leaves tags alone; an array replaces them. Persist only
   // a non-empty array so a cleared selection drops the field rather
@@ -233,7 +241,11 @@ export function applyPatternsAfterCellEdit(
       rule.typeId !== null &&
       rule.typeId !== row.typeId;
     const companyNeedsUpdate =
-      ruleCompanyId !== undefined && ruleCompanyId !== row.companyId;
+      ruleCompanyId !== undefined &&
+      ruleCompanyId !== row.companyId &&
+      // A row the user explicitly flagged "omit company" keeps that
+      // decision — a matching rule must not silently re-tag it.
+      !row.noCompany;
     const tagsNeedUpdate = nextTagIds !== row.tagIds;
     if (!typeNeedsUpdate && !companyNeedsUpdate && !tagsNeedUpdate) continue;
     if (nextRows === null) nextRows = next.rows.slice();
