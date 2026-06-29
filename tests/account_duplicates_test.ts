@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  duplicateBatchOwners,
+  duplicateBatchRemovals,
   duplicateRemovals,
   duplicateSessionRemovals,
   duplicateSessions,
   findDuplicateImports,
   historyContext,
   ignoreRulesForGroup,
+  suggestBatchOwner,
 } from "../src/data/accounts/duplicates";
 import { describeActionSubject } from "../src/data/action-summary";
 import { reducer } from "../src/data/reducer";
@@ -664,6 +667,91 @@ describe("importBankHistory import session", () => {
     const entries = next.history.acc;
     expect(entries).toHaveLength(2);
     expect(entries.every((e) => e.importId === record!.id)).toBe(true);
+  });
+});
+
+describe("batch owner helpers (import-time single-owner picker)", () => {
+  // Two rows imported into "x" that both already exist in "y", whose
+  // genuine deposit chains through them — so y owns the whole batch.
+  const batch = data([account("x"), account("y")], {
+    x: [
+      entry({
+        id: "x_dn",
+        amount: -410,
+        balance: 9997,
+        date: "2026-06-22",
+        description: "Newspaper",
+      }),
+      entry({
+        id: "x_shop",
+        amount: -100,
+        balance: 9897,
+        date: "2026-06-23",
+        description: "Shop",
+      }),
+    ],
+    y: [
+      entry({
+        id: "y_dep",
+        amount: 9000,
+        balance: 10407,
+        date: "2026-06-18",
+        description: "Deposit",
+      }),
+      entry({
+        id: "y_dn",
+        amount: -410,
+        balance: 9997,
+        date: "2026-06-22",
+        description: "Newspaper",
+      }),
+      entry({
+        id: "y_shop",
+        amount: -100,
+        balance: 9897,
+        date: "2026-06-23",
+        description: "Shop",
+      }),
+    ],
+  });
+  const groups = findDuplicateImports(batch);
+
+  it("tallies each involved account's group and fit counts", () => {
+    expect(groups).toHaveLength(2);
+    const owners = duplicateBatchOwners(groups).sort((a, b) =>
+      a.accountId.localeCompare(b.accountId),
+    );
+    expect(owners).toEqual([
+      { accountId: "x", groupCount: 2, fitCount: 0 },
+      { accountId: "y", groupCount: 2, fitCount: 2 },
+    ]);
+  });
+
+  it("suggests the account whose balances reconcile across the batch", () => {
+    expect(suggestBatchOwner(groups)).toBe("y");
+  });
+
+  it("suggests nothing when no account reconciles (caller defaults to Skip)", () => {
+    const noFit = findDuplicateImports(
+      data([account("x"), account("y")], {
+        x: [entry({ id: "x1" })],
+        y: [entry({ id: "y1" })],
+      }),
+    );
+    expect(suggestBatchOwner(noFit)).toBeNull();
+  });
+
+  it("removes every non-owner copy across the batch", () => {
+    expect(
+      duplicateBatchRemovals(groups, "y")
+        .map((r) => `${r.accountId}:${r.entryId}`)
+        .sort(),
+    ).toEqual(["x:x_dn", "x:x_shop"]);
+    expect(
+      duplicateBatchRemovals(groups, "x")
+        .map((r) => `${r.accountId}:${r.entryId}`)
+        .sort(),
+    ).toEqual(["y:y_dn", "y:y_shop"]);
   });
 });
 

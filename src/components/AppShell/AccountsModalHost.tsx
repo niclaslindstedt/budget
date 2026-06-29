@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { AccountModal } from "../accounts/AccountModal";
 import { AccountCutHistoryModal } from "../accounts/AccountCutHistoryModal";
-import { AccountDuplicatesModal } from "../accounts/AccountDuplicatesModal";
+import { ImportDuplicatesModal } from "../accounts/ImportDuplicatesModal";
 import { AccountReconciliationModal } from "../accounts/AccountReconciliationModal";
 import { AccountRenamePredictorModal } from "../accounts/AccountRenamePredictorModal";
 import { AccountTransferCollapseModal } from "../accounts/AccountTransferCollapseModal";
@@ -89,7 +89,6 @@ export function AccountsModalHost(props: Props) {
     onCommitRenamePredictor,
     onCancelRenamePredictor,
     importDuplicateGroups,
-    importDuplicatesAt,
     clearImportDuplicates,
   } = importFlow;
   const {
@@ -175,17 +174,17 @@ export function AccountsModalHost(props: Props) {
         onCancel={onCancelRenamePredictor}
         onCommit={onCommitRenamePredictor}
       />
-      {/* Import-scoped duplicate resolver — auto-opens after a commit when
+      {/* Import-scoped duplicate picker — auto-opens after a commit when
           the freshly-imported rows collide with rows in another account.
-          Same component as the menu-opened "Find duplicates", filtered to
-          this import's `importedAt`. */}
-      <AccountDuplicatesModal
+          One owner choice for the whole batch (see ImportDuplicatesModal),
+          distinct from the per-group menu-opened "Find duplicates". */}
+      <ImportDuplicatesModal
         open={importDuplicateGroups.length > 0}
         onClose={clearImportDuplicates}
+        groups={importDuplicateGroups}
         data={data}
         settings={effectiveSettings}
         dispatch={dispatch}
-        filterImportedAt={importDuplicatesAt ?? undefined}
       />
       <AccountCutHistoryModal
         open={cutHistoryAccount !== null}

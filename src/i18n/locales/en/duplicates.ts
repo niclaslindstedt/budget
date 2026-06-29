@@ -7,7 +7,8 @@ const duplicates = {
   title: "Find duplicates",
   importTitle: "Duplicates in this import",
   importIntro:
-    "Some rows you just imported already exist in another account. Pick the true owner for each — the copies in the other accounts are removed so every transaction lands in just one place.",
+    "Some rows you just imported already exist in another account. Pick the true owner — every copy moves there, so each transaction lands in just one place.",
+  importFits: "balance fits",
   intro:
     "Pick which account each transaction belongs to; the copies in the other accounts are deleted. Tap a row to see the surrounding bank history — a balance in green sits cleanly on that account's running total, one flagged in red doesn't.",
   empty: "No duplicate imports found.",

@@ -4,7 +4,8 @@ const duplicates: DuplicatesCatalog = {
   title: "Hitta dubblettimporter",
   importTitle: "Dubbletter i denna import",
   importIntro:
-    "Några rader du just importerade finns redan på ett annat konto. Välj rätt ägare för varje — kopiorna i de andra kontona tas bort så att varje transaktion hamnar på endast ett konto.",
+    "Några rader du just importerade finns redan på ett annat konto. Välj rätt ägare — varje kopia flyttas dit, så att varje transaktion hamnar på endast ett konto.",
+  importFits: "saldot stämmer",
   intro:
     "Välj vilket konto varje transaktion hör till; kopiorna i de andra kontona tas bort. Tryck på en rad för att se omgivande bankhistorik — ett saldo i grönt stämmer med kontots löpande saldo, ett markerat i rött gör det inte.",
   empty: "Inga dubblettimporter hittades.",

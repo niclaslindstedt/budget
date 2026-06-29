@@ -84,7 +84,6 @@ type Result = {
   // auto-opens scoped to them so the user picks the true owner and the
   // copies consolidate there instead of lingering as duplicates.
   importDuplicateGroups: DuplicateGroup[];
-  importDuplicatesAt: number | null;
   clearImportDuplicates: () => void;
 
   // BudgetFindConflictsModal hooks.
@@ -569,7 +568,6 @@ export function useImportFlow({
     onCommitRenamePredictor,
     onCancelRenamePredictor,
     importDuplicateGroups,
-    importDuplicatesAt: duplicatesCheckAt,
     clearImportDuplicates,
     onMergeConflictIntoHistory,
     onMergeConflictUserRows,
