@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  balanceSitsLocally,
   findDuplicateImports,
   historyContext,
   suggestOwner,
@@ -422,6 +423,71 @@ describe("duplicate finder — realistic scenarios", () => {
     expect(accIn(x, "stray").fits).toBe(false);
     expect(food.suggestedOwnerId).toBe("owner");
     expect(x.suggestedOwnerId).toBe("owner");
+  });
+
+  it("owns the charge even when the bank listed the day out of balance order", () => {
+    // The reported case. On the owner two charges post on the same day —
+    // a -217 grocery landing 20098 and the -278 cabin charge landing 19820
+    // (20098 - 278 = 19820) — but the bank export stored them REVERSED, the
+    // cabin charge before the grocery. Walking the file order steps from the
+    // genuine row straight onto the cabin charge (a balance the chain never
+    // reaches that way), so it read as a mismatch on the very account that
+    // owns it. Re-deriving the intra-day order from the balances threads the
+    // grocery back in front, and the cabin charge reconciles.
+    const owner: HistoryEntry[] = [
+      // Stored out of order on purpose: cabin (-278) BEFORE grocery (-217).
+      {
+        id: "o_cabin",
+        date: "2026-05-03",
+        description: "Cabin rental",
+        amount: -278,
+        balance: 19820,
+        importedAt: 0,
+      },
+      {
+        id: "o_grocery",
+        date: "2026-05-03",
+        description: "Grocery",
+        amount: -217,
+        balance: 20098,
+        importedAt: 0,
+      },
+    ];
+    // The stray holds the same cabin charge (same date / amount / balance)
+    // but its own surrounding chain never reaches 19820.
+    const stray: HistoryEntry[] = [
+      {
+        id: "s_salary",
+        date: "2026-05-02",
+        description: "Salary",
+        amount: 5000,
+        balance: 5000,
+        importedAt: 0,
+      },
+      {
+        id: "s_cabin",
+        date: "2026-05-03",
+        description: "Cabin rental",
+        amount: -278,
+        balance: 19820,
+        importedAt: 0,
+      },
+    ];
+    const groups = findDuplicateImports(
+      data([account("owner"), account("stray")], { owner, stray }),
+    );
+    expect(groups).toHaveLength(1);
+    const cabin = groups[0];
+    expect(cabin.description).toBe("Cabin rental");
+    // Despite the scrambled file order, the owner's copy reconciles.
+    expect(accIn(cabin, "owner").fits).toBe(true);
+    expect(accIn(cabin, "stray").fits).toBe(false);
+    expect(cabin.suggestedOwnerId).toBe("owner");
+    // And the visible context pill agrees: re-ordered, the grocery (20098)
+    // sits directly before the cabin charge, so the balance sits cleanly.
+    const ctx = historyContext(owner, "o_cabin")!;
+    expect(ctx.before?.id).toBe("o_grocery");
+    expect(balanceSitsLocally(ctx)).toBe(true);
   });
 
   it("forward anchor still rejects a stray block that connects on neither side", () => {

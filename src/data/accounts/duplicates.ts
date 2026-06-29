@@ -42,6 +42,7 @@ import {
   normaliseDescription,
 } from "../description-normaliser";
 import type { DuplicateIgnore, HistoryEntry, UserData } from "../types";
+import { sortHistoryByBalance } from "./history-order";
 
 // Balance figures are stored in major units (kr) with decimals, so all
 // continuity comparisons happen in integer minor units (öre) to keep
@@ -195,18 +196,12 @@ function buildAccountIndex(
   entries: readonly HistoryEntry[],
   duplicateIds: ReadonlySet<string>,
 ): AccountIndex {
-  // Order the WHOLE running-balance chain by date, then original import
-  // order — identical to `historyContext`, so a copy's verdict here lines
-  // up with the before/target/after the user sees in the context panel.
-  const ordered = entries
-    .map((entry, index) => ({ entry, index }))
-    .sort((a, b) =>
-      a.entry.date < b.entry.date
-        ? -1
-        : a.entry.date > b.entry.date
-          ? 1
-          : a.index - b.index,
-    );
+  // Order the WHOLE running-balance chain by date, then by intra-day balance
+  // continuity — identical to `historyContext`, so a copy's verdict here
+  // lines up with the before/target/after the user sees in the context
+  // panel. The intra-day reorder is what lets a genuinely-owned charge
+  // reconcile even when the bank listed the day's rows out of balance order.
+  const ordered = sortHistoryByBalance(entries);
   const byDate = new Map<string, number>();
   // Per-duplicate verdict from each direction; `null` ⇒ no genuine row on
   // that side to judge by. Combined below: a duplicate fits when EITHER
@@ -223,7 +218,7 @@ function buildAccountIndex(
   let anchorBalance: number | null = null;
   let sumSinceAnchor = 0;
   for (let i = 0; i < ordered.length; i += 1) {
-    const entry = ordered[i].entry;
+    const entry = ordered[i];
     if (duplicateIds.has(entry.id)) {
       if (!hasBalance(entry) || anchorBalance === null) {
         backFit.set(entry.id, null);
@@ -259,7 +254,7 @@ function buildAccountIndex(
   let aheadBalance: number | null = null;
   let sumToAhead = 0;
   for (let i = ordered.length - 1; i >= 0; i -= 1) {
-    const entry = ordered[i].entry;
+    const entry = ordered[i];
     if (duplicateIds.has(entry.id)) {
       if (hasBalance(entry) && aheadBalance !== null) {
         const expected = aheadBalance - sumToAhead;
@@ -807,11 +802,12 @@ export function ignoreRulesForGroup(group: DuplicateGroup): DuplicateIgnore[] {
 // the entry immediately before and after it, so the user can eyeball
 // whether the matched transaction's balance fits between them (it does
 // on the account that genuinely owns it; a foreign mis-import leaves a
-// visible jump). Ordered by date, then by original import order as a
-// stable tie-break — for a single imported statement that array order IS
-// the bank's own order, so same-day entries keep their statement
-// sequence. Returns the target plus up to one neighbour on each side;
-// `null` neighbours mean the target is at an edge of the history.
+// visible jump). Ordered by date, then WITHIN a day by running-balance
+// continuity (`sortHistoryByBalance`) — so when the bank listed a day's
+// rows out of balance order, the neighbours shown are still the ones the
+// balance actually chains through, not whatever order the file happened to
+// carry. Returns the target plus up to one neighbour on each side; `null`
+// neighbours mean the target is at an edge of the history.
 export type HistoryContext = {
   before: HistoryEntry | null;
   target: HistoryEntry;
@@ -822,21 +818,13 @@ export function historyContext(
   entries: readonly HistoryEntry[],
   targetId: string,
 ): HistoryContext | null {
-  const ordered = entries
-    .map((entry, index) => ({ entry, index }))
-    .sort((a, b) =>
-      a.entry.date < b.entry.date
-        ? -1
-        : a.entry.date > b.entry.date
-          ? 1
-          : a.index - b.index,
-    );
-  const pos = ordered.findIndex((o) => o.entry.id === targetId);
+  const ordered = sortHistoryByBalance(entries);
+  const pos = ordered.findIndex((o) => o.id === targetId);
   if (pos === -1) return null;
   return {
-    before: pos > 0 ? ordered[pos - 1].entry : null,
-    target: ordered[pos].entry,
-    after: pos < ordered.length - 1 ? ordered[pos + 1].entry : null,
+    before: pos > 0 ? ordered[pos - 1] : null,
+    target: ordered[pos],
+    after: pos < ordered.length - 1 ? ordered[pos + 1] : null,
   };
 }
 

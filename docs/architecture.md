@@ -318,7 +318,8 @@ src/
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
 │   │   ├── balance.ts          # account-level aggregation (accountBalance)
-│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner, historyContext, ignoreRulesForGroup, duplicateSessions, duplicateSessionRemovals)
+│   │   ├── duplicates.ts       # cross-account duplicate-import finder (findDuplicateImports, suggestOwner, historyContext, balanceSitsLocally, ignoreRulesForGroup, duplicateSessions, duplicateSessionRemovals)
+│   │   ├── history-order.ts    # intra-day running-balance ordering (sortHistoryByBalance)
 │   │   ├── export.ts           # accounts JSON export builder
 │   │   └── transfer-collapse.ts    # mirror-pair detector (detectTransferCandidates)
 │   ├── import/
