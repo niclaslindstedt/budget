@@ -13,6 +13,7 @@
 // isolation against a fixed `now`, which the closure form was not.
 
 import { coverageDelta, coveredMonths } from "./coverage";
+import { diffDaysIso } from "../utils/date";
 import {
   findCandidates,
   findOrphans,
@@ -56,10 +57,56 @@ export type StagedImportOutcome =
       orphans: OrphanRow[];
     };
 
+// Days of overlap allowed before the import flow asks the user to confirm
+// they meant to import into this account. A few late-posting card charges
+// from the previous statement can legitimately spill into the next one, so
+// a small overlap isn't suspicious; a larger one means the statement's
+// period is already covered here — likely the wrong account.
+export const IMPORT_OVERLAP_SLACK_DAYS = 7;
+
+function dateRange(
+  entries: readonly { date: string }[],
+): { start: string; end: string } | null {
+  let start: string | null = null;
+  let end: string | null = null;
+  for (const e of entries) {
+    if (typeof e.date !== "string" || e.date.length < 10) continue;
+    if (start === null || e.date < start) start = e.date;
+    if (end === null || e.date > end) end = e.date;
+  }
+  return start !== null && end !== null ? { start, end } : null;
+}
+
+// The date range over which the rows this import would ADD overlap the
+// account's EXISTING history, when that overlap exceeds the slack. `null`
+// when there's no existing history, nothing new to add, the ranges are
+// disjoint, or the overlap is within the slack — i.e. the import is a
+// clean continuation and needs no confirmation.
+export function importOverlap(
+  existing: readonly HistoryEntry[],
+  newEntries: readonly HistoryEntry[],
+  slackDays: number = IMPORT_OVERLAP_SLACK_DAYS,
+): { start: string; end: string } | null {
+  if (existing.length === 0 || newEntries.length === 0) return null;
+  const ex = dateRange(existing);
+  const next = dateRange(newEntries);
+  if (ex === null || next === null) return null;
+  const start = ex.start > next.start ? ex.start : next.start;
+  const end = ex.end < next.end ? ex.end : next.end;
+  if (start > end) return null; // disjoint ranges
+  const days = diffDaysIso(end, start);
+  if (!Number.isFinite(days) || days <= slackDays) return null;
+  return { start, end };
+}
+
 export type StagedImport = {
   // True when the merge skipped at least one parsed entry as a
   // duplicate — the caller fires the `dedupe` achievement.
   dedupeOccurred: boolean;
+  // Set when the rows this import would add overlap the account's existing
+  // history by more than the slack (see `importOverlap`) — the flow asks
+  // the user to confirm before committing. `null` ⇒ no confirmation needed.
+  overlap: { start: string; end: string } | null;
   // Entries that WILL be added when the import commits (the freshly
   // parsed rows minus those that dedup against the existing history).
   newEntries: HistoryEntry[];
@@ -87,6 +134,9 @@ export function stageHistoryImport(
   // Any parsed row that didn't make it into `addedIds` was a duplicate
   // the merge skipped — the `dedupe` gesture.
   const dedupeOccurred = addedIds.size < parsed.entries.length;
+  // Whether the freshly-added rows overlap the account's existing history
+  // enough to warrant a "did you mean this account?" confirmation.
+  const overlap = importOverlap(existingHistory, newEntries);
 
   // Walk every account-budget that tracks this account; the matcher
   // works per (rows, columns) tuple so each item runs independently but
@@ -194,6 +244,7 @@ export function stageHistoryImport(
     if (renameSuggestions.length === 0) {
       return {
         dedupeOccurred,
+        overlap,
         newEntries,
         pendingImport,
         outcome: { kind: "commit" },
@@ -201,6 +252,7 @@ export function stageHistoryImport(
     }
     return {
       dedupeOccurred,
+      overlap,
       newEntries,
       pendingImport,
       outcome: { kind: "renamePredictor", suggestions: renameSuggestions },
@@ -209,6 +261,7 @@ export function stageHistoryImport(
 
   return {
     dedupeOccurred,
+    overlap,
     newEntries,
     pendingImport,
     outcome: {

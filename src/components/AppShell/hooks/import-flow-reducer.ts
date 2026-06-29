@@ -1,4 +1,5 @@
 import type {
+  ImportOverlapState,
   ManualTriageState,
   ReconciliationState,
   RenamePredictorState,
@@ -23,6 +24,10 @@ export type ImportFlowState = {
   reconciliation: ReconciliationState | null;
   manualTriage: ManualTriageState | null;
   renamePredictor: RenamePredictorState | null;
+  // "This account already has history for that period" confirmation — set
+  // before staging when the import overlaps existing history beyond the
+  // slack; null = no confirmation pending.
+  overlapConfirm: ImportOverlapState | null;
   // After a commit, the import's `now` timestamp — every entry it added
   // carries it as `importedAt`. Drives the post-import cross-account
   // duplicate check: if the freshly-imported rows collide with rows in
@@ -38,6 +43,7 @@ export const initialImportFlowState: ImportFlowState = {
   reconciliation: null,
   manualTriage: null,
   renamePredictor: null,
+  overlapConfirm: null,
   duplicatesCheckAt: null,
 };
 
@@ -48,6 +54,7 @@ export type ImportFlowAction =
   | { kind: "setManualTriage"; value: ManualTriageState | null }
   | { kind: "setReconciliation"; value: ReconciliationState | null }
   | { kind: "setRenamePredictor"; value: RenamePredictorState | null }
+  | { kind: "setOverlapConfirm"; value: ImportOverlapState | null }
   | { kind: "setDuplicatesCheck"; value: number | null }
   // Close the import-history modal and open whatever the matcher
   // pipeline decided in one transition. Commit path leaves both targets
@@ -79,6 +86,8 @@ export function importFlowReducer(
       return { ...state, reconciliation: action.value };
     case "setRenamePredictor":
       return { ...state, renamePredictor: action.value };
+    case "setOverlapConfirm":
+      return { ...state, overlapConfirm: action.value };
     case "setDuplicatesCheck":
       return { ...state, duplicatesCheckAt: action.value };
     case "stageImport":

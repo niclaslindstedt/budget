@@ -29,6 +29,10 @@ const importHistory = {
   unknownBank: "Could not detect the bank.",
   pickParser: "Choose bank format",
   pickFile: "Choose file",
+  overlapTitle: "This account already has history here",
+  overlapHint:
+    "{account} already has bank history from {start} to {end}, which overlaps this import. A statement belongs to a single account — make sure you're importing into the right one.",
+  overlapConfirm: "Import anyway",
 } as const;
 
 export type ImportHistoryCatalog = Widen<typeof importHistory>;
