@@ -18,7 +18,9 @@ import {
   findCandidates,
   findOrphans,
   findRuleDrivenCandidates,
+  planOrphanMoves,
   type MatchCandidate,
+  type OrphanMove,
   type OrphanRow,
 } from "./reconciliation";
 import { predictRenames, type RenameSuggestion } from "./rename-patterns";
@@ -103,6 +105,15 @@ export type StagedImport = {
   // True when the merge skipped at least one parsed entry as a
   // duplicate — the caller fires the `dedupe` achievement.
   dedupeOccurred: boolean;
+  // Predictions in newly-covered months, dated on/before the latest
+  // imported transaction, that never posted — moved forward past that
+  // date automatically (they "won't happen in the past"). Applied
+  // regardless of which modal the outcome opens, so the field rides the
+  // top-level result rather than the per-outcome union. The recurring
+  // rows whose forward move would reorder their own series are NOT here
+  // — they stay in the reconciliation outcome's `orphans` for the user
+  // to confirm.
+  autoOrphanMoves: OrphanMove[];
   // Set when the rows this import would add overlap the account's existing
   // history by more than the slack (see `importOverlap`) — the flow asks
   // the user to confirm before committing. `null` ⇒ no confirmation needed.
@@ -201,8 +212,16 @@ export function stageHistoryImport(
       : new Set<string>();
   const newlyCovered = coverageDelta(beforeCovered, afterCovered);
 
+  // Latest date across the post-import history — the boundary a
+  // prediction must be at/before to count as "in the past".
+  const latestHistoryDate = merged.reduce(
+    (max, e) => (e.date > max ? e.date : max),
+    "",
+  );
+
   const allCandidates: MatchCandidate[] = [];
   const allOrphans: OrphanRow[] = [];
+  const autoOrphanMoves: OrphanMove[] = [];
   for (const { rows, columns } of afterRowsForAccount) {
     const candidates = findCandidates(newEntries, rows, columns).filter(
       (c) => !autoMatchedRowIds.has(c.rowId),
@@ -216,7 +235,11 @@ export function stageHistoryImport(
       claimedIds,
       preImportData.settings.startOfMonth,
     );
-    for (const o of orphans) allOrphans.push(o);
+    // Move past-dated predictions forward silently; keep recurring
+    // reorders and still-future rows as prompts for the modal.
+    const plan = planOrphanMoves(orphans, rows, columns, latestHistoryDate);
+    for (const m of plan.autoMoves) autoOrphanMoves.push(m);
+    for (const o of plan.prompts) allOrphans.push(o);
   }
 
   const pendingImport: PendingImport = {
@@ -244,6 +267,7 @@ export function stageHistoryImport(
     if (renameSuggestions.length === 0) {
       return {
         dedupeOccurred,
+        autoOrphanMoves,
         overlap,
         newEntries,
         pendingImport,
@@ -252,6 +276,7 @@ export function stageHistoryImport(
     }
     return {
       dedupeOccurred,
+      autoOrphanMoves,
       overlap,
       newEntries,
       pendingImport,
@@ -261,6 +286,7 @@ export function stageHistoryImport(
 
   return {
     dedupeOccurred,
+    autoOrphanMoves,
     overlap,
     newEntries,
     pendingImport,

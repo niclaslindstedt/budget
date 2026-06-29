@@ -2,14 +2,18 @@
 //
 // Pairs newly-imported `HistoryEntry`s with predicted user rows on
 // the same account so the import modal can offer "merge" actions
-// instead of leaving two parallel records. Three knobs control the
+// instead of leaving two parallel records. Four knobs control the
 // match band:
 //
 // - `RECONCILIATION_DATE_LAG_DAYS`: the bank's posting date can be
-//   on or up to N days after the predicted date. Never before — a
-//   future-dated user row that posts earlier was either a manual
-//   adjustment or a forecast that beat reality, and we don't want to
-//   collapse that pair silently.
+//   on or up to N days AFTER the predicted date (the charge posts
+//   late).
+// - `RECONCILIATION_DATE_LEAD_DAYS`: the bank's posting date can also
+//   be up to N days BEFORE the predicted date — a transaction that
+//   happens a few days early (an autogiro pulled ahead of a weekend,
+//   a card charge settling sooner than planned). Without this window
+//   an early-posting charge stays unmatched and the user ends up with
+//   two rows for the same thing.
 // - `RECONCILIATION_AMOUNT_PCT`: relative amount tolerance for large
 //   transactions (fees, FX rounding).
 // - `RECONCILIATION_AMOUNT_FLOOR_CENTS`: absolute amount tolerance
@@ -26,8 +30,14 @@ import { compilePattern } from "./match-rules";
 import { getMonthKey } from "./fiscal-month";
 import { findColumnByType } from "./sheet";
 import type { Column, HistoryEntry, Row, SeriesMatchRule } from "./types";
+import { addDaysIso } from "../utils/date";
 
 export const RECONCILIATION_DATE_LAG_DAYS = 7;
+// How many days EARLY a bank line may post and still merge with a
+// predicted row. Symmetric with the late window: a transaction that
+// happens a few days ahead of its predicted date is the same event,
+// not a coincidence, so the matcher reaches backwards too.
+export const RECONCILIATION_DATE_LEAD_DAYS = 7;
 export const RECONCILIATION_AMOUNT_PCT = 0.01;
 // Two SEK in minor units. Keep the value here in cents so callers
 // don't need to know the currency's decimal scaling.
@@ -119,7 +129,9 @@ function readRowDateAmount(
 
 // Per-history-entry candidate pool. For each new entry, walk the
 // row list and keep every (row, entry) pair whose date lag is in
-// `[0, RECONCILIATION_DATE_LAG_DAYS]`, sign agrees, and amount fits
+// `[-RECONCILIATION_DATE_LEAD_DAYS, RECONCILIATION_DATE_LAG_DAYS]`
+// (the charge may post a few days early or late), sign agrees, and
+// amount fits
 // the tolerance band. Pairs are de-duplicated across the whole
 // import so a single row can only be offered for one entry (the
 // closest by amountDelta, then dateLagDays); same goes for history
@@ -204,7 +216,11 @@ export function findCandidates(
       if (!sameSign(entry.amount, p.amount)) continue;
       const lag = daysBetween(entry.date, p.date);
       if (!Number.isFinite(lag)) continue;
-      if (lag < 0 || lag > RECONCILIATION_DATE_LAG_DAYS) continue;
+      if (
+        lag < -RECONCILIATION_DATE_LEAD_DAYS ||
+        lag > RECONCILIATION_DATE_LAG_DAYS
+      )
+        continue;
       if (!amountsWithinTolerance(entry.amount, p.amount)) continue;
       const row = p.row;
       const amountDelta = Math.abs(
@@ -218,7 +234,7 @@ export function findCandidates(
         2;
       const halfTolerance = Math.max(halfFloor, halfPct);
       const confidence: MatchCandidate["confidence"] =
-        amountDelta <= halfTolerance && lag <= 2 ? "high" : "low";
+        amountDelta <= halfTolerance && Math.abs(lag) <= 2 ? "high" : "low";
       pool.push({
         historyEntryId: entry.id,
         rowId: row.id,
@@ -239,7 +255,11 @@ export function findCandidates(
       if (!sameSign(entry.amount, p.amount)) continue;
       const lag = daysBetween(entry.date, p.date);
       if (!Number.isFinite(lag)) continue;
-      if (lag < 0 || lag > RECONCILIATION_DATE_LAG_DAYS) continue;
+      if (
+        lag < -RECONCILIATION_DATE_LEAD_DAYS ||
+        lag > RECONCILIATION_DATE_LAG_DAYS
+      )
+        continue;
       const inTolerance = amountsWithinTolerance(entry.amount, p.amount);
       const inSpan = amountWithinSpan(
         entry.amount,
@@ -259,7 +279,7 @@ export function findCandidates(
         2;
       const halfTolerance = Math.max(halfFloor, halfPct);
       const confidence: MatchCandidate["confidence"] =
-        inTolerance && amountDelta <= halfTolerance && lag <= 2
+        inTolerance && amountDelta <= halfTolerance && Math.abs(lag) <= 2
           ? "high"
           : "low";
       pool.push({
@@ -360,7 +380,16 @@ export function inferSeriesRule(
     seriesId: row.seriesId,
     pattern,
     amountTolerancePct: tolerance,
-    dateLagDays: Math.min(match.dateLagDays, RECONCILIATION_DATE_LAG_DAYS),
+    // Store the observed lag's MAGNITUDE as the rule's late window: an
+    // early-posting confirmation (negative lag) shouldn't collapse the
+    // window to 0 — if a charge posted 3 days early once, allow 3 days
+    // of late jitter too. Capped at the matcher's own late maximum. The
+    // early side is the global `RECONCILIATION_DATE_LEAD_DAYS`, applied
+    // uniformly by the rule-driven matchers, so it isn't stored here.
+    dateLagDays: Math.min(
+      Math.abs(match.dateLagDays),
+      RECONCILIATION_DATE_LAG_DAYS,
+    ),
   };
 }
 
@@ -427,7 +456,8 @@ export function expandToSeries(
       if (!sameSign(entry.amount, p.amount)) continue;
       const lag = daysBetween(entry.date, p.date);
       if (!Number.isFinite(lag)) continue;
-      if (lag < 0 || lag > rule.dateLagDays) continue;
+      if (lag < -RECONCILIATION_DATE_LEAD_DAYS || lag > rule.dateLagDays)
+        continue;
       const tolerance = Math.max(
         RECONCILIATION_AMOUNT_FLOOR_CENTS,
         Math.max(entryAbsCents, p.absCents) * rule.amountTolerancePct,
@@ -627,6 +657,116 @@ export function nextMonthSameDate(rowDateIso: string): string {
   const lastDay = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
   const nd = Math.min(d, lastDay);
   return `${String(ny).padStart(4, "0")}-${String(nm).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
+}
+
+// Advance `rowDateIso` by whole calendar months (preserving the
+// day-of-month, clamped to the target month's length) until it lands
+// strictly after `afterDate`. Used to push a recurring prediction that
+// never posted to its next occurrence slot past the latest imported
+// transaction — rent predicted for the 1st, with bank data now through
+// the 20th, lands on the 1st of next month rather than a stray date.
+export function firstOccurrenceAfter(
+  rowDateIso: string,
+  afterDate: string,
+): string {
+  if (rowDateIso.length < 10) return rowDateIso;
+  let d = rowDateIso;
+  // 1200 months (100 years) is an unreachable guard against a malformed
+  // date that never advances past `afterDate`.
+  for (let i = 0; i < 1200 && d <= afterDate; i += 1) {
+    d = nextMonthSameDate(d);
+  }
+  return d;
+}
+
+// One orphan row queued to move forward, with the date it should take.
+export type OrphanMove = { rowId: string; toDate: string };
+
+// Split orphan rows (predictions in newly-covered months that never
+// posted) into ones safe to move forward silently and ones that need
+// the user's confirmation in the reconciliation modal.
+//
+// A prediction dated on or before `latestHistoryDate` "obviously won't
+// happen in the past" — the bank already has authoritative data through
+// that date and the prediction didn't materialise — so it's moved past
+// the latest transaction automatically:
+//   - a recurring row (one with a `seriesId`) advances to its next
+//     monthly occurrence after the latest date (`firstOccurrenceAfter`);
+//   - a one-off row moves to the day after the latest date.
+//
+// The one case that is NOT silent: moving a recurring row forward would
+// carry it onto or past the next existing occurrence of its own series
+// (a later sibling row). That reorders the series, so it's surfaced as a
+// prompt instead. Predictions dated AFTER the latest history date are
+// still legitimately in the future and are left untouched — also
+// returned as prompts so the modal's existing behaviour for them holds.
+export type OrphanPlan = {
+  autoMoves: OrphanMove[];
+  prompts: OrphanRow[];
+};
+
+export function planOrphanMoves(
+  orphans: readonly OrphanRow[],
+  rows: readonly Row[],
+  columns: readonly Column[],
+  latestHistoryDate: string,
+): OrphanPlan {
+  const autoMoves: OrphanMove[] = [];
+  const prompts: OrphanRow[] = [];
+  const dateCol = findColumnByType(columns, "date");
+  if (!dateCol || latestHistoryDate.length < 10) {
+    return { autoMoves, prompts: [...orphans] };
+  }
+  const rowById = new Map(rows.map((r) => [r.id, r]));
+  // Per series: the sorted list of occurrence dates across ALL rows
+  // (not just orphans), so a move that would collide with a future
+  // prediction is caught too.
+  const seriesDates = new Map<string, string[]>();
+  for (const r of rows) {
+    const sid = r.seriesId;
+    if (typeof sid !== "string" || sid === "") continue;
+    const cell = r.cells[dateCol.id];
+    if (typeof cell !== "string" || cell.length < 10) continue;
+    const list = seriesDates.get(sid);
+    if (list) list.push(cell);
+    else seriesDates.set(sid, [cell]);
+  }
+  for (const list of seriesDates.values()) list.sort();
+
+  for (const orphan of orphans) {
+    const row = rowById.get(orphan.rowId);
+    const cell = row ? row.cells[dateCol.id] : undefined;
+    if (!row || typeof cell !== "string" || cell.length < 10) {
+      prompts.push(orphan);
+      continue;
+    }
+    // Still in the future relative to the bank's data — leave it.
+    if (cell > latestHistoryDate) {
+      prompts.push(orphan);
+      continue;
+    }
+    const sid = row.seriesId;
+    if (typeof sid === "string" && sid !== "") {
+      const toDate = firstOccurrenceAfter(cell, latestHistoryDate);
+      const siblings = seriesDates.get(sid) ?? [];
+      // The earliest occurrence of this series strictly after the
+      // orphan's own date — the "next recurring entry".
+      const nextSibling = siblings.find((d) => d > cell);
+      // Moving forward would land on or past that next occurrence: a
+      // reorder the user should confirm.
+      if (nextSibling !== undefined && toDate >= nextSibling) {
+        prompts.push(orphan);
+      } else {
+        autoMoves.push({ rowId: orphan.rowId, toDate });
+      }
+    } else {
+      autoMoves.push({
+        rowId: orphan.rowId,
+        toDate: addDaysIso(latestHistoryDate, 1),
+      });
+    }
+  }
+  return { autoMoves, prompts };
 }
 
 // True iff any other row in `seriesId` has a date whose fiscal month

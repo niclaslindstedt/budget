@@ -3293,7 +3293,12 @@ with a recurrence rule.
 ### Reconciliation
 
 Pairing newly-imported history entries with existing budget rows so the
-running balance stays anchored. See `src/data/reconciliation.ts`.
+running balance stays anchored. See `src/data/reconciliation.ts`. The
+match band is symmetric in time: a bank line may post up to
+`RECONCILIATION_DATE_LAG_DAYS` after the predicted date (a late charge)
+**or** up to `RECONCILIATION_DATE_LEAD_DAYS` before it (a transaction
+that happened a few days early), so an early-posting autogiro merges
+with its prediction instead of leaving two rows for the same thing.
 
 ### Transaction
 
@@ -3311,8 +3316,21 @@ sheet's anchor for the running balance.
 
 A manual budget row sitting inside a covered fiscal month — the bank
 statement contradicts it ("orphan row" / "prediction that didn't post").
-Detected by `findOrphans` in `src/data/reconciliation.ts`. Resolved
-(keep / delete / move) via the reconciliation modal or the orange
+Detected by `findOrphans` in `src/data/reconciliation.ts`.
+
+At import time, orphans dated on or before the latest imported
+transaction "obviously won't happen in the past", so `planOrphanMoves`
+(same module) moves them forward automatically: a one-off row jumps to
+the day after the latest transaction, a recurring row advances to its
+next monthly occurrence (`firstOccurrenceAfter`). The one case it does
+**not** do silently is a recurring move that would carry the row onto or
+past the next existing occurrence of its own series — that reorders the
+series, so it's surfaced in the reconciliation modal as a prompt
+instead. Predictions dated after the latest transaction are still
+legitimately in the future and are left for the user. The silent moves
+ride the import's `applyReconciliation` dispatch, so the whole import is
+one undoable action. Orphans the user still wants to resolve by hand
+(keep / delete / move) surface in the reconciliation modal or the orange
 covered-month footer.
 
 ### Running balance

@@ -20,7 +20,7 @@ import {
   stageHistoryImport,
   type StagedImport,
 } from "../../../data/import-staging";
-import { findOrphans } from "../../../data/reconciliation";
+import { findOrphans, type OrphanMove } from "../../../data/reconciliation";
 import type { Action } from "../../../data/reducer";
 import { predictRenames } from "../../../data/rename-patterns";
 import { savingAsTransferEndpoint } from "../../../data/savings/value";
@@ -117,6 +117,19 @@ type Result = {
     patch: ConflictUserRowPatch,
   ) => void;
 };
+
+// Project the silent past-dated moves into the `applyReconciliation`
+// orphan-decision shape so they ride the same dispatch as any modal
+// decisions.
+function orphanMovesToDecisions(
+  moves: readonly OrphanMove[],
+): ReconciliationApply["orphans"] {
+  return moves.map((m) => ({
+    rowId: m.rowId,
+    action: "move" as const,
+    toDate: m.toDate,
+  }));
+}
 
 // Everything related to bank-history import / triage:
 //
@@ -303,9 +316,20 @@ export function useImportFlow({
   // opens the next stage (or none, for the commit path) in one transition.
   const dispatchStaged = useCallback(
     (staged: StagedImport, accountId: string, preImportData: UserData) => {
-      const { newEntries, pendingImport, outcome } = staged;
+      const { newEntries, pendingImport, outcome, autoOrphanMoves } = staged;
       if (outcome.kind === "commit") {
         dispatch({ type: "importBankHistory", accountId, ...pendingImport });
+        // Apply the silent past-dated moves right after the import lands.
+        if (autoOrphanMoves.length > 0) {
+          dispatch({
+            type: "applyReconciliation",
+            accountId,
+            mergedRowIds: [],
+            entryOverrides: [],
+            seriesRules: [],
+            orphans: orphanMovesToDecisions(autoOrphanMoves),
+          });
+        }
         dispatchFlow({
           kind: "stageImport",
           reconciliation: null,
@@ -322,6 +346,7 @@ export function useImportFlow({
             accountId,
             suggestions: outcome.suggestions,
             pendingImport,
+            autoOrphanMoves,
             pendingReconciliation: null,
           },
         });
@@ -335,6 +360,7 @@ export function useImportFlow({
           newEntries,
           candidates: outcome.candidates,
           orphans: outcome.orphans,
+          autoOrphanMoves,
           pendingImport,
         },
         renamePredictor: null,
@@ -408,6 +434,7 @@ export function useImportFlow({
       pendingImport: ReconciliationState["pendingImport"],
       reconciliationDecisions: ReconciliationApply | null,
       renames: RenameDecision[],
+      autoOrphanMoves: readonly OrphanMove[],
     ) => {
       dispatch({
         type: "importBankHistory",
@@ -415,12 +442,19 @@ export function useImportFlow({
         ...pendingImport,
       });
       dispatchFlow({ kind: "setDuplicatesCheck", value: pendingImport.now });
+      // Fold the silent past-dated moves into the modal's own orphan
+      // decisions (the two sets are disjoint by construction) so both
+      // land in one `applyReconciliation` dispatch.
+      const orphans = [
+        ...(reconciliationDecisions?.orphans ?? []),
+        ...orphanMovesToDecisions(autoOrphanMoves),
+      ];
       if (
         reconciliationDecisions &&
         (reconciliationDecisions.mergedRowIds.length > 0 ||
           reconciliationDecisions.entryOverrides.length > 0 ||
           reconciliationDecisions.seriesRules.length > 0 ||
-          reconciliationDecisions.orphans.length > 0)
+          orphans.length > 0)
       ) {
         dispatch({
           type: "applyReconciliation",
@@ -428,7 +462,18 @@ export function useImportFlow({
           mergedRowIds: reconciliationDecisions.mergedRowIds,
           entryOverrides: reconciliationDecisions.entryOverrides,
           seriesRules: reconciliationDecisions.seriesRules,
-          orphans: reconciliationDecisions.orphans,
+          orphans,
+        });
+      } else if (!reconciliationDecisions && orphans.length > 0) {
+        // Quiet path (rename predictor only) with silent moves but no
+        // modal decisions — still apply the moves.
+        dispatch({
+          type: "applyReconciliation",
+          accountId,
+          mergedRowIds: [],
+          entryOverrides: [],
+          seriesRules: [],
+          orphans,
         });
       }
       if (renames.length > 0) {
@@ -448,8 +493,13 @@ export function useImportFlow({
   const onApplyReconciliation = useCallback(
     (decisions: ReconciliationApply) => {
       if (!reconciliation) return;
-      const { accountId, newEntries, pendingImport, preImportData } =
-        reconciliation;
+      const {
+        accountId,
+        newEntries,
+        pendingImport,
+        preImportData,
+        autoOrphanMoves,
+      } = reconciliation;
       // Look up rename predictions against the same pre-import
       // snapshot the reconciliation modal worked from. Entries the
       // user already labelled (e.g. via reconciliation
@@ -474,7 +524,13 @@ export function useImportFlow({
         (s) => !stampedEntryIds.has(s.entryId),
       );
       if (filteredSuggestions.length === 0) {
-        commitStagedImport(accountId, pendingImport, decisions, []);
+        commitStagedImport(
+          accountId,
+          pendingImport,
+          decisions,
+          [],
+          autoOrphanMoves,
+        );
         dispatchFlow({ kind: "setReconciliation", value: null });
         return;
       }
@@ -484,6 +540,7 @@ export function useImportFlow({
           accountId,
           suggestions: filteredSuggestions,
           pendingImport,
+          autoOrphanMoves,
           pendingReconciliation: { decisions },
         },
       });
@@ -502,6 +559,7 @@ export function useImportFlow({
         renamePredictor.pendingImport,
         renamePredictor.pendingReconciliation?.decisions ?? null,
         decisions,
+        renamePredictor.autoOrphanMoves,
       );
       dispatchFlow({ kind: "setRenamePredictor", value: null });
     },
