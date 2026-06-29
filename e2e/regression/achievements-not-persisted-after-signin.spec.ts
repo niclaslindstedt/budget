@@ -27,6 +27,12 @@ import { expect, signInAsGuest, test } from "../fixtures";
 // `userData` store so it catches a regression on either path: if the
 // unlock never reaches state, or if the state never reaches disk,
 // `achievements.localHero` is missing.
+//
+// The bytes on disk are gzip-wrapped by `withCompression` (the
+// `budget.gz1:` envelope from `src/storage/compression.ts`), so the
+// reader below gunzips that envelope — via the same `DecompressionStream`
+// the app uses — before parsing the JSON. A legacy uncompressed payload
+// (no prefix) is parsed as-is.
 
 test("guest sign-in persists the `localHero` unlock past the changelog auto-stamp", async ({
   page,
@@ -38,6 +44,22 @@ test("guest sign-in persists the `localHero` unlock past the changelog auto-stam
   const persisted = await page.evaluate(async () => {
     if (typeof indexedDB === "undefined") return null;
     if (typeof indexedDB.databases !== "function") return null;
+    // Mirror `src/storage/compression.ts`: the userData bytes are a
+    // base64 gzip envelope tagged with this prefix. Strip + gunzip it
+    // here so the JSON.parse below sees plaintext; a payload without
+    // the prefix is legacy uncompressed data and is returned as-is.
+    const COMPRESSION_PREFIX = "budget.gz1:";
+    const decodeText = async (text: string): Promise<string> => {
+      if (!text.startsWith(COMPRESSION_PREFIX)) return text;
+      const binary = atob(text.slice(COMPRESSION_PREFIX.length));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const stream = new Blob([bytes])
+        .stream()
+        .pipeThrough(new DecompressionStream("gzip"));
+      const buf = await new Response(stream).arrayBuffer();
+      return new TextDecoder().decode(buf);
+    };
     const dbs = await indexedDB.databases();
     for (const meta of dbs) {
       if (typeof meta.name !== "string") continue;
@@ -71,7 +93,8 @@ test("guest sign-in persists the `localHero` unlock past the changelog auto-stam
         const text = (record as { text?: unknown }).text;
         if (typeof text !== "string") continue;
         try {
-          const parsed = JSON.parse(text) as {
+          const decoded = await decodeText(text);
+          const parsed = JSON.parse(decoded) as {
             settings?: {
               achievements?: Record<string, number>;
               unseenAchievements?: string[];
