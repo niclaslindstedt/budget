@@ -6,6 +6,7 @@ import {
   type ImportFlowState,
 } from "../src/components/AppShell/hooks/import-flow-reducer";
 import type {
+  ImportOverlapState,
   ManualTriageState,
   ReconciliationState,
   RenamePredictorState,
@@ -25,6 +26,11 @@ const renamePredictor = {
 const manualTriage = {
   accountId: "acc-1",
 } as unknown as ManualTriageState;
+const overlapConfirm = {
+  accountId: "acc-1",
+  filename: "statement.xlsx",
+  overlap: { start: "2026-01-01", end: "2026-03-01" },
+} as unknown as ImportOverlapState;
 
 function makeState(over: Partial<ImportFlowState> = {}): ImportFlowState {
   return { ...initialImportFlowState, ...over };
@@ -39,6 +45,7 @@ describe("initialImportFlowState", () => {
       reconciliation: null,
       manualTriage: null,
       renamePredictor: null,
+      overlapConfirm: null,
       duplicatesCheckAt: null,
     });
   });
@@ -77,6 +84,12 @@ describe("importFlowReducer — per-modal setters", () => {
     expect(
       importFlowReducer(base, { kind: "setDuplicatesCheck", value: 4242 }),
     ).toEqual(makeState({ duplicatesCheckAt: 4242 }));
+    expect(
+      importFlowReducer(base, {
+        kind: "setOverlapConfirm",
+        value: overlapConfirm,
+      }),
+    ).toEqual(makeState({ overlapConfirm }));
   });
 
   it("setters close their own modal with null", () => {

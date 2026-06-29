@@ -29,6 +29,10 @@ const importHistory: ImportHistoryCatalog = {
   unknownBank: "Kunde inte identifiera banken.",
   pickParser: "Välj bankformat",
   pickFile: "Välj fil",
+  overlapTitle: "Kontot har redan historik här",
+  overlapHint:
+    "{account} har redan bankhistorik från {start} till {end}, som överlappar denna import. Ett kontoutdrag hör till ett enda konto — säkerställ att du importerar till rätt konto.",
+  overlapConfirm: "Importera ändå",
 };
 
 export default importHistory;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
 import { normaliseDescription } from "../src/data/description-normaliser";
-import { stageHistoryImport } from "../src/data/import-staging";
+import { importOverlap, stageHistoryImport } from "../src/data/import-staging";
 import type { RenamePatternStore } from "../src/data/rename-patterns";
 import type {
   AccountBudget,
@@ -91,6 +91,54 @@ function makeData(
 function parsed(entries: ParsedBankEntry[]): ParsedBankFile {
   return { bankParserId: "test-parser", entries };
 }
+
+function he(date: string, id = date): HistoryEntry {
+  return { id, date, description: "x", amount: -1, importedAt: 0 };
+}
+
+describe("importOverlap", () => {
+  it("returns null with no existing history or nothing new to add", () => {
+    expect(importOverlap([], [he("2026-02-01")])).toBeNull();
+    expect(importOverlap([he("2026-02-01")], [])).toBeNull();
+  });
+
+  it("returns null for a clean continuation or a small overlap", () => {
+    // existing January, new February onward — disjoint.
+    expect(
+      importOverlap(
+        [he("2026-01-01"), he("2026-01-31")],
+        [he("2026-02-01"), he("2026-02-28")],
+      ),
+    ).toBeNull();
+    // existing through Feb 5, new from Feb 1 — a 4-day overlap, within slack.
+    expect(
+      importOverlap(
+        [he("2026-01-01"), he("2026-02-05")],
+        [he("2026-02-01"), he("2026-03-01")],
+      ),
+    ).toBeNull();
+  });
+
+  it("flags an overlap beyond the slack with the overlapping range", () => {
+    // existing through Feb 20, new from Feb 1 — a 19-day overlap.
+    expect(
+      importOverlap(
+        [he("2026-01-01"), he("2026-02-20")],
+        [he("2026-02-01"), he("2026-03-01")],
+      ),
+    ).toEqual({ start: "2026-02-01", end: "2026-02-20" });
+  });
+
+  it("flags a statement whose whole range is already covered", () => {
+    // existing spans Jan–June; importing a March statement into it.
+    expect(
+      importOverlap(
+        [he("2026-01-01"), he("2026-06-30")],
+        [he("2026-03-01"), he("2026-03-31")],
+      ),
+    ).toEqual({ start: "2026-03-01", end: "2026-03-31" });
+  });
+});
 
 describe("stageHistoryImport", () => {
   it("commits straight away when nothing matches and no renames are learned", () => {

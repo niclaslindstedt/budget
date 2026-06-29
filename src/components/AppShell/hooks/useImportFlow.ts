@@ -16,7 +16,10 @@ import {
   findDuplicateImports,
   type DuplicateGroup,
 } from "../../../data/accounts/duplicates";
-import { stageHistoryImport } from "../../../data/import-staging";
+import {
+  stageHistoryImport,
+  type StagedImport,
+} from "../../../data/import-staging";
 import { findOrphans } from "../../../data/reconciliation";
 import type { Action } from "../../../data/reducer";
 import { predictRenames } from "../../../data/rename-patterns";
@@ -25,6 +28,7 @@ import { findColumnByType } from "../../../data/sheet";
 import type { Account, AccountBudget, UserData } from "../../../data/types";
 import type { ParsedBankFile } from "../../../storage/banks";
 import type {
+  ImportOverlapState,
   ManualTriageState,
   ReconciliationState,
   RenamePredictorState,
@@ -44,6 +48,13 @@ type Result = {
   setImportHistoryForId: (next: string | null) => void;
   onOpenImportHistory: (accountId: string) => void;
   onConfirmImportHistory: (parsed: ParsedBankFile, filename: string) => void;
+
+  // Overlap-on-import confirmation — non-null while the user decides
+  // whether to import into an account that already has history for the
+  // statement's period.
+  overlapConfirm: ImportOverlapState | null;
+  onConfirmImportOverlap: () => void;
+  onCancelImportOverlap: () => void;
 
   // History viewer modal — null = closed.
   viewHistoryAccount: Account | null;
@@ -136,6 +147,7 @@ export function useImportFlow({
     reconciliation,
     manualTriage,
     renamePredictor,
+    overlapConfirm,
     duplicatesCheckAt,
   } = state;
 
@@ -269,27 +281,13 @@ export function useImportFlow({
     [resolveLedger, viewHistoryForId],
   );
 
-  const onConfirmImportHistory = useCallback(
-    (parsed: ParsedBankFile, filename: string) => {
-      if (!importHistoryAccount) return;
-      const accountId = importHistoryAccount.id;
-      // Snapshot pre-import state (`data`) so the staged matcher view
-      // is computed against the same world the user just confirmed
-      // against, then dispatch / open the modal the outcome calls for.
-      const staged = stageHistoryImport(
-        data,
-        accountId,
-        parsed,
-        filename,
-        Date.now(),
-      );
-      // The bus dedupes the unlock itself, so re-imports fire it at
-      // most once.
-      if (staged.dedupeOccurred) unlockAchievement("dedupe");
-
+  // Run a staged import's outcome — commit, rename predictor, or
+  // reconciliation. Shared by the direct path and the overlap-confirm path
+  // so both dispatch identically. Each branch closes the import modal and
+  // opens the next stage (or none, for the commit path) in one transition.
+  const dispatchStaged = useCallback(
+    (staged: StagedImport, accountId: string, preImportData: UserData) => {
       const { newEntries, pendingImport, outcome } = staged;
-      // Each branch closes the import modal and opens the next stage (or
-      // none, for the commit path) in one transition.
       if (outcome.kind === "commit") {
         dispatch({ type: "importBankHistory", accountId, ...pendingImport });
         dispatchFlow({
@@ -297,10 +295,7 @@ export function useImportFlow({
           reconciliation: null,
           renamePredictor: null,
         });
-        dispatchFlow({
-          kind: "setDuplicatesCheck",
-          value: pendingImport.now,
-        });
+        dispatchFlow({ kind: "setDuplicatesCheck", value: pendingImport.now });
         return;
       }
       if (outcome.kind === "renamePredictor") {
@@ -320,7 +315,7 @@ export function useImportFlow({
         kind: "stageImport",
         reconciliation: {
           accountId,
-          preImportData: data,
+          preImportData,
           newEntries,
           candidates: outcome.candidates,
           orphans: outcome.orphans,
@@ -329,8 +324,61 @@ export function useImportFlow({
         renamePredictor: null,
       });
     },
-    [data, dispatch, importHistoryAccount],
+    [dispatch],
   );
+
+  const onConfirmImportHistory = useCallback(
+    (parsed: ParsedBankFile, filename: string) => {
+      if (!importHistoryAccount) return;
+      const accountId = importHistoryAccount.id;
+      // Snapshot pre-import state (`data`) so the staged matcher view
+      // is computed against the same world the user just confirmed
+      // against, then dispatch / open the modal the outcome calls for.
+      const staged = stageHistoryImport(
+        data,
+        accountId,
+        parsed,
+        filename,
+        Date.now(),
+      );
+      // The bus dedupes the unlock itself, so re-imports fire it at
+      // most once.
+      if (staged.dedupeOccurred) unlockAchievement("dedupe");
+      // The new rows overlap this account's existing history beyond the
+      // slack — confirm the account is right before committing. The parsed
+      // file is re-staged on confirm rather than stashed.
+      if (staged.overlap) {
+        dispatchFlow({
+          kind: "setOverlapConfirm",
+          value: { parsed, filename, accountId, overlap: staged.overlap },
+        });
+        return;
+      }
+      dispatchStaged(staged, accountId, data);
+    },
+    [data, dispatchStaged, importHistoryAccount],
+  );
+
+  // User confirmed the overlapping import. Re-stage against current data
+  // (it may have changed while the dialog was open) and proceed.
+  const onConfirmImportOverlap = useCallback(() => {
+    if (!overlapConfirm) return;
+    const { parsed, filename, accountId } = overlapConfirm;
+    const staged = stageHistoryImport(
+      data,
+      accountId,
+      parsed,
+      filename,
+      Date.now(),
+    );
+    if (staged.dedupeOccurred) unlockAchievement("dedupe");
+    dispatchStaged(staged, accountId, data);
+    dispatchFlow({ kind: "setOverlapConfirm", value: null });
+  }, [overlapConfirm, data, dispatchStaged]);
+
+  const onCancelImportOverlap = useCallback(() => {
+    dispatchFlow({ kind: "setOverlapConfirm", value: null });
+  }, []);
 
   // Single chokepoint for the deferred-commit pipeline. Called from
   // both the quiet path (no reconciliation, rename predictor only) and
@@ -583,6 +631,9 @@ export function useImportFlow({
     setImportHistoryForId,
     onOpenImportHistory,
     onConfirmImportHistory,
+    overlapConfirm,
+    onConfirmImportOverlap,
+    onCancelImportOverlap,
     viewHistoryAccount,
     setViewHistoryForId,
     onOpenViewHistory,

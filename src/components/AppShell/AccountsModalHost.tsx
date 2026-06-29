@@ -14,7 +14,8 @@ import { ImportHistoryModal } from "../accounts/ImportHistoryModal";
 import { UpdateBalanceModal } from "../accounts/UpdateBalanceModal";
 import type { Category, EntryType, Settings, UserData } from "../../data/types";
 import type { Action } from "../../data/reducer";
-import { useT } from "../../i18n";
+import { useLang, useT } from "../../i18n";
+import { formatShortDate } from "../../utils/format";
 import type { useAccountDialog } from "./hooks/useAccountDialog";
 import type { useImportFlow } from "./hooks/useImportFlow";
 import type { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
@@ -47,6 +48,7 @@ export function AccountsModalHost(props: Props) {
     onCreateCategory,
   } = props;
   const t = useT();
+  const lang = useLang();
   // Transfer endpoints span regular accounts and savings accounts (both share
   // the transfer id-space), so the collapse modal and the transfer create /
   // edit picker resolve and offer both. Savings stay out of the Accounts
@@ -74,6 +76,9 @@ export function AccountsModalHost(props: Props) {
     importHistoryAccount,
     setImportHistoryForId,
     onConfirmImportHistory,
+    overlapConfirm,
+    onConfirmImportOverlap,
+    onCancelImportOverlap,
     viewHistoryAccount,
     setViewHistoryForId,
     cutHistoryAccount,
@@ -138,6 +143,36 @@ export function AccountsModalHost(props: Props) {
         settings={effectiveSettings}
         onCancel={() => setImportHistoryForId(null)}
         onConfirm={onConfirmImportHistory}
+      />
+      <ConfirmDialog
+        open={overlapConfirm !== null}
+        title={t("importHistory.overlapTitle")}
+        description={
+          overlapConfirm
+            ? t("importHistory.overlapHint", {
+                account:
+                  data.accounts.find((a) => a.id === overlapConfirm.accountId)
+                    ?.name ?? overlapConfirm.accountId,
+                start: formatShortDate(
+                  overlapConfirm.overlap.start,
+                  effectiveSettings.shortDateFormat,
+                  lang,
+                ),
+                end: formatShortDate(
+                  overlapConfirm.overlap.end,
+                  effectiveSettings.shortDateFormat,
+                  lang,
+                ),
+              })
+            : null
+        }
+        actions={[
+          {
+            label: t("importHistory.overlapConfirm"),
+            onSelect: onConfirmImportOverlap,
+          },
+        ]}
+        onCancel={onCancelImportOverlap}
       />
       <AccountReconciliationModal
         open={reconciliation !== null}

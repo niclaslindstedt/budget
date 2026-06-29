@@ -2,6 +2,7 @@ import type { ReconciliationApply } from "../accounts/AccountReconciliationModal
 import type { RenameSuggestion } from "../../data/rename-patterns";
 import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
 import type { PendingImport } from "../../data/import-staging";
+import type { ParsedBankFile } from "../../storage/banks";
 import type { StorageAdapter } from "../../storage/adapter";
 import type {
   BackendId,
@@ -119,6 +120,19 @@ export type ReconciliationState = {
   // as the `importBankHistory` payload when the user clicks Apply or
   // Skip all; dropped on cancel.
   pendingImport: PendingImport;
+};
+
+// "This account already has history for that period" confirmation. Held
+// while the user decides whether to go ahead with an import whose rows
+// overlap the target account's existing history beyond the slack. The
+// parsed file is re-staged on confirm (against current data) rather than
+// stashing the staged result, so this carries only what's needed to redo
+// it plus the overlapping range for the dialog copy.
+export type ImportOverlapState = {
+  parsed: ParsedBankFile;
+  filename: string;
+  accountId: string;
+  overlap: { start: string; end: string };
 };
 
 // Rename-predictor modal state. Populated as the last step of every

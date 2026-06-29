@@ -636,6 +636,19 @@ xlsx / csv spec); clearing and account number come from the parser's
 a regular `Account` or a `Saving` (savings share the `history` id-space
 and the same three bank-detail fields).
 
+**Overlap-on-import confirmation.** A bank statement is the complete record
+of one account over its date range, so importing one into an account that
+already has history for that period usually means the wrong account was
+picked. After staging, `importOverlap` (in `import-staging.ts`) compares
+the date range of the rows the import would ADD against the account's
+existing range; when they overlap by more than `IMPORT_OVERLAP_SLACK_DAYS`
+(7 — a few late-posting card charges from the previous statement may
+legitimately spill over), `useImportFlow` opens a `ConfirmDialog`
+(`ImportFlowState.overlapConfirm`) naming the overlapping range before
+committing. Confirming re-stages against current data and proceeds;
+cancelling returns to the import modal. A clean continuation (new rows
+after the existing range) never prompts.
+
 ### History entry edit modal
 
 `EditHistoryEntryModal.tsx` — a per-entry override of description and
