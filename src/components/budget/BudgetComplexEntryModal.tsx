@@ -123,6 +123,7 @@ export function BudgetComplexEntryModal({
     amountMaxText,
     typeId,
     companyId,
+    noCompany,
     tagIds,
     isTransfer,
     completed,
@@ -171,6 +172,10 @@ export function BudgetComplexEntryModal({
       });
     },
     [autoTypeForPickedCompany],
+  );
+  const setNoCompany = useCallback(
+    (value: boolean) => dispatch({ kind: "setNoCompany", value }),
+    [],
   );
   const setTagIds = useCallback(
     (value: string[]) => dispatch({ kind: "setTagIds", value }),
@@ -271,6 +276,7 @@ export function BudgetComplexEntryModal({
         amount: 0,
         typeId,
         companyId,
+        ...(noCompany ? { noCompany: true } : {}),
         ...(tagIds.length > 0 ? { tagIds } : {}),
         isTransfer,
         completed,
@@ -293,6 +299,7 @@ export function BudgetComplexEntryModal({
       amount: parsedAmount,
       typeId,
       companyId,
+      ...(noCompany ? { noCompany: true } : {}),
       ...(tagIds.length > 0 ? { tagIds } : {}),
       isTransfer,
       completed,
@@ -341,7 +348,9 @@ export function BudgetComplexEntryModal({
               variant="field"
               companies={companies}
               selectedId={companyId}
+              noCompany={noCompany}
               onSelect={handlePickCompany}
+              onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
             />
           </div>

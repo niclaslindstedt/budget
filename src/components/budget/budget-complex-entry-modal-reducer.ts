@@ -38,6 +38,10 @@ export type ComplexEntryState = {
   amountMaxText: string;
   typeId: string | null;
   companyId: string | null;
+  // The "Omit company" choice: when true, every generated row is flagged
+  // `noCompany` and `companyId` is held null. Mutually exclusive with a
+  // picked company — selecting one clears the other.
+  noCompany: boolean;
   tagIds: string[];
   isTransfer: boolean;
   // Whether every generated row lands marked completed. Seeded from the
@@ -83,6 +87,9 @@ export type ComplexEntryAction =
       companyId: string | null;
       autoTypeId: string | undefined;
     }
+  // Toggle the "Omit company" flag. Enabling it clears any picked
+  // company; the reducer keeps the two mutually exclusive.
+  | { kind: "setNoCompany"; value: boolean }
   | { kind: "setTagIds"; value: string[] }
   | { kind: "setIsTransfer"; value: boolean }
   | { kind: "setCompleted"; value: boolean }
@@ -104,6 +111,7 @@ export function initialComplexEntryState(
         negative: seed.amount < 0,
         typeId: seed.typeId,
         companyId: seed.companyId,
+        noCompany: false,
         tagIds: seed.tagIds ?? [],
         isTransfer: seed.isTransfer,
       }
@@ -113,6 +121,7 @@ export function initialComplexEntryState(
         negative: true,
         typeId: null,
         companyId: null,
+        noCompany: false,
         tagIds: [] as string[],
         isTransfer: false,
       };
@@ -155,11 +164,23 @@ export function budgetComplexEntryModalReducer(
       return { ...state, typeId: action.value };
     case "pickCompany": {
       const next: ComplexEntryState = { ...state, companyId: action.companyId };
+      // Picking a real company contradicts an active omit — clear it so
+      // the two states never disagree (the picker enforces the same rule
+      // in its UI, but keep the reducer self-consistent).
+      if (action.companyId !== null) next.noCompany = false;
       if (action.autoTypeId !== undefined) {
         next.typeId = action.autoTypeId;
       }
       return next;
     }
+    case "setNoCompany":
+      // Enabling omit clears any picked company; disabling just lowers
+      // the flag and leaves the (already-null) company alone.
+      return {
+        ...state,
+        noCompany: action.value,
+        companyId: action.value ? null : state.companyId,
+      };
     case "setTagIds":
       return { ...state, tagIds: action.value };
     case "setIsTransfer":

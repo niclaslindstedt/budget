@@ -430,6 +430,7 @@ export function BudgetModalHost(props: Props) {
           amountMax: patch.amountMax,
           typeId: patch.typeId,
           companyId: patch.companyId,
+          noCompany: patch.noCompany,
           tagIds: patch.tagIds,
           isTransfer: patch.isTransfer,
           dateShiftDays:

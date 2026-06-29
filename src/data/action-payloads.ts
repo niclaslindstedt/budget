@@ -37,6 +37,11 @@ export type BulkPatch = {
   // `undefined` = don't touch; `null` (where applicable) = clear.
   typeId?: string | null;
   companyId?: string | null;
+  // `true` flags every row as having no company on purpose (the picker's
+  // "Omit company" choice); `false` clears the flag; `undefined` leaves
+  // it alone. Assigning a real `companyId` in the same patch wins and
+  // clears the flag.
+  noCompany?: boolean;
   amount?: number;
   date?: string;
   // `true` flags every row as an inter-account transfer; `false`
@@ -56,6 +61,10 @@ export type EditPatch = {
   typeId?: string | null;
   // Same shape as `typeId`, applied to the row's `companyId`.
   companyId?: string | null;
+  // `undefined` = don't touch; `true` flags every row in scope as
+  // having no company on purpose; `false` clears the flag. Assigning a
+  // real `companyId` in the same patch wins and clears the flag.
+  noCompany?: boolean;
   // `undefined` = leave the row's tags alone; an array replaces the
   // row's `tagIds` with this set (empty array clears tags).
   tagIds?: string[];
@@ -96,6 +105,11 @@ export type ComplexEntryDraft = {
   // Optional company id stamped on every generated row alongside the
   // type. `null` (or absent) leaves the row's `companyId` blank.
   companyId?: string | null;
+  // When true, every generated row is flagged `noCompany` (the explicit
+  // "this entry has no company, on purpose" choice from the picker's
+  // "Omit company" option). Mutually exclusive with `companyId` — the
+  // modal only ever sends one.
+  noCompany?: boolean;
   // Optional tag ids stamped on every generated row. Absent (or an
   // empty array) leaves the row's `tagIds` unset.
   tagIds?: string[];

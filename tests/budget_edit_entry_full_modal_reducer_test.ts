@@ -221,6 +221,24 @@ describe("budgetEditEntryFullModalReducer", () => {
     expect(after.typeId).toBe("t-existing");
   });
 
+  it("`setNoCompany` and `pickCompany` keep omit and company mutually exclusive", () => {
+    const init: EditFullState = { ...makeInitial(), companyId: "co-1" };
+    const omitted = budgetEditEntryFullModalReducer(init, {
+      kind: "setNoCompany",
+      value: true,
+    });
+    expect(omitted.noCompany).toBe(true);
+    expect(omitted.companyId).toBeNull();
+
+    const picked = budgetEditEntryFullModalReducer(omitted, {
+      kind: "pickCompany",
+      companyId: "co-2",
+      autoTypeId: undefined,
+    });
+    expect(picked.companyId).toBe("co-2");
+    expect(picked.noCompany).toBe(false);
+  });
+
   it("`setScopeKind` switches the scope and leaves until-state intact", () => {
     const init: EditFullState = {
       ...makeInitial(),

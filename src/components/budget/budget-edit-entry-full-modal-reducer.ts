@@ -32,6 +32,8 @@ export type EditFullState = {
   date: string;
   typeId: string | null;
   companyId: string | null;
+  // The "Omit company" choice — mutually exclusive with `companyId`.
+  noCompany: boolean;
   tagIds: string[];
   isTransfer: boolean;
   completed: boolean;
@@ -63,6 +65,7 @@ export type EditFullAction =
       companyId: string | null;
       autoTypeId: string | undefined;
     }
+  | { kind: "setNoCompany"; value: boolean }
   | { kind: "setTagIds"; value: string[] }
   | { kind: "setIsTransfer"; value: boolean }
   | { kind: "setCompleted"; value: boolean }
@@ -128,6 +131,7 @@ export function initialEditFullState(
     date,
     typeId: row?.typeId ?? null,
     companyId: row?.companyId ?? null,
+    noCompany: row?.noCompany === true,
     tagIds: row?.tagIds ? [...row.tagIds] : [],
     isTransfer: row?.isTransfer === true,
     completed,
@@ -165,11 +169,19 @@ export function budgetEditEntryFullModalReducer(
       return { ...state, typeId: action.value };
     case "pickCompany": {
       const next: EditFullState = { ...state, companyId: action.companyId };
+      // Picking a real company clears any active omit (mutually exclusive).
+      if (action.companyId !== null) next.noCompany = false;
       if (action.autoTypeId !== undefined) {
         next.typeId = action.autoTypeId;
       }
       return next;
     }
+    case "setNoCompany":
+      return {
+        ...state,
+        noCompany: action.value,
+        companyId: action.value ? null : state.companyId,
+      };
     case "setTagIds":
       return { ...state, tagIds: action.value };
     case "setIsTransfer":

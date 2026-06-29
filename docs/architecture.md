@@ -876,9 +876,12 @@ type ColumnType =
 type Column = { id: string; type: ColumnType; label: string };
 
 // Persisted variants share RowBase (id, cells, seriesId, fiscalMonthShift,
-// typeId, typeIdLocked, companyId, tagIds, amountFormula, amountMin/Max,
-// isTransfer, ignored). Synthesized variants (HistoricRow, TransferRow) add their
-// own runtime-only fields and never reach storage.
+// typeId, typeIdLocked, companyId, noCompany, tagIds, amountFormula,
+// amountMin/Max, isTransfer, ignored). `noCompany` is the explicit
+// "omit company" decision (mutually exclusive with companyId), set by the
+// add-entry modal / row editor / inline picker. Synthesized variants
+// (HistoricRow, TransferRow) add their own runtime-only fields and never
+// reach storage.
 type Row = UserRow | CorrectionRow | HistoricRow | TransferRow;
 ```
 
