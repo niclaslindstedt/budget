@@ -718,10 +718,20 @@ The chain spans every entry the bank posted — auto-collapsed transfer legs
 (`collapsedIntoTransferId`) and hidden rows included — because they all
 move (or hold) the running total, and a non-duplicate one is a valid
 anchor (the genuine owner's neighbour is frequently a salary deposit or
-internal transfer that got collapsed into a `Transfer`). When the balance
-genuinely can't decide (a copy with no non-duplicate anchor on either
-side), ownership falls to the tie-breakers — denser same-day statement,
-then fuller history. A transaction is only grouped when
+internal transfer that got collapsed into a `Transfer`). It is ordered by
+date, then WITHIN a day by running-balance continuity
+(`sortHistoryByBalance` in `src/data/accounts/history-order.ts`): bank
+exports often list a day's rows in an order that doesn't follow the balance
+(reverse, alphabetical, by posting batch), and walking that raw order steps
+over the day's transactions and reads a false jump — so a genuinely-owned
+charge looked like a mismatch on the very account that owns it. The util
+re-threads each same-day group into the one sequence whose balances chain
+(each row's `balance − amount` equals the previous row's balance), keeping
+the import order only when a day can't be cleanly chained. Both the fit
+check and the context panel read this order, so the rows the user sees and
+the verdict agree. When the balance genuinely can't decide (a copy with no
+non-duplicate anchor on either side), ownership falls to the tie-breakers —
+denser same-day statement, then fuller history. A transaction is only grouped when
 date, normalised description, signed amount, AND running balance all
 match across accounts: a verbatim mis-import copies the statement row's
 balance too, so the two copies share it, whereas a mere coincidence (a
