@@ -75,6 +75,16 @@ Read the first ERESOLVE block top-to-bottom — it names the exact package
 and the peer range that conflicts. Bump that package, re-install. Two or
 three rounds clears it.
 
+**Watch for caret-float drift.** Wiping the lock re-resolves _every_
+caret range to its latest, not just the packages in the batch — so a
+formatter / linter you didn't touch can float up a minor and reformat or
+re-flag unrelated files (e.g. `prettier ^3.8.4` floated 3.8.4 → 3.9.1 and
+`make fmt-check` then failed on ~17 untouched files). The fix is not to
+reformat: pin the strayed tool back to the version `main`'s lock had
+(`git show origin/main:package-lock.json` to read it, then `npm install
+<pkg>@<that-version>`) so the diff stays about the actual bumps. Only let
+a non-batch package float if it's a genuine peer the batch _requires_.
+
 ## 3. Make the code compile against the new majors
 
 Generated files first. `src/generated/changelog.ts` is gitignored and
@@ -182,6 +192,10 @@ package-lock.json` before trusting the trace.
   must move with a Vite major — they're not in the Dependabot batch.
 - `eslint-plugin-jsx-a11y` peer lags ESLint majors → `overrides`, not a
   downgrade.
+- Lock wipe floats _every_ caret, not just the batch → a non-batch
+  formatter/linter (e.g. `prettier`) can drift a minor and fail
+  `fmt-check`/`lint` on untouched files. Pin it back to `main`'s locked
+  version, don't reformat.
 - New `recommended` lint rules from a major → disable, don't refactor.
 - `favicon.ico` drift from the assets-generator → `make icons`.
 - Don't merge the PRs individually — consolidate into one.
