@@ -103,9 +103,12 @@ export type DuplicateAccount = {
   // chain flows into it, so the transaction belongs here. `false` ⇒ it
   // lands on a balance the account's own history never produced — the
   // stray mis-import. `null` ⇒ no balance (or no genuine anchor) to judge
-  // by. Drives both the `suggestOwner` pre-selection and the green / red
-  // balance pill in the expanded context panel. See `AccountIndex.fitById`
-  // for why the anchor is the last non-duplicate, not the immediate row.
+  // by. Drives the `suggestOwner` pre-selection and the Skip default. The
+  // green / red balance pill in the context panel is NOT this — it uses
+  // `balanceSitsLocally` against the visible neighbours, so a self-consistent
+  // block reads green even where ownership can't be decided. See
+  // `AccountIndex.fitById` for why the anchor is the nearest non-duplicate,
+  // not the immediate row.
   fits: boolean | null;
 };
 
@@ -835,4 +838,44 @@ export function historyContext(
     target: ordered[pos].entry,
     after: pos < ordered.length - 1 ? ordered[pos + 1].entry : null,
   };
+}
+
+// Does the matched row's balance sit cleanly on the running total between
+// the IMMEDIATE neighbours the context panel shows — i.e. does
+// `before.balance + target.amount == target.balance` (back) or
+// `target.balance + after.amount == after.balance` (forward)?
+//
+// This is what drives the green / red balance pill, and it is deliberately
+// DIFFERENT from `AccountIndex.fitById` (which decides ownership). The pill
+// answers the question the user can actually verify from the three rows on
+// screen: "does this figure sit on the visible running total?" — so it
+// trusts the immediate neighbours even when they are themselves duplicates.
+// `fitById` instead anchors on the nearest GENUINE row (often off-screen) to
+// tell the owner from a mis-import; that deeper verdict belongs to the owner
+// PRE-SELECTION, not to a pill the user reads against the visible rows. When
+// a whole statement was imported into two accounts the row sits cleanly on
+// BOTH (honest green on each), while ownership stays undecided and the group
+// defaults to Skip. Returns `true` when a neighbour reconciles, `false` when
+// a neighbour carries a balance but neither side reconciles (a visible jump),
+// `null` when there is no neighbouring balance to judge by.
+export function balanceSitsLocally(ctx: HistoryContext): boolean | null {
+  const target = ctx.target;
+  if (!hasBalance(target)) return null;
+  const tb = cents(target.balance);
+  let sawNeighbourBalance = false;
+  if (ctx.before && hasBalance(ctx.before)) {
+    sawNeighbourBalance = true;
+    const expected = cents(ctx.before.balance) + cents(target.amount);
+    if (Math.abs(expected - tb) <= BALANCE_TOLERANCE_CENTS) return true;
+  }
+  if (ctx.after && hasBalance(ctx.after)) {
+    sawNeighbourBalance = true;
+    const expected = tb + cents(ctx.after.amount);
+    if (
+      Math.abs(expected - cents(ctx.after.balance)) <= BALANCE_TOLERANCE_CENTS
+    ) {
+      return true;
+    }
+  }
+  return sawNeighbourBalance ? false : null;
 }

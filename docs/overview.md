@@ -737,13 +737,23 @@ and after the matched transaction with their balances (newest first, like
 the history viewer), so the user can eyeball whether the running balance
 flows cleanly through the matched row (it belongs) or jumps over it (a
 foreign mis-import). The matched row's balance carries an explicit verdict
-pill: **green with a checkmark** when it sits cleanly on the account's
-running total (`fits === true`), **red with a warning** when it doesn't
-(`fits === false`), and plain when there was no balance to judge
-(`fits === null`). The owner is only pre-selected when at least one
-account's balance reconciles; when every copy mismatches (or there is no
-balance to judge) the group defaults to **Skip**, so a blind guess never
-deletes a copy. When more than one group is listed, a **Set owner for
+pill driven by `balanceSitsLocally` — read against **the three rows on
+screen**, NOT the off-screen genuine-anchor verdict: **green with a
+checkmark** when the balance sits cleanly on the running total between its
+immediate neighbours (`before.balance + amount == balance`, or
+`balance + after.amount == after.balance`), **red with a warning** when it
+jumps over them, and plain when there was no neighbouring balance to judge.
+The pill deliberately trusts the immediate neighbours even when they are
+themselves duplicates: it answers the question the user can verify from the
+visible chain, so a whole statement imported into two accounts reads green
+on both (it genuinely sits on each account's running total) rather than
+showing a misleading warning whose disqualifying jump is off-screen.
+Ownership is decided separately by the deeper genuine-anchor verdict
+(`AccountIndex.fitById` / `acc.fits`): the owner is only pre-selected when
+at least one account's balance reconciles against a genuine row; when every
+copy mismatches there (or there is no balance to judge) the group defaults
+to **Skip**, so a blind guess never deletes a copy — even while the pill
+reads green on a self-consistent block. When more than one group is listed, a **Set owner for
 all** row offers a chip per account involved across the finds
 (`duplicateBatchOwners`); clicking one points every group that holds a copy
 in that account at it in a single click — the common case is one statement
