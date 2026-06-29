@@ -5,7 +5,7 @@ import { groupRowsByMonth } from "../fiscal-month";
 import { widestFormattedAmount } from "../../utils/format";
 import {
   computeBalances,
-  reverseRowsByDay,
+  reverseRowsForNewestFirst,
   sortRowsByDate,
   type RowSortContext,
 } from "./rows";
@@ -236,7 +236,7 @@ export function computeBudgetState(
       ? (() => {
           const out = new Map<string, Row[]>();
           for (const [key, rows] of monthGroups) {
-            out.set(key, reverseRowsByDay(rows, dateCol.id));
+            out.set(key, reverseRowsForNewestFirst(rows));
           }
           return out;
         })()

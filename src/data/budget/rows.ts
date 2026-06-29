@@ -165,33 +165,21 @@ export function sortRowsByDate(
     .map((aux) => aux.row);
 }
 
-// Flip the order at date boundaries so the latest day sits at the top
-// of each month, matching a descending month order. Within-date
-// ordering (incomes first, largest category first, etc.) is left
-// untouched so the secondary sort `sortRowsByDate` applies still
-// reads the same way inside a given day. Lifted out of
-// `BudgetViewerModal` so every display surface that wants a
-// newest-first ledger can reuse the same helper without duplicating
-// the bucketing.
-export function reverseRowsByDay(rows: Row[], dateColumnId: string): Row[] {
-  if (rows.length === 0) return rows;
-  const groups: Row[][] = [];
-  let currentDate: string | null = null;
-  for (const row of rows) {
-    const v = row.cells[dateColumnId];
-    const dateStr = typeof v === "string" ? v : "";
-    if (currentDate === null || dateStr !== currentDate) {
-      groups.push([row]);
-      currentDate = dateStr;
-    } else {
-      groups[groups.length - 1].push(row);
-    }
-  }
-  const out: Row[] = [];
-  for (let i = groups.length - 1; i >= 0; i--) {
-    for (const row of groups[i]) out.push(row);
-  }
-  return out;
+// Produce the newest-first display order for a month's rows. The input
+// is the ascending, fully-sorted view from `sortRowsByDate`: date
+// ascending, and within each date incomes first, then largest category,
+// etc. Reversing the whole array flips both axes at once — the latest
+// day rises to the top AND each day's internal order mirrors, so the
+// income (salary) lands at the BOTTOM of its day. That mirror is the
+// point: ascending begins the month, and each day, with the salary;
+// descending ends it with the salary, so "income first" reads as the
+// last row when scanning top-to-bottom. (An earlier version reversed
+// only the day-group order and left the within-day order ascending,
+// which kept income pinned to the top of each day even in descending
+// mode — not what a mirrored ledger should show.) Lives here so every
+// display surface that wants a newest-first ledger reuses one helper.
+export function reverseRowsForNewestFirst(rows: Row[]): Row[] {
+  return [...rows].reverse();
 }
 
 // Running balance per row, chronological across the whole AccountBudget

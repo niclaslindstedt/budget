@@ -8,6 +8,7 @@ import {
   isRowSavable,
   mapSeriesFrom,
   mintBudgetRow,
+  reverseRowsForNewestFirst,
   rowsInSeriesFrom,
   sortRowsByDate,
   userDataHasHalfDoneRows,
@@ -472,6 +473,73 @@ describe("sortRowsByDate", () => {
       typesById: new Map(),
     });
     expect(sorted.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("reverseRowsForNewestFirst", () => {
+  it("mirrors the ascending order: latest day on top AND income at the bottom of its day", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const descCol = findColumnByType(sheet.columns, "description")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+
+    function r(id: string, date: string, desc: string, amount: number): Row {
+      return {
+        id,
+        cells: {
+          [dateCol.id]: date,
+          [descCol.id]: desc,
+          [amountCol.id]: amount,
+        },
+      };
+    }
+
+    // Ascending view: payday (the 10th) first, income at the top of its
+    // day; the later day (the 11th) below it.
+    const ascending = sortRowsByDate(
+      [
+        r("salary", "2026-05-10", "Paycheck", 1000),
+        r("rent", "2026-05-10", "Rent", -500),
+        r("coffee", "2026-05-11", "Coffee", -30),
+      ],
+      dateCol.id,
+      {
+        descriptionColumnId: descCol.id,
+        amountColumnId: amountCol.id,
+        typesById: new Map(),
+      },
+    );
+    expect(ascending.map((row) => row.id)).toEqual([
+      "salary",
+      "rent",
+      "coffee",
+    ]);
+
+    // Newest-first view: the later day rises to the top, and within the
+    // payday the salary drops to the bottom — the mirror of "income
+    // first", so "first" reads as the last row top-to-bottom.
+    const reversed = reverseRowsForNewestFirst(ascending);
+    expect(reversed.map((row) => row.id)).toEqual(["coffee", "rent", "salary"]);
+  });
+
+  it("returns a fresh array, leaving the input untouched", () => {
+    const sheet = createDefaultAccountBudget(TEST_ACCOUNT_ID);
+    const dateCol = findColumnByType(sheet.columns, "date")!;
+    const amountCol = findColumnByType(sheet.columns, "amount")!;
+    const input = [
+      seedRow(dateCol.id, amountCol.id, "2026-05-01", 1),
+      seedRow(dateCol.id, amountCol.id, "2026-05-02", 1),
+    ];
+    const reversed = reverseRowsForNewestFirst(input);
+    expect(reversed).not.toBe(input);
+    expect(input.map((r) => r.cells[dateCol.id])).toEqual([
+      "2026-05-01",
+      "2026-05-02",
+    ]);
+    expect(reversed.map((r) => r.cells[dateCol.id])).toEqual([
+      "2026-05-02",
+      "2026-05-01",
+    ]);
   });
 });
 
