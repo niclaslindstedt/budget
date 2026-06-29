@@ -89,6 +89,7 @@ export function AccountsModalHost(props: Props) {
     onCommitRenamePredictor,
     onCancelRenamePredictor,
     importDuplicateGroups,
+    importDuplicateOwner,
     clearImportDuplicates,
   } = importFlow;
   const {
@@ -182,6 +183,7 @@ export function AccountsModalHost(props: Props) {
         open={importDuplicateGroups.length > 0}
         onClose={clearImportDuplicates}
         groups={importDuplicateGroups}
+        suggestedOwner={importDuplicateOwner}
         data={data}
         settings={effectiveSettings}
         dispatch={dispatch}

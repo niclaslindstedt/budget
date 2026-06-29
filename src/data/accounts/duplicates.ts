@@ -496,6 +496,56 @@ export function duplicateBatchRemovals(
   return out;
 }
 
+// The strongest owner signal for an import that created cross-account
+// duplicates. A bank statement is the COMPLETE record of one account over
+// its date range, so the true owner is the account whose history within
+// that range is EXACTLY the duplicated rows — it holds a copy in every
+// group (100% of the conflicts) and carries no other statement row in the
+// window. An account that holds those rows ALONGSIDE other history in the
+// same range can't be the owner (its real statement would list the extras
+// too), so its copies are foreign mis-imports. Returns that account's id,
+// or `null` when none qualifies or more than one does (e.g. a fresh import
+// target and a dedicated copy are indistinguishable) — ownership then
+// falls back to the balance heuristic. `history` is the POST-import world.
+export function exclusiveRangeOwner(
+  groups: readonly DuplicateGroup[],
+  history: Record<string, readonly HistoryEntry[]>,
+  rangeStart: string,
+  rangeEnd: string,
+): string | null {
+  if (groups.length === 0) return null;
+  // Conflict entry ids per account + the set of accounts the groups touch.
+  const conflictIds = new Map<string, Set<string>>();
+  const groupCount = new Map<string, number>();
+  for (const group of groups) {
+    for (const acc of group.accounts) {
+      groupCount.set(acc.accountId, (groupCount.get(acc.accountId) ?? 0) + 1);
+      let ids = conflictIds.get(acc.accountId);
+      if (!ids) {
+        ids = new Set<string>();
+        conflictIds.set(acc.accountId, ids);
+      }
+      for (const entry of acc.entries) ids.add(entry.id);
+    }
+  }
+  const candidates: string[] = [];
+  for (const [accountId, count] of groupCount) {
+    // Must hold a copy in every group — 100% of the conflicts.
+    if (count !== groups.length) continue;
+    const ids = conflictIds.get(accountId) ?? new Set<string>();
+    // ...and no other statement row in the import's date range.
+    const hasOther = (history[accountId] ?? []).some(
+      (entry) =>
+        isCandidate(entry) &&
+        entry.date >= rangeStart &&
+        entry.date <= rangeEnd &&
+        !ids.has(entry.id),
+    );
+    if (!hasOther) candidates.push(accountId);
+  }
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 // One non-owner account's import session that a duplicate resolution can
 // expand into: the session id, how many of its entries are the group's
 // own matched copies, and how many MORE entries that session left in the

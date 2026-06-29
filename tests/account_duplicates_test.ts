@@ -6,6 +6,7 @@ import {
   duplicateRemovals,
   duplicateSessionRemovals,
   duplicateSessions,
+  exclusiveRangeOwner,
   findDuplicateImports,
   historyContext,
   ignoreRulesForGroup,
@@ -752,6 +753,251 @@ describe("batch owner helpers (import-time single-owner picker)", () => {
         .map((r) => `${r.accountId}:${r.entryId}`)
         .sort(),
     ).toEqual(["y:y_dn", "y:y_shop"]);
+  });
+});
+
+describe("exclusiveRangeOwner", () => {
+  it("picks the account whose in-range history is exactly the duplicates", () => {
+    // a1 holds the two duplicated rows alongside its own Rent row in the
+    // range, so the statement can't be a1's complete record. a2 holds
+    // exactly the two rows and nothing else in range — it's the owner.
+    const d = data([account("a1"), account("a2")], {
+      a1: [
+        entry({
+          id: "a1_rent",
+          amount: -500,
+          balance: 5000,
+          date: "2026-02-01",
+          description: "Rent",
+        }),
+        entry({
+          id: "a1_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+        entry({
+          id: "a1_cafe",
+          amount: -50,
+          balance: 4850,
+          date: "2026-02-15",
+          description: "Cafe",
+        }),
+      ],
+      a2: [
+        entry({
+          id: "a2_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+        entry({
+          id: "a2_cafe",
+          amount: -50,
+          balance: 4850,
+          date: "2026-02-15",
+          description: "Cafe",
+        }),
+      ],
+    });
+    const groups = findDuplicateImports(d);
+    expect(groups).toHaveLength(2);
+    expect(
+      exclusiveRangeOwner(groups, d.history, "2026-02-01", "2026-02-28"),
+    ).toBe("a2");
+  });
+
+  it("returns null when more than one account holds exactly the duplicates", () => {
+    const d = data([account("a1"), account("a2")], {
+      a1: [
+        entry({
+          id: "a1_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+      ],
+      a2: [
+        entry({
+          id: "a2_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+      ],
+    });
+    const groups = findDuplicateImports(d);
+    expect(
+      exclusiveRangeOwner(groups, d.history, "2026-02-01", "2026-02-28"),
+    ).toBeNull();
+  });
+
+  it("ignores an account's other history that falls outside the range", () => {
+    // a1's Rent predates the range (January), so a1 is exclusive in range;
+    // a2's Rent sits inside the range, so a2 is not.
+    const d = data([account("a1"), account("a2")], {
+      a1: [
+        entry({
+          id: "a1_rent",
+          amount: -500,
+          balance: 5000,
+          date: "2026-01-01",
+          description: "Rent",
+        }),
+        entry({
+          id: "a1_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+      ],
+      a2: [
+        entry({
+          id: "a2_rent",
+          amount: -500,
+          balance: 5000,
+          date: "2026-02-05",
+          description: "Rent",
+        }),
+        entry({
+          id: "a2_shop",
+          amount: -100,
+          balance: 4900,
+          date: "2026-02-10",
+          description: "Shop",
+        }),
+      ],
+    });
+    const groups = findDuplicateImports(d);
+    expect(
+      exclusiveRangeOwner(groups, d.history, "2026-02-01", "2026-02-28"),
+    ).toBe("a1");
+  });
+});
+
+describe("swapped and mirrored imports", () => {
+  it("untangles a swap: each statement's true owner wins its own group", () => {
+    // Two real statements, each mis-imported into the OTHER account too:
+    // a1 owns "Alpha" (its open balance chains into it) and also carries a
+    // foreign copy of a2's "Beta"; a2 owns "Beta" and carries a foreign
+    // "Alpha". Each account keeps a unique opening row (never duplicated)
+    // so the anchor walk has a genuine row to measure from. Despite the
+    // cross-contamination, the per-group balance check still routes Alpha
+    // to a1 and Beta to a2.
+    const d = data([account("a1"), account("a2")], {
+      a1: [
+        entry({
+          id: "a1_open",
+          amount: 1000,
+          balance: 1000,
+          date: "2026-03-01",
+          description: "Open One",
+        }),
+        entry({
+          id: "a1_alpha",
+          amount: -100,
+          balance: 900,
+          date: "2026-03-02",
+          description: "Alpha",
+        }),
+        entry({
+          id: "a1_beta",
+          amount: -50,
+          balance: 450,
+          date: "2026-03-06",
+          description: "Beta",
+        }),
+      ],
+      a2: [
+        entry({
+          id: "a2_alpha",
+          amount: -100,
+          balance: 900,
+          date: "2026-03-02",
+          description: "Alpha",
+        }),
+        entry({
+          id: "a2_open",
+          amount: 500,
+          balance: 500,
+          date: "2026-03-05",
+          description: "Open Two",
+        }),
+        entry({
+          id: "a2_beta",
+          amount: -50,
+          balance: 450,
+          date: "2026-03-06",
+          description: "Beta",
+        }),
+      ],
+    });
+    const groups = findDuplicateImports(d);
+    expect(groups).toHaveLength(2);
+    const byDesc = Object.fromEntries(groups.map((g) => [g.description, g]));
+    expect(byDesc["Alpha"].suggestedOwnerId).toBe("a1");
+    expect(byDesc["Beta"].suggestedOwnerId).toBe("a2");
+    // Neither account holds ONLY the duplicates in range (each keeps its
+    // own opening row), so the exclusivity signal stays out of it.
+    expect(
+      exclusiveRangeOwner(groups, d.history, "2026-03-01", "2026-03-06"),
+    ).toBeNull();
+  });
+
+  it("handles three accounts holding identical data (perfect mirror)", () => {
+    const d = data([account("a1"), account("a2"), account("a3")], {
+      a1: [
+        entry({ id: "a1x", description: "Shop", amount: -100, balance: 900 }),
+        entry({
+          id: "a1y",
+          description: "Cafe",
+          amount: -50,
+          balance: 850,
+          date: "2026-04-16",
+        }),
+      ],
+      a2: [
+        entry({ id: "a2x", description: "Shop", amount: -100, balance: 900 }),
+        entry({
+          id: "a2y",
+          description: "Cafe",
+          amount: -50,
+          balance: 850,
+          date: "2026-04-16",
+        }),
+      ],
+      a3: [
+        entry({ id: "a3x", description: "Shop", amount: -100, balance: 900 }),
+        entry({
+          id: "a3y",
+          description: "Cafe",
+          amount: -50,
+          balance: 850,
+          date: "2026-04-16",
+        }),
+      ],
+    });
+    const groups = findDuplicateImports(d);
+    expect(groups).toHaveLength(2);
+    for (const group of groups) expect(group.accounts).toHaveLength(3);
+    // Every account holds exactly the duplicates and nothing else, so the
+    // exclusivity signal can't single one out, and no balance reconciles
+    // (no genuine non-duplicate row to anchor on).
+    expect(
+      exclusiveRangeOwner(groups, d.history, "2026-04-01", "2026-04-30"),
+    ).toBeNull();
+    expect(suggestBatchOwner(groups)).toBeNull();
+    // Consolidating to a1 strips both other accounts' copies.
+    expect(
+      duplicateBatchRemovals(groups, "a1")
+        .map((r) => r.accountId)
+        .sort(),
+    ).toEqual(["a2", "a2", "a3", "a3"]);
   });
 });
 

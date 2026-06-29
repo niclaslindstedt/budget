@@ -761,9 +761,16 @@ auto-opens a **separate** modal, `ImportDuplicatesModal` — a
 **single-owner** picker rather than the per-group resolver, since an
 import almost always overlaps just one other account. It lists the
 affected transactions and offers one owner choice for the whole batch
-(`duplicateBatchOwners` builds the options with per-account fit tallies;
-`suggestBatchOwner` pre-selects the account whose balances reconcile in the
-most groups, or Skip when none does). Confirming consolidates every
+(`duplicateBatchOwners` builds the options with per-account fit tallies).
+The pre-selection uses the strongest signal first: a bank statement is the
+complete record of one account over its date range, so `exclusiveRangeOwner`
+(computed in `useImportFlow` from the just-imported rows' date span) picks
+the account whose history within that range is **exactly** these duplicates
+and nothing else — an account carrying them alongside other rows in the
+same window can't be the owner. When no account is exclusive (or more than
+one is — e.g. a fresh import target and a dedicated copy are
+indistinguishable), it falls back to `suggestBatchOwner` (most-reconciling
+account), then Skip. Confirming consolidates every
 detected duplicate to that owner via `duplicateBatchRemovals` →
 `resolveDuplicateImports`: owner = the import target keeps the new rows and
 removes the older copies elsewhere; owner = an existing account removes the

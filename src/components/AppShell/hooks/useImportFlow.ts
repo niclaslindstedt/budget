@@ -12,6 +12,7 @@ import type {
 } from "../../budget/BudgetFindConflictsModal";
 import { unlock as unlockAchievement } from "../../../data/achievements";
 import {
+  exclusiveRangeOwner,
   findDuplicateImports,
   type DuplicateGroup,
 } from "../../../data/accounts/duplicates";
@@ -84,6 +85,9 @@ type Result = {
   // auto-opens scoped to them so the user picks the true owner and the
   // copies consolidate there instead of lingering as duplicates.
   importDuplicateGroups: DuplicateGroup[];
+  // Pre-selected owner for the import-time picker when one account holds
+  // exactly the duplicated rows over the import's date range; else null.
+  importDuplicateOwner: string | null;
   clearImportDuplicates: () => void;
 
   // BudgetFindConflictsModal hooks.
@@ -148,6 +152,35 @@ export function useImportFlow({
       ),
     );
   }, [data, duplicatesCheckAt]);
+  // The date span of the rows this import just added (every one carries
+  // `importedAt === duplicatesCheckAt`) — the statement's range, used to
+  // judge which account holds exactly these rows and nothing else.
+  const importRange = useMemo(() => {
+    if (duplicatesCheckAt === null) return null;
+    let start: string | null = null;
+    let end: string | null = null;
+    for (const entries of Object.values(data.history)) {
+      for (const entry of entries) {
+        if (entry.importedAt !== duplicatesCheckAt) continue;
+        if (start === null || entry.date < start) start = entry.date;
+        if (end === null || entry.date > end) end = entry.date;
+      }
+    }
+    return start !== null && end !== null ? { start, end } : null;
+  }, [data.history, duplicatesCheckAt]);
+  // The exclusive-range owner (the account whose history over the import's
+  // span is exactly the duplicates) — the strongest owner signal, used to
+  // pre-select the import-time picker. `null` ⇒ fall back to the balance
+  // heuristic inside the modal.
+  const importDuplicateOwner = useMemo(() => {
+    if (importRange === null || importDuplicateGroups.length === 0) return null;
+    return exclusiveRangeOwner(
+      importDuplicateGroups,
+      data.history,
+      importRange.start,
+      importRange.end,
+    );
+  }, [importDuplicateGroups, data.history, importRange]);
   const clearImportDuplicates = useCallback(
     () => dispatchFlow({ kind: "setDuplicatesCheck", value: null }),
     [],
@@ -568,6 +601,7 @@ export function useImportFlow({
     onCommitRenamePredictor,
     onCancelRenamePredictor,
     importDuplicateGroups,
+    importDuplicateOwner,
     clearImportDuplicates,
     onMergeConflictIntoHistory,
     onMergeConflictUserRows,

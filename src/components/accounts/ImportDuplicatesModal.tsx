@@ -23,6 +23,10 @@ type Props = {
   onClose: () => void;
   // The cross-account duplicate groups this import created.
   groups: DuplicateGroup[];
+  // The strongest-signal owner (the account holding exactly these rows
+  // over the import's date range), pre-selected when present. `null` ⇒
+  // fall back to the per-batch balance suggestion.
+  suggestedOwner: string | null;
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
@@ -43,6 +47,7 @@ export function ImportDuplicatesModal({
   open,
   onClose,
   groups,
+  suggestedOwner,
   data,
   settings,
   dispatch,
@@ -52,10 +57,12 @@ export function ImportDuplicatesModal({
   const toast = useToast();
   const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
   const owners = useMemo(() => duplicateBatchOwners(groups), [groups]);
-  // Default to the account whose balances reconcile in the most groups, or
-  // Skip when none does — mirrors the per-group "default Skip" rule.
-  const suggested = useMemo(() => suggestBatchOwner(groups), [groups]);
-  const [selected, setSelected] = useState<string>(() => suggested ?? SKIP);
+  // Default to the exclusive-range owner when one exists (the strongest
+  // signal); else the account whose balances reconcile in the most groups;
+  // else Skip — mirrors the per-group "default Skip" rule.
+  const [selected, setSelected] = useState<string>(
+    () => suggestedOwner ?? suggestBatchOwner(groups) ?? SKIP,
+  );
 
   if (!open) return null;
 
