@@ -612,7 +612,12 @@ balance); user-curated metadata belongs to the budget view. Its search
 bar carries a viewer-scoped newest/oldest sort toggle plus a filter
 popover (time range, amount band, date band) via the universal
 `ModalSearchControls`, all local to the open viewer (the sort seeds
-from `transactionSortOrder`; the filter bands reset on close). No
+from `transactionSortOrder`; the filter bands reset on close). Rows are
+ordered by date, then WITHIN a day by running-balance continuity
+(`sortHistoryByBalance`) before the newest/oldest direction is applied —
+so a day the bank listed out of balance order still reads as one clean
+chain (the reorder is memoised, so it only reruns when the entries or the
+chosen direction change). No
 transfer / completed / type filters — history rows carry only raw bank
 fields. Opened by tapping an account's row body on the accounts page,
 and — since a savings account stores transactions for transfer
@@ -634,7 +639,14 @@ isn't clobbered by a re-import. The bank name comes from the parser
 xlsx / csv spec); clearing and account number come from the parser's
 `accountIds` header extractor. This applies whether the import target is
 a regular `Account` or a `Saving` (savings share the `history` id-space
-and the same three bank-detail fields).
+and the same three bank-detail fields). The merged history is then
+re-threaded by running-balance continuity (`sortHistoryByBalance`) before
+it is stored: `mergeHistory` keeps entries in date order but leaves
+same-day rows in raw file order, so fixing the order at this single import
+funnel makes the STORED order authoritative — the running-balance anchor
+in `accountBalance` (which takes the last same-day balance by array
+position), the opening- and saving-balance folds, exports, and the
+duplicate finder all read one coherent chain.
 
 **Overlap-on-import confirmation.** A bank statement is the complete record
 of one account over its date range, so importing one into an account that
