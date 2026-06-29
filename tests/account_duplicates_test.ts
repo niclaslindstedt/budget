@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   duplicateBatchOwners,
   duplicateBatchRemovals,
+  duplicateMetadataMigrations,
   duplicateRemovals,
   duplicateSessionRemovals,
   duplicateSessions,
@@ -10,6 +11,7 @@ import {
   findDuplicateImports,
   historyContext,
   ignoreRulesForGroup,
+  migrateMetadata,
   suggestBatchOwner,
 } from "../src/data/accounts/duplicates";
 import { describeActionSubject } from "../src/data/action-summary";
@@ -880,6 +882,44 @@ describe("exclusiveRangeOwner", () => {
   });
 });
 
+describe("metadata migration", () => {
+  it("fills blank owner fields from a removed copy, never overwriting", () => {
+    const owner = entry({ id: "o", userTypeId: "t-existing" });
+    const source = entry({
+      id: "s",
+      userTypeId: "t-other",
+      userCompanyId: "c1",
+      userTagIds: ["tag1"],
+    });
+    // userTypeId is already set on the owner → kept; the blanks are filled.
+    expect(migrateMetadata(owner, [source])).toEqual({
+      userCompanyId: "c1",
+      userTagIds: ["tag1"],
+    });
+  });
+
+  it("emits owner-entry patches for a group resolution", () => {
+    const [group] = findDuplicateImports(
+      data([account("own"), account("wrong")], {
+        own: [entry({ id: "own1" })],
+        wrong: [
+          entry({ id: "wrong1", userTypeId: "t-cat", userCompanyId: "c-cat" }),
+        ],
+      }),
+    );
+    expect(duplicateMetadataMigrations(group, "own")).toEqual([
+      {
+        accountId: "own",
+        entryId: "own1",
+        patch: { userTypeId: "t-cat", userCompanyId: "c-cat" },
+      },
+    ]);
+    // Resolving the other way round needs no migration — the categorised
+    // copy is the owner being kept.
+    expect(duplicateMetadataMigrations(group, "wrong")).toEqual([]);
+  });
+});
+
 describe("swapped and mirrored imports", () => {
   it("untangles a swap: each statement's true owner wins its own group", () => {
     // Two real statements, each mis-imported into the OTHER account too:
@@ -1131,6 +1171,40 @@ describe("resolveDuplicateImports reducer", () => {
     const bLeg = next.history.b.find((e) => e.id === "b_leg");
     expect(bLeg?.hidden).toBeUndefined();
     expect(bLeg?.collapsedIntoTransferId).toBeUndefined();
+  });
+
+  it("migrates fill-blanks metadata onto the kept owner copy", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      accounts: [account("own"), account("wrong")],
+      history: {
+        own: [entry({ id: "own1", amount: -1200, balance: 3800 })],
+        wrong: [
+          entry({
+            id: "wrong1",
+            amount: -1200,
+            balance: 3800,
+            userTypeId: "t-cat",
+            userCompanyId: "c-cat",
+          }),
+        ],
+      },
+    };
+    const next = reducer(prev, {
+      type: "resolveDuplicateImports",
+      removals: [{ accountId: "wrong", entryId: "wrong1" }],
+      metadataPatches: [
+        {
+          accountId: "own",
+          entryId: "own1",
+          patch: { userTypeId: "t-cat", userCompanyId: "c-cat" },
+        },
+      ],
+    });
+    expect(next.history.wrong).toEqual([]);
+    const kept = next.history.own.find((e) => e.id === "own1");
+    expect(kept?.userTypeId).toBe("t-cat");
+    expect(kept?.userCompanyId).toBe("c-cat");
   });
 
   it("is a no-op for an empty removal list", () => {

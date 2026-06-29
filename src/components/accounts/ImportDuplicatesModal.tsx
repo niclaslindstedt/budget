@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, CopyCheck, Layers } from "lucide-react";
 
 import {
+  duplicateBatchMetadataMigrations,
   duplicateBatchOwners,
   duplicateBatchRemovals,
   suggestBatchOwner,
@@ -70,7 +71,11 @@ export function ImportDuplicatesModal({
     if (selected !== SKIP) {
       const removals = duplicateBatchRemovals(groups, selected);
       if (removals.length > 0) {
-        dispatch({ type: "resolveDuplicateImports", removals });
+        dispatch({
+          type: "resolveDuplicateImports",
+          removals,
+          metadataPatches: duplicateBatchMetadataMigrations(groups, selected),
+        });
         unlock("duplicateSleuth");
         toast.push({
           kind: "success",

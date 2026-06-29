@@ -9,6 +9,7 @@ import type {
   EntryType,
   EntryTypeKind,
   FileCategory,
+  HistoryEntry,
   HistoryEntrySplit,
   InsightsNetWorthSettings,
   InvestmentHolding,
@@ -313,6 +314,15 @@ export type Action =
       // earliest entry was among those removed.
       type: "resolveDuplicateImports";
       removals: ReadonlyArray<{ accountId: string; entryId: string }>;
+      // Fill-blanks metadata to carry from the removed copies onto each
+      // surviving owner copy, so categorising on the wrong account isn't
+      // wasted. Each patch targets an owner entry that survives the
+      // removals. Optional / absent ⇒ no migration.
+      metadataPatches?: ReadonlyArray<{
+        accountId: string;
+        entryId: string;
+        patch: Partial<HistoryEntry>;
+      }>;
     }
   | {
       // Record "not a duplicate" rules for the cross-account duplicate
