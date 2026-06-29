@@ -7,14 +7,17 @@ import {
   findCandidates,
   findOrphans,
   findRuleDrivenCandidates,
+  firstOccurrenceAfter,
   inferSeriesRule,
   nextFiscalMonthStartDate,
   nextMonthSameDate,
+  planOrphanMoves,
   RECONCILIATION_AMOUNT_FLOOR_CENTS,
   RECONCILIATION_AMOUNT_PCT,
   RECONCILIATION_DATE_LAG_DAYS,
   seriesHasOccurrenceInNextMonth,
 } from "../src/data/reconciliation";
+import type { OrphanRow } from "../src/data/reconciliation";
 import type {
   Column,
   HistoryEntry,
@@ -93,6 +96,82 @@ describe("daysBetween", () => {
   });
 });
 
+describe("firstOccurrenceAfter", () => {
+  it("advances a monthly date past the boundary, preserving the day", () => {
+    expect(firstOccurrenceAfter("2026-03-01", "2026-03-20")).toBe("2026-04-01");
+  });
+
+  it("steps multiple months when the boundary is far ahead", () => {
+    expect(firstOccurrenceAfter("2026-01-15", "2026-04-10")).toBe("2026-04-15");
+  });
+
+  it("clamps the day to the target month's length", () => {
+    // Jan 31 → Feb (clamped to 28); 28 > the boundary, so it stops there.
+    expect(firstOccurrenceAfter("2026-01-31", "2026-02-15")).toBe("2026-02-28");
+  });
+
+  it("returns the date unchanged when already after the boundary", () => {
+    expect(firstOccurrenceAfter("2026-05-01", "2026-03-20")).toBe("2026-05-01");
+  });
+});
+
+describe("planOrphanMoves", () => {
+  const orphan = (rowId: string): OrphanRow => ({ rowId, monthKey: "2026-03" });
+
+  it("moves a one-off past-dated row to the day after the latest date", () => {
+    const r = row({ id: "r1", date: "2026-03-02" });
+    const plan = planOrphanMoves([orphan("r1")], [r], columns, "2026-03-20");
+    expect(plan.autoMoves).toEqual([{ rowId: "r1", toDate: "2026-03-21" }]);
+    expect(plan.prompts).toHaveLength(0);
+  });
+
+  it("moves a recurring row to its next monthly occurrence", () => {
+    const r = row({ id: "r1", date: "2026-03-01", seriesId: "s1" });
+    const plan = planOrphanMoves([orphan("r1")], [r], columns, "2026-03-20");
+    expect(plan.autoMoves).toEqual([{ rowId: "r1", toDate: "2026-04-01" }]);
+    expect(plan.prompts).toHaveLength(0);
+  });
+
+  it("prompts when a recurring move would leapfrog the next occurrence", () => {
+    // Jan + Feb + Mar all predicted; history now through Mar 20. Moving
+    // Jan forward to Apr passes Feb and Mar, so it must be confirmed; the
+    // last occurrence (Mar) moves silently.
+    const jan = row({ id: "rJan", date: "2026-01-01", seriesId: "s1" });
+    const feb = row({ id: "rFeb", date: "2026-02-01", seriesId: "s1" });
+    const mar = row({ id: "rMar", date: "2026-03-01", seriesId: "s1" });
+    const plan = planOrphanMoves(
+      [orphan("rJan"), orphan("rFeb"), orphan("rMar")],
+      [jan, feb, mar],
+      columns,
+      "2026-03-20",
+    );
+    expect(plan.autoMoves).toEqual([{ rowId: "rMar", toDate: "2026-04-01" }]);
+    expect(plan.prompts.map((p) => p.rowId)).toEqual(["rJan", "rFeb"]);
+  });
+
+  it("prompts when the move would collide with a future prediction", () => {
+    // Mar orphan, plus an existing (still-future) Apr prediction. Moving
+    // Mar to Apr 1 collides, so confirm it.
+    const mar = row({ id: "rMar", date: "2026-03-01", seriesId: "s1" });
+    const apr = row({ id: "rApr", date: "2026-04-01", seriesId: "s1" });
+    const plan = planOrphanMoves(
+      [orphan("rMar")],
+      [mar, apr],
+      columns,
+      "2026-03-20",
+    );
+    expect(plan.autoMoves).toHaveLength(0);
+    expect(plan.prompts.map((p) => p.rowId)).toEqual(["rMar"]);
+  });
+
+  it("leaves a still-future prediction as a prompt, not a move", () => {
+    const r = row({ id: "r1", date: "2026-03-25" });
+    const plan = planOrphanMoves([orphan("r1")], [r], columns, "2026-03-20");
+    expect(plan.autoMoves).toHaveLength(0);
+    expect(plan.prompts.map((p) => p.rowId)).toEqual(["r1"]);
+  });
+});
+
 describe("findCandidates — boundaries", () => {
   it("matches at the +7 day boundary", () => {
     const r = row({ date: "2026-03-20" });
@@ -108,10 +187,32 @@ describe("findCandidates — boundaries", () => {
     expect(findCandidates([e], [r], columns)).toHaveLength(0);
   });
 
-  it("rejects negative lag (history before prediction)", () => {
+  it("matches at the -7 day boundary (posts early)", () => {
     const r = row({ date: "2026-03-30" });
-    const e = entry({ date: "2026-03-27", amount: -5252 });
+    const e = entry({ date: "2026-03-23", amount: -5252 });
+    const matches = findCandidates([e], [r], columns);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].dateLagDays).toBe(-7);
+  });
+
+  it("rejects at -8 days", () => {
+    const r = row({ date: "2026-03-30" });
+    const e = entry({ date: "2026-03-22", amount: -5252 });
     expect(findCandidates([e], [r], columns)).toHaveLength(0);
+  });
+
+  it("a few days early with exact amount is high confidence", () => {
+    const r = row({ date: "2026-03-30", amount: -5252 });
+    const e = entry({ date: "2026-03-28", amount: -5252 });
+    const m = findCandidates([e], [r], columns);
+    expect(m[0].confidence).toBe("high");
+  });
+
+  it("a week early with exact amount is low confidence", () => {
+    const r = row({ date: "2026-03-30", amount: -5252 });
+    const e = entry({ date: "2026-03-23", amount: -5252 });
+    const m = findCandidates([e], [r], columns);
+    expect(m[0].confidence).toBe("low");
   });
 
   it("rejects opposite signs", () => {
@@ -320,6 +421,17 @@ describe("inferSeriesRule + expandToSeries", () => {
       RECONCILIATION_AMOUNT_PCT,
     );
     expect(rule.dateLagDays).toBeLessThanOrEqual(RECONCILIATION_DATE_LAG_DAYS);
+  });
+
+  it("stores the magnitude of an early-posting lag as the late window", () => {
+    // Entry posts 3 days BEFORE the predicted row (lag -3) — the rule
+    // keeps a non-negative window so future late jitter still matches.
+    const r = row({ id: "r", date: "2026-03-30", seriesId: "rent" });
+    const e = entry({ date: "2026-03-27", description: "SIMPLEKO" });
+    const match = findCandidates([e], [r], columns)[0];
+    expect(match.dateLagDays).toBe(-3);
+    const rule = inferSeriesRule(match, e, r, () => "rule")!;
+    expect(rule.dateLagDays).toBe(3);
   });
 
   it("expandToSeries collects sibling occurrences", () => {

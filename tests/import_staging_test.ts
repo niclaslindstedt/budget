@@ -254,6 +254,64 @@ describe("stageHistoryImport", () => {
     expect(staged.outcome.kind).toBe("reconciliation");
   });
 
+  it("auto-moves a past-dated one-off prediction past the latest date", () => {
+    // Bracketing entries (Jan 31 + Mar 30) make February covered. A
+    // one-off prediction dated Feb 15 that never posted is moved to the
+    // day after the latest transaction, silently — no modal.
+    const data = makeData({
+      rows: [row({ id: "r1", date: "2026-02-15", amount: -999 })],
+    });
+    data.settings.startOfMonth = 1; // calendar months for a simple boundary
+    const staged = stageHistoryImport(
+      data,
+      ACCOUNT_ID,
+      parsed([
+        { date: "2026-01-31", description: "OPENING", amount: -1 },
+        { date: "2026-03-30", description: "SIMPLEKO", amount: -5252 },
+      ]),
+      "q1.csv",
+      111,
+    );
+    expect(staged.outcome.kind).toBe("commit");
+    expect(staged.autoOrphanMoves).toEqual([
+      { rowId: "r1", toDate: "2026-03-31" },
+    ]);
+  });
+
+  it("prompts (doesn't auto-move) a recurring entry that would leapfrog its next occurrence", () => {
+    // Feb + Mar predicted in series s1; bracketing entries cover Feb but
+    // not Mar (latest is Mar 30). Moving the Feb occurrence forward would
+    // pass the Mar occurrence, so it stays a modal prompt, not a silent
+    // move.
+    const data = makeData({
+      rows: [
+        {
+          ...row({ id: "rFeb", date: "2026-02-01", amount: -5252 }),
+          seriesId: "s1",
+        },
+        {
+          ...row({ id: "rMar", date: "2026-03-01", amount: -5252 }),
+          seriesId: "s1",
+        },
+      ],
+    });
+    data.settings.startOfMonth = 1; // calendar months for a simple boundary
+    const staged = stageHistoryImport(
+      data,
+      ACCOUNT_ID,
+      parsed([
+        { date: "2026-01-31", description: "OPENING", amount: -1 },
+        { date: "2026-03-30", description: "OTHER", amount: -10 },
+      ]),
+      "q1.csv",
+      111,
+    );
+    expect(staged.outcome.kind).toBe("reconciliation");
+    expect(staged.autoOrphanMoves).toHaveLength(0);
+    if (staged.outcome.kind !== "reconciliation") return;
+    expect(staged.outcome.orphans.map((o) => o.rowId)).toEqual(["rFeb"]);
+  });
+
   it("carries the bank-extracted name / clearing / account number into pendingImport", () => {
     const data = makeData();
     const file: ParsedBankFile = {

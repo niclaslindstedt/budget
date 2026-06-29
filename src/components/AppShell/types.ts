@@ -1,6 +1,10 @@
 import type { ReconciliationApply } from "../accounts/AccountReconciliationModal";
 import type { RenameSuggestion } from "../../data/rename-patterns";
-import type { MatchCandidate, OrphanRow } from "../../data/reconciliation";
+import type {
+  MatchCandidate,
+  OrphanMove,
+  OrphanRow,
+} from "../../data/reconciliation";
 import type { PendingImport } from "../../data/import-staging";
 import type { ParsedBankFile } from "../../storage/banks";
 import type { StorageAdapter } from "../../storage/adapter";
@@ -116,6 +120,11 @@ export type ReconciliationState = {
   newEntries: HistoryEntry[];
   candidates: MatchCandidate[];
   orphans: OrphanRow[];
+  // Past-dated predictions moved forward automatically by the import
+  // (see `planOrphanMoves`). Carried alongside the modal's own orphan
+  // decisions and applied together at commit, so the silent moves land
+  // whether the user Applies or Skips the reconciliation modal.
+  autoOrphanMoves: OrphanMove[];
   // Parsed bank file held in memory until commit. Dispatched verbatim
   // as the `importBankHistory` payload when the user clicks Apply or
   // Skip all; dropped on cancel.
@@ -147,6 +156,10 @@ export type RenamePredictorState = {
   accountId: string;
   suggestions: RenameSuggestion[];
   pendingImport: ReconciliationState["pendingImport"];
+  // Carried through the deferred commit so silent past-dated moves land
+  // even when the rename-predictor modal is the only step (quiet path)
+  // or follows the reconciliation modal.
+  autoOrphanMoves: OrphanMove[];
   pendingReconciliation: {
     decisions: ReconciliationApply;
   } | null;
