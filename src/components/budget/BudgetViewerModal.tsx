@@ -10,7 +10,7 @@ import {
 import { Check, Eye } from "lucide-react";
 
 import {
-  reverseRowsByDay,
+  reverseRowsForNewestFirst,
   sortRowsByDate,
   type RowSortContext,
 } from "../../data/budget/rows";
@@ -354,7 +354,7 @@ export function BudgetViewerModal({
     const reverse = sortOrder === "newestFirst";
     for (const [key, rows] of monthGroups) {
       const sorted = sortRowsByDate(rows, dateCol.id, sortContext);
-      out.set(key, reverse ? reverseRowsByDay(sorted, dateCol.id) : sorted);
+      out.set(key, reverse ? reverseRowsForNewestFirst(sorted) : sorted);
     }
     return out;
   }, [monthGroups, dateCol, sortContext, sortOrder]);
