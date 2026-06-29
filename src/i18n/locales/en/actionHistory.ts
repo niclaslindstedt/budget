@@ -195,6 +195,7 @@ const actionHistory = {
     updateHistoryEntry: "Edited history entry",
     applyMetadataToMatchingHistory: "Labelled matching entries",
     splitHistoryEntry: "Split history entry",
+    deleteHistoryEntry: "Deleted history entry",
     applyReconciliation: "Applied reconciliation",
     applyImportRenames: "Applied suggested renames",
     setSeriesPrimaryIncome: "Set primary income",

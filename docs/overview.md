@@ -626,6 +626,20 @@ account's row body on the Savings page (the savings account is
 presented as an `Account` for the modal chrome; both routes share this
 one modal).
 
+**Deleting an entry.** Each row carries a delete button — inline in a
+trailing actions column on desktop, revealed by a left swipe on mobile
+(the `.swipe-table` strip shared with the budget / accounts /
+mortgage-payments tables, via `useRowSwipe` + the active-row
+coordinator). It is the only surface that deletes a raw bank entry: the
+budget page's synthesized history rows have no delete, since they are
+projections of `UserData.history`, not stored rows. Confirming routes
+through the `deleteHistoryEntry` reducer action
+(`src/data/reducers/accounts.ts`), which drops the entry from
+`history[accountId]`, and — mirroring `cutAccountHistory` /
+`resolveDuplicateImports` — restores the partner leg of any collapsed
+transfer the deleted row was merged into and re-derives the account's
+`openingBalance` in case the earliest row was the one removed.
+
 ### Import history modal
 
 `ImportHistoryModal.tsx` — the file picker + bank-parser selector. The

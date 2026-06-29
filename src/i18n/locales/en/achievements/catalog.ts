@@ -473,6 +473,10 @@ const catalog = {
     name: "Clean Split",
     condition: "Split a bank-history entry across multiple types.",
   },
+  cleanSlate: {
+    name: "Clean Slate",
+    condition: "Delete a bank-history entry from an account's history viewer.",
+  },
   cloudWalker: {
     name: "Cloud Walker",
     condition: "Connect a cloud backend (Dropbox, Google Drive, or Folder).",

@@ -24,6 +24,7 @@ const history: HistoryCatalog = {
   description: "Beskrivning",
   amount: "Belopp",
   balance: "Saldo",
+  actions: "Åtgärder",
   type: "Typ",
   searchPlaceholder: "Sök i historik",
   searchNoResults: "Inga poster matchar sökningen.",

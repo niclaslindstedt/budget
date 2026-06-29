@@ -60,6 +60,10 @@ type Result = {
   viewHistoryAccount: Account | null;
   setViewHistoryForId: (next: string | null) => void;
   onOpenViewHistory: (accountId: string) => void;
+  // Delete a single imported entry straight from the read-only history
+  // viewer. Only this surface deletes raw bank entries — the budget
+  // page's synthesized history rows have no delete.
+  onDeleteHistoryEntry: (entryId: string) => void;
 
   // Cut-history modal — drops imported entries + cross-account
   // transfers dated before a user-chosen cutoff date.
@@ -279,6 +283,18 @@ export function useImportFlow({
   const viewHistoryAccount = useMemo(
     () => resolveLedger(viewHistoryForId),
     [resolveLedger, viewHistoryForId],
+  );
+  const onDeleteHistoryEntry = useCallback(
+    (entryId: string) => {
+      if (!viewHistoryAccount) return;
+      dispatch({
+        type: "deleteHistoryEntry",
+        accountId: viewHistoryAccount.id,
+        entryId,
+      });
+      unlockAchievement("cleanSlate");
+    },
+    [viewHistoryAccount, dispatch],
   );
 
   // Run a staged import's outcome — commit, rename predictor, or
@@ -637,6 +653,7 @@ export function useImportFlow({
     viewHistoryAccount,
     setViewHistoryForId,
     onOpenViewHistory,
+    onDeleteHistoryEntry,
     cutHistoryAccount,
     setCutHistoryForId,
     onOpenCutHistory,
