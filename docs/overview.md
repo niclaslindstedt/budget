@@ -745,21 +745,25 @@ it removes and un-hides the partner leg on the other account (mirroring
 `cutAccountHistory` / `deleteTransfer`), so the partner is never stranded
 `hidden` with a dangling backref.
 
-The same resolver also runs **at import time**, not just from the menu.
+Duplicate detection also runs **at import time**, not just from the menu.
 After any import commits, `useImportFlow` stamps the import's `now` into
 `ImportFlowState.duplicatesCheckAt` and derives `importDuplicateGroups` —
 the cross-account groups holding a row with that `importedAt` (every
 freshly-added entry carries it). When non-empty, `AccountsModalHost`
-auto-opens `AccountDuplicatesModal` with `filterImportedAt` set, so it
-shows only the duplicates this import introduced, under import-specific
-copy ("Duplicates in this import"). The user picks the true owner exactly
-as in the menu flow, and the copies consolidate there: owner = the import
-target keeps the new row and removes the older copies elsewhere; owner =
-an existing account removes the just-imported copies — both via the same
-`resolveDuplicateImports`. An effect clears `duplicatesCheckAt` once the
-list empties (all resolved, or none found) so the finder stops re-running.
-The full menu-opened surface is the same component with `filterImportedAt`
-absent.
+auto-opens a **separate** modal, `ImportDuplicatesModal` — a
+**single-owner** picker rather than the per-group resolver, since an
+import almost always overlaps just one other account. It lists the
+affected transactions and offers one owner choice for the whole batch
+(`duplicateBatchOwners` builds the options with per-account fit tallies;
+`suggestBatchOwner` pre-selects the account whose balances reconcile in the
+most groups, or Skip when none does). Confirming consolidates every
+detected duplicate to that owner via `duplicateBatchRemovals` →
+`resolveDuplicateImports`: owner = the import target keeps the new rows and
+removes the older copies elsewhere; owner = an existing account removes the
+just-imported copies. An effect in `useImportFlow` clears
+`duplicatesCheckAt` once the list empties (all resolved, or none found) so
+the finder stops re-running. The menu-opened `AccountDuplicatesModal` keeps
+its per-group resolution and is unaffected.
 
 ### Reconciliation modal
 

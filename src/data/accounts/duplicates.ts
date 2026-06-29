@@ -418,6 +418,84 @@ export function duplicateRemovals(
   return out;
 }
 
+// One candidate owner for a BATCH of duplicate groups (every cross-account
+// duplicate one import created), used by the import-time single-owner
+// picker: the account, how many of the groups it appears in, and in how
+// many its copy's balance reconciles. Drives both the option list and the
+// default suggestion.
+export type BatchOwnerOption = {
+  accountId: string;
+  // Groups this account is a member of (holds a copy in).
+  groupCount: number;
+  // Of those, how many reconcile here (`fits === true`).
+  fitCount: number;
+};
+
+// The accounts a batch of duplicate groups involves, with per-account fit
+// tallies — the option set for "which account owns all of these?".
+export function duplicateBatchOwners(
+  groups: readonly DuplicateGroup[],
+): BatchOwnerOption[] {
+  const byId = new Map<string, BatchOwnerOption>();
+  for (const group of groups) {
+    for (const acc of group.accounts) {
+      let opt = byId.get(acc.accountId);
+      if (!opt) {
+        opt = { accountId: acc.accountId, groupCount: 0, fitCount: 0 };
+        byId.set(acc.accountId, opt);
+      }
+      opt.groupCount += 1;
+      if (acc.fits === true) opt.fitCount += 1;
+    }
+  }
+  return [...byId.values()];
+}
+
+// The single owner to pre-select for a batch: the account whose copies
+// reconcile in the most groups (tie-break: more groups, then lowest id).
+// `null` when no account's balance reconciles anywhere — the picker then
+// defaults to Skip, mirroring the per-group rule.
+export function suggestBatchOwner(
+  groups: readonly DuplicateGroup[],
+): string | null {
+  let best: BatchOwnerOption | null = null;
+  for (const opt of duplicateBatchOwners(groups)) {
+    if (opt.fitCount === 0) continue;
+    if (
+      best === null ||
+      opt.fitCount > best.fitCount ||
+      (opt.fitCount === best.fitCount && opt.groupCount > best.groupCount) ||
+      (opt.fitCount === best.fitCount &&
+        opt.groupCount === best.groupCount &&
+        opt.accountId.localeCompare(best.accountId) < 0)
+    ) {
+      best = opt;
+    }
+  }
+  return best ? best.accountId : null;
+}
+
+// Every {accountId, entryId} to delete to consolidate a BATCH of groups to
+// one owner: the union of each group's `duplicateRemovals`, de-duplicated.
+// Groups the owner isn't a member of contribute nothing (their copies are
+// left for a later pass).
+export function duplicateBatchRemovals(
+  groups: readonly DuplicateGroup[],
+  ownerAccountId: string,
+): { accountId: string; entryId: string }[] {
+  const seen = new Set<string>();
+  const out: { accountId: string; entryId: string }[] = [];
+  for (const group of groups) {
+    for (const removal of duplicateRemovals(group, ownerAccountId)) {
+      const key = `${removal.accountId}|${removal.entryId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(removal);
+    }
+  }
+  return out;
+}
+
 // One non-owner account's import session that a duplicate resolution can
 // expand into: the session id, how many of its entries are the group's
 // own matched copies, and how many MORE entries that session left in the
