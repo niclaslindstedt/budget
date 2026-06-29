@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import {
+  duplicateBatchOwners,
   duplicateRemovals,
   duplicateSessionRemovals,
   duplicateSessions,
@@ -78,6 +79,34 @@ export function AccountDuplicatesModal({
     [data, dismissed],
   );
 
+  // The accounts that appear across any group — the candidates for a
+  // one-click "set every find to this account" (the common case is one
+  // statement mis-imported into one wrong account, so every group shares
+  // the same true owner and picking it per-card is pure tedium).
+  const involvedAccounts = useMemo(
+    () =>
+      duplicateBatchOwners(groups)
+        .map((o) => accountsById.get(o.accountId))
+        .filter((a): a is Account => a !== undefined),
+    [groups, accountsById],
+  );
+  // Set the owner of every group that holds a copy in `accountId` to it,
+  // leaving groups it isn't part of untouched (a different account owns
+  // those). The user can still override any single card afterwards.
+  const setAllOwners = useCallback(
+    (accountId: string) =>
+      setOwners((prev) => {
+        const next = { ...prev };
+        for (const group of groups) {
+          if (group.accounts.some((a) => a.accountId === accountId)) {
+            next[group.id] = accountId;
+          }
+        }
+        return next;
+      }),
+    [groups],
+  );
+
   const ownerFor = useCallback(
     (group: DuplicateGroup): string => {
       const picked = owners[group.id];
@@ -91,6 +120,21 @@ export function AccountDuplicatesModal({
         : KEEP_ALL;
     },
     [owners],
+  );
+
+  // True when every group containing `accountId` is currently pointed at
+  // it — drives the pressed state of the "set all" chips.
+  const isAllOwner = useCallback(
+    (accountId: string): boolean => {
+      const applicable = groups.filter((g) =>
+        g.accounts.some((a) => a.accountId === accountId),
+      );
+      return (
+        applicable.length > 0 &&
+        applicable.every((g) => ownerFor(g) === accountId)
+      );
+    },
+    [groups, ownerFor],
   );
 
   const resolveGroups = useCallback(
@@ -185,6 +229,32 @@ export function AccountDuplicatesModal({
             </button>
           )}
         </div>
+
+        {groups.length > 1 && involvedAccounts.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5">
+            <span className="text-xs text-muted">
+              {t("duplicates.setAllOwner")}
+            </span>
+            {involvedAccounts.map((account) => {
+              const active = isAllOwner(account.id);
+              return (
+                <button
+                  key={account.id}
+                  type="button"
+                  onClick={() => setAllOwners(account.id)}
+                  aria-pressed={active}
+                  className={`cursor-pointer rounded-full hover:opacity-80 ${
+                    active
+                      ? "ring-1 ring-accent ring-offset-1 ring-offset-surface-2"
+                      : ""
+                  }`}
+                >
+                  <AccountChip account={account} />
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {groups.length === 0 ? (
           <div className="rounded border border-line bg-surface-2 px-3 py-6 text-center">

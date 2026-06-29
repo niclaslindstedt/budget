@@ -718,7 +718,14 @@ running total (`fits === true`), **red with a warning** when it doesn't
 (`fits === null`). The owner is only pre-selected when at least one
 account's balance reconciles; when every copy mismatches (or there is no
 balance to judge) the group defaults to **Skip**, so a blind guess never
-deletes a copy. **Accept all**
+deletes a copy. When more than one group is listed, a **Set owner for
+all** row offers a chip per account involved across the finds
+(`duplicateBatchOwners`); clicking one points every group that holds a copy
+in that account at it in a single click — the common case is one statement
+mis-imported into one wrong account, so all finds share the same true
+owner and picking it per-card is pure tedium. The chip shows a pressed
+state while every applicable group is pointed at it, and any single card
+can still be overridden afterwards. **Accept all**
 resolves every group at once. A per-group **Skip** option keeps every copy
 (the group drops from the list for the session); a per-group **Ignore** button
 (`ignoreDuplicates`, fed by `ignoreRulesForGroup`) records a persistent

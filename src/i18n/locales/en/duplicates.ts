@@ -21,6 +21,7 @@ const duplicates = {
   resolveAria: "Delete the duplicate copies, keeping the chosen owner",
   acceptAll: "Accept all",
   acceptAllAria: "Resolve every duplicate using the suggested owner",
+  setAllOwner: "Set owner for all:",
   resolvedOne: "Removed 1 duplicate entry.",
   resolvedOther: "Removed {n} duplicate entries.",
   ignore: "Ignore",

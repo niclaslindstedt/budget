@@ -18,6 +18,7 @@ const duplicates: DuplicatesCatalog = {
   resolveAria: "Ta bort dubblettkopiorna och behåll den valda ägaren",
   acceptAll: "Acceptera alla",
   acceptAllAria: "Lös varje dubblett med den föreslagna ägaren",
+  setAllOwner: "Ange ägare för alla:",
   resolvedOne: "Tog bort 1 dubblettpost.",
   resolvedOther: "Tog bort {n} dubblettposter.",
   ignore: "Ignorera",
