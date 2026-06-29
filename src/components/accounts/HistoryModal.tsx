@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { History } from "lucide-react";
 
-import { compareDateStrings } from "../../data/fiscal-month";
+import { sortHistoryByBalance } from "../../data/accounts/history-order";
 import { ageFloorIso } from "../../data/search";
 import type {
   Account,
@@ -66,10 +66,14 @@ export function HistoryModal({
   const [sortOrder, setSortOrder] = useState<TransactionSortOrder>(
     settings.transactionSortOrder,
   );
+  // Order by date, then WITHIN a day by running-balance continuity, so the
+  // statement reads in the sequence the balance actually chains through even
+  // when the bank listed a day's rows out of balance order. `oldestFirst` is
+  // that ascending chain as-is; `newestFirst` is its reverse. Memoised, so
+  // the reorder only runs when the entries or the chosen order change.
   const allSortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) =>
-      compareDateStrings(a.date, b.date, sortOrder),
-    );
+    const chained = sortHistoryByBalance(entries);
+    return sortOrder === "newestFirst" ? chained.reverse() : chained;
   }, [entries, sortOrder]);
 
   const [query, setQuery] = useState("");

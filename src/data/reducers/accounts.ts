@@ -8,6 +8,7 @@ import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
 import { attachImportedLoanPayments } from "../loans/auto-attach";
 import { attachImportedCoverTransfers } from "../accounts/cover-transfer";
+import { sortHistoryByBalance } from "../accounts/history-order";
 import { applyImportedSavingBalances } from "../savings/value";
 import {
   computeOpeningBalanceFromHistory,
@@ -302,7 +303,15 @@ export function reduceAccounts(
     // mutation rather than a no-op against a render-time projection.
     const merchants = state.primaryIncomeMerchants;
     const addedIds = mergeResult.addedIds;
-    let merged = mergeResult.merged;
+    // Re-thread same-day rows into running-balance order before anything
+    // else reads the merged set. Banks list a day's transactions in
+    // whatever order they like (reverse, alphabetical, by posting batch),
+    // and `mergeHistory` keeps that raw file order within a date. Fixing it
+    // here, at the single import funnel, makes the STORED order authoritative
+    // so the balance anchor (`accountBalance` takes the last same-day
+    // balance by array position), the opening-balance/saving-balance folds
+    // below, exports, and the duplicate finder all see one coherent chain.
+    let merged = sortHistoryByBalance(mergeResult.merged);
     // Mint the import-session id up front so every freshly-added entry can
     // carry it as `importId` and the `HistoryImport` audit record below
     // can reuse the same value. The cross-account duplicate finder reads
