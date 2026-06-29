@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import {
   importFlowReducer,
@@ -11,6 +11,10 @@ import type {
   ConflictUserRowPatch,
 } from "../../budget/BudgetFindConflictsModal";
 import { unlock as unlockAchievement } from "../../../data/achievements";
+import {
+  findDuplicateImports,
+  type DuplicateGroup,
+} from "../../../data/accounts/duplicates";
 import { stageHistoryImport } from "../../../data/import-staging";
 import { findOrphans } from "../../../data/reconciliation";
 import type { Action } from "../../../data/reducer";
@@ -74,6 +78,15 @@ type Result = {
   onCommitRenamePredictor: (decisions: RenameDecision[]) => void;
   onCancelRenamePredictor: () => void;
 
+  // Cross-account duplicates the most recent import created — incoming
+  // rows that collide (same date / description / amount / balance) with
+  // rows already in another account. Non-empty ⇒ the duplicate resolver
+  // auto-opens scoped to them so the user picks the true owner and the
+  // copies consolidate there instead of lingering as duplicates.
+  importDuplicateGroups: DuplicateGroup[];
+  importDuplicatesAt: number | null;
+  clearImportDuplicates: () => void;
+
   // BudgetFindConflictsModal hooks.
   onMergeConflictIntoHistory: (
     accountId: string,
@@ -120,7 +133,34 @@ export function useImportFlow({
     reconciliation,
     manualTriage,
     renamePredictor,
+    duplicatesCheckAt,
   } = state;
+
+  // The cross-account duplicate groups touched by the most recent import:
+  // any group holding an entry stamped with this import's `importedAt`
+  // (every freshly-added row carries it). Recomputed from live `data` so
+  // the resolver's list shrinks as the user resolves each group and the
+  // host closes the modal once the last one is gone.
+  const importDuplicateGroups = useMemo(() => {
+    if (duplicatesCheckAt === null) return [];
+    return findDuplicateImports(data).filter((g) =>
+      g.accounts.some((a) =>
+        a.entries.some((e) => e.importedAt === duplicatesCheckAt),
+      ),
+    );
+  }, [data, duplicatesCheckAt]);
+  const clearImportDuplicates = useCallback(
+    () => dispatchFlow({ kind: "setDuplicatesCheck", value: null }),
+    [],
+  );
+  // Once the import created no cross-account duplicates (or the user has
+  // resolved every one), drop the pending check so the finder stops
+  // re-running on each subsequent edit.
+  useEffect(() => {
+    if (duplicatesCheckAt !== null && importDuplicateGroups.length === 0) {
+      clearImportDuplicates();
+    }
+  }, [duplicatesCheckAt, importDuplicateGroups.length, clearImportDuplicates]);
 
   // Setters exposed in the public Result. The modal hosts call these
   // with `null` to close a dialog; they wrap the reducer so the API the
@@ -225,6 +265,10 @@ export function useImportFlow({
           reconciliation: null,
           renamePredictor: null,
         });
+        dispatchFlow({
+          kind: "setDuplicatesCheck",
+          value: pendingImport.now,
+        });
         return;
       }
       if (outcome.kind === "renamePredictor") {
@@ -274,6 +318,7 @@ export function useImportFlow({
         accountId,
         ...pendingImport,
       });
+      dispatchFlow({ kind: "setDuplicatesCheck", value: pendingImport.now });
       if (
         reconciliationDecisions &&
         (reconciliationDecisions.mergedRowIds.length > 0 ||
@@ -523,6 +568,9 @@ export function useImportFlow({
     renamePredictor,
     onCommitRenamePredictor,
     onCancelRenamePredictor,
+    importDuplicateGroups,
+    importDuplicatesAt: duplicatesCheckAt,
+    clearImportDuplicates,
     onMergeConflictIntoHistory,
     onMergeConflictUserRows,
   };

@@ -39,6 +39,7 @@ describe("initialImportFlowState", () => {
       reconciliation: null,
       manualTriage: null,
       renamePredictor: null,
+      duplicatesCheckAt: null,
     });
   });
 });
@@ -73,6 +74,9 @@ describe("importFlowReducer — per-modal setters", () => {
         value: renamePredictor,
       }),
     ).toEqual(makeState({ renamePredictor }));
+    expect(
+      importFlowReducer(base, { kind: "setDuplicatesCheck", value: 4242 }),
+    ).toEqual(makeState({ duplicatesCheckAt: 4242 }));
   });
 
   it("setters close their own modal with null", () => {

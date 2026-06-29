@@ -41,6 +41,11 @@ type Props = {
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
+  // Import-scoped variant: when set, only groups holding an entry stamped
+  // with this `importedAt` (the rows the most recent import just added)
+  // are shown, and the chrome uses import-specific copy. Absent ⇒ the
+  // full "Find duplicates" surface opened from the accounts menu.
+  filterImportedAt?: number;
 };
 
 // Sentinel owner selection — the "Skip" choice, meaning "don't resolve
@@ -53,8 +58,10 @@ export function AccountDuplicatesModal({
   data,
   settings,
   dispatch,
+  filterImportedAt,
 }: Props) {
   const t = useT();
+  const isImport = filterImportedAt !== undefined;
   const lang = useLang();
   const toast = useToast();
   // Per-group owner override, keyed by the signature-stable group id.
@@ -73,10 +80,19 @@ export function AccountDuplicatesModal({
 
   const accountsById = useMemo(() => indexById(data.accounts), [data.accounts]);
 
-  const groups = useMemo(
-    () => findDuplicateImports(data).filter((g) => !dismissed.has(g.id)),
-    [data, dismissed],
-  );
+  const groups = useMemo(() => {
+    let gs = findDuplicateImports(data).filter((g) => !dismissed.has(g.id));
+    if (filterImportedAt !== undefined) {
+      // Import-scoped: only the groups the latest import touched — those
+      // holding a row stamped with this import's `importedAt`.
+      gs = gs.filter((g) =>
+        g.accounts.some((a) =>
+          a.entries.some((e) => e.importedAt === filterImportedAt),
+        ),
+      );
+    }
+    return gs;
+  }, [data, dismissed, filterImportedAt]);
 
   const ownerFor = useCallback(
     (group: DuplicateGroup): string => {
@@ -161,11 +177,13 @@ export function AccountDuplicatesModal({
     >
       <Modal.Header
         icon={<Layers size={14} aria-hidden focusable={false} />}
-        title={t("duplicates.title")}
+        title={isImport ? t("duplicates.importTitle") : t("duplicates.title")}
         onClose={onClose}
       />
       <Modal.Body>
-        <p className="mb-3 text-sm text-muted">{t("duplicates.intro")}</p>
+        <p className="mb-3 text-sm text-muted">
+          {isImport ? t("duplicates.importIntro") : t("duplicates.intro")}
+        </p>
 
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <h3 className="text-xs font-bold tracking-wider uppercase text-muted">

@@ -667,6 +667,64 @@ describe("importBankHistory import session", () => {
   });
 });
 
+describe("cross-account duplicate detection at import time", () => {
+  it("flags a freshly-imported row that already exists in another account", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      accounts: [account("x"), account("y")],
+      history: {
+        y: [
+          entry({
+            id: "y_pred",
+            amount: 9000,
+            balance: 10407,
+            date: "2026-06-18",
+            description: "Deposit",
+          }),
+          entry({
+            id: "y_dn",
+            amount: -410,
+            balance: 9997,
+            date: "2026-06-22",
+            description: "Newspaper",
+          }),
+        ],
+      },
+    };
+    // Import the same -410 / 9997 row into account x.
+    const next = reducer(prev, {
+      type: "importBankHistory",
+      accountId: "x",
+      bankParserId: "test",
+      filename: "x.csv",
+      entries: [
+        {
+          date: "2026-06-22",
+          description: "Newspaper",
+          amount: -410,
+          balance: 9997,
+        },
+      ],
+      now: 4242,
+    });
+    const groups = findDuplicateImports(next);
+    expect(groups).toHaveLength(1);
+    // The import-scoped resolver keys off `importedAt`: the just-added row
+    // carries the import's timestamp, so the group is recognisably "touched
+    // by this import".
+    const touched = groups.filter((g) =>
+      g.accounts.some((a) => a.entries.some((e) => e.importedAt === 4242)),
+    );
+    expect(touched).toHaveLength(1);
+    // y owns it (its genuine deposit chains into the row); x's copy is the
+    // stray with no genuine predecessor to anchor on.
+    expect(touched[0].suggestedOwnerId).toBe("y");
+    expect(touched[0].accounts.find((a) => a.accountId === "y")?.fits).toBe(
+      true,
+    );
+  });
+});
+
 describe("resolveDuplicateImports reducer", () => {
   it("deletes the listed entries and re-anchors the opening balance", () => {
     const prev: UserData = {
