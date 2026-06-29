@@ -725,6 +725,15 @@ that aren't in the template comments:
   from the repo state (diff, `git log`, source tree). No "as you
   asked", no "I first tried X", no `Claude` / `session_…` references
   in prose — the harness appends a footer, don't restate it.
+- **Never reproduce real user data.** The user debugs with their own
+  budget — real bank statements, balances, merchant names, account
+  names, dates. Treat anything you see in a screenshot, exported
+  file, log, or `localStorage` dump as private. Do **not** copy any
+  of it into a commit message, PR title or body, code comment, or
+  test fixture. When a bug repro needs data, invent neutral synthetic
+  values (round amounts, placeholder descriptions like `"Merchant A"`,
+  fictional account names) that demonstrate the same shape — never
+  the user's actual figures or payees.
 
 ## Documentation sync points
 
