@@ -13,6 +13,7 @@ import {
   newId,
 } from "../../sheet";
 import type { AccountBudget, Row, UserRow } from "../../types";
+import { addDaysIso } from "../../../utils/date";
 import type { ItemAction } from "./actions";
 import {
   applyPatch,
@@ -301,9 +302,12 @@ export function reduceAccountBudget(
       if (!dateCol) return item;
       // Company is the one propagatable field with no backing column —
       // it is set inline from the description popover — so it sweeps the
-      // row-level `companyId` directly. Every column-backed field
-      // (description, amount, type) reuses `writeColumnValue`, the same
-      // routing the live `updateCell` edit went through.
+      // row-level `companyId` directly. `dateShift` slides each later
+      // occurrence's date by a signed day delta, leaving the anchor (its
+      // exact new date already written by the inline edit) untouched.
+      // Every column-backed field (description, amount, type) reuses
+      // `writeColumnValue`, the same routing the live `updateCell` edit
+      // went through.
       const apply =
         action.field === "company"
           ? (r: Row): Row => {
@@ -313,13 +317,28 @@ export function reduceAccountBudget(
               else delete next.companyId;
               return next;
             }
-          : (r: Row): Row =>
-              writeColumnValue(
-                { ...r },
-                item.columns,
-                action.columnId,
-                action.value,
-              );
+          : action.field === "dateShift"
+            ? (r: Row): Row => {
+                // The anchor already holds the user's exact new date —
+                // only the following occurrences slide along with it.
+                if (r.id === anchor.id) return r;
+                const delta =
+                  typeof action.value === "number" ? action.value : 0;
+                const cur = r.cells[dateCol.id];
+                if (delta === 0 || typeof cur !== "string" || cur === "")
+                  return r;
+                return {
+                  ...r,
+                  cells: { ...r.cells, [dateCol.id]: addDaysIso(cur, delta) },
+                };
+              }
+            : (r: Row): Row =>
+                writeColumnValue(
+                  { ...r },
+                  item.columns,
+                  action.columnId,
+                  action.value,
+                );
       return {
         ...item,
         rows: mapSeriesFrom(

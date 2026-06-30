@@ -79,7 +79,10 @@ export type ItemAction =
       // When `"company"`, propagate the row-level company assignment to
       // every following occurrence instead of a cell value; `columnId`
       // is ignored and `value` carries the companyId (`string | null`).
-      field?: "company";
+      // When `"dateShift"`, slide every later occurrence's date by
+      // `value` days (a signed number); the anchor keeps the exact date
+      // the inline edit already wrote, so it is excluded from the slide.
+      field?: "company" | "dateShift";
     }
   | {
       type: "deleteRows";

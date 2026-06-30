@@ -10,6 +10,9 @@ import type { AccountBudget, Row, UserData } from "../src/data/types";
 // sweep reuses the same write routing as the live `updateCell` edit:
 // the `type` column lands on `row.typeId` (not `cells`), and company —
 // which has no backing column — rides its own `field: "company"` path.
+// A date edit can't copy verbatim, so it rides `field: "dateShift"`,
+// sliding every later occurrence by the same day delta while the anchor
+// keeps the exact date the inline edit already wrote.
 
 function item(state: UserData): AccountBudget {
   return state.sheets[0].items[0] as AccountBudget;
@@ -113,6 +116,64 @@ describe("propagateCellToFuture", () => {
       untilIso: null,
     });
     for (const r of rowsOf(next)) expect(r.companyId).toBeUndefined();
+  });
+
+  it("slides later occurrences by the day delta on a date-shift", () => {
+    const state = seedSeries();
+    const dateId = colId(state, "date");
+    const anchor = rowsOf(state)[1]; // Feb 15
+    // The inline edit writes the anchor's new date first …
+    const moved = reducer(state, {
+      type: "updateCell",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: dateId,
+      value: "2026-02-13",
+    });
+    // … then the user confirms "apply to all following".
+    const next = reducer(moved, {
+      type: "propagateCellToFuture",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: dateId,
+      value: -2,
+      field: "dateShift",
+      untilIso: null,
+    });
+    const out = rowsOf(next);
+    expect(out[0].cells[dateId]).toBe("2026-01-15"); // Jan untouched
+    expect(out[1].cells[dateId]).toBe("2026-02-13"); // anchor keeps exact date
+    expect(out[2].cells[dateId]).toBe("2026-03-13"); // Mar slid by −2
+  });
+
+  it("clamps the date slide to untilIso", () => {
+    const state = seedSeries();
+    const dateId = colId(state, "date");
+    const anchor = rowsOf(state)[0]; // Jan 15
+    const moved = reducer(state, {
+      type: "updateCell",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: dateId,
+      value: "2026-01-20",
+    });
+    const next = reducer(moved, {
+      type: "propagateCellToFuture",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: dateId,
+      value: 5,
+      field: "dateShift",
+      untilIso: "2026-02-28",
+    });
+    const out = rowsOf(next);
+    expect(out[0].cells[dateId]).toBe("2026-01-20"); // anchor keeps exact date
+    expect(out[1].cells[dateId]).toBe("2026-02-20"); // Feb slid by +5
+    expect(out[2].cells[dateId]).toBe("2026-03-15"); // past the bound, untouched
   });
 
   it("respects the inclusive untilIso bound", () => {

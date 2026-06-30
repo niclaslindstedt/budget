@@ -11,12 +11,18 @@ export function DateCell({
   settings,
   fiscalMonthShift,
   onChange,
+  onCommit,
 }: {
   rowId: string;
   value: CellValue;
   settings: Settings;
   fiscalMonthShift?: -1 | 1;
   onChange: (value: CellValue) => void;
+  // Fires once the user picks a date (distinct from `onChange`, which
+  // also writes the cell). On a recurring row this lets the parent
+  // offer to slide every following occurrence by the same day delta —
+  // the same series prompt a description / amount edit raises.
+  onCommit?: (value: CellValue) => void;
 }) {
   const [open, setOpen] = useState(false);
   const iso = typeof value === "string" ? value : "";
@@ -39,7 +45,13 @@ export function DateCell({
         open={open}
         value={iso}
         onClose={() => setOpen(false)}
-        onSelect={(next) => onChange(next)}
+        onSelect={(next) => {
+          // Write the anchor immediately (so "just this entry" / dismiss
+          // keeps the new date), then signal the commit so the parent can
+          // stage the series-propagation prompt.
+          onChange(next);
+          onCommit?.(next);
+        }}
       />
     </>
   );
