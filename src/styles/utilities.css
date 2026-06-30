@@ -172,6 +172,27 @@
   animation: suggestion-pop 1800ms ease-in-out infinite;
 }
 
+/* Companion to `suggestion-pop` for the dotted suggestion pills (induced
+   company / type on an untagged history row). They fade between solid and
+   semi-transparent on the same 1800ms cadence as the accept disc, so a
+   pending suggestion reads as "alive" even where the dotted border can't
+   show it — most notably the mobile type cell, which renders the type as
+   a bare glyph with no pill outline. Base opacity is 1, so the
+   reduce-motion guard (which zeroes the duration + iteration count)
+   leaves the pill fully solid for users who opt out of motion. */
+@keyframes suggestion-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+[data-suggestion-blink] {
+  animation: suggestion-blink 1800ms ease-in-out infinite;
+}
+
 /* Desktop action-column compaction — see `useActionsCompaction`. When a
    sheet table can't fit its trailing action column, the table element
    gains `.actions-compact`: the inline edit / delete buttons and the
