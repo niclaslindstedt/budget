@@ -45,6 +45,14 @@ export type SpendingFact = {
   // Resolved via typeId → EntryType.categoryId; dangling ids → null.
   categoryId: string | null;
   companyId: string | null;
+  // True when the row's resolved type is an income type
+  // (`EntryType.kind === "income"`). Income types only tag data for the
+  // income sheet, so the spending breakdowns (per-category, per-type,
+  // per-merchant) exclude these facts entirely — a salary booked at ICA
+  // must never count toward "how much you spent at ICA". A row with no
+  // type, or a non-income type, is `false` and falls through to the
+  // sign-based expense filter as before.
+  isIncome: boolean;
 };
 
 // The dashboard's data-scope predicate: only rows representing money
@@ -122,6 +130,7 @@ export function collectSpendingFacts(inputs: SpendingInputs): {
       const typeId = type ? row.typeId! : null;
       const categoryId = type ? type.categoryId : null;
       const companyId = row.companyId ?? null;
+      const isIncome = type?.kind === "income";
 
       if (itemsById && amount < 0 && row.lineItems) {
         for (const link of row.lineItems) {
@@ -146,13 +155,14 @@ export function collectSpendingFacts(inputs: SpendingInputs): {
               typeId,
               categoryId,
               companyId,
+              isIncome,
             });
           }
         }
         if (amount === 0) continue;
       }
 
-      pushFact({ monthKey, amount, typeId, categoryId, companyId });
+      pushFact({ monthKey, amount, typeId, categoryId, companyId, isIncome });
     }
   }
 
@@ -204,7 +214,7 @@ export function computeMonthlyCategorySpending(
   monthKeys.forEach((key, i) => monthIndex.set(key, i));
   const byCategory = new Map<string | null, number[]>();
   for (const fact of facts) {
-    if (fact.amount >= 0) continue;
+    if (fact.isIncome || fact.amount >= 0) continue;
     const i = monthIndex.get(fact.monthKey);
     if (i === undefined) continue;
     let totals = byCategory.get(fact.categoryId);
@@ -243,7 +253,7 @@ function sharesBy(
   const totals = new Map<string | null, number>();
   let grand = 0;
   for (const fact of facts) {
-    if (fact.amount >= 0) continue;
+    if (fact.isIncome || fact.amount >= 0) continue;
     const key = keyOf(fact);
     const value = -fact.amount;
     totals.set(key, (totals.get(key) ?? 0) + value);
@@ -326,7 +336,7 @@ export function computeTopMerchants(
 ): MerchantSpending[] {
   const byCompany = new Map<string, { total: number; count: number }>();
   for (const fact of facts) {
-    if (fact.amount >= 0) continue;
+    if (fact.isIncome || fact.amount >= 0) continue;
     if (fact.companyId === null) continue;
     const entry = byCompany.get(fact.companyId);
     if (entry) {
