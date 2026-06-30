@@ -222,6 +222,11 @@ export function BudgetModalHost(props: Props) {
   const onApplyPendingToFuture = useCallback(
     (untilIso: string | null) => {
       if (!pendingSeriesEdit) return;
+      // Sliding the rest of the run by a day delta is the same gesture
+      // the full edit modal's "this and all future" date move makes, so
+      // it earns the same trophy.
+      if (pendingSeriesEdit.field === "dateShift")
+        unlockAchievement("dateShifter");
       dispatch({
         type: "propagateCellToFuture",
         sheetId,

@@ -13,6 +13,7 @@ import type {
   Settings,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
+import { diffDaysIso } from "../../../utils/date";
 import { formatNumber, withCurrency } from "../../../utils/format";
 import type { CorrectionDeletePrompt, PendingSeriesEdit } from "../types";
 
@@ -197,11 +198,41 @@ export function useRowMutations({
       const row = activeRows.find((r) => r.id === rowId);
       if (!row?.seriesId) return;
       const col = activeColumns.find((c) => c.id === columnId);
+      if (!col) return;
+      // A date edit can't propagate verbatim like description / amount —
+      // the dates differ per occurrence by design. Instead offer to slide
+      // every following occurrence by the same day delta, mirroring the
+      // "this and all future" date move in the full edit modal. `row`
+      // still carries the pre-edit date here (the `updateCell` dispatch
+      // that wrote the new value hasn't re-rendered this closure yet), so
+      // the delta is `new − old`.
+      if (col.type === "date") {
+        const oldDate = row.cells[col.id];
+        if (typeof oldDate !== "string" || typeof value !== "string") return;
+        const delta = diffDaysIso(value, oldDate);
+        if (!Number.isFinite(delta) || delta === 0) return;
+        const { lastSeriesDate } = seriesAnchorDates(
+          row,
+          activeRows,
+          activeColumns,
+        );
+        setPendingSeriesEdit({
+          rowId,
+          columnId,
+          fieldLabel: col.label,
+          // Surface the newly-typed date as the sweep's starting point.
+          anchorDate: value,
+          lastSeriesDate,
+          value: delta,
+          field: "dateShift",
+        });
+        return;
+      }
       // Only propagate fields that make sense across every occurrence —
-      // date and completed are inherently per-occurrence, balance is
-      // computed. The set is shared with the reducer so the staging gate
-      // can't drift from what propagation knows how to apply.
-      if (!col || !SERIES_PROPAGATABLE_COLUMN_TYPES.has(col.type)) {
+      // completed is inherently per-occurrence, balance is computed. The
+      // set is shared with the reducer so the staging gate can't drift
+      // from what propagation knows how to apply.
+      if (!SERIES_PROPAGATABLE_COLUMN_TYPES.has(col.type)) {
         return;
       }
       const { anchorDate, lastSeriesDate } = seriesAnchorDates(

@@ -390,6 +390,18 @@ can be summed straight into a split.
 scenarios page's override sweep) — the toolbars / dialogs that fire on
 selected rows (bulk edit, move-copy, apply-series).
 
+`ApplySeriesDialog` also fires after an **inline cell commit on a
+recurring row** (staged by `onCommitCell` in `useRowMutations`): editing
+a description, amount, type, or company offers to copy the same value to
+every following occurrence (`SERIES_PROPAGATABLE_COLUMN_TYPES` +
+`field: "company"`). A **date** edit can't copy verbatim — the dates
+differ per occurrence — so it stages `field: "dateShift"` instead: the
+anchor keeps the exact date the inline edit just wrote, and confirming
+"apply to all following" slides every later occurrence by the same day
+delta (`addDaysIso`), the same `dateShiftDays` semantics the full edit
+modal's "this and all future" date move uses. The reducer
+(`propagateCellToFuture`) excludes the anchor from the slide.
+
 ### Bulk action bar
 
 `src/components/BulkActionBar.tsx` — the count + Edit / Move / Copy /

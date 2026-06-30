@@ -91,13 +91,18 @@ export type PendingSeriesEdit = {
   fieldLabel: string;
   anchorDate: string;
   lastSeriesDate: string | null;
+  // For a plain cell / company edit this is the value to write to every
+  // following occurrence. For `"dateShift"` it is instead the signed day
+  // delta (`new − old`) each later occurrence slides by.
   value: CellValue;
-  // When set, the propagation targets a row-level field rather than a
-  // cell column. `"company"` propagates the inline company assignment
-  // (set from the description popover, which has no dedicated column);
-  // `columnId` is unused in that mode. Absent ⇒ a plain cell edit
-  // (description / amount), propagated via `columnId`.
-  field?: "company";
+  // When set, the propagation does something other than write `value` to
+  // a cell column. `"company"` propagates the inline company assignment
+  // (set from the description popover, which has no dedicated column;
+  // `columnId` is unused in that mode). `"dateShift"` slides every later
+  // occurrence's date by `value` days, leaving the anchor — already
+  // re-stamped to the user's exact new date — untouched. Absent ⇒ a
+  // plain cell edit (description / amount), propagated via `columnId`.
+  field?: "company" | "dateShift";
 };
 
 // Reconciliation modal state, populated after the user picks a bank

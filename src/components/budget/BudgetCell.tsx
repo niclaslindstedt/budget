@@ -332,6 +332,7 @@ function CellImpl({
           settings={settings}
           fiscalMonthShift={fiscalMonthShift}
           onChange={onChange}
+          onCommit={onCommit}
         />
       );
     }
