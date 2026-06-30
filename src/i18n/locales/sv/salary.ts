@@ -46,10 +46,12 @@ const salary: SalaryCatalog = {
   deleteConfirm: "Ta bort lönen för {month}? Detta går inte att ångra.",
   delete: "Ta bort",
   grossLabel: "Brutto",
-  grossHint: "Det du tjänade före skatt. Skatten är brutto minus nettot.",
+  grossHint:
+    "Det du tjänade före skatt. Fyll i brutto eller skatt – det andra räknas ut.",
   netLabel: "Netto",
   netHint: "Beloppet som betalades in på ditt konto.",
   taxLabel: "Skatt",
+  taxHint: "Skatt som dras. Fyll i skatt eller brutto – det andra räknas ut.",
   careOfChildDaysLabel: "VAB-dagar",
   parentalLeaveDaysLabel: "Föräldralediga dagar",
   vacationDaysLabel: "Semesterdagar",

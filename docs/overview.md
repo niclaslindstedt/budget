@@ -1118,11 +1118,14 @@ sheet.
 deposit (netto); `gross` = the entered brutto; tax = gross − net
 (`salaryTax` / `salaryGross` in `src/data/salary/salary.ts`). Absence-
 day counts (VAB / parental / vacation / sick) explain an off-average
-month. Added from scratch — no backing bank transaction, for paychecks
-older than the imported history reaches — via `SalaryAddModal.tsx` (the
-Add payslip title-menu / empty-state action), which leaves
-`sourceHistoryId` / `sourceRowId` absent. Edited via `SalaryEditModal.tsx`,
-which can also attach a payslip (`Salary.payslipPath`).
+month. In both the add and edit modals, gross and tax are two editable
+views anchored on net (`gross = net + tax`): typing either back-computes
+the other, so a paycheck can be recorded by its tax just as readily as
+by its gross — only `gross` is persisted. Added from scratch — no backing
+bank transaction, for paychecks older than the imported history reaches —
+via `SalaryAddModal.tsx` (the Add payslip title-menu / empty-state action),
+which leaves `sourceHistoryId` / `sourceRowId` absent. Edited via
+`SalaryEditModal.tsx`, which can also attach a payslip (`Salary.payslipPath`).
 
 ### Find salaries
 
