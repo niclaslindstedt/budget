@@ -157,6 +157,7 @@ export const CATEGORY_ICON_NAMES = [
   "arrow-down-circle",
   "arrow-up-circle",
   "percent",
+  "scroll-text",
   "newspaper",
   "book-marked",
   "clapperboard",
@@ -772,6 +773,7 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
   "landmark",
   "bitcoin",
   "percent",
+  "scroll-text",
   // Misc
   "calendar-days",
   "compass",

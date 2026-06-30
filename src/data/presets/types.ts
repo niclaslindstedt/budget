@@ -729,6 +729,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "income",
       kind: "income",
     },
+    {
+      slug: "inheritance",
+      name: "Inheritance",
+      color: C[3],
+      glyph: "scroll-text",
+      category: "income",
+      kind: "income",
+    },
     // Savings — left as "any" because some households model savings
     // both ways (a deposit out of checking on one sheet, the matching
     // arrival on the savings sheet).

@@ -119,6 +119,7 @@ export type CategoryIcon =
   | "arrow-down-circle"
   | "arrow-up-circle"
   | "percent"
+  | "scroll-text"
   // Print, media & arts
   | "newspaper"
   | "book-marked"
