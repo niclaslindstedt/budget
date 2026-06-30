@@ -35,6 +35,7 @@ export function CompanyPill({
 }) {
   return (
     <span
+      data-suggestion-blink={suggested ? "" : undefined}
       className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium ${
         suggested ? "border-dotted" : ""
       }`}
@@ -110,15 +111,15 @@ export function TypeBadge({
   return (
     <>
       <span
-        className={`inline-flex items-center justify-center md:hidden ${
-          suggested ? "opacity-70" : ""
-        }`}
+        data-suggestion-blink={suggested ? "" : undefined}
+        className="inline-flex items-center justify-center md:hidden"
         style={{ color: entryType.color }}
         aria-hidden
       >
         <CategoryIconGlyph name={entryType.glyph} size={18} />
       </span>
       <span
+        data-suggestion-blink={suggested ? "" : undefined}
         className={`hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex ${
           suggested ? "border-dotted" : ""
         }`}

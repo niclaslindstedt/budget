@@ -61,11 +61,13 @@ export function resolveEntryDescriptionDisplay(input: {
   const fallback = input.isFallback || !hasValue;
   const showLineItemPill = input.hasLineItems;
   const showCompanyPill = fallback && !showLineItemPill && !!input.company;
-  // The induced pill only shows when there's no real company to show and
-  // the user hasn't omitted a company on this row — it stands in for the
-  // bank-text fallback, exactly where the real company pill would sit.
+  // The induced pill shows whenever there's no real company to show and
+  // the user hasn't omitted a company — even on a row that already has a
+  // user-authored description. The pending suggestion deliberately takes
+  // the cell over (hiding the description text until the user accepts or
+  // omits the company), so the suggestion can't be missed; once resolved,
+  // `suggestedCompany` clears and the description comes back.
   const showSuggestedCompanyPill =
-    fallback &&
     !showLineItemPill &&
     !input.company &&
     !input.noCompany &&
