@@ -80,6 +80,7 @@ const presetTypes = {
   "side-income": "Side income",
   reimbursement: "Reimbursement",
   "gift-received": "Gifts received",
+  inheritance: "Inheritance",
   savings: "Savings",
   "child-savings": "Child savings",
   isk: "ISK",

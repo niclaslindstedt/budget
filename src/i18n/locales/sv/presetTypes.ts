@@ -80,6 +80,7 @@ const presetTypes: PresetTypesCatalog = {
   "side-income": "Sidoinkomst",
   reimbursement: "Utlägg",
   "gift-received": "Mottagna presenter",
+  inheritance: "Arv",
   savings: "Sparande",
   "child-savings": "Barnsparande",
   isk: "ISK",
