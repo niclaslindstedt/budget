@@ -137,6 +137,7 @@ function fact(partial: Partial<SpendingFact>): SpendingFact {
     typeId: null,
     categoryId: null,
     companyId: null,
+    isIncome: false,
     ...partial,
   };
 }
@@ -419,6 +420,19 @@ describe("collectSpendingFacts", () => {
     expect(dangling?.categoryId).toBeNull();
     expect(dangling?.typeId).toBeNull();
   });
+
+  it("flags income-typed rows as income (sign-independent)", () => {
+    const { facts } = collect([
+      makeRow("historic", { typeId: "type-salary", amount: 30000 }),
+      // An income-typed row can still carry a negative amount (a clawback
+      // / correction); the flag tracks the type, not the sign.
+      makeRow("historic", { typeId: "type-salary", amount: -2000 }),
+      makeRow("historic", { typeId: "type-groceries", amount: -100 }),
+    ]);
+    expect(facts.find((f) => f.amount === 30000)?.isIncome).toBe(true);
+    expect(facts.find((f) => f.amount === -2000)?.isIncome).toBe(true);
+    expect(facts.find((f) => f.amount === -100)?.isIncome).toBe(false);
+  });
 });
 
 describe("computeMonthlyCategorySpending", () => {
@@ -444,6 +458,24 @@ describe("computeMonthlyCategorySpending", () => {
       totalsByMonth: [0, 50],
       total: 50,
     });
+  });
+  it("excludes income-typed facts even when their amount is negative", () => {
+    const result = computeMonthlyCategorySpending(
+      [
+        fact({ monthKey: "2026-06", amount: -100, categoryId: "cat-food" }),
+        // Income type with a negative amount must not leak into spend.
+        fact({
+          monthKey: "2026-06",
+          amount: -2000,
+          categoryId: "cat-income",
+          isIncome: true,
+        }),
+      ],
+      monthKeys,
+    );
+    expect(result.categories).toEqual([
+      { categoryId: "cat-food", totalsByMonth: [0, 100], total: 100 },
+    ]);
   });
   it("orders by total descending with the null category last", () => {
     const result = computeMonthlyCategorySpending(
@@ -492,6 +524,18 @@ describe("computeCategoryShares / computeTypeShares", () => {
     const shares = computeTypeShares(facts, null);
     expect(shares).toEqual([{ id: null, value: 100, share: 1 }]);
   });
+  it("excludes income-typed facts with a negative amount from shares", () => {
+    const shares = computeCategoryShares([
+      fact({ amount: -300, categoryId: "cat-housing", typeId: "type-rent" }),
+      fact({
+        amount: -5000,
+        categoryId: "cat-income",
+        typeId: "type-salary",
+        isIncome: true,
+      }),
+    ]);
+    expect(shares).toEqual([{ id: "cat-housing", value: 300, share: 1 }]);
+  });
 });
 
 describe("computeIncomeVsExpenses", () => {
@@ -529,6 +573,21 @@ describe("computeTopMerchants", () => {
       { companyId: "co-b", total: 250, count: 1 },
       { companyId: "co-a", total: 150, count: 2 },
     ]);
+  });
+
+  it("excludes income from a merchant you also earn from", () => {
+    // You work at ICA (salary in) and shop at ICA (groceries out). Only
+    // the spend counts — the salary never inflates the merchant total,
+    // even if it were ever booked as a negative income-typed amount.
+    const merchants = computeTopMerchants(
+      [
+        fact({ amount: -300, companyId: "co-ica" }),
+        fact({ amount: 30000, companyId: "co-ica", isIncome: true }),
+        fact({ amount: -2000, companyId: "co-ica", isIncome: true }),
+      ],
+      8,
+    );
+    expect(merchants).toEqual([{ companyId: "co-ica", total: 300, count: 1 }]);
   });
 });
 

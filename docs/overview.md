@@ -451,8 +451,15 @@ current month fall away. Off by default, resets on open.
 
 **Data scope:** only money that actually moved counts — synthesized
 bank-history rows plus rows whose completed cell is ticked; transfers
-(either kind) and balance corrections are excluded. The predicate and
-all aggregation live in the pure helpers in
+(either kind) and balance corrections are excluded. Rows whose resolved
+type is an **income type** (`EntryType.kind === "income"`) are flagged
+on the fact (`SpendingFact.isIncome`) and excluded from the spend
+breakdowns — monthly-by-category, the category / type donut, and top
+merchants — regardless of sign, so a salary booked at a merchant you
+also shop at (e.g. earning from and spending at ICA) never inflates
+"how much you spent there". Income types only tag data for the income
+side; the Income-vs-expenses chart still splits by sign. The predicate
+and all aggregation live in the pure helpers in
 `src/data/budget/spending.ts` (`isActualSpendingRow`,
 `collectSpendingFacts`, `computeMonthlyCategorySpending`,
 `computeCategoryShares` / `computeTypeShares`,
