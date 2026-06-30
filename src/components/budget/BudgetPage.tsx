@@ -13,6 +13,7 @@ import {
 
 import { unlock } from "../../data/achievements";
 import { applyCoverRoles } from "../../data/accounts/cover-transfer";
+import type { InducedEntryMetadata } from "../../data/budget/company-type-hints";
 import { computeBudgetState } from "../../data/budget/computed-state";
 import { buildSynthesizedRows } from "../../data/budget/rows";
 import {
@@ -108,6 +109,12 @@ type Props = {
   // row whose merchant has been tagged before shows that company atop
   // the inline CompanyPicker, and forwarded to the metadata modal.
   descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → the company / type every tagged connection
+  // for that description agrees on (see
+  // `computeDescriptionMetadataInductions`). Surfaced into BudgetContext
+  // so untagged history rows render dotted suggestion pills + a
+  // Done-column accept button.
+  descriptionInductions: ReadonlyMap<string, InducedEntryMetadata>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;
@@ -226,6 +233,14 @@ type Props = {
   // `bulkUpdate` (persisting `Row.noCompany`) and synthesized history
   // rows through `updateHistoryEntry` (`entry.noCompany`).
   onSetRowNoCompany: (row: Row, next: boolean) => void;
+  // Accept the induced company / type suggestion on an untagged history
+  // row — persists `userCompanyId` / `userTypeId` onto the underlying
+  // `HistoryEntry` in one dispatch. Defined at AppShell level so it
+  // routes through `updateHistoryEntry`.
+  onAcceptHistorySuggestion: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onToggleSelect: (rowId: string) => void;
   onToggleSelectMonth: (rowIds: string[], targetSelected: boolean) => void;
@@ -280,6 +295,7 @@ export function BudgetPage({
   companyTypeHints,
   typeCompanyHints,
   descriptionCompanyHints,
+  descriptionInductions,
   onCreateType,
   onCreateCategory,
   onCreateCompany,
@@ -313,6 +329,7 @@ export function BudgetPage({
   onTriageMonth,
   onSetRowCompany,
   onSetRowNoCompany,
+  onAcceptHistorySuggestion,
   data,
 }: Props) {
   const t = useT();
@@ -362,6 +379,7 @@ export function BudgetPage({
       companyTypeHints,
       typeCompanyHints,
       descriptionCompanyHints,
+      descriptionInductions,
       onCreateType,
       onCreateCategory,
       onCreateCompany,
@@ -378,6 +396,7 @@ export function BudgetPage({
       companyTypeHints,
       typeCompanyHints,
       descriptionCompanyHints,
+      descriptionInductions,
       onCreateType,
       onCreateCategory,
       onCreateCompany,
@@ -473,6 +492,7 @@ export function BudgetPage({
     handleCommitCell,
     handleSetRowCompany,
     handleSetRowNoCompany,
+    handleAcceptSuggestion,
   } = useRowFlashing({
     accountId: item.accountId,
     columns: item.columns,
@@ -482,6 +502,7 @@ export function BudgetPage({
     onCommitCell,
     onSetRowCompany,
     onSetRowNoCompany,
+    onAcceptSuggestion: onAcceptHistorySuggestion,
   });
 
   const currentMonth = useMemo(
@@ -784,6 +805,7 @@ export function BudgetPage({
                     balances={balances}
                     onSetRowCompany={handleSetRowCompany}
                     onSetRowNoCompany={handleSetRowNoCompany}
+                    onAcceptSuggestion={handleAcceptSuggestion}
                     selectMode={selectMode}
                     selectedIds={selectedIds}
                     canTransfer={canTransfer}

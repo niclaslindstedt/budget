@@ -20,19 +20,27 @@ import { CategoryIconGlyph } from "./icons";
 // symbol instead of the company glyph — it stands in for the external
 // Repeat icon (suppressed at the call site) so the pill saves the
 // horizontal space the separate icon would have cost.
+// `suggested` switches the pill from a solid outline to a dotted,
+// muted one — the visual contract for an *induced* company the user
+// hasn't accepted yet (see `computeDescriptionMetadataInductions`)
+// versus a company they actually tagged.
 export function CompanyPill({
   name,
   recurring,
+  suggested = false,
 }: {
   name: string;
   recurring: boolean;
+  suggested?: boolean;
 }) {
   return (
     <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium"
+      className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 font-medium ${
+        suggested ? "border-dotted" : ""
+      }`}
       style={{
-        borderColor: "var(--fg-bright)",
-        color: "var(--fg-bright)",
+        borderColor: suggested ? "var(--muted)" : "var(--fg-bright)",
+        color: suggested ? "var(--muted)" : "var(--fg-bright)",
       }}
     >
       {recurring ? (
@@ -86,23 +94,41 @@ export function LineItemPill({ name, many }: { name: string; many: boolean }) {
 // glyph + name pill on desktop — the same responsive split the budget
 // table's type column uses. Renders a muted em dash when the row has
 // no type so the column keeps its track without looking broken.
-export function TypeBadge({ entryType }: { entryType: EntryType | null }) {
+// `suggested` renders the badge as a dotted, fill-less outline (and a
+// dimmed mobile glyph) — the induced-but-unaccepted state, mirroring
+// `CompanyPill`'s suggestion treatment so a dotted type + dotted company
+// read as one "pending suggestion" across the row.
+export function TypeBadge({
+  entryType,
+  suggested = false,
+}: {
+  entryType: EntryType | null;
+  suggested?: boolean;
+}) {
   const t = useT();
   if (!entryType) return <span className="text-muted">—</span>;
   return (
     <>
       <span
-        className="inline-flex items-center justify-center md:hidden"
+        className={`inline-flex items-center justify-center md:hidden ${
+          suggested ? "opacity-70" : ""
+        }`}
         style={{ color: entryType.color }}
         aria-hidden
       >
         <CategoryIconGlyph name={entryType.glyph} size={18} />
       </span>
       <span
-        className="hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex"
+        className={`hidden min-w-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium md:inline-flex ${
+          suggested ? "border-dotted" : ""
+        }`}
         style={{
-          backgroundColor: tintFill(entryType.color),
-          borderColor: tintBorder(entryType.color),
+          backgroundColor: suggested
+            ? "transparent"
+            : tintFill(entryType.color),
+          borderColor: suggested
+            ? entryType.color
+            : tintBorder(entryType.color),
           color: entryType.color,
         }}
       >

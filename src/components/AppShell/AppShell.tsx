@@ -52,6 +52,7 @@ import {
   companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
   computeDescriptionCompanyHints,
+  computeDescriptionMetadataInductions,
   computeTypeCompanyHints,
 } from "../../data/budget/company-type-hints";
 import {
@@ -412,6 +413,16 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     () => computeDescriptionCompanyHints(data),
     [data],
   );
+  // Per-description metadata inductions — the company / type every tagged
+  // connection for a merchant unanimously agrees on. Drives the dotted
+  // suggestion pills + Done-column accept button on untagged history
+  // rows. Same cheap full-walk as the hints above, so it recomputes
+  // whenever the user tags an entry (every accepted suggestion sharpens
+  // the next walk's confidence).
+  const descriptionInductions = useMemo(
+    () => computeDescriptionMetadataInductions(data),
+    [data],
+  );
 
   // Warn before unload when the in-memory state has changes the
   // auto-save deliberately skipped (e.g. a half-filled row). The
@@ -491,6 +502,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onSplitHistoryEntry,
     onSetRowCompany,
     onSetRowNoCompany,
+    onAcceptHistorySuggestion,
     onCorrectionDeleteRequest,
   } = rowMutations;
   const onAddRow = useCallback(
@@ -1208,6 +1220,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                       companyTypeHints={companyTypeHints}
                       typeCompanyHints={typeCompanyHints}
                       descriptionCompanyHints={descriptionCompanyHints}
+                      descriptionInductions={descriptionInductions}
                       onCreateType={onCreateType}
                       onCreateCategory={onCreateCategory}
                       onCreateCompany={onCreateCompany}
@@ -1253,6 +1266,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                       onTriageMonth={onTriageMonth}
                       onSetRowCompany={onSetRowCompany}
                       onSetRowNoCompany={onSetRowNoCompany}
+                      onAcceptHistorySuggestion={onAcceptHistorySuggestion}
                     />
                   </>
                 )}

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import { unlock } from "../../../data/achievements";
 import { autoTypeForCompany } from "../../../data/budget/company-type-hints";
 import { SERIES_PROPAGATABLE_COLUMN_TYPES } from "../../../data/budget/rows";
 import { findColumnByType } from "../../../data/sheet";
@@ -161,6 +162,13 @@ type Result = {
   // Row-level "omit company" writer for user-authored budget rows
   // (`bulkUpdate`) and synthesized history rows (`updateHistoryEntry`).
   onSetRowNoCompany: (row: Row, next: boolean) => void;
+  // Accept the induced company / type suggestion on an untagged history
+  // row — persists both fields onto the underlying `HistoryEntry` in a
+  // single `updateHistoryEntry`. A no-op for non-history rows.
+  onAcceptHistorySuggestion: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
   // Stage the confirm-delete prompt for a correction (divider) row.
   onCorrectionDeleteRequest: (row: Row) => void;
 };
@@ -541,6 +549,31 @@ export function useRowMutations({
     [dispatch, sheetId, itemId, activeAccountId],
   );
 
+  // Accept an induced metadata suggestion on a synthesized history row.
+  // Persists `userCompanyId` / `userTypeId` together so the row flips to
+  // "finished" in one dispatch (one undo step). Accepting a company also
+  // clears any stale `noCompany` flag so the resolver keeps the tag —
+  // mirrors `onSetRowCompany`'s `noCompany: false` on assignment.
+  const onAcceptHistorySuggestion = useCallback(
+    (row: Row, patch: { userCompanyId?: string; userTypeId?: string }) => {
+      if (row.kind !== "historic" || !activeAccountId) return;
+      const full: {
+        userCompanyId?: string;
+        userTypeId?: string;
+        noCompany?: boolean;
+      } = { ...patch };
+      if (patch.userCompanyId) full.noCompany = false;
+      dispatch({
+        type: "updateHistoryEntry",
+        accountId: activeAccountId,
+        entryId: row.historyEntryId,
+        patch: full,
+      });
+      unlock("onTheDottedLine");
+    },
+    [dispatch, activeAccountId],
+  );
+
   const onCorrectionDeleteRequest = useCallback(
     (row: Row) => {
       // Pre-format the signed delta so the prompt reads naturally even
@@ -591,6 +624,7 @@ export function useRowMutations({
     onSplitHistoryEntry,
     onSetRowCompany,
     onSetRowNoCompany,
+    onAcceptHistorySuggestion,
     onCorrectionDeleteRequest,
   };
 }

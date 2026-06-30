@@ -53,6 +53,10 @@ type Params = {
   onCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   onSetRowCompany: (row: Row, companyId: string | null) => void;
   onSetRowNoCompany: (row: Row, next: boolean) => void;
+  onAcceptSuggestion: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
 };
 
 export type RowFlashing = {
@@ -60,6 +64,10 @@ export type RowFlashing = {
   handleCommitCell: (rowId: string, columnId: string, value: CellValue) => void;
   handleSetRowCompany: (row: Row, companyId: string | null) => void;
   handleSetRowNoCompany: (row: Row, next: boolean) => void;
+  handleAcceptSuggestion: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
 };
 
 export function useRowFlashing({
@@ -71,6 +79,7 @@ export function useRowFlashing({
   onCommitCell,
   onSetRowCompany,
   onSetRowNoCompany,
+  onAcceptSuggestion,
 }: Params): RowFlashing {
   const flashRow = useCallback((rowId: string) => {
     if (typeof document === "undefined") return;
@@ -165,6 +174,17 @@ export function useRowFlashing({
     [onSetRowNoCompany, flashRow],
   );
 
+  // Accepting an induced suggestion persists the company / type onto the
+  // history entry; flash the row so the change reads the same way as a
+  // hand-tagged company pick.
+  const handleAcceptSuggestion = useCallback(
+    (row: Row, patch: { userCompanyId?: string; userTypeId?: string }) => {
+      onAcceptSuggestion(row, patch);
+      flashRow(row.id);
+    },
+    [onAcceptSuggestion, flashRow],
+  );
+
   // Flash newly-added rows. Diffs `rows` ids across renders and fires
   // the heartbeat on a single new id — the shape produced by the
   // inline "+" button (and a non-series complex entry). Multi-row
@@ -195,5 +215,6 @@ export function useRowFlashing({
     handleCommitCell,
     handleSetRowCompany,
     handleSetRowNoCompany,
+    handleAcceptSuggestion,
   };
 }

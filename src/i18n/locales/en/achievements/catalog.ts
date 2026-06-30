@@ -244,6 +244,12 @@ const catalog = {
     learnMore:
       "Companies are the merchants your money flows to — Fortum, H&M, the corner café. Pick one from the description popover or any edit modal and the row shows who it paid even when it carries no description of its own. Manage them under Settings → Companies.",
   },
+  onTheDottedLine: {
+    name: "On the Dotted Line",
+    condition: "Accept a suggested company and type on an imported row.",
+    learnMore:
+      "Once you've labelled a few months by hand, the app learns which merchant always means which company and type. An untagged transaction whose merchant points to a single answer shows its guess as dotted pills, and its Done button pops — one tap accepts the company and type and files the row. Label a few, then clear the rest by accepting.",
+  },
   moverShaker: {
     name: "Mover & Shaker",
     condition: "Move or copy rows across months.",

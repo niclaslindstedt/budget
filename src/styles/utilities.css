@@ -148,6 +148,30 @@
   animation: field-attention 1500ms ease-out;
 }
 
+/* Gentle, continuous pulse on the accent disc inside the Done-column
+   "accept suggestion" button (untagged history rows whose merchant
+   induces a single company / type — see
+   `computeDescriptionMetadataInductions`). It deliberately "pops" more
+   than the static green finished-check so the row reads as "one tap
+   fills this in". `transform` scale + a soft accent halo keep the
+   motion subtle; the reduce-motion guard at the top of this file zeroes
+   the duration AND forces iteration-count to 1, collapsing the loop to
+   a single static frame for users who opt out of motion. */
+@keyframes suggestion-pop {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+}
+[data-suggestion-pop] {
+  animation: suggestion-pop 1800ms ease-in-out infinite;
+}
+
 /* Desktop action-column compaction — see `useActionsCompaction`. When a
    sheet table can't fit its trailing action column, the table element
    gains `.actions-compact`: the inline edit / delete buttons and the

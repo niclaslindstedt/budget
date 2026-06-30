@@ -4,6 +4,7 @@ import { ArrowLeftRight, Info, Pencil, Trash2 } from "lucide-react";
 import { isRowFinished, isRowSavable } from "../../data/budget/rows";
 import {
   descriptionCompanyHintsFor,
+  descriptionMetadataInductionFor,
   mergeCompanyHintIds,
 } from "../../data/budget/company-type-hints";
 import { getStandardColumns } from "../../data/sheet";
@@ -34,6 +35,15 @@ type Props = {
   // rows dispatch `updateHistoryEntry`. A no-op for correction / transfer
   // rows, whose cell wiring leaves `onOmitChange` unset so it never fires.
   onSetRowNoCompany: (row: Row, next: boolean) => void;
+  // Accept the induced company / type suggestion on an untagged history
+  // row — persists the patch onto the underlying `HistoryEntry`. Fired by
+  // the Done-column "pop" accept button. A no-op for any non-history row
+  // (those never surface a suggestion). Optional so call sites that don't
+  // mount history rows can omit it.
+  onAcceptSuggestion?: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
   selectMode: boolean;
   selected: boolean;
   // Whether the transfer button on this row can be used. False when
@@ -84,6 +94,7 @@ function BudgetRowImpl({
   balances,
   onSetRowCompany,
   onSetRowNoCompany,
+  onAcceptSuggestion,
   selectMode,
   selected,
   canTransfer,
@@ -108,6 +119,7 @@ function BudgetRowImpl({
     companyTypeHints,
     typeCompanyHints,
     descriptionCompanyHints,
+    descriptionInductions,
     settings,
     coverTransferIds,
   } = useBudgetContext();
@@ -260,6 +272,64 @@ function BudgetRowImpl({
     () => mergeCompanyHintIds(descriptionCompanyHintIds, typeCompanyHintIds),
     [descriptionCompanyHintIds, typeCompanyHintIds],
   );
+
+  // Induced metadata suggestion for an untagged history row: the company
+  // and/or type the merchant's other entries unanimously agree on (see
+  // `computeDescriptionMetadataInductions`). Each field is offered only
+  // when the row doesn't already resolve it — a company unless one is set
+  // or the row omits a company; a type unless one is set. When at least
+  // one field is suggestable the Done cell turns into the "pop" accept
+  // button (wired below). Non-history rows never induce.
+  //
+  // The induction is keyed on the raw bank text — never the resolved
+  // description, which falls back to the company / type name once either
+  // is tagged (so a row with a company but no type would otherwise look
+  // the merchant up under the company's name). `descriptionPlaceholder`
+  // and `bankDescription` both carry the original statement memo (set by
+  // `synthesizeHistoryRow` in the fallback / override cases); when neither
+  // is set the resolved description already equals the bank text.
+  const historyBankText =
+    row.kind === "historic"
+      ? (row.bankDescription ?? row.descriptionPlaceholder ?? rowDescription)
+      : rowDescription;
+  const induction = useMemo(
+    () =>
+      isHistory
+        ? descriptionMetadataInductionFor(
+            descriptionInductions,
+            historyBankText,
+          )
+        : undefined,
+    [isHistory, descriptionInductions, historyBankText],
+  );
+  const suggestedCompanyId =
+    induction?.companyId && !row.companyId && row.noCompany !== true
+      ? induction.companyId
+      : undefined;
+  const suggestedTypeId =
+    induction?.typeId && !row.typeId ? induction.typeId : undefined;
+  const suggestedCompany = suggestedCompanyId
+    ? (companiesById.get(suggestedCompanyId) ?? null)
+    : null;
+  const suggestedType = suggestedTypeId
+    ? (typesById.get(suggestedTypeId) ?? null)
+    : null;
+  // Only offer acceptance for fields that resolve to a live company /
+  // type (a dangling induced id renders nothing and must not be
+  // persisted). The accept patch carries exactly the resolved fields.
+  const acceptPatch = useMemo(() => {
+    const patch: { userCompanyId?: string; userTypeId?: string } = {};
+    if (suggestedCompany) patch.userCompanyId = suggestedCompany.id;
+    if (suggestedType) patch.userTypeId = suggestedType.id;
+    return patch;
+  }, [suggestedCompany, suggestedType]);
+  const hasSuggestion =
+    !!onAcceptSuggestion &&
+    (acceptPatch.userCompanyId !== undefined ||
+      acceptPatch.userTypeId !== undefined);
+  const handleAcceptSuggestion = useCallback(() => {
+    onAcceptSuggestion?.(row, acceptPatch);
+  }, [onAcceptSuggestion, row, acceptPatch]);
   const rowDateFormatted = isoDate
     ? formatShortDate(isoDate, settings.shortDateFormat, lang)
     : "";
@@ -399,6 +469,15 @@ function BudgetRowImpl({
           isRecurring={isSeries}
           entryType={entryType}
           company={company}
+          suggestedCompany={
+            col.type === "description" ? suggestedCompany : undefined
+          }
+          suggestedType={col.type === "type" ? suggestedType : undefined}
+          onAcceptSuggestion={
+            col.type === "completed" && hasSuggestion
+              ? handleAcceptSuggestion
+              : undefined
+          }
           onSetCompany={handleSetCompany}
           noCompany={canOmitCompany ? (row.noCompany ?? false) : undefined}
           onSetNoCompany={canOmitCompany ? handleSetNoCompany : undefined}

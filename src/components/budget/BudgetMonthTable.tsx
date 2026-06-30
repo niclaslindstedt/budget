@@ -30,6 +30,12 @@ type Props = {
   onSetRowCompany: (row: Row, companyId: string | null) => void;
   // Row-level "omit company" writer — see `BudgetRow.Props.onSetRowNoCompany`.
   onSetRowNoCompany: (row: Row, next: boolean) => void;
+  // Accept an induced metadata suggestion on a history row — see
+  // `BudgetRow.Props.onAcceptSuggestion`. Pure passthrough.
+  onAcceptSuggestion: (
+    row: Row,
+    patch: { userCompanyId?: string; userTypeId?: string },
+  ) => void;
   selectMode: boolean;
   selectedIds: ReadonlySet<string>;
   canTransfer: boolean;
@@ -112,6 +118,7 @@ function MonthTableImpl({
   balances,
   onSetRowCompany,
   onSetRowNoCompany,
+  onAcceptSuggestion,
   selectMode,
   selectedIds,
   canTransfer,
@@ -453,6 +460,7 @@ function MonthTableImpl({
                             balances={balances}
                             onSetRowCompany={onSetRowCompany}
                             onSetRowNoCompany={onSetRowNoCompany}
+                            onAcceptSuggestion={onAcceptSuggestion}
                             selectMode={selectMode}
                             selected={selectedIds.has(hidden.id)}
                             canTransfer={canTransfer}
@@ -471,6 +479,7 @@ function MonthTableImpl({
                         balances={balances}
                         onSetRowCompany={onSetRowCompany}
                         onSetRowNoCompany={onSetRowNoCompany}
+                        onAcceptSuggestion={onAcceptSuggestion}
                         selectMode={selectMode}
                         selected={selectedIds.has(row.id)}
                         canTransfer={canTransfer}
