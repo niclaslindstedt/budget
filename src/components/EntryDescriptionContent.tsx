@@ -22,6 +22,11 @@ export type EntryDescriptionDisplay = {
   hasContent: boolean;
   showLineItemPill: boolean;
   showCompanyPill: boolean;
+  // True when the cell should render a dotted, muted company pill for an
+  // *induced* company the user hasn't accepted yet — only in fallback
+  // mode, when no real company is tagged. Mutually exclusive with
+  // `showCompanyPill` (a real company always wins).
+  showSuggestedCompanyPill: boolean;
   showTypeName: boolean;
   // The low-key Building2 prefix shown when BOTH a description and a
   // company are set (line items excepted, since a line-item pill takes
@@ -47,24 +52,46 @@ export function resolveEntryDescriptionDisplay(input: {
   company: Company | null;
   hasLineItems: boolean;
   noCompany: boolean;
+  // An induced company the user hasn't accepted yet, surfaced as a dotted
+  // pill only when no real company / line items are set. Optional so the
+  // read-only reconciliation modal (which never induces) can omit it.
+  suggestedCompany?: Company | null;
 }): EntryDescriptionDisplay {
   const hasValue = input.value.length > 0;
   const fallback = input.isFallback || !hasValue;
   const showLineItemPill = input.hasLineItems;
   const showCompanyPill = fallback && !showLineItemPill && !!input.company;
+  // The induced pill only shows when there's no real company to show and
+  // the user hasn't omitted a company on this row — it stands in for the
+  // bank-text fallback, exactly where the real company pill would sit.
+  const showSuggestedCompanyPill =
+    fallback &&
+    !showLineItemPill &&
+    !input.company &&
+    !input.noCompany &&
+    !!input.suggestedCompany;
   const showTypeName =
-    fallback && !showLineItemPill && !input.company && !!input.entryType;
+    fallback &&
+    !showLineItemPill &&
+    !input.company &&
+    !showSuggestedCompanyPill &&
+    !!input.entryType;
   const showCompanyGlyph =
     !fallback && hasValue && !!input.company && !showLineItemPill;
   const showOmittedGlyph = !!input.noCompany && !input.company;
   const hasContent =
-    showLineItemPill || showCompanyPill || showTypeName || hasValue;
+    showLineItemPill ||
+    showCompanyPill ||
+    showSuggestedCompanyPill ||
+    showTypeName ||
+    hasValue;
   return {
     fallback,
     hasValue,
     hasContent,
     showLineItemPill,
     showCompanyPill,
+    showSuggestedCompanyPill,
     showTypeName,
     showCompanyGlyph,
     showOmittedGlyph,
@@ -87,6 +114,7 @@ export function EntryDescriptionContent({
   isRecurring,
   entryType,
   company,
+  suggestedCompany,
   display,
   lineItem,
 }: {
@@ -94,6 +122,9 @@ export function EntryDescriptionContent({
   isRecurring: boolean;
   entryType: EntryType | null;
   company: Company | null;
+  // The induced company rendered as a dotted pill when
+  // `display.showSuggestedCompanyPill` is set. Resolved by the caller.
+  suggestedCompany?: Company | null;
   display: EntryDescriptionDisplay;
   lineItem?: EntryDescriptionLineItem;
 }) {
@@ -102,6 +133,7 @@ export function EntryDescriptionContent({
   const {
     showLineItemPill,
     showCompanyPill,
+    showSuggestedCompanyPill,
     showTypeName,
     showCompanyGlyph,
     showOmittedGlyph,
@@ -109,7 +141,7 @@ export function EntryDescriptionContent({
   } = display;
   return (
     <>
-      {isRecurring && !showCompanyPill && (
+      {isRecurring && !showCompanyPill && !showSuggestedCompanyPill && (
         <Repeat
           size={16}
           aria-hidden
@@ -121,6 +153,8 @@ export function EntryDescriptionContent({
         <LineItemPill name={lineItem.name} many={lineItem.many} />
       ) : showCompanyPill ? (
         <CompanyPill name={company!.name} recurring={isRecurring} />
+      ) : showSuggestedCompanyPill && suggestedCompany ? (
+        <CompanyPill name={suggestedCompany.name} recurring={false} suggested />
       ) : showTypeName ? (
         <span className="inline-flex min-w-0 items-center gap-1">
           {showOmittedGlyph && <OmittedGlyph />}

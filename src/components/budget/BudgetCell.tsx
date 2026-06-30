@@ -12,7 +12,10 @@ import { useBudgetContext } from "./BudgetContext";
 import { AmountCell } from "./cells/AmountCell";
 import { AmountCellDisplay } from "./cells/AmountCellDisplay";
 import { BalanceCell } from "./cells/BalanceCell";
-import { ReadonlyCompletedCell } from "./cells/CompletedCell";
+import {
+  AcceptSuggestionCompletedCell,
+  ReadonlyCompletedCell,
+} from "./cells/CompletedCell";
 import { CELL_BASE } from "./cells/constants";
 import { DateCell, ReadonlyDateCell } from "./cells/DateCell";
 import {
@@ -40,6 +43,17 @@ type Props = {
   // and the row has no user-authored description — replacing the
   // type-name / bank-text fallback.
   company?: Company | null;
+  // Induced company / type for an untagged synthesized history row (see
+  // `computeDescriptionMetadataInductions`). The description column reads
+  // `suggestedCompany` to render a dotted suggestion pill; the type column
+  // reads `suggestedType` for the same. Both undefined on rows that
+  // already resolve the field or have no induction.
+  suggestedCompany?: Company | null;
+  suggestedType?: EntryType | null;
+  // When set on the `completed` column of a history row, that row has an
+  // acceptable induction and the Done cell becomes a "pop" accept button
+  // that fires this to persist the suggestion. Undefined otherwise.
+  onAcceptSuggestion?: () => void;
   // Pre-bound (no rowId) writer for the row's company. Pre-bound by
   // BudgetRow so this cell can stay agnostic of whether the row is a
   // budget row (dispatches `bulkUpdate`) or a synthesized history row
@@ -170,6 +184,9 @@ function CellImpl({
   isRecurring,
   entryType,
   company,
+  suggestedCompany,
+  suggestedType,
+  onAcceptSuggestion,
   onSetCompany,
   noCompany,
   onSetNoCompany,
@@ -237,8 +254,13 @@ function CellImpl({
     // History Done column: an imported transaction already happened, so
     // it always shows a check — the colour is the signal. Green once the
     // row is "finished" (categorised: a type plus a company or omit),
-    // grey while it still needs work.
+    // grey while it still needs work. When the row is untagged but its
+    // merchant induces a company / type, the cell becomes a "pop" accept
+    // button instead: tapping it persists the induction in one go.
     if (isHistory && column.type === "completed") {
+      if (onAcceptSuggestion) {
+        return <AcceptSuggestionCompletedCell onAccept={onAcceptSuggestion} />;
+      }
       return (
         <ReadonlyCompletedCell checked tone={finished ? "success" : "muted"} />
       );
@@ -289,6 +311,7 @@ function CellImpl({
               isRecurring={false}
               entryType={entryType ?? null}
               company={company ?? null}
+              suggestedCompany={suggestedCompany}
               companies={companies}
               placeholder={descriptionPlaceholder}
               bankDescription={bankDescription}
@@ -310,6 +333,7 @@ function CellImpl({
               types={types}
               categories={categories}
               entryType={entryType ?? null}
+              suggestedType={suggestedType}
               hintTypeIds={typeHintIds}
               rowDate={rowDate}
               rowDateColor={rowDateColor}

@@ -31,6 +31,7 @@ export function TypePickerCell({
   types,
   categories,
   entryType,
+  suggestedType,
   amountSign,
   hintTypeIds,
   rowDate,
@@ -45,6 +46,9 @@ export function TypePickerCell({
   types: readonly EntryType[];
   categories: readonly Category[];
   entryType: EntryType | null;
+  // An induced type the user hasn't accepted yet, rendered as a dotted
+  // suggestion badge when no type is picked. See `TypePicker.suggestedType`.
+  suggestedType?: EntryType | null;
   amountSign?: "positive" | "negative" | "any";
   hintTypeIds?: readonly string[];
   rowDate?: string;
@@ -62,6 +66,7 @@ export function TypePickerCell({
         types={types}
         categories={categories}
         selectedId={entryType?.id ?? null}
+        suggestedType={suggestedType}
         amountSign={amountSign}
         hintTypeIds={hintTypeIds}
         rowDate={rowDate}

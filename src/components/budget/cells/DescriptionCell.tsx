@@ -102,6 +102,7 @@ export function DescriptionCell({
   isRecurring,
   entryType,
   company,
+  suggestedCompany,
   companies,
   placeholder,
   bankDescription,
@@ -127,6 +128,14 @@ export function DescriptionCell({
   // renders a small `Building2` glyph before the description as a
   // low-key indicator that the row is tagged to a merchant.
   company: Company | null;
+  // An induced company the user hasn't accepted yet (see
+  // `computeDescriptionMetadataInductions`). When set and the row has no
+  // real company, the trigger renders it as a dotted "suggestion" pill in
+  // place of the bank-text fallback. The inline picker is unaffected —
+  // the suggestion is purely a render hint until accepted via the Done
+  // column. Undefined on rows with no induction or that already resolve a
+  // company.
+  suggestedCompany?: Company | null;
   // Full company list — surfaced by the description popover's inline
   // `CompanyPicker` so the user can tag (or change) the row's company
   // straight from the description reveal. Optional: when omitted (or
@@ -256,12 +265,14 @@ export function DescriptionCell({
             company,
             hasLineItems,
             noCompany: !!noCompany,
+            suggestedCompany,
           });
           const {
             hasValue,
             hasContent,
             showLineItemPill,
             showCompanyPill,
+            showSuggestedCompanyPill,
             showTypeName,
             showOmittedGlyph,
           } = display;
@@ -273,46 +284,53 @@ export function DescriptionCell({
           const lineItemLabel = manyLineItems
             ? `${t("cell.lineItems")}: ${firstLineItemName}`
             : firstLineItemName;
+          const suggestedLabel = suggestedCompany
+            ? `${t("budget.suggested")}: ${suggestedCompany.name}`
+            : "";
           const ariaLabel = showLineItemPill
             ? lineItemLabel
             : showCompanyPill
               ? company!.name
-              : showTypeName
-                ? showOmittedGlyph
-                  ? `${typeLabel} (${omittedLabel})`
-                  : typeLabel
-                : hasValue
+              : showSuggestedCompanyPill
+                ? suggestedLabel
+                : showTypeName
                   ? showOmittedGlyph
-                    ? entryType
-                      ? `${typeLabel}: ${displayValue} (${omittedLabel})`
-                      : `${t("cell.descriptionWith", { value: displayValue })} (${omittedLabel})`
-                    : entryType
-                      ? `${typeLabel}: ${displayValue}`
-                      : t("cell.descriptionWith", { value: displayValue })
-                  : entryType
+                    ? `${typeLabel} (${omittedLabel})`
+                    : typeLabel
+                  : hasValue
                     ? showOmittedGlyph
-                      ? `${typeLabel} (${omittedLabel})`
-                      : typeLabel
-                    : showOmittedGlyph
-                      ? omittedLabel
-                      : t("cell.addDescription");
+                      ? entryType
+                        ? `${typeLabel}: ${displayValue} (${omittedLabel})`
+                        : `${t("cell.descriptionWith", { value: displayValue })} (${omittedLabel})`
+                      : entryType
+                        ? `${typeLabel}: ${displayValue}`
+                        : t("cell.descriptionWith", { value: displayValue })
+                    : entryType
+                      ? showOmittedGlyph
+                        ? `${typeLabel} (${omittedLabel})`
+                        : typeLabel
+                      : showOmittedGlyph
+                        ? omittedLabel
+                        : t("cell.addDescription");
           const title = showLineItemPill
             ? lineItemLabel
             : showCompanyPill
               ? company!.name
-              : showTypeName
-                ? showOmittedGlyph
-                  ? `${typeLabel} — ${omittedLabel}`
-                  : typeLabel
-                : hasValue
-                  ? company
-                    ? `${company.name}: ${displayValue}`
+              : showSuggestedCompanyPill
+                ? suggestedLabel
+                : showTypeName
+                  ? showOmittedGlyph
+                    ? `${typeLabel} — ${omittedLabel}`
+                    : typeLabel
+                  : hasValue
+                    ? company
+                      ? `${company.name}: ${displayValue}`
+                      : showOmittedGlyph
+                        ? `${omittedLabel}: ${displayValue}`
+                        : displayValue
                     : showOmittedGlyph
-                      ? `${omittedLabel}: ${displayValue}`
-                      : displayValue
-                  : showOmittedGlyph
-                    ? omittedLabel
-                    : undefined;
+                      ? omittedLabel
+                      : undefined;
           return (
             <button
               ref={ref}
@@ -345,6 +363,7 @@ export function DescriptionCell({
                 isRecurring={isRecurring}
                 entryType={entryType}
                 company={company}
+                suggestedCompany={suggestedCompany}
                 display={display}
                 lineItem={
                   hasLineItems

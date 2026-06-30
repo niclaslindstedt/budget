@@ -9,6 +9,7 @@ import { useT } from "../i18n";
 import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { CategoryChip, CategoryCreator } from "./CategoryPicker";
 import { EntityChip } from "./EntityChip";
+import { TypeBadge } from "./Pills";
 import { EntityCreatorForm } from "./EntityCreatorForm";
 import { FloatingPanel } from "./FloatingPanel";
 import { CategoryIconGlyph } from "./icons";
@@ -76,6 +77,14 @@ type Props = {
   // Render style. "chip" fills a table cell; "field" looks like a form field.
   variant?: "chip" | "field";
   placeholder?: string;
+  // An induced type the user hasn't accepted yet (see
+  // `computeDescriptionMetadataInductions`). Only consulted when nothing
+  // is selected: the empty chip renders this as a dotted, muted
+  // "suggestion" badge instead of the bare "+" affordance, so an untagged
+  // history row hints at its likely type. Tapping the trigger still opens
+  // the normal picker — the suggestion is accepted via the Done column,
+  // not by re-picking here. Ignored in the "field" variant.
+  suggestedType?: EntryType | null;
 };
 
 // Two-tier picker: category list first, then a sliding type list per
@@ -101,6 +110,7 @@ export function TypePicker({
   rowDescription,
   variant = "field",
   placeholder,
+  suggestedType,
 }: Props) {
   const t = useT();
   const placeholderText = placeholder ?? t("type.pickTypeEllipsis");
@@ -266,6 +276,12 @@ export function TypePicker({
           ) : (
             <TypeChip type={selected} compact={false} />
           )
+        ) : isChip && suggestedType ? (
+          // Nothing picked yet, but the merchant's history induces a
+          // single type — render it as a dotted "suggestion" badge so the
+          // row hints at its likely type. The Done column accepts it; a
+          // tap here still opens the picker to choose something else.
+          <TypeBadge entryType={suggestedType} suggested />
         ) : isChip ? (
           // Dashed-outlined pill mirrors the shape of a filled
           // TypeChip, so the empty state reads as "a slot you can

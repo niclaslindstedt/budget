@@ -3291,6 +3291,38 @@ every call site (the inline row picker, the metadata modal, and the
 per-entry `EditHistoryEntryModal`) resolves a description the same way.
 Threaded through `BudgetContext.descriptionCompanyHints`.
 
+### Metadata suggestion
+
+A stronger sibling of the description company hint: instead of _ranking_
+the companies a merchant has been paired with, it keeps a field only when
+**every** tagged connection for that normalised description agrees on a
+single value, for both company **and** type. Computed by
+`computeDescriptionMetadataInductions`
+(`src/data/budget/company-type-hints.ts`) over the same
+`(description, companyId, typeId)` connections the other hints walk — a
+merchant always filed under one company and one type yields
+`{ companyId, typeId }`; one split between two companies yields no company
+(the disagreement makes the guess unsafe) but still yields the type if
+every connection shared it. Purely usage-derived, never stored, and
+recomputed whenever `data` changes (the same cheap full-walk as the other
+hints), so each entry the user tags sharpens the next walk's confidence.
+On an **untagged synthesized history row** whose merchant resolves an
+induction, `BudgetRow` surfaces the inducted company / type as **dotted
+suggestion pills** (the company pill in the description cell, the type
+badge in the type column — `CompanyPill` / `TypeBadge` `suggested`
+variants, dotted-and-muted vs the solid accepted look), and the row's
+**Done column becomes a "pop" accept button** (`AcceptSuggestionCompletedCell`)
+that pulses more than the plain finished-check. Pressing it persists the
+suggestion onto the underlying `HistoryEntry` (`userCompanyId` /
+`userTypeId`) in one `updateHistoryEntry` dispatch via
+`onAcceptHistorySuggestion` (`useRowMutations`), so a user who has
+labelled a few months by hand can clear the rest one tap at a time. Each
+field is only suggested when the row doesn't already resolve it (no
+company unless one is set or the row omits a company; no type unless one
+is set), so accepting always moves the row toward "finished". Resolved
+per-row via `descriptionMetadataInductionFor`; threaded through
+`BudgetContext.descriptionInductions`.
+
 ### Drag-to-reorder
 
 A reusable HTML5 drag primitive (`useDragReorder`,

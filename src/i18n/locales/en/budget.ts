@@ -20,6 +20,10 @@ const budget = {
   addFirstRow: "Add your first row above.",
   completed: "Completed",
   notCompleted: "Not completed",
+  // Induced metadata suggestions on untagged history rows (the dotted
+  // company / type pills + the Done-column accept button).
+  suggested: "Suggested",
+  acceptSuggestion: "Accept suggested company and type",
   pendingCount: "{n} pending",
   completedCount: "{n} completed",
   deleteRowsTitle: "Delete {n} rows?",

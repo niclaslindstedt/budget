@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+import type { InducedEntryMetadata } from "../../data/budget/company-type-hints";
 import type {
   Category,
   Company,
@@ -49,6 +50,12 @@ export type BudgetContextValue = {
   // surfaces that company atop the inline CompanyPicker — before any
   // type is set. Merged ahead of `typeCompanyHints` into the band.
   descriptionCompanyHints: ReadonlyMap<string, readonly string[]>;
+  // normalised description → the company / type EVERY tagged connection
+  // for that description agrees on (see
+  // `computeDescriptionMetadataInductions`). Consumed by `BudgetRow` to
+  // surface dotted "suggestion" pills on untagged history rows and the
+  // Done-column accept affordance that persists the induction.
+  descriptionInductions: ReadonlyMap<string, InducedEntryMetadata>;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
   onCreateCompany: (draft: Omit<Company, "id">) => Company;

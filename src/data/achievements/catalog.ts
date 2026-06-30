@@ -886,6 +886,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    // Unlocked by accepting an induced company/type suggestion on an
+    // untagged history row via the Done-column "pop" button — fired
+    // manually from `onAcceptHistorySuggestion`.
+    id: "onTheDottedLine",
+    tier: "intermediate",
+    glyph: BadgeCheck,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "moverShaker",
     tier: "intermediate",
     glyph: Move,

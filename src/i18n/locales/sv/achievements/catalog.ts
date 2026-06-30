@@ -240,6 +240,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Företag är handlarna dina pengar går till — Fortum, H&M, caféet runt hörnet. Välj ett från beskrivningspopupen eller någon redigeringsmodal så visar raden vem den betalade även när den saknar en egen beskrivning. Hantera dem under Inställningar → Företag.",
   },
+  onTheDottedLine: {
+    name: "På prickade linjen",
+    condition: "Acceptera föreslaget företag och typ på en importerad rad.",
+    learnMore:
+      "När du har taggat några månader för hand lär sig appen vilken handlare som alltid betyder vilket företag och vilken typ. En otaggad transaktion vars handlare pekar på ett enda svar visar sin gissning som prickade etiketter, och dess Klar-knapp pulserar — ett tryck accepterar företaget och typen och fyller i raden. Tagga några, rensa sedan resten genom att acceptera.",
+  },
   moverShaker: {
     name: "Flyttkarl",
     condition: "Flytta eller kopiera rader mellan månader.",

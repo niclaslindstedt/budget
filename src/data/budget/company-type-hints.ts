@@ -281,6 +281,116 @@ export function descriptionCompanyHintsFor(
   return hints.get(key) ?? [];
 }
 
+// The company / type a description's connections unanimously point to —
+// surfaced as a one-tap "suggestion" on an untagged history row (see
+// `computeDescriptionMetadataInductions`). Either field is present only
+// when every tagged connection for the description agrees on a single
+// value; an absent field means the connections disagreed (or there were
+// none), so nothing confident can be induced for it.
+export type InducedEntryMetadata = {
+  companyId?: string;
+  typeId?: string;
+};
+
+// Stronger sibling of `computeDescriptionCompanyHints`: instead of
+// ranking the companies a description has been paired with, this keeps a
+// field only when EVERY tagged connection for that normalised
+// description agrees on one value. A merchant the user has always filed
+// under company A and type X yields `{ companyId: A, typeId: X }`; one
+// they've split between two companies yields no company (the disagreement
+// makes the guess unsafe) but still yields the type if every connection
+// shared it. The result is never stored — it drives the dotted
+// suggestion pills + Done-column "accept" affordance on untagged history
+// rows, so a user who has labelled a few months by hand can clear the
+// rest by accepting the induction one tap at a time. Built from the same
+// `(description, companyId, typeId)` connections the other description
+// hints walk; keys too short to identify a merchant are skipped.
+//
+// `undefined` in the accumulator means "no connection has set this field
+// yet"; `null` means "two different values seen — ambiguous, drop it".
+// Tracking the running single value (rather than a Set per key) keeps the
+// walk allocation-light over thousands of history entries.
+export function computeDescriptionMetadataInductions(
+  data: UserData,
+): ReadonlyMap<string, InducedEntryMetadata> {
+  type Acc = {
+    companyId: string | null | undefined;
+    typeId: string | null | undefined;
+  };
+  const tallies = new Map<string, Acc>();
+  const fold = (prev: string | null | undefined, id: string) =>
+    prev === undefined ? id : prev === null || prev === id ? prev : null;
+  const bump = (
+    description: string | undefined,
+    companyId: string | undefined,
+    typeId: string | undefined,
+  ) => {
+    if (!companyId && !typeId) return;
+    if (!description) return;
+    const key = normaliseDescription(description);
+    if (!isNormalisedKeyMeaningful(key)) return;
+    let acc = tallies.get(key);
+    if (!acc) {
+      acc = { companyId: undefined, typeId: undefined };
+      tallies.set(key, acc);
+    }
+    if (companyId) acc.companyId = fold(acc.companyId, companyId);
+    if (typeId) acc.typeId = fold(acc.typeId, typeId);
+  };
+  for (const sheet of data.sheets) {
+    for (const item of sheet.items) {
+      if (item.type !== "accountBudget") continue;
+      const descId = findColumnByType(item.columns, "description")?.id;
+      if (!descId) continue;
+      for (const row of item.rows) {
+        const desc = row.cells[descId];
+        if (typeof desc !== "string") continue;
+        bump(desc, row.companyId, row.typeId);
+      }
+    }
+  }
+  for (const list of Object.values(data.history)) {
+    for (const entry of list) {
+      if (entry.splits && entry.splits.length > 0) {
+        for (const split of entry.splits) {
+          bump(
+            entry.description,
+            split.companyId ?? undefined,
+            split.typeId ?? undefined,
+          );
+        }
+        continue;
+      }
+      bump(entry.description, entry.userCompanyId, entry.userTypeId);
+    }
+  }
+
+  const out = new Map<string, InducedEntryMetadata>();
+  for (const [key, acc] of tallies) {
+    const induced: InducedEntryMetadata = {};
+    if (typeof acc.companyId === "string") induced.companyId = acc.companyId;
+    if (typeof acc.typeId === "string") induced.typeId = acc.typeId;
+    if (induced.companyId !== undefined || induced.typeId !== undefined) {
+      out.set(key, induced);
+    }
+  }
+  return out;
+}
+
+// Resolve a bank description to its induced metadata via the map from
+// `computeDescriptionMetadataInductions`, normalising + guarding the key
+// the same way the lookup was built. Empty when the description is blank,
+// too short to be meaningful, or has no unanimous connection.
+export function descriptionMetadataInductionFor(
+  inductions: ReadonlyMap<string, InducedEntryMetadata>,
+  description: string | null | undefined,
+): InducedEntryMetadata | undefined {
+  if (!description) return undefined;
+  const key = normaliseDescription(description);
+  if (!isNormalisedKeyMeaningful(key)) return undefined;
+  return inductions.get(key);
+}
+
 // Merge description-derived company candidates with type-derived ones
 // into a single ranked, de-duplicated band. Description hits lead —
 // they're the strongest signal (the same merchant the user tagged

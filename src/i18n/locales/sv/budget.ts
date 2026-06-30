@@ -15,6 +15,8 @@ const budget: BudgetCatalog = {
   addFirstRow: "Lägg till din första rad ovan.",
   completed: "Klar",
   notCompleted: "Ej klar",
+  suggested: "Föreslaget",
+  acceptSuggestion: "Acceptera föreslaget företag och typ",
   pendingCount: "{n} väntande",
   completedCount: "{n} klara",
   deleteRowsTitle: "Ta bort {n} rader?",
