@@ -3,11 +3,11 @@ import { Banknote } from "lucide-react";
 
 import { resolveSalary } from "../../data/salary/salary";
 import { newId } from "../../data/sheet";
-import type { Employer, Salary, Settings, TaxParams } from "../../data/types";
+import type { Employer, Salary, TaxParams } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
-import { formatBalance, parseAmount } from "../../utils/format";
+import { parseAmount } from "../../utils/format";
 import {
   Button,
   ClearableInput,
@@ -33,7 +33,6 @@ import { EmployerPicker } from "./EmployerPicker";
 type Props = {
   open: boolean;
   employers: readonly Employer[];
-  settings: Settings;
   // Tax params from the sheet's profile, or null for no estimation.
   taxParams: TaxParams | null;
   onClose: () => void;
@@ -57,7 +56,6 @@ function parseDays(text: string): number | undefined {
 export function SalaryAddModal({
   open,
   employers,
-  settings,
   taxParams,
   onClose,
   onAdd,
@@ -68,6 +66,11 @@ export function SalaryAddModal({
   const [date, setDate] = useState("");
   const [grossText, setGrossText] = useState("");
   const [netText, setNetText] = useState("");
+  const [taxText, setTaxText] = useState("");
+  // Which of gross / tax the user last typed. The other is derived from it
+  // plus net (gross = net + tax). On a net edit we recompute whichever the
+  // user did NOT type, so their last figure stays put.
+  const [driver, setDriver] = useState<"gross" | "tax">("gross");
   const [employerId, setEmployerId] = useState<string | undefined>(undefined);
   const [careOfChild, setCareOfChild] = useState("");
   const [parentalLeave, setParentalLeave] = useState("");
@@ -79,6 +82,8 @@ export function SalaryAddModal({
     setDate(todayIso());
     setGrossText("");
     setNetText("");
+    setTaxText("");
+    setDriver("gross");
     setEmployerId(undefined);
     setCareOfChild("");
     setParentalLeave("");
@@ -94,20 +99,44 @@ export function SalaryAddModal({
   const net = parsedNet !== null ? Math.abs(parsedNet) : 0;
   const canSubmit = parsedNet !== null && net > 0 && date !== "";
 
-  // Estimate gross from the typed net via the tax profile, so the gross field
-  // shows a live placeholder and the tax preview has a figure before a gross
-  // is typed.
+  // Estimate gross from the typed net via the tax profile, so the gross and
+  // tax fields show live placeholders before the user types either.
   const estimate = resolveSalary(
     { id: "draft", date: date || todayIso(), net, gross: undefined },
     taxParams,
   );
   const estimatedGross = estimate.estimated ? estimate.gross : null;
-  const previewTax =
-    parsedGross !== null
-      ? Math.max(0, Math.abs(parsedGross) - net)
-      : estimatedGross !== null
-        ? Math.max(0, estimatedGross - net)
-        : 0;
+
+  // Gross and tax are two views of the same figure, anchored on net:
+  // gross = net + tax. Typing one recomputes the other; a net edit
+  // recomputes whichever the user did not type so their input stays put.
+  function syncTaxFromGross(grossStr: string, netStr: string) {
+    const g = parseAmount(grossStr);
+    const n = parseAmount(netStr);
+    setTaxText(
+      g !== null && n !== null ? String(Math.abs(g) - Math.abs(n)) : "",
+    );
+  }
+  function syncGrossFromTax(taxStr: string, netStr: string) {
+    const tx = parseAmount(taxStr);
+    const n = parseAmount(netStr);
+    setGrossText(tx !== null && n !== null ? String(Math.abs(n) + tx) : "");
+  }
+  function handleGrossChange(v: string) {
+    setGrossText(v);
+    setDriver("gross");
+    syncTaxFromGross(v, netText);
+  }
+  function handleTaxChange(v: string) {
+    setTaxText(v);
+    setDriver("tax");
+    syncGrossFromTax(v, netText);
+  }
+  function handleNetChange(v: string) {
+    setNetText(v);
+    if (driver === "tax") syncGrossFromTax(taxText, v);
+    else syncTaxFromGross(grossText, v);
+  }
 
   function handleAdd() {
     if (!canSubmit || parsedNet === null) return;
@@ -168,7 +197,7 @@ export function SalaryAddModal({
             <ClearableInput
               inputMode="decimal"
               value={netText}
-              onValueChange={setNetText}
+              onValueChange={handleNetChange}
               className={NUMBER_INPUT_CLASS}
             />
             <span className="text-xs text-muted">{t("salary.netHint")}</span>
@@ -178,25 +207,37 @@ export function SalaryAddModal({
             <ClearableInput
               inputMode="decimal"
               value={grossText}
-              onValueChange={setGrossText}
+              onValueChange={handleGrossChange}
               placeholder={
                 estimatedGross !== null ? String(estimatedGross) : undefined
               }
               className={NUMBER_INPUT_CLASS}
             />
             <span className="text-xs text-muted">
-              {estimatedGross !== null
+              {estimatedGross !== null && grossText.trim() === ""
                 ? t("tax.estimatedTitle")
                 : t("salary.grossHint")}
             </span>
           </FormSection>
 
-          <div className="flex items-baseline justify-between gap-3 rounded border border-line bg-surface-2 px-2.5 py-2 text-sm">
-            <span className="text-muted">{t("salary.taxLabel")}</span>
-            <span className="font-mono tabular-nums text-fg-bright">
-              {formatBalance(previewTax, settings)}
+          <FormSection as="label" label={t("salary.taxLabel")}>
+            <ClearableInput
+              inputMode="decimal"
+              value={taxText}
+              onValueChange={handleTaxChange}
+              placeholder={
+                estimatedGross !== null
+                  ? String(estimatedGross - net)
+                  : undefined
+              }
+              className={NUMBER_INPUT_CLASS}
+            />
+            <span className="text-xs text-muted">
+              {estimatedGross !== null && taxText.trim() === ""
+                ? t("tax.estimatedTitle")
+                : t("salary.taxHint")}
             </span>
-          </div>
+          </FormSection>
 
           <div className="grid grid-cols-2 gap-3">
             <FormSection as="label" label={t("salary.careOfChildDaysLabel")}>

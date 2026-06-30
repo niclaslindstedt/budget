@@ -318,7 +318,6 @@ export function SalaryPage({
           open={editing !== null}
           salary={editing}
           employers={data.employers}
-          settings={settings}
           taxParams={taxParams}
           onClose={() => setEditing(null)}
           onSave={handleSaveSalary}
@@ -337,7 +336,6 @@ export function SalaryPage({
         <SalaryAddModal
           open={addOpen}
           employers={data.employers}
-          settings={settings}
           taxParams={taxParams}
           onClose={() => setAddOpen(false)}
           onAdd={(salary) =>
