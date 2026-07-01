@@ -282,11 +282,27 @@ export function formatRunningBalance(n: number, settings: Settings): string {
   );
 }
 
-// Strip the thousands separator from input and snap whichever decimal
-// character the user typed to the one the settings configure. Returns
-// the cleaned text; callers can then `Number()` it.
+// Remove every character that isn't a digit, a decimal / thousands
+// separator ("." or ","), or a leading minus sign. Pasted currency
+// symbols, unit suffixes, and stray letters ("1 234,56 kr", "$100",
+// "abc") drop away so only parseable numeric text survives. A minus is
+// kept only in the leading position — the sign of the number — so an
+// interior stray "-" is discarded rather than corrupting the value.
+export function stripNonNumeric(text: string): string {
+  const negative = text.trimStart().startsWith("-");
+  const digits = text.replace(/[^0-9.,]/g, "");
+  return negative ? `-${digits}` : digits;
+}
+
+// Strip non-numeric characters from input, drop the configured thousands
+// separator, and snap whichever decimal character the user typed to the
+// one the settings configure. Returns the cleaned text; callers can then
+// `Number()` it.
 export function normalizeAmountInput(text: string, settings: Settings): string {
-  let out = text;
+  // Keep only digits, separators, and a leading sign — everything else a
+  // paste or fat-finger introduces (currency symbols, letters, spaces) is
+  // dropped as the user types.
+  let out = stripNonNumeric(text);
   // Strip the configured thousands separator everywhere it appears so
   // pasted "1 234,56" or "1,234.56" parses straight through.
   if (settings.thousandsSeparator !== "") {
@@ -304,7 +320,11 @@ export function normalizeAmountInput(text: string, settings: Settings): string {
 // (so legacy data and freshly-typed values both work) and tolerates a
 // trailing separator while the user is still typing.
 export function parseAmount(text: string): number | null {
-  const trimmed = text.trim();
+  // Drop any non-numeric noise first (currency symbols, letters, stray
+  // spaces) so a field that stores raw text and only parses on commit is
+  // just as forgiving of a pasted "1 234,56 kr" as the amount cells that
+  // normalise on every keystroke.
+  const trimmed = stripNonNumeric(text);
   if (trimmed === "" || trimmed === "-") return null;
   // Strip every kind of thousands separator (spaces, dots, commas) by
   // working on a normalised copy that uses "." as decimal. The decimal
