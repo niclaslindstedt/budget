@@ -30,7 +30,11 @@ export type EntryDescriptionDisplay = {
   showTypeName: boolean;
   // The low-key Building2 prefix shown when BOTH a description and a
   // company are set (line items excepted, since a line-item pill takes
-  // over the cell).
+  // over the cell). When the row is also recurring the glyph turns
+  // orange and stands in for the separate leading Repeat icon
+  // (suppressed at the call site) — one orange company glyph carries
+  // both "tagged to a merchant" and "recurring" instead of showing a
+  // Repeat and a company glyph side by side.
   showCompanyGlyph: boolean;
   showOmittedGlyph: boolean;
 };
@@ -143,14 +147,17 @@ export function EntryDescriptionContent({
   } = display;
   return (
     <>
-      {isRecurring && !showCompanyPill && !showSuggestedCompanyPill && (
-        <Repeat
-          size={16}
-          aria-hidden
-          focusable={false}
-          className="shrink-0 text-flag"
-        />
-      )}
+      {isRecurring &&
+        !showCompanyPill &&
+        !showSuggestedCompanyPill &&
+        !showCompanyGlyph && (
+          <Repeat
+            size={16}
+            aria-hidden
+            focusable={false}
+            className="shrink-0 text-flag"
+          />
+        )}
       {showLineItemPill && lineItem ? (
         <LineItemPill name={lineItem.name} many={lineItem.many} />
       ) : showCompanyPill ? (
@@ -174,7 +181,7 @@ export function EntryDescriptionContent({
               size={12}
               aria-hidden
               focusable={false}
-              className="shrink-0"
+              className={`shrink-0 ${isRecurring ? "text-flag" : ""}`}
             />
           )}
           {showOmittedGlyph && <OmittedGlyph />}
