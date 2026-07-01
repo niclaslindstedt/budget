@@ -31,6 +31,7 @@ import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
 import { useSheetNav } from "./hooks/useSheetNav";
+import { useSheetUrlSync } from "./hooks/useSheetUrlSync";
 import { useTaxonomyCrud } from "./hooks/useTaxonomyCrud";
 import { useToastEffects } from "./hooks/useToastEffects";
 import { useUndoRedo } from "./hooks/useUndoRedo";
@@ -607,6 +608,17 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     toast,
   });
   const { onOpenNewSheet, onOpenEditSheet } = sheetMetaDialog;
+  // Keep the address bar in step with the active sheet (`/budget`,
+  // `/budget-2`, …) and consume deep links to a sheet type on load /
+  // Back-Forward. See `useSheetUrlSync` for the push-vs-replace rules.
+  useSheetUrlSync({
+    sheets: data.sheets,
+    // The resolved active sheet, not the raw id — so a dangling /
+    // null `activeSheetId` still reflects the sheet actually on screen.
+    activeSheetId: activeSheet.id,
+    dispatch,
+    onOpenNewSheet,
+  });
   const downloadFlow = useDownloadFlow({
     data,
     effectiveSettings,

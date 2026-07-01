@@ -76,6 +76,41 @@ A flavour of sheet content. Today: the budget page, the accounts page,
 the items page, the salary page, and the properties page. Future:
 savings, loans, utility pages.
 
+### Sheet URL
+
+The address bar is a live reflection of the active sheet, so a sheet
+can be bookmarked or linked to someone. Each sheet has a deterministic
+**slug**: the bare sheet type for the first sheet of that type
+(`/budget`, `/salary`, `/accounts`) and `<type>-<n>` for the nth sheet
+of the same type in sheet order (`/budget-2`, `/budget-3`). The pure
+mapping lives in `src/data/sheet-routing.ts` (`sheetSlug`,
+`parseSheetSlug`, `resolveSheetSlug`); the slug list is `SHEET_TYPES`
+in `src/data/types/sheets.ts`.
+
+`src/components/AppShell/hooks/useSheetUrlSync.ts` wires it to browser
+history. On load the URL wins: a slug that resolves to an existing
+sheet selects it; a valid type with no sheet at that ordinal opens the
+new-sheet modal pre-selected to that type (`onOpenNewSheet(type)` →
+`SheetModal`'s `initialType`); anything else (app root, stale/unknown
+path) is rewritten to the active sheet's slug. Afterwards the active
+sheet wins: switching sheets `pushState`s a new entry so **Back**
+returns to the previous sheet, while a slug that shifts for a
+non-navigation reason (a reorder) `replaceState`s in place. `popstate`
+mirrors Back/Forward into the selection. OAuth round-trips (`?code=`)
+are left untouched — the cloud auth hook in `App.tsx` owns and cleans
+that query. Consuming a deep link to a different sheet unlocks the
+**Deep Linker** achievement (`deepLinker`, manual trigger).
+
+Vite's base path prefixes every slug (`/preview/budget`,
+`/branch/salary`). So a fresh visit to a shared bare-type link returns
+a real 200 from the correct per-slot bundle,
+`emitSheetTypeAliases` in `vite.config.ts` mirrors `dist/index.html`
+to `dist/<type>/index.html` for every `SHEET_TYPES` slug, marked
+`noindex,nofollow` and kept out of the sitemap. Ordinal deep links
+(`/budget-2`) are produced by in-app navigation (client-side, no
+server round-trip) or fall back to `/404.html`; installed PWAs resolve
+every slug through the service worker's `navigateFallback` regardless.
+
 ### Bottom bar
 
 `src/components/BottomBar.tsx` — the action bar pinned to the bottom of

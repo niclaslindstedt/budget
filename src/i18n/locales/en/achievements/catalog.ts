@@ -155,6 +155,12 @@ const catalog = {
     learnMore:
       "Reorder your sheets to put the one you reach for most first. The order you set drives the tab strip in the bottom bar.",
   },
+  deepLinker: {
+    name: "Deep Linker",
+    condition: "Open a sheet straight from its URL.",
+    learnMore:
+      "Every sheet has its own address: /budget for the first budget, /budget-2 for the second, /salary, and so on. The address bar follows the sheet you're on, the Back button walks your sheet history, and a bare type link (like /salary) opens the first sheet of that type — or offers to create one if you don't have it yet. Bookmark a sheet or send its link to future-you.",
+  },
   shuffler: {
     name: "Shuffler",
     condition: "Record an inter-account transaction.",

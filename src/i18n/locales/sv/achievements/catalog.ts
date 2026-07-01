@@ -150,6 +150,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Ändra ordning på dina blad så att det du använder mest hamnar först. Ordningen du väljer styr flikraden i nedre fältet.",
   },
+  deepLinker: {
+    name: "Länkletare",
+    condition: "Öppna ett blad direkt från dess webbadress.",
+    learnMore:
+      "Varje blad har sin egen adress: /budget för den första budgeten, /budget-2 för den andra, /salary och så vidare. Adressfältet följer bladet du är på, bakåtknappen går igenom din bladhistorik, och en enkel typlänk (som /salary) öppnar det första bladet av den typen — eller erbjuder att skapa ett om du inte har något ännu. Bokmärk ett blad eller skicka länken till framtida dig.",
+  },
   shuffler: {
     name: "Omflyttare",
     condition: "Registrera en överföring mellan konton.",

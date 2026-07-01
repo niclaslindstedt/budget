@@ -727,6 +727,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "deepLinker",
+    tier: "intermediate",
+    glyph: LinkIcon,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "shuffler",
     tier: "intermediate",
     glyph: ArrowRightLeft,

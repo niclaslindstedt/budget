@@ -47,6 +47,10 @@ type Props = {
   // surfaces a Delete button (disabled when the sheet is the only one
   // left so the user always has somewhere to land).
   sheet: Sheet | null;
+  // Seed the type picker for the new-sheet flow (ignored in edit mode,
+  // where the sheet's own type wins). Set when a URL deep link opens the
+  // modal pre-selected to the type it addressed; falls back to "budget".
+  initialType?: SheetType;
   // The accountId currently attached to the sheet's budget item (or
   // null for a new sheet) — used to seed the account picker so an
   // edit doesn't appear to wipe the account on open.
@@ -91,6 +95,7 @@ const NEW_ACCOUNT_SENTINEL = "__new__";
 export function SheetModal({
   open,
   sheet,
+  initialType,
   currentAccountId,
   currentTaxProfileId,
   taxProfiles,
@@ -127,7 +132,7 @@ export function SheetModal({
   useEffect(() => {
     if (!open) return;
     setName(sheet?.name ?? "");
-    setType(sheet?.type ?? "budget");
+    setType(sheet?.type ?? initialType ?? "budget");
     setGlyph(sheet?.glyph ?? DEFAULT_SHEET_GLYPH);
     setColor(sheet?.color ?? DEFAULT_SHEET_COLOR);
     setDescription(sheet?.description ?? "");
@@ -138,7 +143,14 @@ export function SheetModal({
     setNewAccountName("");
     setTaxProfileId(currentTaxProfileId);
     setBaseSheetId(currentBaseSheetId);
-  }, [open, sheet, currentAccountId, currentTaxProfileId, currentBaseSheetId]);
+  }, [
+    open,
+    sheet,
+    initialType,
+    currentAccountId,
+    currentTaxProfileId,
+    currentBaseSheetId,
+  ]);
 
   useEffect(() => {
     if (creatingAccount) newAccountInputRef.current?.focus();

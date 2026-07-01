@@ -24,6 +24,7 @@ import {
   SITE_NAME,
   absoluteUrl,
 } from "./src/seo/siteConfig";
+import { SHEET_TYPES } from "./src/data/types/sheets";
 import { emitChangelogData } from "./vite/changelog-plugin";
 import { emitFeatureDocs } from "./vite/feature-docs-plugin";
 
@@ -333,6 +334,42 @@ function emitPathAliasWithSeo(
           renderLlmsTxt(allRoutes),
           "utf8",
         );
+      }
+    },
+  };
+}
+
+// Mirror `dist/index.html` to `dist/<type>/index.html` for every sheet
+// type (`/budget`, `/salary`, …) so a fresh visit to a shared deep link
+// gets a real 200 from the SPA shell instead of the 404-fallback
+// shuffle — and, on the `/preview/` and `/branch/` slots, the CORRECT
+// per-slot bundle (a root `/404.html` fallback would boot the
+// production app at a preview URL and read production storage). Only the
+// bare type slugs are emitted here; the ordinal deep links (`/budget-2`)
+// are produced by in-app navigation (client-side `pushState`, no server
+// round-trip) or fall back to `/404.html`, and installed PWAs resolve
+// every slug through the service worker's `navigateFallback` regardless.
+//
+// These are app deep links, not indexable content: every alias is
+// marked `noindex,nofollow` and kept out of `sitemap.xml` / `llms.txt`.
+// The slug list is `SHEET_TYPES`, so a new sheet type is covered
+// automatically.
+function emitSheetTypeAliases(): Plugin {
+  return {
+    name: "emit-sheet-type-aliases",
+    apply: "build",
+    closeBundle() {
+      const outRoot = resolve(__dirname, "dist");
+      const indexPath = resolve(outRoot, "index.html");
+      let indexHtml = readFileSync(indexPath, "utf8");
+      // On non-production slots `dist/index.html` has already been
+      // rewritten to `noindex` by `emitPathAliasWithSeo`; on production
+      // it still carries the indexable meta, which we flip per alias.
+      indexHtml = indexHtml.replace(INDEX_ROBOTS_META, NOINDEX_ROBOTS_META);
+      for (const slug of SHEET_TYPES) {
+        const dir = resolve(outRoot, slug);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(resolve(dir, "index.html"), indexHtml, "utf8");
       }
     },
   };
@@ -683,6 +720,9 @@ export default defineConfig({
     emitPathAliasWithSeo(HOME_ROUTE, [PRIVACY_ROUTE, SHOWCASE_ROUTE], {
       noindex: IS_PREVIEW,
     }),
+    // After emitPathAliasWithSeo so it reads the (possibly noindex-
+    // rewritten) `dist/index.html`.
+    emitSheetTypeAliases(),
     // After pwaPlugin so `dist/sw.js` exists to be measured.
     emitPrecacheManifest(),
   ],
