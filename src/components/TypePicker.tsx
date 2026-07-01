@@ -135,17 +135,25 @@ export function TypePicker({
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Both tiers live side-by-side in a `w-[200%]` flex track we slide
-  // with translateX, so the row's intrinsic height is the *taller* of
+  // with translateX, so the track's intrinsic height is the *taller* of
   // the two panes. When the visible pane is the shorter one (a category
-  // with few types), the taller sibling padded out the height and left
-  // a dead band at the bottom of the dropdown. Measure the active pane
-  // and pin the clip container to its height so it tracks whichever tier
-  // is showing.
+  // with few types), the taller sibling padded out the height and left a
+  // dead band at the bottom of the dropdown. Measure the active pane and
+  // pin the clip container to its height so it tracks whichever tier is
+  // showing.
+  //
+  // The measurement runs off `trackNode` — a callback-ref state set when
+  // the track mounts — rather than `open`, because `FloatingPanel`
+  // renders `null` until it has resolved a float position. Keying the
+  // effect on `open` alone would fire once with the pane refs still
+  // null (panel not yet in the DOM) and never re-run. `trackNode` flips
+  // exactly when the panes are mounted and laid out.
   const categoryPaneRef = useRef<HTMLDivElement>(null);
   const typePaneRef = useRef<HTMLDivElement>(null);
+  const [trackNode, setTrackNode] = useState<HTMLDivElement | null>(null);
   const [paneHeight, setPaneHeight] = useState<number>();
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!trackNode) return;
     const active =
       tier === "category" ? categoryPaneRef.current : typePaneRef.current;
     if (!active) return;
@@ -154,7 +162,7 @@ export function TypePicker({
     const ro = new ResizeObserver(measure);
     ro.observe(active);
     return () => ro.disconnect();
-  }, [open, tier]);
+  }, [trackNode, tier]);
 
   const selected = useMemo(
     () => types.find((ty) => ty.id === selectedId) ?? null,
@@ -371,11 +379,19 @@ export function TypePicker({
             establishing a scroll container, so the focus auto-scroll has
             nothing to scroll. */}
         <div
+          ref={setTrackNode}
           className="relative overflow-clip transition-[height] duration-200 ease-out"
           style={paneHeight != null ? { height: paneHeight } : undefined}
         >
+          {/* `items-start` is load-bearing, not cosmetic: the flex
+              default `align-items: stretch` stretches BOTH pane wrappers
+              to the taller pane's height, so measuring the active
+              wrapper's offsetHeight would always report that max and the
+              clip container would never shrink to the shorter tier —
+              exactly the dead-space bug. `items-start` lets each wrapper
+              size to its own content so the measurement is accurate. */}
           <div
-            className="flex w-[200%] transition-transform duration-200 ease-out"
+            className="flex w-[200%] items-start transition-transform duration-200 ease-out"
             style={{
               transform:
                 tier === "category" ? "translateX(0%)" : "translateX(-50%)",
