@@ -47,6 +47,7 @@ import type {
 } from "../../data/types";
 import {
   formatBalance,
+  formatDate,
   formatShortDate,
   formatYearMonth,
 } from "../../utils/format";
@@ -1077,9 +1078,9 @@ export function BudgetMetadataModal({
                             label={
                               <span className="flex flex-wrap items-baseline gap-x-2 font-mono text-xs">
                                 <span className="shrink-0 text-muted">
-                                  {formatShortDate(
+                                  {formatDate(
                                     e.date,
-                                    settings.shortDateFormat,
+                                    settings.dateFormat,
                                     lang,
                                   )}
                                 </span>
