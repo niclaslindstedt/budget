@@ -92,6 +92,9 @@ const budget = {
   spendingSpreadItemCosts: "Spread item costs over lifetime",
   spendingSpreadItemCostsHint:
     "Replaces each purchase spike with the linked item's cost divided evenly across its lifetime.",
+  // Caption shown under the monthly bar chart when a bar section is pressed
+  // — how much of that month's bar the pressed section makes up.
+  spendingSectionShare: "{percent} of {month} · {total}",
   // Read-only entry-info modal.
   entryInfoTitle: "Entry details",
   entryInfoKindUser: "Budget entry",
