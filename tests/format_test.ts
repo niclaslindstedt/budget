@@ -15,6 +15,7 @@ import {
   formatShortDate,
   normalizeAmountInput,
   parseAmount,
+  stripNonNumeric,
 } from "../src/utils/format";
 
 function settings(overrides: Partial<Settings> = {}): Settings {
@@ -356,6 +357,37 @@ describe("normalizeAmountInput", () => {
     expect(out).toBe("100.990");
     expect(parseAmount(out)).toBe(100.99);
   });
+
+  it("strips non-numeric characters, keeping only digits and separators", () => {
+    // Pasted currency symbols / unit suffixes / letters drop away.
+    expect(
+      normalizeAmountInput(
+        "$1,234.56",
+        settings({ decimalSeparator: ".", thousandsSeparator: "," }),
+      ),
+    ).toBe("1234.56");
+    expect(
+      normalizeAmountInput(
+        "1 234,56 kr",
+        settings({ thousandsSeparator: " ", decimalSeparator: "," }),
+      ),
+    ).toBe("1234,56");
+    expect(normalizeAmountInput("abc12.5xyz", settings())).toBe("12,5");
+  });
+
+  it("keeps a leading minus but discards an interior stray minus", () => {
+    expect(normalizeAmountInput("-100", settings())).toBe("-100");
+    expect(normalizeAmountInput("10-0", settings())).toBe("100");
+  });
+});
+
+describe("stripNonNumeric", () => {
+  it("keeps digits, decimal / thousands separators, and a leading minus", () => {
+    expect(stripNonNumeric("$1,234.56 kr")).toBe("1,234.56");
+    expect(stripNonNumeric("  -42abc")).toBe("-42");
+    expect(stripNonNumeric("1-2-3")).toBe("123");
+    expect(stripNonNumeric("nope")).toBe("");
+  });
 });
 
 describe("parseAmount", () => {
@@ -382,6 +414,13 @@ describe("parseAmount", () => {
   it("tolerates a trailing separator while typing", () => {
     expect(parseAmount("5,")).toBe(5);
     expect(parseAmount("5.")).toBe(5);
+  });
+
+  it("ignores non-numeric noise around the value", () => {
+    expect(parseAmount("1 234,56 kr")).toBe(1234.56);
+    expect(parseAmount("$100")).toBe(100);
+    expect(parseAmount("-42abc")).toBe(-42);
+    expect(parseAmount("nope")).toBeNull();
   });
 });
 
