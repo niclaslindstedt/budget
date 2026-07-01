@@ -548,7 +548,13 @@ function DescriptionPopover({
         arrow="up"
       >
         {companies && onSetCompany && onCreateCompany && (
-          <div className="border-b border-line p-1.5">
+          // Extra top padding clears the FloatingPanel "up" arrow: its
+          // rotated-square base reaches ~8px into the panel, and with only
+          // p-1.5 (6px) here the arrow's opaque surface-2 fill painted over
+          // the picker field's top border, punching a downward notch through
+          // it. The wider top inset drops the field so the arrow base lands
+          // on the panel background instead of the field's border.
+          <div className="border-b border-line px-1.5 pt-2.5 pb-1.5">
             <CompanyPicker
               rowId={rowId}
               companies={companies}
