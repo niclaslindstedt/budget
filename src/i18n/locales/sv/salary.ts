@@ -61,6 +61,7 @@ const salary: SalaryCatalog = {
 
   // Payslip (lönerapport) attachment
   payslip: "Lönerapport",
+  payslipTitleFor: "Lönerapport — {month}",
   payslipUpload: "Ladda upp lönerapport",
   payslipReplace: "Ersätt lönerapport",
   payslipView: "Visa",

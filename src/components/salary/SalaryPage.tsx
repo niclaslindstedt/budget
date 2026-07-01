@@ -419,7 +419,16 @@ export function SalaryPage({
         <AttachmentUploadModal
           open={managingPayslip !== null}
           onClose={() => setManagingPayslipId(null)}
-          title={t("salary.payslip")}
+          title={
+            managingPayslip
+              ? t("salary.payslipTitleFor", {
+                  month: formatMonthLabel(
+                    managingPayslip.date.slice(0, 7),
+                    lang,
+                  ),
+                })
+              : t("salary.payslip")
+          }
           currentPath={managingPayslip?.payslipPath}
           onUpload={(file) => onUploadPayslip(managingPayslip!, file)}
           onDownload={onDownloadPayslip}

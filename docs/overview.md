@@ -3150,7 +3150,10 @@ A photo or PDF the user attaches to a salary (proof of the paycheck,
 "lönerapport"), the salary-sheet analogue of a receipt. Uploaded /
 viewed / replaced / removed via the salary row "…" menu
 (`SalaryEntryActionsMenu`), which opens the shared attachment modal
-(`AttachmentUploadModal`); it renders the blob inline rather than
+(`AttachmentUploadModal`) with a title carrying the pay month
+(`Payslip — June 2026`) so the header identifies which payslip the row
+expects even when the salary table isn't visible; it renders the blob
+inline rather than
 opening a `blob:` URL in a new tab — the latter hangs on iOS in-app
 browsers and standalone PWAs. The file is written to a dedicated
 `payslips/` folder of the active storage backend via the adapter's

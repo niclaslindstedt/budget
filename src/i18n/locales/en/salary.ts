@@ -61,6 +61,7 @@ const salary = {
 
   // Payslip (lönerapport) attachment
   payslip: "Payslip",
+  payslipTitleFor: "Payslip — {month}",
   payslipUpload: "Upload payslip",
   payslipReplace: "Replace payslip",
   payslipView: "View",
