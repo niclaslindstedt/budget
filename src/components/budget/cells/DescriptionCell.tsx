@@ -126,7 +126,9 @@ export function DescriptionCell({
   // instead of the type-name / bank-text fallback. When BOTH a
   // user-authored description AND a company are set, the trigger
   // renders a small `Building2` glyph before the description as a
-  // low-key indicator that the row is tagged to a merchant.
+  // low-key indicator that the row is tagged to a merchant — orange
+  // when the row is also recurring, standing in for the separate
+  // Repeat icon so the two glyphs collapse into one.
   company: Company | null;
   // An induced company the user hasn't accepted yet (see
   // `computeDescriptionMetadataInductions`). When set and the row has no
