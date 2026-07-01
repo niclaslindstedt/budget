@@ -38,14 +38,17 @@ import { resolveStockPosition } from "../investment/stock";
 import { findColumnByType } from "../sheet";
 import { isoToMonthNum, monthNumToIsoEnd } from "../../utils/date";
 
-export type NetWorthCategory =
-  | "accounts"
-  | "savings"
-  | "items"
-  | "investments"
-  | "properties"
-  | "mortgages"
-  | "loans";
+const NET_WORTH_CATEGORIES = [
+  "accounts",
+  "savings",
+  "items",
+  "investments",
+  "properties",
+  "mortgages",
+  "loans",
+] as const;
+
+export type NetWorthCategory = (typeof NET_WORTH_CATEGORIES)[number];
 
 // The entity categories a user can exclude / share-adjust. Mortgages are
 // not entities here — they ride with their property (net-equity share).
@@ -186,13 +189,8 @@ function standaloneLoans(data: UserData): Loan[] {
   );
 }
 
-export function computeNetWorthSnapshot(
-  data: UserData,
-  settings: InsightsNetWorthSettings | undefined,
-  todayIso: string,
-): NetWorthSnapshot {
-  const entities: NetWorthEntityFigure[] = [];
-  const perCategory: Record<NetWorthCategory, number> = {
+function zeroPerCategory(): Record<NetWorthCategory, number> {
+  return {
     accounts: 0,
     savings: 0,
     items: 0,
@@ -201,64 +199,202 @@ export function computeNetWorthSnapshot(
     mortgages: 0,
     loans: 0,
   };
+}
 
-  const pushAsset = (
-    category: NetWorthEntityCategory,
-    id: string,
-    name: string,
-    gross: number | undefined,
-  ) => {
-    const { excluded, sharePct } = resolveOverride(settings, id);
-    const effective =
-      excluded || gross === undefined ? 0 : gross * (sharePct / 100);
-    perCategory[category] += effective;
-    entities.push({
-      id,
-      category,
-      name,
-      gross: gross ?? null,
-      sharePct,
-      excluded,
-      effective,
-    });
-  };
+function sumPerCategory(per: Record<NetWorthCategory, number>): number {
+  let total = 0;
+  for (const category of NET_WORTH_CATEGORIES) total += per[category];
+  return total;
+}
 
-  const balances = computeAccountBalances(data, todayIso);
-  for (const account of data.accounts) {
-    pushAsset("accounts", account.id, account.name, balances.get(account.id));
-  }
-  for (const saving of data.savings) {
-    pushAsset(
-      "savings",
-      saving.id,
-      saving.name,
-      savingBalanceAt(saving, todayIso),
-    );
-  }
-  for (const item of data.items) {
-    if (!isItemOwned(item)) continue;
-    pushAsset(
-      "items",
-      item.id,
-      item.name,
-      computeItemCurrentValue(item, todayIso),
-    );
-  }
-  for (const holding of data.investmentHoldings) {
-    pushAsset(
-      "investments",
-      holding.id,
-      holding.name,
-      holdingNetWorthValue(holding, todayIso),
-    );
-  }
-  for (const position of data.investmentStocks) {
-    pushAsset(
-      "investments",
-      position.id,
-      position.name,
-      stockNetWorthValue(position, todayIso),
-    );
+// --- Simple-asset contributors ---------------------------------------
+//
+// The simple asset kinds share one shape: a collection of named entities,
+// each resolving one gross (positive) figure at a date. The registry lets
+// the snapshot breakdown, the per-sample series math, and the
+// series-window scan iterate one list, so adding an asset kind is one
+// entry here instead of three parallel edits. Properties and standalone
+// loans stay explicit in the functions below — a property is two-sided
+// (value minus its mortgages' debt behind one override) and loans
+// contribute negatively after the linked-mortgage dedup; forcing them
+// through this shape would hide that math.
+
+type AssetRow = { id: string; name: string; gross: number | undefined };
+
+type AssetContributor = {
+  category: NetWorthEntityCategory;
+  // One row per countable entity at `iso`, gross before share/exclusion
+  // (undefined when the source records no figure — the breakdown renders
+  // "—" and the series counts 0).
+  rowsAt(data: UserData, iso: string): AssetRow[];
+  // Series-sample rows; the series walk falls back to `rowsAt` when
+  // absent. Items override this to apply the `acquiredAt` gate the
+  // snapshot deliberately skips: the breakdown still lists a
+  // future-dated item, the series lets it enter the timeline at its
+  // acquisition.
+  seriesRowsAt?(data: UserData, iso: string): AssetRow[];
+  // Feed every date this kind knows about (on included entities only)
+  // into `consider`. Drives the series window.
+  collectDates(
+    data: UserData,
+    isIncluded: (id: string) => boolean,
+    consider: (date: string | undefined) => void,
+  ): void;
+};
+
+const ASSET_CONTRIBUTORS: readonly AssetContributor[] = [
+  {
+    category: "accounts",
+    rowsAt(data, iso) {
+      const balances = computeAccountBalances(data, iso);
+      return data.accounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        gross: balances.get(account.id),
+      }));
+    },
+    collectDates(data, isIncluded, consider) {
+      const includedAccountIds = new Set(
+        data.accounts.filter((a) => isIncluded(a.id)).map((a) => a.id),
+      );
+      for (const accountId of includedAccountIds) {
+        for (const entry of data.history[accountId] ?? []) {
+          consider(entry.date);
+        }
+      }
+      for (const tx of data.transfers) {
+        if (
+          includedAccountIds.has(tx.fromAccountId) ||
+          includedAccountIds.has(tx.toAccountId)
+        )
+          consider(tx.date);
+      }
+      // Budget rows count toward an account's balance, so a workspace
+      // that only plans forward (no imported history) still anchors the
+      // window.
+      for (const sheet of data.sheets) {
+        for (const item of sheet.items) {
+          if (item.type !== "accountBudget") continue;
+          if (
+            item.accountId === null ||
+            !includedAccountIds.has(item.accountId)
+          )
+            continue;
+          const dateCol = findColumnByType(item.columns, "date");
+          if (!dateCol) continue;
+          for (const row of item.rows) {
+            const d = row.cells[dateCol.id];
+            if (typeof d === "string") consider(d);
+          }
+        }
+      }
+    },
+  },
+  {
+    category: "savings",
+    rowsAt: (data, iso) =>
+      data.savings.map((saving) => ({
+        id: saving.id,
+        name: saving.name,
+        gross: savingBalanceAt(saving, iso),
+      })),
+    collectDates(data, isIncluded, consider) {
+      for (const saving of data.savings) {
+        if (!isIncluded(saving.id)) continue;
+        for (const point of saving.balanceHistory) consider(point.date);
+      }
+    },
+  },
+  {
+    category: "items",
+    rowsAt: (data, iso) =>
+      data.items.filter(isItemOwned).map((item) => ({
+        id: item.id,
+        name: item.name,
+        gross: computeItemCurrentValue(item, iso),
+      })),
+    seriesRowsAt: (data, iso) =>
+      data.items
+        .filter(
+          (item) =>
+            isItemOwned(item) &&
+            !(item.acquiredAt !== undefined && item.acquiredAt > iso),
+        )
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          gross: computeItemCurrentValue(item, iso),
+        })),
+    collectDates(data, isIncluded, consider) {
+      for (const item of data.items) {
+        if (!isItemOwned(item) || !isIncluded(item.id)) continue;
+        consider(item.acquiredAt);
+        // A recorded value snapshot can predate (or stand in for a
+        // missing) acquisition date, so the series window starts where
+        // the value data does — otherwise an appreciating item's history
+        // would be clipped.
+        for (const point of item.valueHistory ?? []) consider(point.date);
+      }
+    },
+  },
+  {
+    category: "investments",
+    rowsAt: (data, iso) =>
+      data.investmentHoldings.map((holding) => ({
+        id: holding.id,
+        name: holding.name,
+        gross: holdingNetWorthValue(holding, iso),
+      })),
+    collectDates(data, isIncluded, consider) {
+      for (const holding of data.investmentHoldings) {
+        if (!isIncluded(holding.id)) continue;
+        consider(holding.purchaseDate);
+        for (const point of holding.valueHistory) consider(point.date);
+      }
+    },
+  },
+  {
+    category: "investments",
+    rowsAt: (data, iso) =>
+      data.investmentStocks.map((position) => ({
+        id: position.id,
+        name: position.name,
+        gross: stockNetWorthValue(position, iso),
+      })),
+    collectDates(data, isIncluded, consider) {
+      for (const position of data.investmentStocks) {
+        if (!isIncluded(position.id)) continue;
+        for (const tx of position.transactions) consider(tx.date);
+        for (const point of position.priceHistory) consider(point.date);
+      }
+    },
+  },
+];
+
+export function computeNetWorthSnapshot(
+  data: UserData,
+  settings: InsightsNetWorthSettings | undefined,
+  todayIso: string,
+): NetWorthSnapshot {
+  const entities: NetWorthEntityFigure[] = [];
+  const perCategory = zeroPerCategory();
+
+  for (const contributor of ASSET_CONTRIBUTORS) {
+    for (const { id, name, gross } of contributor.rowsAt(data, todayIso)) {
+      const { excluded, sharePct } = resolveOverride(settings, id);
+      const effective =
+        excluded || gross === undefined ? 0 : gross * (sharePct / 100);
+      perCategory[contributor.category] += effective;
+      entities.push({
+        id,
+        category: contributor.category,
+        name,
+        gross: gross ?? null,
+        sharePct,
+        excluded,
+        effective,
+      });
+    }
   }
 
   for (const property of data.properties) {
@@ -304,15 +440,7 @@ export function computeNetWorthSnapshot(
     });
   }
 
-  const total =
-    perCategory.accounts +
-    perCategory.savings +
-    perCategory.items +
-    perCategory.investments +
-    perCategory.properties +
-    perCategory.mortgages +
-    perCategory.loans;
-  return { entities, perCategory, total };
+  return { entities, perCategory, total: sumPerCategory(perCategory) };
 }
 
 export type NetWorthSeriesPoint = { x: number; y: number };
@@ -340,55 +468,8 @@ function earliestRelevantDate(
   };
   const included = (id: string) => !resolveOverride(settings, id).excluded;
 
-  const includedAccountIds = new Set(
-    data.accounts.filter((a) => included(a.id)).map((a) => a.id),
-  );
-  for (const accountId of includedAccountIds) {
-    for (const entry of data.history[accountId] ?? []) consider(entry.date);
-  }
-  for (const tx of data.transfers) {
-    if (
-      includedAccountIds.has(tx.fromAccountId) ||
-      includedAccountIds.has(tx.toAccountId)
-    )
-      consider(tx.date);
-  }
-  // Budget rows count toward an account's balance, so a workspace that
-  // only plans forward (no imported history) still anchors the window.
-  for (const sheet of data.sheets) {
-    for (const item of sheet.items) {
-      if (item.type !== "accountBudget") continue;
-      if (item.accountId === null || !includedAccountIds.has(item.accountId))
-        continue;
-      const dateCol = findColumnByType(item.columns, "date");
-      if (!dateCol) continue;
-      for (const row of item.rows) {
-        const d = row.cells[dateCol.id];
-        if (typeof d === "string") consider(d);
-      }
-    }
-  }
-  for (const saving of data.savings) {
-    if (!included(saving.id)) continue;
-    for (const point of saving.balanceHistory) consider(point.date);
-  }
-  for (const item of data.items) {
-    if (!isItemOwned(item) || !included(item.id)) continue;
-    consider(item.acquiredAt);
-    // A recorded value snapshot can predate (or stand in for a missing)
-    // acquisition date, so the series window starts where the value data
-    // does — otherwise an appreciating item's history would be clipped.
-    for (const point of item.valueHistory ?? []) consider(point.date);
-  }
-  for (const holding of data.investmentHoldings) {
-    if (!included(holding.id)) continue;
-    consider(holding.purchaseDate);
-    for (const point of holding.valueHistory) consider(point.date);
-  }
-  for (const position of data.investmentStocks) {
-    if (!included(position.id)) continue;
-    for (const tx of position.transactions) consider(tx.date);
-    for (const point of position.priceHistory) consider(point.date);
+  for (const contributor of ASSET_CONTRIBUTORS) {
+    contributor.collectDates(data, included, consider);
   }
   for (const property of data.properties) {
     if (!included(property.id)) continue;
@@ -443,44 +524,14 @@ function perCategoryAt(
   loans: Loan[],
   iso: string,
 ): Record<NetWorthCategory, number> {
-  const per: Record<NetWorthCategory, number> = {
-    accounts: 0,
-    savings: 0,
-    items: 0,
-    investments: 0,
-    properties: 0,
-    mortgages: 0,
-    loans: 0,
-  };
-  const balances = computeAccountBalances(data, iso);
-  for (const account of data.accounts) {
-    const { excluded, sharePct } = resolveOverride(settings, account.id);
-    if (excluded) continue;
-    per.accounts += (balances.get(account.id) ?? 0) * (sharePct / 100);
-  }
-  for (const saving of data.savings) {
-    const { excluded, sharePct } = resolveOverride(settings, saving.id);
-    if (excluded) continue;
-    per.savings += (savingBalanceAt(saving, iso) ?? 0) * (sharePct / 100);
-  }
-  for (const item of data.items) {
-    if (!isItemOwned(item)) continue;
-    const { excluded, sharePct } = resolveOverride(settings, item.id);
-    if (excluded) continue;
-    if (item.acquiredAt !== undefined && item.acquiredAt > iso) continue;
-    per.items += computeItemCurrentValue(item, iso) * (sharePct / 100);
-  }
-  for (const holding of data.investmentHoldings) {
-    const { excluded, sharePct } = resolveOverride(settings, holding.id);
-    if (excluded) continue;
-    per.investments +=
-      (holdingNetWorthValue(holding, iso) ?? 0) * (sharePct / 100);
-  }
-  for (const position of data.investmentStocks) {
-    const { excluded, sharePct } = resolveOverride(settings, position.id);
-    if (excluded) continue;
-    per.investments +=
-      (stockNetWorthValue(position, iso) ?? 0) * (sharePct / 100);
+  const per = zeroPerCategory();
+  for (const contributor of ASSET_CONTRIBUTORS) {
+    const rows = (contributor.seriesRowsAt ?? contributor.rowsAt)(data, iso);
+    for (const row of rows) {
+      const { excluded, sharePct } = resolveOverride(settings, row.id);
+      if (excluded) continue;
+      per[contributor.category] += (row.gross ?? 0) * (sharePct / 100);
+    }
   }
   for (const property of data.properties) {
     const { excluded, sharePct } = resolveOverride(settings, property.id);
@@ -508,15 +559,7 @@ export function buildNetWorthSeries(
   const loans = standaloneLoans(data);
   return seriesSampleDates(data, settings, todayIso).map(({ iso, ms }) => {
     const per = perCategoryAt(data, settings, loans, iso);
-    const total =
-      per.accounts +
-      per.savings +
-      per.items +
-      per.investments +
-      per.properties +
-      per.mortgages +
-      per.loans;
-    return { x: ms, y: total };
+    return { x: ms, y: sumPerCategory(per) };
   });
 }
 

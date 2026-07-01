@@ -87,30 +87,6 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
-- **`insights/networth.ts` hardcodes the per-collection asset walk three
-  times** — 545 lines; `computeNetWorthSnapshot` (:227–:305),
-  `earliestRelevantDate` (:343–:406), and `perCategoryAt` (:456–:496) each
-  manually iterate every asset/liability collection (accounts, savings,
-  items, investmentHoldings, investmentStocks, properties + their
-  mortgages, standalone loans). The per-entity value resolvers are already
-  clean named helpers (`savingBalanceAt`, `propertyValueAt`,
-  `loanBalanceAt`, …), so the smell is precisely the three parallel
-  walk-edits every new asset-tracking sheet type must make — and
-  `AGENTS.md` step 7 makes that evaluation mandatory for every new sheet
-  type, so the multiplier is structural, not hypothetical.
-  - **Plan**: a contributor-registry seam — per asset/liability kind a
-    `{ collection accessor, valueAt(entity, iso), datesOf(entity),
-band/category key }` descriptor iterated by all three functions. Only
-    hang it off `SHEET_TYPE_REGISTRY` if the shapes genuinely align —
-    properties' merged-mortgage banding and the linked-loan dedup
-    (`standaloneLoans`) need explicit contributor hooks; don't force
-    uniformity where the domain diverges.
-  - **Risk**: low — pure aggregation, behaviour pinned by
-    `tests/insights_networth_test.ts`.
-  - **Severity: 6.** The "every new sheet type bumps into it" rubric fits,
-    but the cost per type is confined to one test-covered file, which
-    keeps it out of the 7–8 band.
-
 - **Four custom pickers reinvent the custom-dropdown shell instead of
   reusing a shared shell** — `salary/EmployerPicker.tsx` (358),
   `salary/MunicipalityPicker.tsx` (144), `salary/TaxProfilePicker.tsx`
@@ -648,6 +624,27 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`insights/networth.ts` three hardcoded per-collection walks → simple-asset
+  contributor registry** (2026-07): the five simple asset kinds (accounts,
+  savings, owned items, investment holdings, stock positions) now live in one
+  module-level `ASSET_CONTRIBUTORS` list — per kind a `rowsAt(data, iso)`
+  (named gross rows, with accounts computing its per-date balances map
+  internally), an optional `seriesRowsAt` (items override it to apply the
+  `acquiredAt` gate the snapshot deliberately skips — a pre-existing,
+  now-documented divergence), and a `collectDates(data, isIncluded, consider)`
+  (accounts keeps its history/transfers/budget-rows window walk verbatim).
+  `computeNetWorthSnapshot`, `perCategoryAt`, and `earliestRelevantDate`
+  iterate the registry instead of repeating the collection loops, so a new
+  simple asset kind is one registry entry instead of three parallel edits.
+  Properties and standalone loans stay explicit per the plan (two-sided
+  equity math behind one override; linked-mortgage dedup). Rode along:
+  `NetWorthCategory` now derives from a `NET_WORTH_CATEGORIES` tuple, and the
+  duplicated zero-record + seven-term total sums collapsed into
+  `zeroPerCategory()` / `sumPerCategory()`. Pure refactor — identical
+  entity-row order and figures; behaviour pinned by
+  `tests/insights_networth_test.ts` (19 tests), full suite + build +
+  icons-check green (2182 tests). **Was severity 6.**
 
 - **`discoverMortgagePayments` ~395-line monolith → named module-level
   phases** (2026-06): the 2026-06 skip entry's ~350-line re-rate trigger
