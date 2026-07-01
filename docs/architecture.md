@@ -252,6 +252,9 @@ src/
 │   │   └── taxonomy.ts         # CATEGORY_COLORS, SHEET_COLORS, glyph allowlists
 │   ├── sheet.ts           # universal sheet primitives (newId, createDefault*
 │   │                       #   factories, column + sheet-tree traversal)
+│   ├── sheet-routing.ts   # sheet ⇄ URL-slug mapping (sheetSlug,
+│   │                       #   parseSheetSlug, resolveSheetSlug) — /budget,
+│   │                       #   /budget-2 deep links; wiring in useSheetUrlSync
 │   ├── sheet-types/       # per-flavour descriptors composed into one
 │   │   │                   #   SHEET_TYPE_REGISTRY — adding a new flavour is a
 │   │   │                   #   new file here plus a registry entry

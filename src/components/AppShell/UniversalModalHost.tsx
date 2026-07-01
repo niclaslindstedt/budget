@@ -362,6 +362,7 @@ export function UniversalModalHost(props: Props) {
       <SheetModal
         open={sheetModal !== null}
         sheet={sheetModal?.sheet ?? null}
+        initialType={sheetModal?.initialType}
         currentAccountId={
           sheetModal?.sheet
             ? (sheetModal.sheet.items.find(

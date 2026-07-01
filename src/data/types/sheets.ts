@@ -285,6 +285,34 @@ export type SheetType =
   | "investment"
   | "scenarios";
 
+// Every `SheetType` literal, in canonical order. The runtime companion
+// to the union above, so consumers that need to iterate the types — the
+// URL-slug router (`src/data/sheet-routing.ts`) and the build-time
+// deep-link alias emitter in `vite.config.ts` — don't re-list them. The
+// exhaustiveness guard below turns "added a literal to the union but
+// forgot this array" into a compile error.
+export const SHEET_TYPES = [
+  "budget",
+  "accounts",
+  "items",
+  "salary",
+  "properties",
+  "savings",
+  "loans",
+  "insights",
+  "investment",
+  "scenarios",
+] as const satisfies readonly SheetType[];
+
+// Compile-time guard: if a new `SheetType` literal is added to the
+// union without being appended to `SHEET_TYPES`, `Missing` stops being
+// `never` and this assignment fails to type-check.
+type _MissingSheetType = Exclude<SheetType, (typeof SHEET_TYPES)[number]>;
+const _sheetTypesExhaustive: [_MissingSheetType] extends [never]
+  ? true
+  : false = true;
+void _sheetTypesExhaustive;
+
 // A named tab inside the workspace. A sheet is a container of one or
 // more `SheetItem`s — the current UI renders a single AccountBudget,
 // but the shape supports stacking blocks (e.g. an AccountBudget plus a

@@ -10,6 +10,7 @@ import type {
   Sheet,
   SalaryView,
   ScenariosView,
+  SheetType,
 } from "../../../data/types";
 import { useT } from "../../../i18n";
 import type { useToast } from "../../../hooks";
@@ -20,7 +21,10 @@ type Params = {
   toast: ReturnType<typeof useToast>;
 };
 
-type SheetModalState = { sheet: Sheet | null };
+// `initialType` seeds the type picker for the new-sheet flow (only
+// meaningful when `sheet` is null) — used when a URL deep link opens the
+// modal pre-selected to the type it addressed. Ignored in edit mode.
+type SheetModalState = { sheet: Sheet | null; initialType?: SheetType };
 type DeleteSheetPrompt = { sheetId: string; name: string };
 
 type Result = {
@@ -34,7 +38,7 @@ type Result = {
   setDeleteSheetPrompt: (next: DeleteSheetPrompt | null) => void;
   deleteSheetActions: ConfirmAction[];
 
-  onOpenNewSheet: () => void;
+  onOpenNewSheet: (type?: SheetType) => void;
   onOpenEditSheet: (id: string) => void;
   onSaveSheet: (draft: SheetDraft) => void;
   onDeleteSheet: () => void;
@@ -53,8 +57,8 @@ export function useSheetMetaDialog({
   const [deleteSheetPrompt, setDeleteSheetPrompt] =
     useState<DeleteSheetPrompt | null>(null);
 
-  const onOpenNewSheet = useCallback(() => {
-    setSheetModal({ sheet: null });
+  const onOpenNewSheet = useCallback((type?: SheetType) => {
+    setSheetModal({ sheet: null, initialType: type });
   }, []);
   const onOpenEditSheet = useCallback(
     (id: string) => {
