@@ -127,7 +127,14 @@ export function FloatingPanel({
   // a single uninterrupted accent shape around the textarea and its tip.
   // Without it the arrow stayed `border-line` even with the textarea
   // focused, cutting the highlight off at the panel's border.
-  const ARROW_SIZE = 12;
+  //
+  // The square's diagonal is what pokes into the panel: at size N the
+  // base reaches N/√2 (~0.71·N) past the top edge. Keep it ≤ the top
+  // inset of whatever the first child is, or the opaque fill paints over
+  // that child's top border — the description popover's inline picker
+  // field sits behind an `p-2` (8px) inset, and a 10px arrow reaches
+  // ~7px in, clearing it. Bumping this size means revisiting that inset.
+  const ARROW_SIZE = 10;
   // Arrow border edges: for an upward-pointing arrow at the panel's
   // top edge, the visible tip is the top-left + top-right of the
   // rotated square — so we border the bottom-left + bottom-right and
