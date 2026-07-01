@@ -17,6 +17,7 @@ import { useT } from "../../i18n";
 import { formatBalance } from "../../utils/format";
 import { monthColorVar } from "../../utils/monthColor";
 import { ActionsCompactContext } from "../ActionsCompactContext";
+import { SalaryDayBadges } from "./SalaryDayBadges";
 import { SalaryRow } from "./SalaryRow";
 
 type Props = {
@@ -73,11 +74,26 @@ export function SalaryYearTable({
   const totals = useMemo(() => {
     let gross = 0;
     let net = 0;
+    let tax = 0;
+    // Summed absence days for the year, rendered as the same badges the
+    // rows carry so a year's leave reads at a glance in the footer.
+    const days = {
+      careOfChildDays: 0,
+      parentalLeaveDays: 0,
+      vacationDays: 0,
+      sickDays: 0,
+    };
     for (const s of salaries) {
-      gross += resolveSalary(s, taxParams).gross;
+      const resolved = resolveSalary(s, taxParams);
+      gross += resolved.gross;
+      tax += resolved.tax;
       net += s.net;
+      days.careOfChildDays += s.careOfChildDays ?? 0;
+      days.parentalLeaveDays += s.parentalLeaveDays ?? 0;
+      days.vacationDays += s.vacationDays ?? 0;
+      days.sickDays += s.sickDays ?? 0;
     }
-    return { gross, net };
+    return { gross, net, tax, days };
   }, [salaries, taxParams]);
 
   // Drives the year header's "select all" tri-state checkbox, mirroring
@@ -341,13 +357,19 @@ export function SalaryYearTable({
                 >
                   {formatBalance(totals.gross, settings)}
                 </td>
-                <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+                <td
+                  className={`salary-secondary-cell hidden px-2.5 py-2 whitespace-nowrap tabular-nums text-muted md:table-cell ${cellClass}`}
+                >
+                  {formatBalance(totals.tax, settings)}
+                </td>
                 <td
                   className={`px-2.5 py-2 whitespace-nowrap tabular-nums ${cellClass}`}
                 >
                   {formatBalance(totals.net, settings)}
                 </td>
-                <td className="salary-secondary-cell hidden px-2.5 py-2 md:table-cell" />
+                <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">
+                  <SalaryDayBadges days={totals.days} />
+                </td>
                 <td className="swipe-action-cell salary-action-cell px-2.5 py-2" />
               </tr>
             </tbody>

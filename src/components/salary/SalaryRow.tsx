@@ -12,6 +12,7 @@ import {
 } from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
 import { useRowSwipeAndClaim } from "../useRowSwipeAndClaim";
+import { SalaryDayBadges } from "./SalaryDayBadges";
 import { SalaryEntryActionsMenu } from "./SalaryEntryActionsMenu";
 
 type Props = {
@@ -30,50 +31,6 @@ type Props = {
   canManagePayslip: boolean;
   onManagePayslip: (salary: Salary) => void;
 };
-
-// One small pill per non-zero absence-day count, so an off-average
-// paycheck carries its own explanation inline.
-function DayBadges({ salary }: { salary: Salary }) {
-  const t = useT();
-  const badges: Array<{ key: string; label: string; n: number }> = [];
-  if (salary.careOfChildDays)
-    badges.push({
-      key: "vab",
-      label: t("salary.careOfChildShort"),
-      n: salary.careOfChildDays,
-    });
-  if (salary.parentalLeaveDays)
-    badges.push({
-      key: "parental",
-      label: t("salary.parentalLeaveShort"),
-      n: salary.parentalLeaveDays,
-    });
-  if (salary.vacationDays)
-    badges.push({
-      key: "vacation",
-      label: t("salary.vacationShort"),
-      n: salary.vacationDays,
-    });
-  if (salary.sickDays)
-    badges.push({
-      key: "sick",
-      label: t("salary.sickShort"),
-      n: salary.sickDays,
-    });
-  if (badges.length === 0) return null;
-  return (
-    <span className="flex flex-wrap gap-1">
-      {badges.map((b) => (
-        <span
-          key={b.key}
-          className="rounded-full border border-line px-1.5 py-0.5 text-[10px] whitespace-nowrap text-muted"
-        >
-          {b.label} {t("salary.daysValue", { n: String(b.n) })}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 function SalaryRowImpl({
   salary,
@@ -222,7 +179,7 @@ function SalaryRowImpl({
         {formatBalance(salary.net, settings)}
       </td>
       <td className="salary-secondary-cell hidden px-2.5 py-2 align-middle md:table-cell">
-        <DayBadges salary={salary} />
+        <SalaryDayBadges days={salary} />
       </td>
       <td className="swipe-action-cell salary-action-cell w-32 p-0 align-middle">
         <div className="flex h-full w-full items-stretch justify-end">
