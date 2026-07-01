@@ -458,10 +458,16 @@ export function AttachmentUploadModal({
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  // Drag highlight, tracked with a depth counter so dragging over a child
-  // element (which fires dragleave on the parent) doesn't flicker it off.
+  // Drag highlight. Cleared only when the pointer truly leaves the drop
+  // surface (see handleDragLeave) rather than when it crosses onto a
+  // child, and re-asserted on every dragover frame so a stray leave can
+  // never leave it stuck.
   const [dragActive, setDragActive] = useState(false);
-  const dragDepth = useRef(0);
+  // Bumped after every successful upload to force the download effect to
+  // re-fetch even when the upload resolved to the SAME path (a same-month
+  // payslip replace builds a deterministic name), which would otherwise
+  // leave setPath a no-op and hang the spinner on the stale bytes.
+  const [reloadNonce, setReloadNonce] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reseed whenever the modal (re)opens, possibly for a different entry.
@@ -472,7 +478,6 @@ export function AttachmentUploadModal({
     setError(null);
     setBusy(null);
     setDragActive(false);
-    dragDepth.current = 0;
   }, [open, currentPath]);
 
   // Download the current attachment for preview whenever the resolved path
@@ -500,7 +505,7 @@ export function AttachmentUploadModal({
     return () => {
       cancelled = true;
     };
-  }, [open, path, onDownload, t]);
+  }, [open, path, reloadNonce, onDownload, t]);
 
   // Object URL for the inline `<img>` / `<iframe>`, retyped from the
   // filename so octet-stream blobs (Dropbox's content download) still drive
@@ -526,7 +531,13 @@ export function AttachmentUploadModal({
         const next = await onUpload(file);
         // Setting the path triggers the download effect, which fetches the
         // freshly-uploaded bytes and swaps the zone for the preview.
+        // Dropping the old blob and bumping the nonce re-runs that effect
+        // even when `next` equals the current path (a same-month replace
+        // resolves to the same deterministic name), so the preview always
+        // refreshes instead of the spinner hanging on the previous file.
+        setBlob(null);
         setPath(next);
+        setReloadNonce((n) => n + 1);
       } catch (err) {
         log.error(`attachment upload failed name=${file.name}`, err);
         setError(t("attachment.uploadError"));
@@ -545,7 +556,6 @@ export function AttachmentUploadModal({
 
   function handleDrop(e: DragEvent<HTMLElement>) {
     e.preventDefault();
-    dragDepth.current = 0;
     setDragActive(false);
     if (busy) return;
     const file = e.dataTransfer.files?.[0];
@@ -554,22 +564,30 @@ export function AttachmentUploadModal({
 
   function handleDragEnter(e: DragEvent<HTMLElement>) {
     e.preventDefault();
-    dragDepth.current += 1;
     setDragActive(true);
   }
 
   function handleDragOver(e: DragEvent<HTMLElement>) {
-    // Without preventDefault on dragover the browser refuses the drop.
+    // preventDefault is mandatory or the browser refuses the drop, and
+    // pinning dropEffect to "copy" on every dragover frame is what makes
+    // the release land reliably — without it Chromium intermittently
+    // treats the drop as "no drop" and swallows the file (zone stays
+    // highlighted, nothing uploads). Re-asserting the highlight here
+    // self-heals it if a stray dragleave from crossing a child cleared it.
     e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
   }
 
   function handleDragLeave(e: DragEvent<HTMLElement>) {
+    // dragleave also fires when the pointer crosses from the drop surface
+    // onto one of its descendants; relatedTarget is the element now under
+    // the pointer, so ignore those and only clear the highlight when the
+    // pointer has genuinely left the surface.
     e.preventDefault();
-    dragDepth.current -= 1;
-    if (dragDepth.current <= 0) {
-      dragDepth.current = 0;
-      setDragActive(false);
-    }
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setDragActive(false);
   }
 
   async function handleRemove() {
@@ -670,15 +688,22 @@ export function AttachmentUploadModal({
             )}
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col p-4">
+          // The whole padded area is the drop surface (handlers on the
+          // wrapper, not just the inner button), so a file released on the
+          // padding ring around the button still uploads instead of being
+          // silently missed. The button underneath keeps the click /
+          // keyboard affordance for browsing.
+          <div
+            className="flex min-h-0 flex-1 flex-col p-4"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <button
               type="button"
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
-              onDragEnter={handleDragEnter}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
               className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed ${
                 dragActive
                   ? "border-accent bg-accent/10 text-accent"
