@@ -27,6 +27,11 @@ import { useThemeTokens } from "../../hooks";
 
 export type StackedChartPoint = { x: number; y: number };
 
+// A pressed segment: which series (by id) at which x sample. Lifted to the
+// caller so it can highlight the matching legend entry and show the
+// segment's real value.
+export type StackedBarSelection = { seriesId: string; x: number };
+
 export type StackedBarChartSeries = {
   // Stable key for React + tooltip lookups.
   id: string;
@@ -51,6 +56,12 @@ type Props = {
   totalLabel: string;
   // Chart height in px (width fills the container).
   height?: number;
+  // Controlled press-to-select: the currently pressed segment (or null).
+  // When provided together with `onSelect`, pressing a segment highlights
+  // it; pressing the same segment again or an empty part of the plot
+  // clears the selection.
+  selected?: StackedBarSelection | null;
+  onSelect?: (selection: StackedBarSelection | null) => void;
 };
 
 // `left` is a floor: the chart widens the gutter to fit the actual Y-axis
@@ -99,6 +110,8 @@ export function StackedBarChart({
   formatY,
   totalLabel,
   height = 280,
+  selected = null,
+  onSelect,
 }: Props) {
   const colorVars = useMemo(
     () =>
@@ -130,6 +143,8 @@ export function StackedBarChart({
               formatX={formatX}
               formatY={formatY}
               totalLabel={totalLabel}
+              selected={selected}
+              onSelect={onSelect}
               fontFamily={fontFamily}
               lineColor={lineColor}
               mutedColor={mutedColor}
@@ -168,6 +183,8 @@ function Chart({
   formatX,
   formatY,
   totalLabel,
+  selected,
+  onSelect,
   fontFamily,
   lineColor,
   mutedColor,
@@ -311,6 +328,63 @@ function Chart({
     ],
   );
 
+  // Press-to-select: resolve the pressed pixel to a specific segment (the
+  // series whose stacked span contains the click, in the nearest bar's
+  // band) and toggle it. Pressing an empty part of the plot — the gap
+  // between bars or above the tallest stack — clears the selection, which
+  // is the "press outside the section" gesture the caller relies on.
+  const handleClick = useCallback(
+    (event: React.MouseEvent<SVGRectElement>) => {
+      if (!onSelect || sortedXs.length === 0) return;
+      const point = localPoint(event);
+      if (!point) return;
+      const px = point.x - leftMargin;
+      const py = point.y - MARGIN.top;
+      let nearest = sortedXs[0];
+      let best = Infinity;
+      for (const candidate of sortedXs) {
+        const centre = (xScale(candidate) ?? 0) + barWidth / 2;
+        const distance = Math.abs(centre - px);
+        if (distance < best) {
+          best = distance;
+          nearest = candidate;
+        }
+      }
+      const bandX = xScale(nearest) ?? 0;
+      // Outside the bar's own band horizontally — treat as pressing away.
+      if (px < bandX || px > bandX + barWidth) {
+        onSelect(null);
+        return;
+      }
+      for (let k = 0; k < series.length; k++) {
+        const match = stacked[k].find((p) => p.x === nearest);
+        if (!match || match.y1 <= match.y0) continue;
+        const top = yScale(match.y1);
+        const bottom = yScale(match.y0);
+        if (py >= top && py <= bottom) {
+          const seriesId = series[k].id;
+          const same =
+            selected?.seriesId === seriesId && selected?.x === nearest;
+          onSelect(same ? null : { seriesId, x: nearest });
+          return;
+        }
+      }
+      // Pressed inside the band but above/below every segment.
+      onSelect(null);
+    },
+    [
+      onSelect,
+      sortedXs,
+      series,
+      stacked,
+      xScale,
+      yScale,
+      leftMargin,
+      barWidth,
+      selected,
+    ],
+  );
+
   const axisLabelProps = {
     fill: mutedColor,
     fontFamily,
@@ -359,6 +433,10 @@ function Chart({
             stacked[k].map((p) => {
               const barH = yScale(p.y0) - yScale(p.y1);
               if (barH <= 0) return null;
+              const isSelected =
+                selected?.seriesId === s.id && selected?.x === p.x;
+              const isHovered =
+                tooltipOpen && tooltipData && tooltipData.x === p.x;
               return (
                 <rect
                   key={`${s.id}-${p.x}`}
@@ -367,11 +445,10 @@ function Chart({
                   width={barWidth}
                   height={barH}
                   fill={colorFor(s.color)}
-                  fillOpacity={
-                    tooltipOpen && tooltipData && tooltipData.x === p.x
-                      ? 0.95
-                      : 0.75
-                  }
+                  fillOpacity={isSelected ? 1 : isHovered ? 0.95 : 0.75}
+                  stroke={isSelected ? fgColor : undefined}
+                  strokeWidth={isSelected ? 1.5 : undefined}
+                  pointerEvents="none"
                 />
               );
             }),
@@ -398,8 +475,10 @@ function Chart({
             width={innerW}
             height={innerH}
             fill="transparent"
+            style={onSelect ? { cursor: "pointer" } : undefined}
             onPointerMove={handleMove}
             onPointerLeave={hideTooltip}
+            onClick={onSelect ? handleClick : undefined}
           />
         </Group>
       </svg>

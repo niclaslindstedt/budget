@@ -86,6 +86,9 @@ const budget: BudgetCatalog = {
   spendingSpreadItemCosts: "Fördela prylkostnader över livslängden",
   spendingSpreadItemCostsHint:
     "Ersätter varje inköpstopp med prylens kostnad jämnt fördelad över dess livslängd.",
+  // Bildtext under stapeldiagrammet när en stapelsektion trycks — hur stor
+  // andel av månadens stapel den tryckta sektionen utgör.
+  spendingSectionShare: "{percent} av {month} · {total}",
   // Skrivskyddad postinfo-modal.
   entryInfoTitle: "Postdetaljer",
   entryInfoKindUser: "Budgetpost",

@@ -484,7 +484,17 @@ current month fall away. Off by default, resets on open.
 
 - **Monthly spending by category** — `StackedBarChart`, one bar per
   fiscal month, segments per category in the category's colour
-  (uncategorised rows get `--muted`).
+  (uncategorised rows get `--muted`). Pressing a bar section selects
+  it (the segment brightens and gains an `--fg-bright` outline); the
+  matching legend entry below turns into a filled tinted pill of the
+  category's colour carrying the section's real amount, the other
+  legend entries dim, and a caption spells out what share of that
+  month's bar the section is (`{percent} of {month} · {monthTotal}`).
+  Pressing the same section again, an empty part of the plot, or
+  switching the range / spread option clears the selection. The chart
+  is controlled via `StackedBarChart`'s `selected` / `onSelect` props
+  (`StackedBarSelection = { seriesId; x }`); the modal owns the state
+  and resolves it back to the pressed category's value and month.
 - **Where the money goes** — `DonutChart` of expense share per
   category; clicking a slice (or its legend-row button, the
   accessible target) drills into the entry types inside that

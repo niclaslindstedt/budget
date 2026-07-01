@@ -44,7 +44,9 @@ import { LineChart, type ChartSeries } from "../charts/LineChart";
 import {
   StackedBarChart,
   type StackedBarChartSeries,
+  type StackedBarSelection,
 } from "../charts/StackedBarChart";
+import { tintBorder, tintFill } from "../../utils/tint";
 
 // "Visualize spending" for the budget sheet — a scrollable dashboard of
 // how money actually moved: monthly spend stacked per category, a
@@ -137,12 +139,19 @@ export function BudgetSpendingModal({
   const [drill, setDrill] = useState<Drill>(null);
   const [spreadItemCosts, setSpreadItemCosts] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  // The pressed segment of the monthly bar chart (a category within one
+  // month), or null. Highlights the bar section, turns the matching legend
+  // entry into a filled pill, and surfaces the section's real amount.
+  const [barSelection, setBarSelection] = useState<StackedBarSelection | null>(
+    null,
+  );
   const optionsTriggerRef = useRef<HTMLButtonElement>(null);
   useResetOnOpen(open, undefined, () => {
     setPeriod(DEFAULT_PERIOD);
     setDrill(null);
     setSpreadItemCosts(false);
     setOptionsOpen(false);
+    setBarSelection(null);
   });
 
   const typesById = useMemo(() => indexById(types), [types]);
@@ -256,6 +265,10 @@ export function BudgetSpendingModal({
   const formatAmountFull = (n: number) =>
     withCurrency(formatNumber(n, settings), settings);
 
+  // Resolve a stored colour (a "--token" or a hex) to a CSS colour string.
+  const cssColor = (color: string) =>
+    color.startsWith("--") ? `var(${color})` : color;
+
   const barSeries: StackedBarChartSeries[] = monthly.categories.map((c) => ({
     id: c.categoryId ?? UNCATEGORIZED,
     label: categoryName(c.categoryId),
@@ -265,6 +278,29 @@ export function BudgetSpendingModal({
       y: c.totalsByMonth[i],
     })),
   }));
+
+  // The pressed bar section resolved to its category, real value, and the
+  // total of the month it sits in — so the legend can pill the category and
+  // show how much of that month's bar the section makes up.
+  const selectedSection = (() => {
+    if (!barSelection) return null;
+    const s = barSeries.find((b) => b.id === barSelection.seriesId);
+    const point = s?.points.find((p) => p.x === barSelection.x);
+    if (!s || !point || point.y <= 0) return null;
+    const monthTotal = barSeries.reduce(
+      (sum, b) => sum + (b.points.find((p) => p.x === barSelection.x)?.y ?? 0),
+      0,
+    );
+    return {
+      seriesId: s.id,
+      label: s.label,
+      color: s.color,
+      value: point.y,
+      monthTotal,
+      share: monthTotal > 0 ? point.y / monthTotal : 0,
+      month: formatMonth(barSelection.x),
+    };
+  })();
 
   const slices: DonutChartSlice[] = shares.map((share: SpendingShare) => ({
     id: share.id ?? UNCATEGORIZED,
@@ -356,6 +392,7 @@ export function BudgetSpendingModal({
                   onClick={() => {
                     setPeriod(p.value);
                     setDrill(null);
+                    setBarSelection(null);
                   }}
                   aria-pressed={period === p.value}
                   className={`relative z-10 flex-1 cursor-pointer border-0 bg-transparent px-2 py-1 transition-colors ${
@@ -393,7 +430,10 @@ export function BudgetSpendingModal({
                   <div className="p-3">
                     <Checkbox
                       checked={spreadItemCosts}
-                      onChange={setSpreadItemCosts}
+                      onChange={(next) => {
+                        setSpreadItemCosts(next);
+                        setBarSelection(null);
+                      }}
                       label={t("budget.spendingSpreadItemCosts")}
                       description={t("budget.spendingSpreadItemCostsHint")}
                     />
@@ -418,26 +458,58 @@ export function BudgetSpendingModal({
                     formatY={formatY}
                     totalLabel={t("budget.spendingTotal")}
                     height={isMobile ? 220 : 280}
+                    selected={barSelection}
+                    onSelect={setBarSelection}
                   />
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                    {barSeries.map((s) => (
-                      <span
-                        key={s.id}
-                        className="inline-flex items-center gap-1.5"
-                      >
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+                    {barSeries.map((s) => {
+                      const isSelected = selectedSection?.seriesId === s.id;
+                      if (isSelected && selectedSection) {
+                        // The pressed section's category, as a filled pill in
+                        // its own colour, trailing the section's real amount.
+                        return (
+                          <span
+                            key={s.id}
+                            className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium"
+                            style={{
+                              backgroundColor: tintFill(cssColor(s.color)),
+                              borderColor: tintBorder(cssColor(s.color)),
+                              color: cssColor(s.color),
+                            }}
+                          >
+                            <span className="truncate">{s.label}</span>
+                            <span className="tabular-nums">
+                              {formatAmountFull(selectedSection.value)}
+                            </span>
+                          </span>
+                        );
+                      }
+                      return (
                         <span
-                          aria-hidden
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{
-                            background: s.color.startsWith("--")
-                              ? `var(${s.color})`
-                              : s.color,
-                          }}
-                        />
-                        {s.label}
-                      </span>
-                    ))}
+                          key={s.id}
+                          className={`inline-flex items-center gap-1.5 ${
+                            selectedSection ? "opacity-45" : ""
+                          }`}
+                        >
+                          <span
+                            aria-hidden
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ background: cssColor(s.color) }}
+                          />
+                          {s.label}
+                        </span>
+                      );
+                    })}
                   </div>
+                  {selectedSection && (
+                    <p className="m-0 text-xs text-muted">
+                      {t("budget.spendingSectionShare", {
+                        percent: formatPercent(selectedSection.share),
+                        month: selectedSection.month,
+                        total: formatAmountFull(selectedSection.monthTotal),
+                      })}
+                    </p>
+                  )}
                 </section>
               )}
 
