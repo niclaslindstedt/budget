@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   linkedMortgageFigures,
@@ -8,6 +8,22 @@ import {
   resolveLinkedMortgages,
 } from "../src/data/loans/balance";
 import type { Loan, Property } from "../src/data/types";
+
+// `linkedMortgageFigures` reconstructs a past month's balance by
+// re-adding amortisations back to the *real* current month (`balanceAt`
+// in src/data/finance/interest.ts uses `todayIso()`), so its figures
+// otherwise drift the moment the wall-clock month advances past the
+// fixtures' `asOf` month — the mortgage assertions below would pass only
+// during June 2026. Pin "today" to that month to keep them deterministic
+// year-round. Every other block passes an explicit `asOf` and never
+// consults `todayIso()`, so pinning it here is a no-op for them.
+vi.mock("../src/utils/date", async () => {
+  const actual =
+    await vi.importActual<typeof import("../src/utils/date")>(
+      "../src/utils/date",
+    );
+  return { ...actual, todayIso: () => "2026-06-15" };
+});
 
 function loan(over: Partial<Loan> = {}): Loan {
   return {
