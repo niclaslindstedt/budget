@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Check, ChevronDown, ChevronLeft, Plus, Tag, X } from "lucide-react";
 
 import { TYPE_GLYPH_NAMES } from "../data/constants/taxonomy";
@@ -126,6 +133,28 @@ export function TypePicker({
   const [tier, setTier] = useState<"category" | "type">("category");
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Both tiers live side-by-side in a `w-[200%]` flex track we slide
+  // with translateX, so the row's intrinsic height is the *taller* of
+  // the two panes. When the visible pane is the shorter one (a category
+  // with few types), the taller sibling padded out the height and left
+  // a dead band at the bottom of the dropdown. Measure the active pane
+  // and pin the clip container to its height so it tracks whichever tier
+  // is showing.
+  const categoryPaneRef = useRef<HTMLDivElement>(null);
+  const typePaneRef = useRef<HTMLDivElement>(null);
+  const [paneHeight, setPaneHeight] = useState<number>();
+  useLayoutEffect(() => {
+    if (!open) return;
+    const active =
+      tier === "category" ? categoryPaneRef.current : typePaneRef.current;
+    if (!active) return;
+    const measure = () => setPaneHeight(active.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(active);
+    return () => ro.disconnect();
+  }, [open, tier]);
 
   const selected = useMemo(
     () => types.find((ty) => ty.id === selectedId) ?? null,
@@ -341,7 +370,10 @@ export function TypePicker({
             leaving the visible region empty. overflow:clip clips without
             establishing a scroll container, so the focus auto-scroll has
             nothing to scroll. */}
-        <div className="relative overflow-clip">
+        <div
+          className="relative overflow-clip transition-[height] duration-200 ease-out"
+          style={paneHeight != null ? { height: paneHeight } : undefined}
+        >
           <div
             className="flex w-[200%] transition-transform duration-200 ease-out"
             style={{
@@ -350,6 +382,7 @@ export function TypePicker({
             }}
           >
             <div
+              ref={categoryPaneRef}
               className={
                 tier === "category"
                   ? "w-1/2 shrink-0"
@@ -375,6 +408,7 @@ export function TypePicker({
               />
             </div>
             <div
+              ref={typePaneRef}
               className={
                 tier === "type"
                   ? "w-1/2 shrink-0"
