@@ -45,10 +45,10 @@ const salary = {
   deleteTitle: "Delete salary",
   deleteConfirm: "Delete the salary for {month}? This cannot be undone.",
   delete: "Delete",
-  grossLabel: "Gross (brutto)",
+  grossLabel: "Gross",
   grossHint:
     "Earnings before tax. Enter gross or tax — the other is worked out.",
-  netLabel: "Net (netto)",
+  netLabel: "Net",
   netHint: "The amount paid into your account.",
   taxLabel: "Tax",
   taxHint: "Tax withheld. Enter tax or gross — the other is worked out.",

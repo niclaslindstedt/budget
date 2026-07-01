@@ -42,6 +42,15 @@ function daysText(n: number | undefined): string {
   return n === undefined ? "" : String(n);
 }
 
+// Round a derived gross / tax figure to at most two decimals. Typing one
+// of gross / tax back-computes the other by adding / subtracting net;
+// with decimal inputs that subtraction drifts into a long floating-point
+// tail (0.3 - 0.1 → 0.19999999999999998), so we snap it to öre before it
+// reaches the input.
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function SalaryEditModal({
   open,
   salary,
@@ -75,7 +84,9 @@ export function SalaryEditModal({
     setGrossText(salary.gross !== undefined ? String(salary.gross) : "");
     setNetText(String(salary.net));
     setTaxText(
-      salary.gross !== undefined ? String(salary.gross - salary.net) : "",
+      salary.gross !== undefined
+        ? String(round2(salary.gross - salary.net))
+        : "",
     );
     setDriver("gross");
     setEmployerId(salary.employerId);
@@ -107,12 +118,12 @@ export function SalaryEditModal({
   function syncTaxFromGross(grossStr: string, netStr: string) {
     const g = parseAmount(grossStr);
     const n = parseAmount(netStr);
-    setTaxText(g !== null && n !== null ? String(g - n) : "");
+    setTaxText(g !== null && n !== null ? String(round2(g - n)) : "");
   }
   function syncGrossFromTax(taxStr: string, netStr: string) {
     const tx = parseAmount(taxStr);
     const n = parseAmount(netStr);
-    setGrossText(tx !== null && n !== null ? String(n + tx) : "");
+    setGrossText(tx !== null && n !== null ? String(round2(n + tx)) : "");
   }
   function handleGrossChange(v: string) {
     setGrossText(v);
@@ -171,16 +182,6 @@ export function SalaryEditModal({
             />
           </FormSection>
 
-          <FormSection as="label" label={t("salary.netLabel")}>
-            <ClearableInput
-              inputMode="decimal"
-              value={netText}
-              onValueChange={handleNetChange}
-              className={NUMBER_INPUT_CLASS}
-            />
-            <span className="text-xs text-muted">{t("salary.netHint")}</span>
-          </FormSection>
-
           <FormSection as="label" label={t("salary.grossLabel")}>
             <ClearableInput
               inputMode="decimal"
@@ -205,7 +206,7 @@ export function SalaryEditModal({
               onValueChange={handleTaxChange}
               placeholder={
                 estimatedGross !== null
-                  ? String(estimatedGross - net)
+                  ? String(round2(estimatedGross - net))
                   : undefined
               }
               className={NUMBER_INPUT_CLASS}
@@ -215,6 +216,16 @@ export function SalaryEditModal({
                 ? t("tax.estimatedTitle")
                 : t("salary.taxHint")}
             </span>
+          </FormSection>
+
+          <FormSection as="label" label={t("salary.netLabel")}>
+            <ClearableInput
+              inputMode="decimal"
+              value={netText}
+              onValueChange={handleNetChange}
+              className={NUMBER_INPUT_CLASS}
+            />
+            <span className="text-xs text-muted">{t("salary.netHint")}</span>
           </FormSection>
 
           <div className="grid grid-cols-2 gap-3">

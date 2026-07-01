@@ -37,6 +37,32 @@ function getFocusables(root: HTMLElement | null): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 }
 
+// Input types that don't open the on-screen keyboard — focusing them
+// shouldn't scroll the modal body (they'd otherwise yank an already-
+// visible toggle around for no reason). Everything else (text, decimal,
+// numeric, email, date, …) plus <textarea> and contenteditable does.
+const NON_KEYBOARD_INPUT_TYPES = new Set([
+  "checkbox",
+  "radio",
+  "button",
+  "submit",
+  "reset",
+  "file",
+  "range",
+  "color",
+  "image",
+  "hidden",
+]);
+
+function opensSoftKeyboard(el: HTMLElement): boolean {
+  if (el.tagName === "TEXTAREA") return true;
+  if (el.isContentEditable) return true;
+  if (el.tagName === "INPUT") {
+    return !NON_KEYBOARD_INPUT_TYPES.has((el as HTMLInputElement).type);
+  }
+  return false;
+}
+
 // Shared shell for every modal dialog in the app. Owns:
 //
 // * The overlay — opaque `bg-surface` filling the screen on mobile
@@ -246,6 +272,62 @@ export function Modal({
     focusInitial();
     return restoreOpener;
   }, [open, focusOnOpen, focusInitial, restoreOpener]);
+
+  // Keep the focused text field above the soft keyboard. When a
+  // keyboard-opening input inside the body gains focus the visual
+  // viewport shrinks (see `useVisualViewportHeight`) and the shell
+  // height follows it — but the browser won't reliably scroll a field
+  // inside the body's own scroll container into the shortened visible
+  // band, especially with the fixed + translated shell on iOS, so the
+  // field can end up hidden behind the keyboard. We scroll it into view
+  // explicitly: once on focus, and again on every visible-viewport
+  // change while it stays focused (the keyboard finishing its open
+  // animation is one such change). `block: "nearest"` only moves a field
+  // that's actually clipped, so it never disturbs an already-visible top
+  // field on open or jumps the body while tabbing on desktop.
+  const focusedFieldRef = useRef<HTMLElement | null>(null);
+  const scrollFocusedFieldIntoView = useCallback(() => {
+    const el = focusedFieldRef.current;
+    if (!el || document.activeElement !== el || !document.contains(el)) return;
+    el.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const shell = shellRef.current;
+    if (!shell) return;
+    function onFocusIn(e: FocusEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && opensSoftKeyboard(target)) {
+        focusedFieldRef.current = target;
+        // Defer a frame so any viewport shift the focus kicks off has
+        // landed before we measure and scroll.
+        requestAnimationFrame(scrollFocusedFieldIntoView);
+      }
+    }
+    function onFocusOut(e: FocusEvent) {
+      if (focusedFieldRef.current === e.target) focusedFieldRef.current = null;
+    }
+    shell.addEventListener("focusin", onFocusIn);
+    shell.addEventListener("focusout", onFocusOut);
+    return () => {
+      shell.removeEventListener("focusin", onFocusIn);
+      shell.removeEventListener("focusout", onFocusOut);
+    };
+  }, [open, scrollFocusedFieldIntoView]);
+
+  // Re-run the scroll whenever the visible band changes — the soft
+  // keyboard opening / resizing — so a field focused while the keyboard
+  // was closed is pulled clear of it once it animates in.
+  useEffect(() => {
+    if (!open) return;
+    scrollFocusedFieldIntoView();
+  }, [
+    open,
+    visualViewportHeight,
+    visualViewportOffsetTop,
+    scrollFocusedFieldIntoView,
+  ]);
 
   // Focus trap — cycles Tab / Shift+Tab inside the shell so keyboard
   // users can't accidentally Tab into the inert background. Without

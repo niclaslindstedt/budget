@@ -1110,8 +1110,10 @@ Salary over time. Sheet type `"salary"`. Files live in
 ### Salary page
 
 `SalaryPage.tsx` — the page root ("salary sheet"). Renders
-`UserData.salaries` as one `SalaryYearTable` per year (gross + net
-totals). Select-many runs through the universal `BottomBar` select
+`UserData.salaries` as one `SalaryYearTable` per year, footed with the
+year's gross, tax, and net totals plus a summary of its summed
+absence days (the same VAB / parental / vacation / sick pills the rows
+carry, rendered by `SalaryDayBadges`). Select-many runs through the universal `BottomBar` select
 toggle (state lifted into AppShell's `useSalaryBulkSelection`, not an
 in-page button) and a salary-adjusted `BulkActionBar` (Edit employer /
 tax + Delete, no Move / Copy); each year table gets a "select all in
