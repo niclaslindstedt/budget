@@ -87,10 +87,34 @@ _(none pending — the sheet-type registry coverage cluster landed
 
 ### Severity 5–6 — friction
 
+- **`insights/networth.ts` hardcodes the per-collection asset walk three
+  times** — 545 lines; `computeNetWorthSnapshot` (:227–:305),
+  `earliestRelevantDate` (:343–:406), and `perCategoryAt` (:456–:496) each
+  manually iterate every asset/liability collection (accounts, savings,
+  items, investmentHoldings, investmentStocks, properties + their
+  mortgages, standalone loans). The per-entity value resolvers are already
+  clean named helpers (`savingBalanceAt`, `propertyValueAt`,
+  `loanBalanceAt`, …), so the smell is precisely the three parallel
+  walk-edits every new asset-tracking sheet type must make — and
+  `AGENTS.md` step 7 makes that evaluation mandatory for every new sheet
+  type, so the multiplier is structural, not hypothetical.
+  - **Plan**: a contributor-registry seam — per asset/liability kind a
+    `{ collection accessor, valueAt(entity, iso), datesOf(entity),
+band/category key }` descriptor iterated by all three functions. Only
+    hang it off `SHEET_TYPE_REGISTRY` if the shapes genuinely align —
+    properties' merged-mortgage banding and the linked-loan dedup
+    (`standaloneLoans`) need explicit contributor hooks; don't force
+    uniformity where the domain diverges.
+  - **Risk**: low — pure aggregation, behaviour pinned by
+    `tests/insights_networth_test.ts`.
+  - **Severity: 6.** The "every new sheet type bumps into it" rubric fits,
+    but the cost per type is confined to one test-covered file, which
+    keeps it out of the 7–8 band.
+
 - **Four custom pickers reinvent the custom-dropdown shell instead of
-  reusing `form/SelectPicker.tsx`** — `salary/EmployerPicker.tsx` (347),
-  `salary/MunicipalityPicker.tsx` (147), `salary/TaxProfilePicker.tsx`
-  (151), and `properties/FileCategoryPicker.tsx` (278) each build their own
+  reusing a shared shell** — `salary/EmployerPicker.tsx` (358),
+  `salary/MunicipalityPicker.tsx` (144), `salary/TaxProfilePicker.tsx`
+  (152), and `properties/FileCategoryPicker.tsx` (291) each build their own
   `FloatingPanel` + `<ul role="listbox">` + `role="option"` buttons,
   duplicating the shell that `form/SelectPicker.tsx` (262) already provides
   with full keyboard nav. `FileCategoryPicker` (re-verified 2026-06:
@@ -106,36 +130,31 @@ _(none pending — the sheet-type registry coverage cluster landed
     `LISTBOX_CREATE_OPTION_CLASS` constants in `form/listbox.ts`. That was the
     mechanical, zero-risk part of the plan; what remains is the
     component-level consolidation, which is the riskier piece.
-  - **Plan (remaining)**: route the four pickers through one shared shell.
-    **Re-verify caution — the original "grow `SelectPicker` into a
-    kitchen-sink" plan is questionable.** The four pickers genuinely diverge
-    on keyboard model — `SelectPicker` uses a listbox-level highlight
-    handler, `EmployerPicker`/`FileCategoryPicker` use `useRovingTabindex`,
-    and `MunicipalityPicker`/`TaxProfilePicker` have **no keyboard nav at
-    all** (plain `onClick` buttons). They also diverge on per-option render
-    (employer glyph+color, folder icon, receipt icon, municipality trailing
-    rate%), on a search-filter zone (Municipality's ~290-entry kommun list),
-    on a "none/no-X" sentinel header (`null`/`undefined`, which
-    `SelectPicker`'s `T extends string | number` value type can't express
-    without a sentinel-mapping boundary), and on bespoke creator modals
-    (`EmployerCreator`, `FileCategoryCreator`, `TaxProfileModal`). Bolting
-    all of that onto `SelectPicker` would turn its clean focused design into
-    a ~10-prop conditional. A better seam is probably a thin presentational
-    `PickerShell` (trigger + `FloatingPanel` + listbox structure + optional
-    header/footer/search slots) that each picker composes while keeping its
-    own keyboard model and creator — but that's a design pass, not a
-    mechanical merge. Don't force the merge; design it deliberately.
-  - **Risk**: medium — changing any picker's keyboard model is a behaviour
-    change and the keyboard nav isn't smoke-testable in the agent
-    environment (no real device). Smoke each picker's keyboard nav before
-    landing. (The narrower `useListboxKeyboard()` extraction was skipped
-    earlier at one site — this is the broader shell-consolidation angle, not
-    just the key handler.)
-  - **Severity: 4** (was 5; the byte-identical row/footer styling — the
-    cheapest multiplier — landed, leaving the divergent-shaped shell). New
-    sheet types (loans, savings) will each add domain pickers, so a shared
-    `PickerShell` still pays off, but only once the design is worked out
-    rather than mechanically merging into `SelectPicker`.
+  - **Plan (updated 2026-07): the design pass this row was waiting on has
+    effectively landed.** `src/components/EntityPickerShell.tsx` (244) is
+    exactly the thin presentational shell the prior plan sketched — trigger
+    - `FloatingPanel` + listbox structure, type-ahead via an optional
+      `getLabel`, roving tabindex, `renderTrigger` / `renderOption` /
+      `renderHeader` / `renderCreator` slots, and a native none-sentinel
+      (`selectedId: string | null` + a clear footer) — with two landed
+      consumers (`CategoryPicker`, `CompanyCategoryPicker`;
+      `TypePicker` declined it deliberately because its list is grouped, per
+      the comment at `TypePicker.tsx:99`). The remaining work is adoption at
+      the four pickers, not design: the bespoke creators map onto
+      `renderCreator`, the per-option renders onto `renderOption`.
+      Genuine leftovers to resolve per-site: Municipality's search-filter
+      zone over its ~290-entry kommun list (the shell offers type-ahead, not
+      a filter field — needs a search slot or that picker stays out), and
+      the fact that Municipality/TaxProfile currently have **no keyboard nav
+      at all**, so adopting the shell adds roving tabindex — an improvement,
+      but still a behaviour change to smoke.
+  - **Risk**: medium — keyboard-nav changes aren't smoke-testable in the
+    agent environment (no real device). Smoke each picker's keyboard nav
+    before landing; adopt one picker per PR.
+  - **Severity: 5** (was 4; the "only once the design is worked out"
+    qualifier is discharged — the shell exists in-tree with two landed
+    consumers, so this is now concrete adoption work that removes four
+    shell re-derivations before the next sheet type adds a fifth).
 
 - **`AppShell.tsx` modal-mount state-ownership shift** — the
   JSX-relocation half of the original severity-8 modal-host item
@@ -284,6 +303,19 @@ _(none pending — the sheet-type registry coverage cluster landed
     is untangled (the search→scroll bridge would need a different mechanism
     than a host move). AppShell collapses toward a routing switch + host
     mounts. Slice per host so each PR leaves the app working.
+    **Re-verified 2026-07: `AppShell/AppShell.tsx` is now 1436 lines** —
+    the growth since the 850-line slice-8 state is feature wiring, not
+    regression: five new sheet-type arms (savings, loans, insights,
+    investment, scenarios) plus their dialog hooks (`useLoanDialog` 472,
+    `useSavingDialog` 204, `useTaxonomyCrud` 252, `useReceiptManager` 154,
+    `useCoverTransferFlow` 141, `useSheetNav` 195, `useSheetUrlSync` 185)
+    and three new hosts (`SavingsModalHost`, `LoansModalHost`,
+    `AccountsModalHost` 292). The `useSearchModal` blocker is unchanged
+    (AppShell still reads `scrollToRowRequest` at :304 and feeds it to
+    `BudgetPage` at :1258); the new dialog hooks are the same
+    cross-cutting shape (page-facing callbacks), so no new clean host-only
+    relocation candidate surfaced. The severity holds on the trajectory:
+    every new sheet type adds another hook call + host prop to the pile.
   - Risk: low. The seam is a pure refactor — AppShell registers the same
     complete handler set as a base slice, so the merged table dispatched is
     identical. Not on a cloud-OAuth hot path; modal opens have no
@@ -296,21 +328,85 @@ _(none pending — the sheet-type registry coverage cluster landed
     hook it relocates has no remaining AppShell / page _reader_ (only the
     dispatch opener) before moving it.
 
+- **Update-balance/value modal shape now duplicated at five sites** —
+  `loans/LoanUpdateBalanceModal.tsx` (204),
+  `savings/UpdateSavingBalanceModal.tsx` (201),
+  `items/UpdateItemValueModal.tsx` (222),
+  `properties/UpdatePropertyValueModal.tsx` (234), and
+  `accounts/UpdateBalanceModal.tsx` (210). The first four are
+  near-identical shells: the `value` / `date` / `importOpen` `useState`
+  triple + focus ref + `useResetOnOpen` stamping today + parse/validate +
+  `handleAdd` + date-desc-sorted history list with per-entry delete — and
+  all four now also wire the same `BatchValueImportModal` import flow.
+  The accounts modal still genuinely diverges (delta-prose UI). The prior
+  row's recorded defer-trigger — "until a fifth balance-snapshot surface
+  lands (e.g. an investment sheet type)" — fired 2026-06 with
+  `UpdateItemValueModal` (#1047).
+  - **Plan**: extract the shared shell (value+date form, history list,
+    batch-import wiring) parameterised on labels + validate + commit;
+    leave the accounts modal out. Settle the negative-snapshot asymmetry
+    first and independently (loans rejects `parsed < 0`, savings / items /
+    properties accept it) — that's a product decision, not a refactor;
+    don't fold it into the extraction PR.
+  - **Risk**: low (presentational; each site's commit dispatch stays
+    local).
+  - **Severity: 5** (was 4; the fifth site landed and an investment sheet
+    type would be the sixth copy).
+
+- \*\*Cloud-adapter factory closures bundle a growing private-function suite
+  - mutable token/cache state\** (`src/storage/dropbox-adapter.ts` 610,
+    `src/storage/gdrive-adapter.ts` 1153 — up from ~494 / 765 when first
+    recorded, +34% / +51%). Each `create*Adapter()`wraps load / save /
+backup / auth helpers in one closure that mutates`currentAccessToken`+`pendingRefresh` (Dropbox) / four cached folder-and-file ids (GDrive) in
+    place — GDrive is now ~35 closure functions with no single owner of
+    cache invalidation. The growth driver is per-kind sibling-file ops
+    (backups, receipts, payslips, property files, exports) re-implemented in
+    both adapters with near-identical read / upload / delete boilerplate, so
+    every new attachment kind threads through both closures. Distinct from
+    the already-skipped OAuth-refresh-dedup item: this is the _structure_,
+    not the 401 semantics.
+  * **Plan**: lift the private suite into a small stateful client object
+    (`DropboxClient` / `DriveClient`) holding the token/cache as explicit
+    fields; the adapter becomes a thin `StorageAdapter` wrapper over it.
+    Once the clients exist, a shared `FileBackend`
+    (read/write/delete-by-path) interface can absorb the per-kind
+    sibling-op boilerplate as a follow-up slice.
+  * **Risk**: HIGH and **not smoke-testable in this environment** — the
+    OAuth + live-revision flows (silent token refresh mid-load, 404 →
+    cache-bust → re-create) only exercise against real Dropbox/Drive.
+    The storage hot path is production-critical. Don't land
+    speculatively; slice it in when the adapters are next touched for a
+    feature, with a maintainer smoke against both providers.
+  * **Severity: 5** (was 4; the closure tangle is compounding with every
+    attachment kind, so the trigger is no longer only "a third backend" —
+    but the un-testable risk still caps how soon this should land).
+
 ### Severity 3–4 — nits with leverage
 
 - **Discovery / candidate-walk pattern re-derived per page (UI + data)** —
-  seven UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its reducer),
-  `properties/MortgageDiscoveryModal.tsx` (667), `items/ItemFinderModal.tsx`
-  (427), `budget/BudgetFindConflictsModal.tsx` (384),
-  `budget/BudgetRecurringCandidatesPanel.tsx` (441),
+  now **nine** UI surfaces: `salary/SalaryDiscoveryModal.tsx` (797 + its
+  reducer), `properties/MortgageDiscoveryModal.tsx` (835),
+  `items/ItemFinderModal.tsx` (427), `budget/BudgetFindConflictsModal.tsx`
+  (384), `budget/BudgetRecurringCandidatesPanel.tsx` (459),
   `accounts/AccountTransferCollapseModal.tsx` (260),
-  `accounts/AccountRenamePredictorModal.tsx` (235) — ~3,200 lines; five data
-  engines: `salary/detection.ts` (244) + `salary/discovery.ts` (382),
-  `property-mortgage/discovery.ts` (900, now phase-decomposed — see Landed),
+  `accounts/AccountRenamePredictorModal.tsx` (256), and — added by the
+  2026-07 sweep — the cross-account duplicate finder pair
+  `accounts/AccountDuplicatesModal.tsx` (677) +
+  `accounts/ImportDuplicatesModal.tsx` (198); six data engines:
+  `salary/detection.ts` (244) + `salary/discovery.ts` (382),
+  `property-mortgage/discovery.ts` (996, phase-decomposed — see Landed),
   `loans/candidates.ts` (140), `property-repairs/candidates.ts` (173),
-  `items/find.ts` (145). Each data engine re-derives its own "already
-  consumed" tracking (`loans/candidates.ts:30` `consumedHistoryIds`,
-  `property-repairs/candidates.ts:131` `usedSourceKeys`, etc.).
+  `items/find.ts` (145), and `accounts/duplicates.ts` (869). Each data
+  engine re-derives its own "already consumed / ignored" tracking
+  (`loans/candidates.ts:30` `consumedHistoryIds`,
+  `property-repairs/candidates.ts:131` `usedSourceKeys`,
+  `accounts/duplicates.ts` `buildIgnoreSet` + session-id sets, etc.).
+  The duplicates engine is well-decomposed and pinned by two test suites
+  (`tests/account_duplicates_*_test.ts`), so it adds evidence for the
+  convention, not urgency; if its balance-fit core (`buildAccountIndex`,
+  :195–:288 — the file's densest block) is ever touched, the natural seam
+  is named forward-fit / backward-fit / merge phases, mirroring the
+  `discoverMortgagePayments` decomposition.
   - **Re-verified 2026-06 — the `useCandidateSession` UI slice is dead.** The
     "every walk re-implements per-session `Set<string>` accepted/skipped
     state" framing failed contact with the code: only `SalaryDiscoveryModal`
@@ -342,45 +438,71 @@ _(none pending — the sheet-type registry coverage cluster landed
     design-pass shell). Every new sheet type with a "Find X" walk still
     re-derives ~150–800 lines of engine today.
 
-- **Update-balance/value modal shape duplicated at four sites** —
-  `loans/LoanUpdateBalanceModal.tsx` (182),
-  `savings/UpdateSavingBalanceModal.tsx` (176),
-  `properties/UpdatePropertyValueModal.tsx` (207), and
-  `accounts/UpdateBalanceModal.tsx` (210). The first three are near-identical
-  shells: two `useState` (value text, date) + focus ref + `useResetOnOpen`
-  stamping today + parse/validate + `handleAdd` + date-desc-sorted history
-  list with a per-entry delete button (byte-identical row layout and
-  delete-button class in loans / savings / properties). The accounts modal
-  genuinely diverges (delta-prose UI showing change + new balance).
-  - **Plan**: defer extraction until a fifth balance-snapshot surface lands
-    (e.g. an investment sheet type) — at four sites with one divergent, a
-    shared component needs a validation hook + i18n key bundle that doesn't
-    yet pay for itself. One behavioural question to settle independently of
-    any refactor: loans rejects negative snapshots (`parsed >= 0`), savings
-    silently accepts them — confirm whether that asymmetry is intended.
-  - **Risk**: low (presentational), but the negative-snapshot question is a
-    product decision, not a refactor — don't fold it into an extraction PR.
-  - **Severity: 4.**
+- **Cross-page consumers reaching into page-scoped `src/data/`
+  directories** — four modules under page-named data dirs now have
+  consumers in _other_ pages' component directories, the shape the
+  placement rules say belongs at `src/data/` root (and the shape the
+  `src/data/finance/` hoist fixed 2026-06):
+  `data/budget/company-type-hints.ts` (423) ←
+  `accounts/EditHistoryEntryModal.tsx:4`; `data/budget/synthesis.ts`
+  (475) ← `items/ItemFinderModal.tsx:8`, `properties/PropertiesPage.tsx:8`,
+  `scenarios/ScenarioMonthTable.tsx:7`; `data/budget/rows.ts` (575) ←
+  `scenarios/ScenariosPage.tsx:14`; `data/accounts/cover-transfer.ts`
+  (261) ← `budget/BudgetPage.tsx:15`, `budget/BudgetCoverInfoModal.tsx:4`.
+  - **Plan**: per-module judgment, not a blanket move.
+    `company-type-hints` and `cover-transfer` look genuinely cross-page
+    (relocate to root: `git mv` + import updates + the
+    `docs/architecture.md` inventory). `synthesis` / `rows` are consumed
+    by scenarios _because scenarios is intrinsically a what-if layer over
+    budget rows_ — decide on pickup whether that makes the helpers
+    cross-page (relocate) or scenarios budget-coupled by design (document
+    the exception on the import sites instead); the items / properties
+    `synthesis` imports suggest relocation is the honest answer there.
+  - **Risk**: low — mechanical `git mv` moves; the synthesis / rows
+    decision is the only judgment call, and relocating them is churny
+    (many budget-internal consumers), so it may want its own slice.
+  - **Severity: 4** (easy-win flavoured for the two clear relocations).
 
-- **Cloud-adapter factory closures bundle ~15–20 private functions +
-  mutable token/cache state** (`src/storage/dropbox-adapter.ts`,
-  `src/storage/gdrive-adapter.ts` 765 lines) — each `create*Adapter()`
-  wraps load / save / backup / auth helpers in one closure that mutates
-  `currentAccessToken` (Dropbox) / `cachedFileId` (GDrive) in place, so
-  the reader must track closure scope + mutation order across a sprawling
-  body. Distinct from the already-tracked OAuth-refresh-dedup item: this
-  is the _structure_, not the 401 semantics.
-  - **Plan**: lift the private suite into a small stateful client object
-    (`DropboxClient` / `DriveClient`) holding the token/cache as explicit
-    fields; the adapter becomes a thin `StorageAdapter` wrapper over it.
-  - **Risk**: HIGH and **not smoke-testable in this environment** — the
-    OAuth + live-revision flows (silent token refresh mid-load, 404 →
-    cache-bust → re-create) only exercise against real Dropbox/Drive.
-    The storage hot path is production-critical. Defer unless a third
-    cloud backend forces the shared structure.
-  - **Severity: 4.** Multiplier in principle (the next backend re-derives
-    the closure tangle), but the un-testable risk caps its near-term
-    priority — land it _with_ the third backend, not speculatively.
+- **`scenarios/ScenariosPage.tsx` re-grew the flat modal-selector pile**
+  — 1032 lines with ~12 `useState` (:133–:157), of which ~9 are
+  mutually-exclusive modal / staging selectors (`rowModal`,
+  `modulateRowId`, `editModal`, `deleteTarget`, `diffOpen`, `chartOpen`,
+  `addMonitorOpen`, `pendingSeriesApply`, `pendingRowDelete`,
+  `pendingBaseSheetId`) — the exact shape the landed PropertiesPage
+  discriminated-`modal`-union fix (2026-06, see Landed) was meant to be
+  the template for the next sheet-type page.
+  - **Plan**: copy the PropertiesPage template — one
+    `useState<ScenarioModalState | null>` discriminated union for the
+    mutually-exclusive selectors; keep genuinely co-open state
+    (`activeScenarioId`, `showEarlierMonths`, `expandedTransferAnchors`)
+    separate, and verify which staging dialogs intentionally stack before
+    folding them in (the PropertiesPage re-verify caught exactly that).
+    A size-decomposition pass (the render tree is ~430 lines) can ride
+    along if it stays mechanical, or wait.
+  - **Risk**: low-medium — the series-apply staging → confirm → reset
+    flow must map 1:1; no persisted-shape impact.
+  - **Severity: 4** (same rating the PropertiesPage instance carried).
+
+- **Byte-layer wrapper skeleton duplicated across the encrypting /
+  compressing adapters** — `storage/encrypting-adapter.ts` (252) and
+  `storage/compressing-adapter.ts` (148) re-implement the same
+  `StorageAdapter` transform-wrapper skeleton: a snapshot unwrap helper,
+  a `rethrowDecoded` ConflictError-payload decode, `load` / `save` /
+  `watch` with identical try/rethrow shapes, and verbatim passthrough of
+  the sibling-op surfaces. `wrap-for-active.ts` (36) composes them in a
+  documented-but-unenforced order (compression outside encryption —
+  ciphertext doesn't compress).
+  - **Plan**: a `withByteTransform(inner, { wrap, unwrap, canUnwrap })`
+    factory owning the plumbing, with an order guard (phantom type or
+    naming) riding along. Best landed **with** the segmentation
+    integration — `storage/segments.ts` (217, currently test-only staging
+    for per-segment saves; see Skipped) would be the third wrapper that
+    makes the factory pay for itself.
+  - **Risk**: moderate — the conflict-decode path is subtle; covered by
+    the existing wrapper tests, but it sits on the storage hot path, so
+    it wants the manual backend smoke.
+  - **Severity: 3** — land when the third wrapper is wired in, not
+    speculatively.
 
 - **`useReducer` in remaining modal state machines (opportunistic)** —
   `useReducer` now has **seven** landed hits
@@ -396,17 +518,21 @@ _(none pending — the sheet-type registry coverage cluster landed
   reset-together pyramid (see `BudgetComplexEntryModal` above, now
   tracked separately) or a mode discriminator the current setters let
   drift through. Concrete pyramid sites surfaced in the 2026-06
-  properties sweep, all reset together via one `useResetOnOpen`:
-  `properties/MortgageEditorModal.tsx` (9 `useState` at `:72`–`:81`),
+  properties sweep, all reset together via one `useResetOnOpen` —
+  counts refreshed 2026-07, all grown:
+  `properties/MortgageEditorModal.tsx` (12 `useState`),
   `properties/RepairsEditModal.tsx` (9), `properties/ManualRepairModal.tsx`
-  (8), `properties/PropertyEditorModal.tsx` (8), and
-  `properties/NetSaleProfitModal.tsx` (8) — adopt `useReducer` opportunistically
+  (8), `properties/PropertyEditorModal.tsx` (14), and
+  `properties/NetSaleProfitModal.tsx` (11) — adopt `useReducer` opportunistically
   when one of these modals is otherwise touched. The 2026-06 cross-page sweep
-  added three more: `loans/LoanModal.tsx` (**14** `useState`, 468 lines — the
-  highest count yet seen), `savings/SavingsModal.tsx` (9), and
+  added three more: `loans/LoanModal.tsx` (**14** `useState`),
+  `savings/SavingsModal.tsx` (9), and
   `salary/SalaryBulkEditModal.tsx` (7 — its three enabled/value toggle pairs
   reset together on open; `budget/BudgetBulkEditModal.tsx` already landed the
-  reducer shape to mirror, `budget-bulk-edit-modal-reducer.ts`).
+  reducer shape to mirror, `budget-bulk-edit-modal-reducer.ts`). The
+  2026-07 scenarios sweep found no new pyramid — `ScenarioRowModal` (6,
+  with `useResetOnOpen`) and `InsightsSettingsModal` (a single draft
+  `useState`) follow the intended patterns.
 
 - **`budget/formula.ts` function registry** — the tokenizer / parser
   / evaluator file split landed 2026-05 (see Landed); what remains of
@@ -438,15 +564,19 @@ _(none pending — the sheet-type registry coverage cluster landed
   actually needs to drop a parser.
 
 - **`TypePicker.tsx` hardcoded `amountSign` filter** — re-verified
-  2026-05 at **747 lines** (the `filterFn?: (type: EntryType) =>
-boolean` escape hatch landed and is checked first, `amountSign` is
-  the opt-in default at lines ~121-136). **Severity: 3.** Stays put
-  until a non-budget sheet type ships and demands a richer registry.
+  2026-07 at **911 lines** (the `filterFn?: (type: EntryType) =>
+boolean` escape hatch is checked first at ~:177, `amountSign` is the
+  opt-in default; the file deliberately does _not_ compose
+  `EntityPickerShell` because its list is grouped, per the comment at
+  :99). **Severity: 3.** Stays put until a non-budget sheet type ships
+  and demands a richer registry.
 
 - **Hardcoded user-facing strings drift** — the systematic audit
   landed 2026-05 (see Landed) and consumed the visible chrome hits.
-  Re-verified 2026-05: no new native `<select>` (count: 0) and no
-  obvious new hardcoded literals surfaced. The remaining drift
+  Re-verified 2026-05 and again 2026-07: no new native `<select>`
+  (count: 0) and no obvious new hardcoded literals surfaced — the
+  2026-07 agents specifically checked the scenarios / insights /
+  duplicate-finder surfaces and found everything routed through `t()`. The remaining drift
   surface is small; promoting the one-off audit script to an ESLint
   rule is the next step but is a tooling change, not a refactor.
   **Severity: 3** — re-rate up if a second batch of hardcoded strings
@@ -454,9 +584,9 @@ boolean` escape hatch landed and is checked first, `amountSign` is
 
 - **Inline `parseFloat` / `new Date(…)` at remaining sites** —
   `parseInt32` landed 2026-05 and was adopted at the shift-day /
-  anchor-day parsers. Re-verified 2026-05: the lone `parseFloat`
+  anchor-day parsers. Re-verified 2026-07: the lone `parseFloat`
   (`useScrollToToday.ts:93`, parsing a CSS computed value) and the
-  ~36 `new Date(...)` sites are CSS-value parsing and date
+  ~46 `new Date(...)` sites are CSS-value parsing and date
   construction — none share the user-input parsing shape
   `parseDecimal(text, lang)` would cover. Re-rate if
   thousands-separator support lands. **Severity: 3.**
@@ -510,7 +640,10 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
   swapping). The 2026-06 properties sweep confirmed the whole
   `src/components/properties/` layer (built after the helper) inlines this
   label-stack at ~50 sites and never adopts `FormSection` — a rich seam for
-  drive-by adoption when those modals are next touched.
+  drive-by adoption when those modals are next touched. Encouragingly, the
+  2026-07 sweep found the newer scenarios / insights pages adopted
+  `FormSection` from day one (zero inline label-stacks), so the seam is
+  the properties backlog, not a spreading pattern (adopters now 21 files).
 
 ---
 
@@ -1038,6 +1171,51 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
 
 ## Investigated and skipped
 
+- **`ScenarioRow` ↔ `BudgetRow` unification** (2026-07, Explore sweep
+  rated it 5): flagged as "80% duplicated row rendering". Rejected on
+  re-read: the shared infrastructure is already extracted and adopted by
+  both — `useRowSwipeAndClaim`, `monthColorVar`, the shared
+  `CompanyPill` / `TypeBadge` from `Pills`, `useAmountColumns` — so what
+  remains divergent is the domain affordances (modulation / exclude
+  toggles vs push-to-month / edit / complete) and the column model. Same
+  reasoning as the `LoanRow` vs `SavingsRow` skip: the divergence _is_
+  the domain. Revisit only if a third row-rendering sheet type re-derives
+  the base cells instead of composing the shared pieces.
+
+- **Scan-cost findings in cover-transfer / transfer-collapse / GDrive
+  property folders** (2026-07, Explore sweep rated them 6): the
+  `data/accounts/cover-transfer.ts:199–261` O(transfers × entries)
+  best-match walk, the `transfer-collapse.ts:46–56` `hasCollapsedHistory`
+  full-history scan per transfer-modal open, and the GDrive per-property
+  folder walk per upload. These are **performance** questions, not
+  refactors — same routing as the `modalHandlers` re-mint skip: they
+  belong to the `find-optimizations` skill with a profile in hand, not
+  this roadmap.
+
+- **Silent watch-error drop in the byte-layer wrappers** (2026-07,
+  Explore sweep rated it 4): `encrypting-adapter.ts:243–248` /
+  `compressing-adapter.ts:142–144` log-and-drop a remote update whose
+  decrypt / decompress fails. Deliberate, documented staging ("surface
+  this in a future iteration"); the fix is a UX affordance (soft-error
+  sync status + retry), i.e. a **feature** with i18n and a changelog
+  fragment, not a refactor. Don't fold it into a wrapper-factory PR.
+
+- **`storage/segments.ts` unused-scaffolding deletion** (2026-07, Explore
+  sweep rated it 3): every export is test-only today. Intentional staging
+  for per-segment cloud saves (#1108), byte-for-byte pinned by
+  `tests/segments_test.ts`, and its `:145` `as unknown as UserData` cast
+  is contained (the merge output is round-trip-verified by the suite).
+  Neither delete nor wire it speculatively — the byte-layer wrapper row
+  in Pending names it as the third-wrapper trigger.
+
+- **Generic discovery-walk scaffold (`discoveryCandidates<T>`)** (2026-07,
+  Explore sweep proposal): don't add a second row — the existing
+  discovery-walk Pending row already records that any shared shell is a
+  deliberate design pass (and that the session-state-hook slice
+  evaporated once on re-verify). The duplicate finder joining as the
+  eighth engine strengthens the data-side consumed-id convention half of
+  that row; it doesn't justify a parallel abstraction row.
+
 - **Registry-based sheet-type router replacing AppShell's
   `activeSheet.type === …` switch** (2026-06, Explore sweep rated it 8):
   the proposal was to replace AppShell's page-routing chain with a
@@ -1408,6 +1586,35 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
   well-decomposed linear funnel). `AttachmentUploadModal.tsx` confirmed
   correctly placed at root (imported by salary / items / properties — genuinely
   universal).
+- 2026-07-01 sweep ("clear and explore"): full Pending re-verify plus a
+  single **post-v1.4→v1.6 new-subsystems** survey angle (three parallel
+  Explore agents over scenarios + insights, the cross-account duplicate
+  finder + suggestion surfaces, and the new storage modules — 139 commits
+  had landed since the 2026-06-11 sweep). Re-verify outcomes: the
+  four-pickers row's design-pass blocker was discharged by the landed
+  `EntityPickerShell` (re-rated 4 → 5); the update-balance quartet's
+  fifth-surface trigger fired via `UpdateItemValueModal` (re-rated 4 → 5,
+  moved to the friction band); the cloud-adapter closures re-rated 4 → 5
+  on +34% / +51% adapter growth from per-kind sibling-file ops; AppShell
+  refreshed at 1436 lines (feature wiring — five new sheet-type arms —
+  with the `useSearchModal` blocker unchanged); the discovery-walk row
+  gained the duplicate finder as its eighth walk / sixth engine; the
+  `useState`-pyramid counts refreshed (all grown: `PropertyEditorModal`
+  14, `MortgageEditorModal` 12, `NetSaleProfitModal` 11). Cross-cutting
+  greps stayed clean (native `<select>` 0, `as any` / `@ts-*` 0 real,
+  data→components import direction 0 real; the one new `as unknown as`
+  is the contained `segments.ts:145` cast). New candidates: the
+  `networth.ts` contributor walk (6), the cross-page data-module
+  placement drift (4), the `ScenariosPage` modal-selector union (4), and
+  the byte-layer wrapper factory (3). Filtered into Investigated and
+  skipped: `ScenarioRow`/`BudgetRow` unification (rated 5 — divergence is
+  the domain), three scan-cost findings (rated 6 — `find-optimizations`
+  territory), the silent watch-error drop (rated 4 — a feature, not a
+  refactor), the `segments.ts` dead-code deletion (rated 3 — intentional
+  staging), and a generic discovery-scaffold re-proposal. Scenarios /
+  insights otherwise came back structurally clean: full
+  `SHEET_TYPE_REGISTRY` participation, pure data layer, `FormSection`
+  adopted from day one.
 - 2026-06-11 sweep (Explore mode): single **cross-page duplication** angle
   (three parallel Explore agents — the never-catalogued loans + savings
   subsystems, cross-page UI patterns across all seven page directories, and
