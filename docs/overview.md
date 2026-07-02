@@ -962,7 +962,7 @@ A `Transfer` carrying a `cover` payload (`CoverDetails` in
 `src/data/types/accounts.ts`) that reimburses specific imported
 transactions — expenses the user charged to the wrong account (a main
 card) that "belong" to a savings / spending account. Data layer in
-`src/data/accounts/cover-transfer.ts`: `generateCoverMessage` mints the
+`src/data/cover-transfer.ts`: `generateCoverMessage` mints the
 ≤12-char bank reference (`COVER_MESSAGE_MAX_CHARS`), `coverTotal` sums the
 covered magnitudes, `buildCoverIndex` / `coverKey` map each covered entry
 to its cover transfer (the check-glyph lookup), and
@@ -990,7 +990,7 @@ synthesized rows by `applyCoverRoles`.
 
 **Spending attribution.** A covered expense belongs to the account that
 covered it, not the one it was charged to. `applyCoverRoles`
-(`src/data/accounts/cover-transfer.ts`, run in `BudgetPage`'s synthesis
+(`src/data/cover-transfer.ts`, run in `BudgetPage`'s synthesis
 memo) tags each reimbursed expense on the charged account with
 `Row.coverRole = "covered"` — `isActualSpendingRow`
 (`src/data/budget/spending.ts`) drops those from that account's Visualize-
@@ -3301,7 +3301,7 @@ normalised bank-description key to a description + typeId. Applied during
 
 A company's associated types ("suggested type"), ranked manual
 `Company.typeIds` first then learned-by-usage, computed by
-`computeCompanyTypeHints` (`src/data/budget/company-type-hints.ts`). A
+`computeCompanyTypeHints` (`src/data/company-type-hints.ts`). A
 company resolving to one type instant-fills it on pick; several render
 as the "Suggested" band atop `TypePicker`.
 
@@ -3309,7 +3309,7 @@ as the "Suggested" band atop `TypePicker`.
 
 The inverse direction: a type's most-used companies, ranked by learned
 usage count (no manual-pin source exists for this direction), computed
-by `computeTypeCompanyHints` (`src/data/budget/company-type-hints.ts`).
+by `computeTypeCompanyHints` (`src/data/company-type-hints.ts`).
 When a budget row has a type set but no company, the row's description
 popover surfaces these as a "Suggested" band atop the inline
 `CompanyPicker` — picking a type first short-cuts straight to that
@@ -3321,7 +3321,7 @@ list (where the same companies still appear). Threaded through
 
 A merchant's most-used companies, keyed off the **description** rather
 than a picked type, computed by `computeDescriptionCompanyHints`
-(`src/data/budget/company-type-hints.ts`). Every time the user flags a
+(`src/data/company-type-hints.ts`). Every time the user flags a
 budget row or a bank-history entry with a company, that
 `(normalised-description → companyId)` pairing is tallied (the
 description is run through the shared `normaliseDescription`, so dates,
@@ -3348,7 +3348,7 @@ the companies a merchant has been paired with, it keeps a field only when
 **every** tagged connection for that normalised description agrees on a
 single value, for both company **and** type. Computed by
 `computeDescriptionMetadataInductions`
-(`src/data/budget/company-type-hints.ts`) over the same
+(`src/data/company-type-hints.ts`) over the same
 `(description, companyId, typeId)` connections the other hints walk — a
 merchant always filed under one company and one type yields
 `{ companyId, typeId }`; one split between two companies yields no company

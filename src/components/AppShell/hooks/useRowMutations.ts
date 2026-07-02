@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { unlock } from "../../../data/achievements";
-import { autoTypeForCompany } from "../../../data/budget/company-type-hints";
+import { autoTypeForCompany } from "../../../data/company-type-hints";
 import { SERIES_PROPAGATABLE_COLUMN_TYPES } from "../../../data/budget/rows";
 import { findColumnByType } from "../../../data/sheet";
 import type { Action } from "../../../data/reducer";

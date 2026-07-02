@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Copy, HandCoins } from "lucide-react";
 
-import type { CoverTransfer } from "../../data/accounts/cover-transfer";
+import type { CoverTransfer } from "../../data/cover-transfer";
 import type { HistoryEntry, Settings } from "../../data/types";
 import { useT } from "../../i18n";
 import {

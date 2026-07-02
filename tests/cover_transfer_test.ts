@@ -9,7 +9,7 @@ import {
   coverTotal,
   generateCoverMessage,
   isCoverTransfer,
-} from "../src/data/accounts/cover-transfer";
+} from "../src/data/cover-transfer";
 import type { Column, HistoryEntry, Row, Transfer } from "../src/data/types";
 
 let counter = 0;

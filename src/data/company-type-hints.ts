@@ -22,9 +22,9 @@
 import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
-} from "../description-normaliser";
-import { findColumnByType } from "../sheet";
-import type { UserData } from "../types";
+} from "./description-normaliser";
+import { findColumnByType } from "./sheet";
+import type { UserData } from "./types";
 
 export const MAX_COMPANY_TYPE_HINTS = 5;
 

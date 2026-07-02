@@ -5,7 +5,7 @@ import {
   companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
   computeTypeCompanyHints,
-} from "../src/data/budget/company-type-hints";
+} from "../src/data/company-type-hints";
 import { freshUserData } from "../src/storage/local";
 import type {
   AccountBudget,

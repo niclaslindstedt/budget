@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
-import { descriptionCompanyHintsFor } from "../../data/budget/company-type-hints";
+import { descriptionCompanyHintsFor } from "../../data/company-type-hints";
 import { normaliseDescription } from "../../data/description-normaliser";
 import {
   useAutoTypeForCompany,
@@ -45,7 +45,7 @@ type Props = {
   tags: readonly Tag[];
   // companyId → suggested typeId for the auto-fill, and companyId →
   // ranked hint typeIds for the picker's "Suggested" band. See
-  // `src/data/budget/company-type-hints.ts`.
+  // `src/data/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
   // normalised description → ranked companyIds (see

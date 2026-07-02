@@ -35,7 +35,7 @@ type Props = {
   // a confident suggestion, the type picker auto-fills behind the
   // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
   // typeIds map forwarded to each sub-form's TypePicker for its
-  // "Suggested" band. See `src/data/budget/company-type-hints.ts`.
+  // "Suggested" band. See `src/data/company-type-hints.ts`.
   companyTypeSuggestions: ReadonlyMap<string, string>;
   companyTypeHints: ReadonlyMap<string, readonly string[]>;
   settings: Settings;
