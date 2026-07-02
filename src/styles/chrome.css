@@ -234,12 +234,21 @@ body:has([data-bottom-bar][data-bottom-bar-hidden="true"]) {
      Rebase the variable on the standalone padding so the two sticky
      bands land just below the actual header. */
   :root {
-    --app-header-h: calc(45px + max(env(safe-area-inset-top), 0.75rem));
+    /* h-9 (2.25rem) + pb-2 (0.5rem) + border-b, plus the floored
+       standalone padding-top. rem (not px) so the height keeps
+       tracking the header when `--app-font-scale` rescales the root
+       font-size — see the browser-mode definitions in theme.css. */
+    --app-header-h: calc(
+      2.75rem + var(--border-width) + max(env(safe-area-inset-top), 0.75rem)
+    );
   }
 
   @media (min-width: 720px) {
     :root {
-      --app-header-h: calc(57px + max(env(safe-area-inset-top), 0.75rem));
+      /* 0.25rem extra pt + h-9 (2.25rem) + pb-4 (1rem) + border-b. */
+      --app-header-h: calc(
+        3.5rem + var(--border-width) + max(env(safe-area-inset-top), 0.75rem)
+      );
     }
   }
 

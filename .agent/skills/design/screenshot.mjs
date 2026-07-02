@@ -241,7 +241,16 @@ async function main() {
   const baseURL = await resolveBaseUrl(args.baseUrl);
   if (!existsSync(args.out)) await mkdir(args.out, { recursive: true });
   const viewports = args.viewports.split(",").map((s) => s.trim());
-  const browser = await chromium.launch();
+  // `PW_EXECUTABLE_PATH` escape hatch: remote/CI sandboxes often ship a
+  // pre-installed Chromium at a different pin than the @playwright/test
+  // version expects (e.g. `/opt/pw-browsers/chromium`). Pointing the
+  // env var at that binary skips the "run npx playwright install"
+  // dead-end in environments where downloading a browser isn't possible.
+  const browser = await chromium.launch(
+    process.env.PW_EXECUTABLE_PATH
+      ? { executablePath: process.env.PW_EXECUTABLE_PATH }
+      : undefined,
+  );
   try {
     for (const viewport of viewports) {
       const spec = VIEWPORTS[viewport];
