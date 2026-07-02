@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAR_PURCHASE_SNAPSHOT_ID,
+  carContributesToNetWorth,
   carDepreciationToDate,
   carDistanceDriven,
+  carNetWorthContribution,
   computeCarCurrentValue,
   currentCarMileage,
+  hasLeaseTerms,
   isCarOwned,
+  leaseBalanceAt,
+  leasedCarEquity,
+  leasedCarMarketValue,
   resolveCarSnapshots,
 } from "../src/data/cars/value";
 import type { Car } from "../src/data/types";
@@ -181,5 +187,120 @@ describe("isCarOwned", () => {
     expect(isCarOwned(car({ soldFor: 50000 }))).toBe(false);
     expect(isCarOwned(car({ ownership: "leased" }))).toBe(false);
     expect(isCarOwned(car({ ownership: "pool" }))).toBe(false);
+  });
+});
+
+// A 3-year lease: 400k at the start, 160k residual at the end, 6%/year.
+function leased(over: Partial<Car> = {}): Car {
+  return car({
+    ownership: "leased",
+    leaseStart: "2025-01-01",
+    leaseMonths: 36,
+    leaseStartValue: 400000,
+    leaseEndValue: 160000,
+    leaseInterestRate: 6,
+    leaseMonthlyCost: 8000,
+    ...over,
+  });
+}
+
+const LEASE_START = "2025-01-01";
+const LEASE_MID = "2026-07-01"; // month 18 of 36
+const LEASE_END = "2028-01-01"; // month 36
+
+describe("hasLeaseTerms", () => {
+  it("needs a leased car with the full term set", () => {
+    expect(hasLeaseTerms(leased())).toBe(true);
+    expect(hasLeaseTerms(leased({ leaseEndValue: undefined }))).toBe(false);
+    expect(hasLeaseTerms(leased({ leaseMonths: undefined }))).toBe(false);
+    expect(hasLeaseTerms(leased({ leaseStart: undefined }))).toBe(false);
+    // Same numbers but the wrong ownership never model a lease.
+    expect(hasLeaseTerms(leased({ ownership: "owned" }))).toBe(false);
+  });
+});
+
+describe("leaseBalanceAt", () => {
+  it("runs from the start value to the residual across the term", () => {
+    expect(leaseBalanceAt(leased(), LEASE_START)).toBeCloseTo(400000, 2);
+    expect(leaseBalanceAt(leased(), LEASE_END)).toBeCloseTo(160000, 2);
+  });
+
+  it("amortises slowly early — mid-term balance is above the linear line", () => {
+    // Linear midpoint would be 280 000; interest front-loading keeps the
+    // real balance higher.
+    const bal = leaseBalanceAt(leased(), LEASE_MID);
+    expect(bal).toBeDefined();
+    expect(bal as number).toBeGreaterThan(280000);
+  });
+
+  it("falls back to straight-line amortisation at 0% interest", () => {
+    const flat = leased({ leaseInterestRate: undefined });
+    expect(leaseBalanceAt(flat, LEASE_MID)).toBeCloseTo(280000, 2);
+  });
+
+  it("is undefined outside the lease window or without terms", () => {
+    expect(leaseBalanceAt(leased(), "2024-12-01")).toBeUndefined();
+    expect(leaseBalanceAt(leased(), "2028-02-01")).toBeUndefined();
+    expect(leaseBalanceAt(leased({ leaseMonths: undefined }), LEASE_MID)).toBe(
+      undefined,
+    );
+  });
+});
+
+describe("leasedCarMarketValue", () => {
+  it("decays front-loaded from start value to residual", () => {
+    expect(leasedCarMarketValue(leased(), LEASE_START)).toBeCloseTo(400000, 2);
+    expect(leasedCarMarketValue(leased(), LEASE_END)).toBeCloseTo(160000, 2);
+    // Front-loaded: the mid-term value is below the 280 000 linear line.
+    const mid = leasedCarMarketValue(leased(), LEASE_MID);
+    expect(mid).toBeDefined();
+    expect(mid as number).toBeLessThan(280000);
+  });
+});
+
+describe("leasedCarEquity", () => {
+  it("is ~0 at the ends and negative (underwater) in between", () => {
+    expect(leasedCarEquity(leased(), LEASE_START)).toBeCloseTo(0, 2);
+    expect(leasedCarEquity(leased(), LEASE_END)).toBeCloseTo(0, 2);
+    const mid = leasedCarEquity(leased(), LEASE_MID);
+    expect(mid).toBeDefined();
+    expect(mid as number).toBeLessThan(0);
+  });
+
+  it("is undefined outside the term or with incomplete terms", () => {
+    expect(leasedCarEquity(leased(), "2024-01-01")).toBeUndefined();
+    expect(
+      leasedCarEquity(leased({ leaseStartValue: undefined }), LEASE_MID),
+    ).toBeUndefined();
+  });
+});
+
+describe("carContributesToNetWorth / carNetWorthContribution", () => {
+  it("counts owned and leased-with-terms cars, not pool or termless leases", () => {
+    expect(carContributesToNetWorth(car({ purchasePrice: 100000 }))).toBe(true);
+    expect(carContributesToNetWorth(leased())).toBe(true);
+    expect(carContributesToNetWorth(car({ ownership: "pool" }))).toBe(false);
+    expect(carContributesToNetWorth(leased({ leaseEndValue: undefined }))).toBe(
+      false,
+    );
+  });
+
+  it("scales an owned car's value by its share and returns lease equity", () => {
+    const shared = car({
+      ownership: "shared",
+      purchasePrice: 200000,
+      sharePct: 50,
+    });
+    expect(carNetWorthContribution(shared, "2026-01-01")).toBeCloseTo(
+      100000,
+      2,
+    );
+    expect(
+      carNetWorthContribution(car({ ownership: "pool" }), "2026-01-01"),
+    ).toBe(undefined);
+    // Leased contribution equals its lease equity.
+    expect(carNetWorthContribution(leased(), LEASE_MID)).toBe(
+      leasedCarEquity(leased(), LEASE_MID),
+    );
   });
 });

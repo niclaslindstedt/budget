@@ -10,6 +10,12 @@ type Props = {
   // Prefix for the per-swatch aria-label, e.g. "Sheet color" → "Sheet
   // color #fa7c33". Default "Color".
   ariaLabelPrefix?: string;
+  // Draw a faint `--line` border on unselected swatches instead of a
+  // transparent one. Needed for palettes that include near-white or
+  // near-black colours (the car-paint palette), which would otherwise
+  // vanish against the surface. Default false — every hue-only palette
+  // keeps the borderless "single coloured dot" look.
+  bordered?: boolean;
 };
 
 // Flex-wrap row of circular color swatches. The selected swatch gets a
@@ -30,6 +36,7 @@ export function ColorPalette({
   onChange,
   size = 6,
   ariaLabelPrefix = "Color",
+  bordered = false,
 }: Props) {
   const dim = size === 5 ? "h-5 w-5" : "h-6 w-6";
   const initialIdx = Math.max(0, colors.indexOf(value));
@@ -54,7 +61,11 @@ export function ColorPalette({
           onClick={() => onChange(c)}
           onKeyDown={onKeyDown}
           className={`${dim} hit-24 cursor-pointer rounded-full border-2 ${
-            c === value ? "border-fg-bright" : "border-transparent"
+            c === value
+              ? "border-fg-bright"
+              : bordered
+                ? "border-line"
+                : "border-transparent"
           }`}
           style={{ backgroundColor: c }}
         />

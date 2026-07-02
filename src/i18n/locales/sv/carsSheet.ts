@@ -75,6 +75,19 @@ const carsSheet: CarsSheetCatalog = {
   loanNone: "Inget lån",
   loanHint:
     "Länka lånet som finansierar bilen så att räntan räknas in i kostnaden.",
+
+  // Leasing terms (leased cars only)
+  leaseHint: "Leasingvillkor",
+  leaseStartLabel: "Leasingstart",
+  leaseMonthsLabel: "Längd (månader)",
+  leaseStartValueLabel: "Värde vid start",
+  leaseEndValueLabel: "Värde vid slut",
+  leaseMonthlyCostLabel: "Månadskostnad",
+  leaseInterestRateLabel: "Ränta (%/år)",
+  leaseInterestRatePlaceholder: "t.ex. 5",
+  leaseNetPosition: "Nettoposition",
+  leaseNetWorthHint:
+    "Bilen tappar värde snabbare än leasingen amorteras, så i början drar den ner din förmögenhet; gapet sluts mot slutet av leasingperioden.",
   soldDateLabel: "Såld den",
   soldDateHint: "Ange ett datum om du inte längre har bilen.",
   soldForLabel: "Såld för",

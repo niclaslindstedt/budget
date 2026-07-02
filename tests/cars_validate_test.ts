@@ -77,6 +77,50 @@ describe("validateCar via validateUserData", () => {
     if (r2.ok) expect(r2.value.cars[0].loanId).toBe("loan-1");
   });
 
+  it("round-trips a leased car's terms and drops malformed ones", () => {
+    const r = validateUserData(
+      blob([
+        car({
+          id: "lease-1",
+          ownership: "leased",
+          purchaseDate: undefined,
+          purchasePrice: undefined,
+          purchaseMileage: undefined,
+          depreciation: undefined,
+          leaseStart: "2025-01-01",
+          leaseMonths: 36,
+          leaseMonthlyCost: 8000,
+          leaseInterestRate: 6,
+          leaseStartValue: 400000,
+          leaseEndValue: 160000,
+        }),
+        car({
+          id: "lease-2",
+          ownership: "leased",
+          purchaseDate: undefined,
+          purchasePrice: undefined,
+          purchaseMileage: undefined,
+          depreciation: undefined,
+          // A non-positive term is meaningless — dropped.
+          leaseMonths: 0 as never,
+          leaseStartValue: -1 as never,
+        }),
+      ]),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const [a, b] = r.value.cars;
+      expect(a.leaseStart).toBe("2025-01-01");
+      expect(a.leaseMonths).toBe(36);
+      expect(a.leaseMonthlyCost).toBe(8000);
+      expect(a.leaseInterestRate).toBe(6);
+      expect(a.leaseStartValue).toBe(400000);
+      expect(a.leaseEndValue).toBe(160000);
+      expect(b.leaseMonths).toBeUndefined();
+      expect(b.leaseStartValue).toBeUndefined();
+    }
+  });
+
   it("drops sharePct outside the exclusive (0, 100) range", () => {
     const r = validateUserData(
       blob([

@@ -124,6 +124,26 @@ export function validateCar(
   }
   const depreciation = validateItemDepreciation(raw.depreciation);
   if (depreciation) car.depreciation = depreciation;
+  // Lease terms — advisory optional fields, each dropped if malformed.
+  // The value model only reads them for a leased car, but they're kept
+  // regardless of ownership so a mode toggle round-trips without losing
+  // the numbers.
+  if (isIsoDate(raw.leaseStart)) car.leaseStart = raw.leaseStart;
+  if (
+    typeof raw.leaseMonths === "number" &&
+    Number.isFinite(raw.leaseMonths) &&
+    raw.leaseMonths > 0
+  ) {
+    car.leaseMonths = raw.leaseMonths;
+  }
+  if (isNonNegativeNumber(raw.leaseMonthlyCost))
+    car.leaseMonthlyCost = raw.leaseMonthlyCost;
+  if (isNonNegativeNumber(raw.leaseInterestRate))
+    car.leaseInterestRate = raw.leaseInterestRate;
+  if (isNonNegativeNumber(raw.leaseStartValue))
+    car.leaseStartValue = raw.leaseStartValue;
+  if (isNonNegativeNumber(raw.leaseEndValue))
+    car.leaseEndValue = raw.leaseEndValue;
   if (typeof raw.loanId === "string" && knownLoanIds.has(raw.loanId)) {
     car.loanId = raw.loanId;
   }

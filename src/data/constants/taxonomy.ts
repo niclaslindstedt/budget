@@ -34,6 +34,37 @@ export const CATEGORY_COLORS: readonly string[] = [
 // of the sheet tabs matches the chips inside the sheet.
 export const SHEET_COLORS: readonly string[] = CATEGORY_COLORS;
 
+// Realistic car body colours for the Cars sheet's per-car swatch. This
+// is the one place the "always a hue" rule the shared CATEGORY_COLORS
+// follow is deliberately broken: the swatch names the car's actual paint
+// (white / silver / grey / gunmetal / black are the most common real
+// colours), not a chip accent that has to stay distinguishable. The
+// neutrals lead; the hues that follow are muted toward automotive paint
+// rather than the vivid syntax accents. Values are nudged off pure
+// #fff / #000 so they stay visible on both One Dark and One Light
+// surfaces — the car picker also draws a faint border (ColorPalette's
+// `bordered`) so a near-white or near-black swatch never vanishes.
+export const CAR_COLORS: readonly string[] = [
+  "#e9ebee", // white / pearl
+  "#c2c7cd", // silver
+  "#9aa0a6", // grey
+  "#5c626a", // gunmetal
+  "#2c2f34", // black
+  "#c0523f", // red
+  "#8f3d34", // burgundy
+  "#c98a3e", // bronze / champagne
+  "#d8c9a0", // beige
+  "#3f74b0", // blue
+  "#2f4a6b", // navy
+  "#4f8f6a", // green
+  "#2f5f57", // racing green
+] as const;
+
+// Default paint for a freshly-created car — a mid blue, saturated enough
+// that its chip tint reads on both themes (unlike the near-white first
+// swatch).
+export const DEFAULT_CAR_COLOR: string = CAR_COLORS[9];
+
 // Defaults applied to migrated sheets and the very first sheet a
 // fresh budget seeds. `wallet` is a generic money glyph that reads
 // well even at the tiny size used in the bottom tab bar.
@@ -96,6 +127,13 @@ export const CATEGORY_ICON_NAMES = [
   "bike",
   "fuel",
   "car-front",
+  "car-taxi-front",
+  "van",
+  "truck-electric",
+  "caravan",
+  "motorbike",
+  "scooter",
+  "gauge",
   "ship",
   "bed",
   "sofa",
@@ -292,16 +330,29 @@ export const PROPERTIES_GLYPH_NAMES: readonly CategoryIcon[] = [
 // the descriptor's `glyphNames`, and the per-car glyph picker in
 // `CarEditorModal` offers the same set.
 export const CARS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  // Body types — the "what kind of car" axis the user picks from first.
+  // Lucide has no literal "sedan" / "SUV" / "sports car", so the set
+  // leans on the closest silhouettes: `gauge` (a speedometer) reads as a
+  // sports / performance car, `car-front` as a taller SUV / crossover,
+  // `car` as a sedan / hatchback, `van` as an MPV / van, `truck` as a
+  // pickup, `caravan` as a camper / motorhome.
+  "gauge",
   "car",
   "car-front",
+  "van",
+  "truck",
+  "truck-electric",
+  "caravan",
+  "car-taxi-front",
+  "bus",
+  "motorbike",
+  "scooter",
+  "bike",
+  // Running-cost / alternative glyphs the cost view compares against.
+  "battery-charging",
   "fuel",
   "wrench",
   "key",
-  "bus",
-  "train",
-  "bike",
-  "coins",
-  "trending-up",
   "star",
 ] as const;
 
