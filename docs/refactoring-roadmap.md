@@ -304,31 +304,6 @@ _(none pending — the sheet-type registry coverage cluster landed
     hook it relocates has no remaining AppShell / page _reader_ (only the
     dispatch opener) before moving it.
 
-- **Update-balance/value modal shape now duplicated at five sites** —
-  `loans/LoanUpdateBalanceModal.tsx` (204),
-  `savings/UpdateSavingBalanceModal.tsx` (201),
-  `items/UpdateItemValueModal.tsx` (222),
-  `properties/UpdatePropertyValueModal.tsx` (234), and
-  `accounts/UpdateBalanceModal.tsx` (210). The first four are
-  near-identical shells: the `value` / `date` / `importOpen` `useState`
-  triple + focus ref + `useResetOnOpen` stamping today + parse/validate +
-  `handleAdd` + date-desc-sorted history list with per-entry delete — and
-  all four now also wire the same `BatchValueImportModal` import flow.
-  The accounts modal still genuinely diverges (delta-prose UI). The prior
-  row's recorded defer-trigger — "until a fifth balance-snapshot surface
-  lands (e.g. an investment sheet type)" — fired 2026-06 with
-  `UpdateItemValueModal` (#1047).
-  - **Plan**: extract the shared shell (value+date form, history list,
-    batch-import wiring) parameterised on labels + validate + commit;
-    leave the accounts modal out. Settle the negative-snapshot asymmetry
-    first and independently (loans rejects `parsed < 0`, savings / items /
-    properties accept it) — that's a product decision, not a refactor;
-    don't fold it into the extraction PR.
-  - **Risk**: low (presentational; each site's commit dispatch stays
-    local).
-  - **Severity: 5** (was 4; the fifth site landed and an investment sheet
-    type would be the sixth copy).
-
 - \*\*Cloud-adapter factory closures bundle a growing private-function suite
   - mutable token/cache state\** (`src/storage/dropbox-adapter.ts` 610,
     `src/storage/gdrive-adapter.ts` 1153 — up from ~494 / 765 when first
@@ -617,6 +592,31 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Four update-balance/value modals → shared `ValueSnapshotModal` shell**
+  (2026-07): the near-identical `value` / `date` / `importOpen` `useState`
+  triple + focus ref + `useResetOnOpen`-stamps-today + parse/validate +
+  `handleAdd` + `BatchValueImportModal` wiring + Modal chrome (header,
+  value/date form, Add, Import, Done footer) that
+  `loans/LoanUpdateBalanceModal` (204), `savings/UpdateSavingBalanceModal`
+  (201), `items/UpdateItemValueModal` (222), and
+  `properties/UpdatePropertyValueModal` (234) each re-implemented now lives
+  in one generic `src/components/ValueSnapshotModal.tsx` (root, next to the
+  universal `BatchValueImportModal`). Each modal became a thin wrapper that
+  binds its entity ids, supplies labels + icon, and passes a
+  `renderHistoryRow` slot for the genuinely-divergent row layout (loans
+  align the amount on the shared amount column via `useAmountColumns`;
+  items / properties tag the synthesised purchase point and suppress its
+  delete). The negative-snapshot asymmetry was **preserved, not settled**
+  (per the plan — it's a product decision): the shell takes a
+  `validateAmount` guard (loans reject `parsed < 0`) and a `normalizeAmount`
+  hook (items / properties store `Math.abs`), plus `allowNegativeImport`
+  (savings). The accounts "Update balance" modal stays separate (delta-prose
+  UI). Pure refactor — every resolved class, label, and commit path is
+  byte-identical at each site (net −219 lines); fast loop + build +
+  icons-check green, all 2182 tests pass. A sixth balance-snapshot surface
+  (e.g. an investment sheet type) now composes the shell instead of copying
+  it. **Was severity 5.**
 
 - **Cross-page data modules relocated to `src/data/` root:
   `company-type-hints.ts` + `cover-transfer.ts`** (2026-07): the easy-win
