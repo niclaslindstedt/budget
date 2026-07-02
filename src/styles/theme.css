@@ -59,26 +59,34 @@
      post-login re-scale is the only transition. */
   --app-font-scale: 1;
 
-  /* Height of the sticky page header — pt-2 + h-9 button + pb-2 + 1px
-     border. Month-name headers stick just below this. The md override
-     accounts for the wider pt-4 + pb-4 used at the same breakpoint. */
-  --app-header-h: 53px;
+  /* Height of the sticky page header — pt-2 (0.5rem) + h-9 button
+     (2.25rem) + pb-2 (0.5rem) + the border-b. Month-name headers stick
+     just below this. The md override accounts for the wider pt-4 + pb-4
+     used at the same breakpoint. Expressed in rem (not px) so the value
+     tracks the band's real rendered height when `--app-font-scale`
+     rescales the root font-size — a px literal here leaves the sticky
+     bands pinned at gaps the shrunken chrome no longer fills, and
+     scrolled rows leak through (53px at scale 1). */
+  --app-header-h: calc(3.25rem + var(--border-width));
 
   /* Height of the sticky month-name h3 (text-xs line-height 1rem + pt-1
-     + pb-1). Padding is symmetric so the title text sits visually
-     centered in the dark band between the page header and the
-     column-header thead. The h3's bg-page-bg covers down to where
-     the column headers stick — otherwise scrolled rows show through
-     the gap. Column headers stick directly below the month header
-     at app-header-h + month-header-h. */
-  --month-header-h: 24px;
+     + pb-1 = 1.5rem; 24px at scale 1). Padding is symmetric so the
+     title text sits visually centered in the dark band between the page
+     header and the column-header thead. The h3's bg-page-bg covers down
+     to where the column headers stick — otherwise scrolled rows show
+     through the gap. Column headers stick directly below the month
+     header at app-header-h + month-header-h. rem for the same
+     font-scale reason as --app-header-h. */
+  --month-header-h: 1.5rem;
 
-  /* Height of the sticky column-header thead (ColumnIcon 16px + py-2
-     × 2 + the 1px border-b). Pinned just below the month header so the
-     full sticky stack lands at app-header-h + month-header-h +
-     column-header-h. Used by the up-direction Today pill to sit
-     INSIDE the data rather than overlap the chrome. */
-  --column-header-h: 33px;
+  /* Height of the sticky column-header thead (ColumnIcon 16px fixed +
+     py-2 × 2 = 1rem + the border-b; 33px at scale 1). Pinned just below
+     the month header so the full sticky stack lands at app-header-h +
+     month-header-h + column-header-h. Used by the up-direction Today
+     pill to sit INSIDE the data rather than overlap the chrome. The
+     icon is a fixed 16px (lucide `size` prop, not rem), so only the
+     padding term scales. */
+  --column-header-h: calc(1rem + 16px + var(--border-width));
 
   /* Corner-radius scale. Tailwind v4 resolves `rounded-sm` / `rounded-md`
      / `rounded-lg` through these vars by default; the bare `rounded`
@@ -183,8 +191,11 @@
 
 @media (min-width: 720px) {
   :root {
-    --app-header-h: 69px;
-    --month-header-h: 32px;
+    /* pt-4 (1rem) + h-9 (2.25rem) + pb-4 (1rem) + border-b; 69px at
+       scale 1. */
+    --app-header-h: calc(4.25rem + var(--border-width));
+    /* pt-2 + pb-2 + 1rem line-height; 32px at scale 1. */
+    --month-header-h: 2rem;
   }
 }
 

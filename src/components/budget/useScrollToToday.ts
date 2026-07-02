@@ -80,21 +80,18 @@ function findRowNearestToday(
 // header thead). `scrollIntoView({ block: "start" })` would land the
 // row underneath all three; offsetting by their combined height pulls
 // it just below them so today's date is the first thing the user sees.
-// Measure the app header off the live element instead of parsing
-// `--app-header-h` — in standalone mode that variable resolves to a
-// `calc(... + env(safe-area-inset-top))` whose literal string
-// parseFloat can't decode.
+// Measure every band off its live element instead of parsing the
+// `--app-header-h` / `--month-header-h` variables — both resolve to
+// `calc(…)` strings (env(safe-area-inset-top) in standalone, rem terms
+// that follow `--app-font-scale`) whose literal text parseFloat can't
+// decode.
 function scrollRowToTop(row: HTMLElement, behavior: ScrollBehavior) {
   const thead = row.closest("table")?.querySelector("thead");
   const theadH = thead?.getBoundingClientRect().height ?? 0;
   const appHeader = document.querySelector<HTMLElement>("[data-app-header]");
   const appH = appHeader?.getBoundingClientRect().height ?? 0;
-  const monthH =
-    parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--month-header-h",
-      ),
-    ) || 0;
+  const monthHeader = row.closest("section")?.querySelector("h3");
+  const monthH = monthHeader?.getBoundingClientRect().height ?? 0;
   const top =
     row.getBoundingClientRect().top + window.scrollY - appH - monthH - theadH;
   window.scrollTo({ top: Math.max(0, top), behavior });
