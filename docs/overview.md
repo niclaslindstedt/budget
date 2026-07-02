@@ -2634,6 +2634,155 @@ Insights net-worth chart uses for its net-worth line. `centered` (only
 toggles — no soft keyboard). Opening it unlocks the **Debt Mapper** achievement
 (`loansChart`, a manual trigger).
 
+## Cars page
+
+### Cars page
+
+The Cars sheet (`SheetType "cars"`, `CarsView`) renders the
+workspace-wide `UserData.cars` collection and answers one question:
+what does having this car actually cost? It is a data-light singleton
+flavour like Properties / Loans: the page
+(`src/components/cars/CarsPage.tsx`) renders one card per car (sold
+cars in a trailing section), hosts every car modal behind one
+discriminated modal-state union, and car CRUD goes through `reduceCars`
+(`src/data/reducers/cars.ts`), not the per-item reducer tail. The cost
+of a car is rolled up from three legs kept deliberately separate:
+linked transportation **expenses** (fuel, insurance, parking, vehicle /
+congestion tax, service, leasing / pool fees), **depreciation** (value
+lost since purchase — owned / shared cars only), and **loan interest**
+(via the linked Loans-sheet loan). Amortisation is never a cost — it is
+equity moving from the bank to the user; the loss it finances is
+already the depreciation leg. Once odometer data exists the headline
+figure becomes **cost per kilometre** (see Car cost chart). Files live
+in `src/components/cars/`; helpers in `src/data/cars/`. Adding the
+first car unlocks the **Behind the Wheel** achievement. Owned / shared
+cars count in the Insights net-worth roll-up as the `cars` category
+(value × the car's own `sharePct`, then the insights per-entity
+override on top); leased / pool / sold cars contribute nothing.
+
+### Car
+
+A `Car` (`src/data/types/cars.ts`) is one vehicle the user has access
+to, in one of four **ownership forms** (`CarOwnership`): `owned`,
+`leased`, `shared` (co-owned with someone outside the budget — an
+optional `sharePct` in (0, 100) scales its net-worth contribution, not
+its costs), or `pool` (car-pool membership). Value tracking (purchase
+price / date / odometer-at-purchase, a depreciation rule, value
+snapshots, sale fields) only applies to owned / shared cars — a leased
+or pool car is pure running cost, its "value loss" being the leasing /
+pool fee that arrives as a linked expense. An optional `loanId` points
+at the Loans-sheet loan financing the car (see Car loan link). Sale
+mirrors the items model: `soldAt` / `soldFor` move the card to the sold
+section and stop the net-worth contribution. The create / edit modal is
+`CarEditorModal.tsx` (ownership pill, purchase fields, depreciation
+editor, loan picker, sold fields, glyph + colour).
+
+### Car snapshot
+
+`Car.snapshots` is the value / mileage history: each `CarSnapshot` is a
+dated point carrying a market **value** and/or an odometer **mileage**
+reading — at least one, validator-enforced. The two ride one modal
+(`UpdateCarValueModal.tsx`, "Update value & mileage") because a
+second-hand-market lookup (Blocket) prices a car by model, year, and
+mileage — the user reads the odometer anyway, so one dated snapshot
+records both. A mileage-only snapshot (a plain odometer check) never
+disturbs the value resolution, and vice versa. The purchase
+(`purchasePrice` + `purchaseMileage` at `purchaseDate`) folds in as a
+synthesised read-only first point (`CAR_PURCHASE_SNAPSHOT_ID`), owned
+by the car's own fields, not deletable as a snapshot. Value resolution
+(`computeCarCurrentValue`, `src/data/cars/value.ts`) mirrors the items
+model: sold → proceeds; latest recorded value ≤ date; else the
+depreciation curve from the purchase; else the purchase price. CSV /
+Excel import (`importCarSnapshots`) imports **values only** and
+preserves any mileage already recorded on an imported date. Actions:
+`addCarSnapshot` / `deleteCarSnapshot` / `importCarSnapshots`.
+
+### Car depreciation
+
+`Car.depreciation` reuses the item depreciation union
+(`ItemDepreciation`) verbatim — `percentPerYear` (steady declining
+balance) or `accelerated` (instant drive-off-the-lot drop, steeper
+first year, flatter decline after), each with an optional residual
+floor. The curve itself is shared code: `depreciatedValue`
+(`src/data/items/value.ts`) serves both catalogs.
+`carDepreciationToDate` (purchase price − resolved current value,
+clamped ≥ 0) is the depreciation leg of the cost view — a recorded
+market snapshot thereby becomes the _realised_ value loss, replacing
+the modelled curve from its date on.
+
+### Car expense
+
+A `CarExpense` on `Car.expenses` is one transportation cost attributed
+to the car. Usually it backs onto an imported bank charge —
+`accountId` + `sourceHistoryId` reference the `HistoryEntry`
+(both-or-neither, validator-enforced), with `date` / `amount` /
+`description` / `typeId` denormalised at link time so the expense
+survives a re-import. A **manual car expense**
+(`ManualCarExpenseModal.tsx`) has no source — cash fuel, costs
+predating the imported history, a car-pool invoice on someone else's
+account. `CarExpensesModal.tsx` lists the linked expenses with month
+subtotals; removing one (`removeCarExpense`) leaves the bank entry
+untouched, so it becomes a finder candidate again. A charge can back at
+most one car — the finder excludes anything any car has consumed.
+
+### Find car expenses
+
+The suggest → add / ignore walk (`CarExpenseFinderModal.tsx`).
+`findCarExpenseCandidates` (`src/data/cars/find.ts`) sweeps every
+account's history like the repairs finder: outflows only, skipping
+hidden / transfer-collapsed entries, resolving each entry's effective
+type exactly the way the budget tables do (`resolveEntryLabels` —
+per-entry override → match rule → merchant hint), and keeping charges
+whose type lands in `CAR_EXPENSE_TYPE_IDS` (`src/data/presets/types.ts`
+— the nine Transport presets: fuel, parking, car insurance, vehicle
+tax, congestion tax, leasing, car service, taxi, public transport;
+deliberately including taxi / public transport so a car-pool "car" can
+carry them, and deliberately excluding `preset-type-car-loan`, whose
+cost enters through the loan link instead). The modal multi-selects
+candidates and commits them in one `addCarExpenses` undo entry. Per
+row, **Ignore** persists the entry id to
+`UserData.ignoredCarExpenseEntryIds` and **Exclude similar** persists
+the normalised description to `UserData.carExpenseExclusionPatterns`
+(the items-finder model — one tap drops every matching charge, past
+and future); both lists are clearable from Settings.
+
+### Car value chart
+
+`CarValueChartModal.tsx` charts the car's value over time with
+`LineChart`. Unlike the property chart (sampled at snapshot dates
+only), `buildCarValueSeries` (`src/data/cars/series.ts`) samples
+**monthly** — a depreciation rule is a continuous decay, and sampling
+it only at snapshots would draw misleading straight lines. Toggles
+subtract the cumulative linked-expense spend and the cumulative loan
+interest from the curve (money sunk into the car that never comes
+back), and a mileage view charts the odometer readings
+(`buildCarMileageSeries`). A dotted purchase-price baseline mirrors the
+property chart.
+
+### Car cost chart
+
+`CarCostChartModal.tsx` is the cost-of-ownership view: a monthly
+`StackedBarChart` of the linked expenses, one band per transport type
+(`carMonthlyCosts`), with toggleable synthetic bands for the
+depreciation and loan-interest legs. The header carries the range's
+total and the **cost per kilometre** — `carCostPerDistance`
+(`src/data/cars/costs.ts`) divides the sum of the known legs
+(`carTotalCostOfOwnership`: expenses + depreciation + loan interest)
+by `carDistanceDriven` (latest odometer reading − reading at
+purchase). Unknown legs stay unknown rather than reading as 0 — a car
+with no odometer data shows no per-km figure at all.
+
+### Car loan link
+
+`Car.loanId` references the Loans-sheet loan financing the car — the
+Loans sheet stays the single source of truth for the debt; nothing is
+copied. The link feeds the interest leg via
+`loanInterestAccruedBetween` (`src/data/loans/balance.ts`), which runs
+the same month-by-month accrual walk as `loanRemainingBalance` and
+returns null when the loan lacks a rate or a balance anchor (the UI
+then hides the leg). Deleting the loan sweeps the link off any car
+(`deleteLoan` in `reducers/loans.ts`); the car keeps its own figures.
+
 ## Insights page
 
 ### Insights page

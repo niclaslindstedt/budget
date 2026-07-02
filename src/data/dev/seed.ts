@@ -28,6 +28,8 @@ import { LATEST_VERSION } from "../migrations";
 import { mintBudgetRow } from "../budget/rows";
 import type {
   Account,
+  Car,
+  CarExpense,
   Category,
   Column,
   Company,
@@ -515,6 +517,33 @@ export function buildSeedUserData(): UserData {
       amount: -money(between(450, 950)),
       typeId: "preset-type-fuel",
     });
+    // Car running costs beyond fuel: a monthly parking-garage charge on
+    // the card and the insurance premium on Checking. The Cars sheet
+    // below consumes the early months' fuel + insurance as linked
+    // expenses and deliberately leaves the parking charges (and the
+    // later months) unconsumed so the "Find car expenses" walk always
+    // has candidates to surface.
+    creditRaw.push({
+      date: iso(year, month, between(2, 26)),
+      description: "Parkering P-hus City",
+      amount: -money(between(40, 320)),
+      typeId: "preset-type-parking",
+    });
+    checkingRaw.push({
+      date: iso(year, month, 3),
+      description: "Bilförsäkring Trygga",
+      amount: -429,
+      typeId: "preset-type-car-insurance",
+    });
+    if (month === 2) {
+      // Annual vehicle tax lands once, in February.
+      checkingRaw.push({
+        date: iso(year, month, 14),
+        description: "Fordonsskatt Transportstyrelsen",
+        amount: -487,
+        typeId: "preset-type-vehicle-tax",
+      });
+    }
     creditRaw.push({
       date: iso(year, month, between(8, 20)),
       description: "Restaurang Lunch",
@@ -1192,6 +1221,74 @@ export function buildSeedUserData(): UserData {
     villaMortgageLoan,
   ];
 
+  // ---- Cars (rendered by the Cars sheet) ----------------------------
+  // One owned car financed by the car loan above, so every leg of the
+  // cost view renders seeded: linked fuel + insurance expenses (the
+  // early months only — the later months and every parking charge stay
+  // unconsumed so "Find car expenses" surfaces candidates), an
+  // accelerated depreciation curve, a Blocket-style value + mileage
+  // snapshot, and the loan link that feeds the interest leg.
+  const carExpenseCutoff = "2026-03-01";
+  const carLinkedExpenses: CarExpense[] = [];
+  for (const entry of history[credit.id]) {
+    if (entry.description !== "Bensin Tanka") continue;
+    if (entry.date >= carExpenseCutoff) continue;
+    carLinkedExpenses.push({
+      id: mkId("carexp"),
+      date: entry.date,
+      amount: Math.abs(entry.amount),
+      description: entry.description,
+      typeId: "preset-type-fuel",
+      accountId: credit.id,
+      sourceHistoryId: entry.id,
+    });
+  }
+  for (const entry of history[checking.id]) {
+    if (entry.description !== "Bilförsäkring Trygga") continue;
+    if (entry.date >= carExpenseCutoff) continue;
+    carLinkedExpenses.push({
+      id: mkId("carexp"),
+      date: entry.date,
+      amount: Math.abs(entry.amount),
+      description: entry.description,
+      typeId: "preset-type-car-insurance",
+      accountId: checking.id,
+      sourceHistoryId: entry.id,
+    });
+  }
+  const familyCar: Car = {
+    id: mkId("car"),
+    name: "Volvo V60 Kombi",
+    ownership: "owned",
+    glyph: "car",
+    description: "V60 D3 -21, ABC 123",
+    purchaseDate: "2024-08-12",
+    purchasePrice: 189000,
+    purchaseMileage: 3200,
+    depreciation: {
+      method: "accelerated",
+      initialDrop: 10,
+      firstYearRate: 12,
+      ratePerYear: 9,
+      floor: 25000,
+    },
+    snapshots: [
+      // A plain odometer check after the first year, then a
+      // Blocket-lookup snapshot recording value and mileage together —
+      // the recorded value takes over from the depreciation curve.
+      { id: mkId("carsnap"), date: "2025-08-12", mileage: 17800 },
+      {
+        id: mkId("carsnap"),
+        date: "2026-03-15",
+        value: 152000,
+        mileage: 26400,
+      },
+    ],
+    loanId: carLoan.id,
+    expenses: carLinkedExpenses,
+  };
+  const cars: Car[] = [familyCar];
+
   // ---- Transfers (cross-account log) -------------------------------
   const transfers: Transfer[] = MONTHS.map(({ year, month }) => ({
     id: mkId("xfer"),
@@ -1426,6 +1523,16 @@ export function buildSeedUserData(): UserData {
     color: CATEGORY_COLORS[0],
     description: "",
     items: [{ id: mkId("item"), type: "loansView" }],
+  };
+
+  const carsSheet: Sheet = {
+    id: mkId("sheet"),
+    name: "Cars",
+    type: "cars",
+    glyph: "car",
+    color: CATEGORY_COLORS[1],
+    description: "",
+    items: [{ id: mkId("item"), type: "carsView" }],
   };
 
   const insightsSheet: Sheet = {
@@ -1669,6 +1776,7 @@ export function buildSeedUserData(): UserData {
       propertiesSheet,
       savingsSheet,
       loansSheet,
+      carsSheet,
       investmentSheet,
       insightsSheet,
       scenariosSheet,
@@ -1681,6 +1789,7 @@ export function buildSeedUserData(): UserData {
     properties,
     savings: savingsAccounts,
     loans,
+    cars,
     investmentHoldings,
     investmentStocks,
     fileCategories,
@@ -1703,6 +1812,8 @@ export function buildSeedUserData(): UserData {
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
+    ignoredCarExpenseEntryIds: [],
+    carExpenseExclusionPatterns: [],
     duplicateIgnores: [],
     matchRules,
     seriesMatchRules: [],

@@ -116,6 +116,8 @@ type Props = {
   onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
+  onClearIgnoredCarExpenses: () => void;
+  onClearCarExpenseExclusions: () => void;
   onSaveSettings: (draft: Settings) => void;
   onImport: (next: UserData) => void;
 };
@@ -144,6 +146,8 @@ export function UniversalModalHost(props: Props) {
     onClearDuplicateIgnores,
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
+    onClearIgnoredCarExpenses,
+    onClearCarExpenseExclusions,
     onSaveSettings,
     onImport,
   } = props;
@@ -529,6 +533,8 @@ export function UniversalModalHost(props: Props) {
         duplicateIgnoreCount={data.duplicateIgnores.length}
         ignoredItemEntryCount={data.ignoredItemEntryIds.length}
         itemFindExclusionCount={data.itemFindExclusionPatterns.length}
+        ignoredCarExpenseCount={data.ignoredCarExpenseEntryIds.length}
+        carExpenseExclusionCount={data.carExpenseExclusionPatterns.length}
         data={data}
         onImport={onImport}
         adapter={adapter}
@@ -555,6 +561,8 @@ export function UniversalModalHost(props: Props) {
         onClearDuplicateIgnores={onClearDuplicateIgnores}
         onClearIgnoredItemEntries={onClearIgnoredItemEntries}
         onClearItemFindExclusions={onClearItemFindExclusions}
+        onClearIgnoredCarExpenses={onClearIgnoredCarExpenses}
+        onClearCarExpenseExclusions={onClearCarExpenseExclusions}
         onCreateCategory={onCreateCategory}
         onUpdateCategory={onUpdateCategory}
         onDeleteCategory={onDeleteCategory}

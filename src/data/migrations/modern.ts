@@ -1209,6 +1209,22 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // every old export; the v83 validator omits it when missing, so this is
   // a bare additive bump.
   82: (v82) => ({ ...v82, version: 83 }),
+
+  // v83 → v84: introduces the Cars sheet's collections —
+  // `UserData.cars` (the cars themselves, with their snapshots and
+  // linked transportation expenses) plus the two "Find car expenses"
+  // dismiss lists `ignoredCarExpenseEntryIds` /
+  // `carExpenseExclusionPatterns` (same contract as the items-finder
+  // pair). Seeds all three empty; old exports simply lack them and the
+  // fresh-empty defaults pass the v84 validator unchanged. Bare
+  // additive bump.
+  83: (v83) => ({
+    ...v83,
+    version: 84,
+    cars: [],
+    ignoredCarExpenseEntryIds: [],
+    carExpenseExclusionPatterns: [],
+  }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

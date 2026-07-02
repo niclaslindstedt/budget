@@ -487,6 +487,19 @@ const settings: SettingsCatalog = {
       "Undertyper är den valfria etiketten under en typ — vilken sorts sak en ägd pryl är. De skapas från prylbladet; byt namn eller ta bort dem här.",
     subtypesEmpty: "Inga undertyper än. Lägg till en när du taggar en pryl.",
   },
+  cars: {
+    ignoredTitle: "Ignorerade bilkostnader",
+    ignoredLabel: "Kostnader du ignorerat i ”Hitta bilkostnader”",
+    ignoredNone: "Inga ignorerade än.",
+    ignoredHint: "{n} ignorerade. Rensa listan för att se dem igen.",
+    clearIgnored: "Rensa lista",
+    excludedTitle: "Uteslutna bilmönster",
+    excludedLabel: "Beskrivningar du uteslutit med ”Uteslut liknande”",
+    excludedNone: "Inga mönster uteslutna än.",
+    excludedHint:
+      "{n} uteslutna. Rensa listan för att skanna matchande kostnader igen.",
+    clearExcluded: "Rensa lista",
+  },
   properties: {
     sizeTitle: "Storlek",
     sizeHint:

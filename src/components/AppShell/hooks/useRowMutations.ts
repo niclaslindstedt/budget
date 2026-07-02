@@ -104,6 +104,8 @@ type Result = {
   onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
+  onClearIgnoredCarExpenses: () => void;
+  onClearCarExpenseExclusions: () => void;
   // Flip the `isTransfer` flag on a budget row, or on the underlying
   // `HistoryEntry` for a synthesized history row.
   onToggleRowTransfer: (row: Row) => void;
@@ -311,6 +313,14 @@ export function useRowMutations({
   );
   const onClearItemFindExclusions = useCallback(
     () => dispatch({ type: "clearItemFindExclusions" }),
+    [dispatch],
+  );
+  const onClearIgnoredCarExpenses = useCallback(
+    () => dispatch({ type: "clearIgnoredCarExpenseEntries" }),
+    [dispatch],
+  );
+  const onClearCarExpenseExclusions = useCallback(
+    () => dispatch({ type: "clearCarExpenseExclusions" }),
     [dispatch],
   );
 
@@ -616,6 +626,8 @@ export function useRowMutations({
     onClearDuplicateIgnores,
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
+    onClearIgnoredCarExpenses,
+    onClearCarExpenseExclusions,
     onToggleRowTransfer,
     onToggleRowIgnored,
     onEditHistoryRequest,

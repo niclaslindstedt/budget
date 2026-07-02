@@ -487,6 +487,19 @@ const settings = {
       "Subtypes are the optional label below a type — the kind of thing an owned item is. They are created from the items sheet; rename or remove them here.",
     subtypesEmpty: "No subtypes yet. Add one when tagging an item.",
   },
+  cars: {
+    ignoredTitle: "Ignored car charges",
+    ignoredLabel: "Charges you ignored in “Find car expenses”",
+    ignoredNone: "None ignored yet.",
+    ignoredHint: "{n} ignored. Clear the list to see them again.",
+    clearIgnored: "Clear list",
+    excludedTitle: "Excluded car patterns",
+    excludedLabel: "Descriptions you excluded with “Exclude similar”",
+    excludedNone: "No patterns excluded yet.",
+    excludedHint:
+      "{n} excluded. Clear the list to scan matching charges again.",
+    clearExcluded: "Clear list",
+  },
   properties: {
     sizeTitle: "Size",
     sizeHint:

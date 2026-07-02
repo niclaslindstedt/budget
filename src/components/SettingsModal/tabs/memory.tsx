@@ -6,19 +6,27 @@ export function MemoryTab({
   recurringDismissalCount,
   transferDismissalCount,
   duplicateIgnoreCount,
+  ignoredCarExpenseCount,
+  carExpenseExclusionCount,
   onClearMerchantHints,
   onClearRecurringDismissals,
   onClearTransferDismissals,
   onClearDuplicateIgnores,
+  onClearIgnoredCarExpenses,
+  onClearCarExpenseExclusions,
 }: {
   merchantHintCount: number;
   recurringDismissalCount: number;
   transferDismissalCount: number;
   duplicateIgnoreCount: number;
+  ignoredCarExpenseCount: number;
+  carExpenseExclusionCount: number;
   onClearMerchantHints: () => void;
   onClearRecurringDismissals: () => void;
   onClearTransferDismissals: () => void;
   onClearDuplicateIgnores: () => void;
+  onClearIgnoredCarExpenses: () => void;
+  onClearCarExpenseExclusions: () => void;
 }) {
   const t = useT();
   return (
@@ -66,6 +74,28 @@ export function MemoryTab({
         }
         buttonLabel={t("settings.memory.clearDismissed")}
         onClear={onClearDuplicateIgnores}
+      />
+      <ClearRow
+        label={t("settings.cars.ignoredLabel")}
+        count={ignoredCarExpenseCount}
+        hint={
+          ignoredCarExpenseCount === 0
+            ? t("settings.cars.ignoredNone")
+            : t("settings.cars.ignoredHint", { n: ignoredCarExpenseCount })
+        }
+        buttonLabel={t("settings.cars.clearIgnored")}
+        onClear={onClearIgnoredCarExpenses}
+      />
+      <ClearRow
+        label={t("settings.cars.excludedLabel")}
+        count={carExpenseExclusionCount}
+        hint={
+          carExpenseExclusionCount === 0
+            ? t("settings.cars.excludedNone")
+            : t("settings.cars.excludedHint", { n: carExpenseExclusionCount })
+        }
+        buttonLabel={t("settings.cars.clearExcluded")}
+        onClear={onClearCarExpenseExclusions}
       />
     </Section>
   );

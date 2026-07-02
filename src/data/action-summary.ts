@@ -307,6 +307,29 @@ export function describeActionSubject(
     case "deleteLoan":
       return name(byId(prev.loans, action.loanId)?.name);
 
+    // Cars — single-target actions name the car. Edits / snapshots /
+    // expenses read off `next` (the car still exists); the delete reads
+    // the name off `prev` since the car is gone in `next`. The bulk
+    // expense add counts when several charges land at once, and the
+    // exclude-similar action names the pattern it excluded.
+    case "addCar":
+      return name(action.car.name);
+    case "updateCar":
+    case "addCarSnapshot":
+    case "deleteCarSnapshot":
+    case "importCarSnapshots":
+    case "updateCarExpense":
+    case "removeCarExpense":
+      return name(byId(next.cars, action.carId)?.name);
+    case "addCarExpenses":
+      return action.expenses.length === 1
+        ? name(byId(next.cars, action.carId)?.name)
+        : count(action.expenses.length);
+    case "deleteCar":
+      return name(byId(prev.cars, action.carId)?.name);
+    case "excludeSimilarCarExpenses":
+      return name(action.description);
+
     // Investments — holdings and private stocks. Single-target actions
     // name the holding / position; edits and nested value / trade / price
     // actions read off `next`, the delete reads the name off `prev`.

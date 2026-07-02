@@ -1,5 +1,8 @@
 import type {
   Account,
+  Car,
+  CarExpense,
+  CarSnapshot,
   Category,
   CommonSettings,
   Company,
@@ -61,6 +64,7 @@ import { reduceItems } from "./reducers/items";
 import { reduceProperties } from "./reducers/properties";
 import { reduceSavings } from "./reducers/savings";
 import { reduceLoans } from "./reducers/loans";
+import { reduceCars } from "./reducers/cars";
 import { reduceInvestments } from "./reducers/investments";
 import { reduceMatchRules } from "./reducers/match-rules";
 import { reduceTransfers } from "./reducers/transfers";
@@ -680,6 +684,75 @@ export type Action =
       loanId: string;
       points: ImportedPoint[];
     }
+  // Cars — the vehicles the user owns / leases / shares / pools, rendered
+  // by the Cars sheet. Each mutates `UserData.cars`; snapshots (value /
+  // mileage) and linked expenses nest one level deep. The dismiss-list
+  // actions mirror the items finder's ignore / exclude-similar pair.
+  | { type: "addCar"; car: Car }
+  | {
+      // Edit one car by id. Each field in `patch` is optional; an
+      // explicit `undefined` deletes the key. Mirrors `updateLoan`.
+      type: "updateCar";
+      carId: string;
+      patch: Partial<Omit<Car, "id">>;
+    }
+  | { type: "deleteCar"; carId: string }
+  | {
+      // Record a value and/or odometer reading — appends one snapshot
+      // (the current value / mileage is the latest snapshot carrying
+      // that figure).
+      type: "addCarSnapshot";
+      carId: string;
+      snapshot: CarSnapshot;
+    }
+  | { type: "deleteCarSnapshot"; carId: string; snapshotId: string }
+  | {
+      // Bulk-import dated market values from a CSV / Excel file (one
+      // undo entry); merges into `snapshots` one-per-date, preserving
+      // the mileage on a snapshot the import overwrites the value of.
+      type: "importCarSnapshots";
+      carId: string;
+      points: ImportedPoint[];
+    }
+  | {
+      // Bulk-attribute expenses to a car — the "Find car expenses"
+      // picker's Add (several at once) and the manual-expense modal
+      // (one, sourceless) share this so either lands as one undo entry.
+      type: "addCarExpenses";
+      carId: string;
+      expenses: CarExpense[];
+    }
+  | {
+      type: "updateCarExpense";
+      carId: string;
+      expenseId: string;
+      patch: Partial<Omit<CarExpense, "id">>;
+    }
+  | {
+      // Unlink one expense. The bank entry itself is untouched — it
+      // becomes a finder candidate again.
+      type: "removeCarExpense";
+      carId: string;
+      expenseId: string;
+    }
+  | {
+      // Persist an "ignore" decision from the "Find car expenses" scan
+      // so the scanner skips this history entry on every subsequent
+      // run. Cleared via `clearIgnoredCarExpenseEntries`. Same shape
+      // and contract as `ignoreItemEntry`.
+      type: "ignoreCarExpenseEntry";
+      entryId: string;
+    }
+  | { type: "clearIgnoredCarExpenseEntries" }
+  | {
+      // Persist an "exclude similar" decision from the "Find car
+      // expenses" scan. Same normalise-and-append contract as
+      // `excludeSimilarItemEntries`; cleared via
+      // `clearCarExpenseExclusions`.
+      type: "excludeSimilarCarExpenses";
+      description: string;
+    }
+  | { type: "clearCarExpenseExclusions" }
   // Investments — the holdings catalog + private stocks rendered by the
   // Investment sheet. Holdings mutate `UserData.investmentHoldings`
   // (value points nest one level deep); stock positions mutate
@@ -1326,6 +1399,7 @@ export function reducer(state: UserData, action: Action): UserData {
     reduceProperties(state, action) ??
     reduceSavings(state, action) ??
     reduceLoans(state, action) ??
+    reduceCars(state, action) ??
     reduceInvestments(state, action) ??
     reduceMatchRules(state, action) ??
     reduceTransfers(state, action) ??

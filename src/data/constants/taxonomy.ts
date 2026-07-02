@@ -284,6 +284,27 @@ export const PROPERTIES_GLYPH_NAMES: readonly CategoryIcon[] = [
   "star",
 ] as const;
 
+// Cars sheets stand for the vehicles the user owns, leases, shares, or
+// reaches through a car pool — so the palette leans toward vehicles,
+// the running costs that ride with them (fuel, service), and the
+// alternatives the cost view compares against (bus, train, bike). The
+// SheetModal picks this set when the selected sheet type is "cars" via
+// the descriptor's `glyphNames`, and the per-car glyph picker in
+// `CarEditorModal` offers the same set.
+export const CARS_GLYPH_NAMES: readonly CategoryIcon[] = [
+  "car",
+  "car-front",
+  "fuel",
+  "wrench",
+  "key",
+  "bus",
+  "train",
+  "bike",
+  "coins",
+  "trending-up",
+  "star",
+] as const;
+
 // Loans sheets stand for borrowed money — mortgages, student loans, car
 // loans, money owed to a person — so the palette leans toward lenders,
 // the people money is borrowed from (personal loans), and the things

@@ -63,6 +63,7 @@ const SERIES_CATEGORIES: readonly NetWorthCategory[] = [
   "savings",
   "items",
   "investments",
+  "cars",
   "properties",
   "mortgages",
   "loans",
@@ -78,6 +79,7 @@ const DISPLAY_CATEGORIES = [
   "savings",
   "items",
   "investments",
+  "cars",
   "properties",
   "loans",
 ] as const;
@@ -89,6 +91,7 @@ const CATEGORY_LABEL_KEY = {
   savings: "insightsSheet.categorySavings",
   items: "insightsSheet.categoryItems",
   investments: "insightsSheet.categoryInvestments",
+  cars: "insightsSheet.categoryCars",
   properties: "insightsSheet.categoryPropertiesNet",
   loans: "insightsSheet.categoryLoans",
 } as const;
@@ -101,6 +104,7 @@ const CATEGORY_COLOR: Record<DisplayCategory, string> = {
   savings: "--link",
   items: "--path",
   investments: "--pipe",
+  cars: "--success",
   properties: "--flag",
   loans: "--danger",
 };

@@ -28,6 +28,8 @@ export type {
   LineItemLink,
 } from "./items";
 
+export type { Car, CarExpense, CarOwnership, CarSnapshot } from "./cars";
+
 export type {
   AssociationLoan,
   AssociationLoanChange,
@@ -60,6 +62,7 @@ export type {
 export type {
   AccountBudget,
   AccountsView,
+  CarsView,
   InsightsEntityOverride,
   InsightsMode,
   InsightsNetWorthSettings,

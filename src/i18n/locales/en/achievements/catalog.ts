@@ -103,6 +103,12 @@ const catalog = {
     learnMore:
       "The Loans sheet tracks the money you owe — student loans, car loans, mortgages, money borrowed from a person — with a start date, start sum, monthly payment, and optional rate and setup fee. With a rate set, the remaining balance is simulated month by month. A mortgage can instead link a mortgage from the Properties sheet, so its terms and payments stay in one place.",
   },
+  carOwner: {
+    name: "Behind the Wheel",
+    condition: "Add your first car on the Cars sheet.",
+    learnMore:
+      "The Cars sheet shows what having a car really costs — owned, leased, shared, or through a car pool. Link transportation charges from your bank history (fuel, insurance, parking, tax, service) via Find car expenses, set a value-loss curve or update the value after a second-hand-market lookup, record the odometer alongside, and the sheet rolls it all up — including the cost per kilometre once mileage is tracked.",
+  },
   investor: {
     name: "Investor",
     condition: "Add your first investment on the Investment sheet.",

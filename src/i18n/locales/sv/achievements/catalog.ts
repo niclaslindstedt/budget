@@ -98,6 +98,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Lån-sidan håller koll på pengarna du är skyldig — studielån, billån, bolån, pengar lånade av en person — med startdatum, startbelopp, månadsbetalning samt valfri ränta och uppläggningsavgift. Med en ränta satt simuleras det återstående saldot månad för månad. Ett bolån kan istället länka ett bolån från fastighetsbladet, så att villkor och betalningar bara finns på ett ställe.",
   },
+  carOwner: {
+    name: "Bakom ratten",
+    condition: "Lägg till din första bil på Bilar-bladet.",
+    learnMore:
+      "Bilar-bladet visar vad det egentligen kostar att ha bil — ägd, leasad, delad eller via bilpool. Länka transportkostnader från din bankhistorik (bränsle, försäkring, parkering, skatt, service) med Hitta bilkostnader, sätt en värdeminskningskurva eller uppdatera värdet efter en Blocket-koll, registrera mätarställningen samtidigt, och bladet räknar ihop allt — inklusive kostnaden per kilometer när mätarställningen följs upp.",
+  },
   investor: {
     name: "Investerare",
     condition: "Lägg till din första investering på Investeringssidan.",

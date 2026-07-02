@@ -100,6 +100,19 @@ export type LoansView = {
   type: "loansView";
 };
 
+// Workspace-wide cars sheet item. The Cars sheet renders the global
+// `UserData.cars` collection (the cars the user owns, leases, shares,
+// or reaches through a car pool, with their linked transportation
+// costs and value over time) rather than a per-account ledger. Like
+// `LoansView` the item carries no data of its own — it reads the
+// shared collection — so the shape exists only so future per-sheet
+// config (sort order, hide-sold toggle, …) lands here without another
+// migration.
+export type CarsView = {
+  id: string;
+  type: "carsView";
+};
+
 // The insight modes the Insights sheet can render. One literal today;
 // future modes (cash flow, spending rate, …) extend the union, and the
 // page's mode toggle un-hides itself once there is more than one.
@@ -264,7 +277,8 @@ export type SheetItem =
   | LoansView
   | InsightsView
   | InvestmentView
-  | ScenariosView;
+  | ScenariosView
+  | CarsView;
 
 // Sheet flavour. A `Sheet` carries a `type` so the UI can pick the
 // right body — today the transactional ledger ("budget"), the
@@ -283,7 +297,8 @@ export type SheetType =
   | "loans"
   | "insights"
   | "investment"
-  | "scenarios";
+  | "scenarios"
+  | "cars";
 
 // Every `SheetType` literal, in canonical order. The runtime companion
 // to the union above, so consumers that need to iterate the types — the
@@ -302,6 +317,7 @@ export const SHEET_TYPES = [
   "insights",
   "investment",
   "scenarios",
+  "cars",
 ] as const satisfies readonly SheetType[];
 
 // Compile-time guard: if a new `SheetType` literal is added to the

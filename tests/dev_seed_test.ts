@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { buildSeedUserData } from "../src/data/dev/seed";
 import { detectTransferCandidates } from "../src/data/accounts/transfer-collapse";
 import { detectRecurringCandidates } from "../src/data/budget/recurring-detection";
+import { findCarExpenseCandidates } from "../src/data/cars/find";
 import { findItemPurchaseCandidates } from "../src/data/items/find";
 import { findLoanPaymentCandidates } from "../src/data/loans/candidates";
 import { LATEST_VERSION } from "../src/data/migrations";
@@ -95,6 +96,7 @@ describe("buildSeedUserData", () => {
     expect([...types].sort()).toEqual([
       "accounts",
       "budget",
+      "cars",
       "insights",
       "investment",
       "items",
@@ -164,6 +166,26 @@ describe("buildSeedUserData", () => {
       referenceDate: REFERENCE_DATE,
     });
     expect(result.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("seeds a car with every cost leg and leaves finder candidates", () => {
+    const seed = buildSeedUserData();
+    const car = seed.cars[0];
+    expect(car).toBeDefined();
+    // The car is financed by the seeded car loan and carries linked
+    // expenses plus a value + mileage snapshot, so depreciation,
+    // expense, interest, and cost-per-km surfaces all render.
+    expect(seed.loans.some((l) => l.id === car.loanId)).toBe(true);
+    expect(car.expenses.length).toBeGreaterThan(0);
+    expect(car.snapshots.some((s) => s.value !== undefined)).toBe(true);
+    expect(car.snapshots.some((s) => s.mileage !== undefined)).toBe(true);
+    // Every linked expense resolves to a real bank entry.
+    for (const expense of car.expenses) {
+      const entries = seed.history[expense.accountId!] ?? [];
+      expect(entries.some((e) => e.id === expense.sourceHistoryId)).toBe(true);
+    }
+    // The walk still has unconsumed transport charges to offer.
+    expect(findCarExpenseCandidates(seed).length).toBeGreaterThan(0);
   });
 
   it("leaves an item-purchase candidate for the Find items scan", () => {

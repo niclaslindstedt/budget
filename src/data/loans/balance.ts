@@ -172,6 +172,59 @@ export function loanRemainingBalance(
   return balance;
 }
 
+// Interest accrued on a simple (unlinked) loan across `(fromIso, toIso]`,
+// at monthly granularity. Runs the same month-by-month walk as
+// `loanRemainingBalance` — each month after the anchor accrues
+// annual-rate / 12 on the outstanding balance before that month's
+// payments land — and sums the accruals that fall in months after
+// `fromIso`'s. This is the "what did borrowing actually cost" leg of the
+// Cars sheet's cost view. Returns null when the loan has no rate or no
+// balance anchor (snapshot / start sum) — the caller renders the leg as
+// unknown rather than 0. Linked-mortgage loans are out of scope; their
+// interest lives with the property.
+export function loanInterestAccruedBetween(
+  loan: Loan,
+  fromIso: string,
+  toIso: string,
+): number | null {
+  if (loan.rate === undefined) return null;
+  if (toIso < fromIso) return 0;
+  const points = effectiveBalancePoints(loan, fromIso);
+  if (points.length === 0) return null;
+  let anchor = points[0];
+  for (const point of points) {
+    if (point.date > fromIso) break;
+    anchor = point;
+  }
+  if (anchor.date > toIso) return 0;
+  const payments = loan.payments
+    .filter((p) => p.date > anchor.date && p.date <= toIso)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const monthlyRate = loan.rate / 100 / 12;
+  const anchorMonth = isoToMonthNum(anchor.date);
+  const fromMonth = isoToMonthNum(fromIso);
+  const endMonth = isoToMonthNum(toIso);
+  let balance = anchor.value;
+  let next = 0;
+  let interest = 0;
+  for (let month = anchorMonth; month <= endMonth; month++) {
+    if (month > anchorMonth) {
+      const accrued = balance * monthlyRate;
+      balance += accrued;
+      if (month > fromMonth) interest += accrued;
+    }
+    while (
+      next < payments.length &&
+      isoToMonthNum(payments[next].date) === month
+    ) {
+      balance -= payments[next].amount;
+      next += 1;
+    }
+    if (balance <= 0) break;
+  }
+  return interest;
+}
+
 // Display figures for a linked mortgage loan, aggregated live across the
 // linked mortgages' own terms. Mirrors what the Properties sheet shows so
 // the two pages can never disagree: monthly payment and remaining balance

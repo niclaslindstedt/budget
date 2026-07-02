@@ -15,6 +15,7 @@ import {
   Calculator,
   Calendar,
   CalendarArrowUp,
+  Car,
   CalendarClock,
   CalendarCog,
   CalendarPlus,
@@ -614,6 +615,19 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.loans],
       predicate: (prev, next) =>
         prev.loans.length === 0 && next.loans.length > 0,
+    },
+  },
+  {
+    // The user added their first car on the Cars sheet — owned, leased,
+    // shared, or car-pool alike.
+    id: "carOwner",
+    tier: "intermediate",
+    glyph: Car,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.cars],
+      predicate: (prev, next) => prev.cars.length === 0 && next.cars.length > 0,
     },
   },
   {

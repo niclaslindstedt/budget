@@ -15,6 +15,7 @@ const insightsSheet: InsightsSheetCatalog = {
   categorySavings: "Sparande",
   categoryItems: "Saker",
   categoryInvestments: "Investeringar",
+  categoryCars: "Bilar",
   categoryProperties: "Fastigheter",
   categoryPropertiesNet: "Fastigheter & bolån",
   categoryLoans: "Övriga lån",

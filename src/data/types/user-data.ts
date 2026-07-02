@@ -14,6 +14,7 @@ import type {
   Subtype,
   Tag,
 } from "./categories";
+import type { Car } from "./cars";
 import type { Item } from "./items";
 import type {
   MatchRule,
@@ -39,7 +40,7 @@ import type { TaxProfile } from "../tax/types";
 // and `UsersFile` below — so a UserData snapshot can be exported and
 // imported across devices without dragging credentials along.
 export type UserData = {
-  version: 83;
+  version: 84;
   sheets: Sheet[];
   activeSheetId: string;
   accounts: Account[];
@@ -83,6 +84,14 @@ export type UserData = {
   // resolve live from `properties`. Entirely user-curated — no presets
   // ship. Empty on a fresh budget.
   loans: Loan[];
+  // Cars the user owns, leases, shares, or reaches through a car pool,
+  // rendered by the Cars sheet. Each carries what it was bought for, how
+  // it depreciates, dated value / odometer snapshots, an optional link
+  // to the loan financing it, and the transportation costs attributed to
+  // it (usually sourced from imported bank charges via the "Find car
+  // expenses" walk). Entirely user-curated — no presets ship. Empty on a
+  // fresh budget.
+  cars: Car[];
   // Broad investment holdings the user owns (funds, baskets of shares,
   // gold, crypto, bonds), rendered by the Investment sheet's holdings
   // table. Each carries the wrapper it's held in (ISK / KF / depå, which
@@ -213,6 +222,18 @@ export type UserData = {
   // recurring charge (rent, a budget transfer) is dismissed in one tap.
   // Cleared via the Items settings tab.
   itemFindExclusionPatterns: string[];
+  // History-entry ids the user ignored from the Cars sheet's "Find car
+  // expenses" scan. Same shape and contract as `ignoredItemEntryIds`:
+  // the scanner skips them so a transport charge the user decided isn't
+  // a car cost never resurfaces. Cleared via the Cars settings tab.
+  ignoredCarExpenseEntryIds: string[];
+  // Normalised-description keys the user excluded from the Cars sheet's
+  // "Find car expenses" scan via "Exclude similar". Same shape and
+  // contract as `itemFindExclusionPatterns` — one key drops every
+  // matching entry, past and future imports alike (a commute bus pass,
+  // the other household car's fuel station). Cleared via the Cars
+  // settings tab.
+  carExpenseExclusionPatterns: string[];
   // "Not a duplicate" rules for the cross-account duplicate finder — see
   // `DuplicateIgnore`. Each pairs an EXACT raw bank description with a
   // signed amount; `findDuplicateImports` excludes any matching history

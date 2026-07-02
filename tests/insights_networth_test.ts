@@ -100,6 +100,7 @@ describe("computeNetWorthSnapshot", () => {
       savings: 200,
       items: 500,
       investments: 0,
+      cars: 0,
       properties: 3_000_000,
       mortgages: -1_000_000,
       loans: -120_000,
@@ -166,6 +167,61 @@ describe("computeNetWorthSnapshot", () => {
     const snap = computeNetWorthSnapshot(workspace(), settings, TODAY);
     expect(snap.perCategory.accounts).toBe(500);
     expect(snap.perCategory.loans).toBe(-30_000);
+  });
+
+  it("counts owned and shared cars, never leased / pool / sold ones", () => {
+    const data = workspace({
+      cars: [
+        {
+          id: "car-1",
+          name: "Volvo",
+          ownership: "owned",
+          purchaseDate: "2026-01-01",
+          purchasePrice: 200_000,
+          snapshots: [{ id: "cs1", date: "2026-05-01", value: 180_000 }],
+          expenses: [],
+        },
+        {
+          // Shared: the car's own share scales the gross.
+          id: "car-2",
+          name: "Weekend car",
+          ownership: "shared",
+          sharePct: 50,
+          purchaseDate: "2026-01-01",
+          purchasePrice: 100_000,
+          snapshots: [],
+          expenses: [],
+        },
+        {
+          id: "car-3",
+          name: "Leased",
+          ownership: "leased",
+          snapshots: [],
+          expenses: [],
+        },
+        {
+          id: "car-4",
+          name: "Sold",
+          ownership: "owned",
+          purchasePrice: 90_000,
+          soldAt: "2026-02-01",
+          soldFor: 85_000,
+          snapshots: [],
+          expenses: [],
+        },
+      ],
+    });
+    const snap = computeNetWorthSnapshot(data, undefined, TODAY);
+    expect(snap.perCategory.cars).toBe(180_000 + 50_000);
+    expect(snap.entities.some((e) => e.id === "car-3")).toBe(false);
+    expect(snap.entities.some((e) => e.id === "car-4")).toBe(false);
+    // The insights per-entity override compounds on top of the car's own
+    // share.
+    const settings: InsightsNetWorthSettings = {
+      overrides: { "car-2": { sharePct: 50 } },
+    };
+    const shared = computeNetWorthSnapshot(data, settings, TODAY);
+    expect(shared.perCategory.cars).toBe(180_000 + 25_000);
   });
 
   it("treats unknown values as zero-contribution but keeps the row", () => {

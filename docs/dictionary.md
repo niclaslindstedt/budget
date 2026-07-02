@@ -255,6 +255,28 @@ personal), with payments imported from bank transactions. Sheet type
 | **Visualize loans** / **loans chart**              | `LoansChartModal.tsx`; `buildLoanBalanceBands` / `buildLoanPaymentBands` (`src/data/loans/series.ts`); `StackedAreaChart` / `StackedBarChart` (`src/components/charts/`). Opened from the Loans sheet's title "…" menu. [→](overview.md#visualize-loans) |
 | **Salary multiple** / **multiple of salary**       | The "Show as multiple of monthly salary" modifier in `LoansChartModal.tsx`; `averageMonthlyNetAt` (`src/data/salary/salary.ts`). [→](overview.md#visualize-loans)                                                                                        |
 
+## Cars page
+
+Cars — the real cost of having a car (owned, leased, shared, or via a
+car pool): transportation expenses linked from bank history, value loss
+over time, loan interest, and cost per kilometre. Sheet type `"cars"`.
+Files live in `src/components/cars/`; data helpers in `src/data/cars/`.
+
+| Term                                           | Refers to                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cars page** / **Cars sheet**                 | `src/components/cars/CarsPage.tsx`; `CarsView`, `UserData.cars`. [→](overview.md#cars-page)                                                                                                                                                                                             |
+| **Car** (object) / **ownership form**          | `Car`, `CarOwnership` (`src/data/types/cars.ts`); `CarEditorModal.tsx`; `addCar` / `updateCar` / `deleteCar` (`src/data/reducers/cars.ts`). [→](overview.md#car)                                                                                                                        |
+| **Car snapshot** / **update value & mileage**  | `UpdateCarValueModal.tsx`; `Car.snapshots`, `CarSnapshot` (value and/or odometer per dated point); `addCarSnapshot` / `deleteCarSnapshot` / `importCarSnapshots`; resolution in `src/data/cars/value.ts` (`computeCarCurrentValue`, `currentCarMileage`). [→](overview.md#car-snapshot) |
+| **Car depreciation** / **value loss**          | `Car.depreciation` (reuses `ItemDepreciation`); `carDepreciationToDate`, shared curve `depreciatedValue` (`src/data/items/value.ts`). [→](overview.md#car-depreciation)                                                                                                                 |
+| **Car expense** / **linked expense**           | `CarExpense` on `Car.expenses` (`accountId` + `sourceHistoryId` back a bank charge; both absent ⇒ manual); `CarExpensesModal.tsx`; `addCarExpenses` / `updateCarExpense` / `removeCarExpense`. [→](overview.md#car-expense)                                                             |
+| **Find car expenses** (walk)                   | `CarExpenseFinderModal.tsx`; `findCarExpenseCandidates` (`src/data/cars/find.ts`); `CAR_EXPENSE_TYPE_IDS` (`src/data/presets/types.ts`). [→](overview.md#find-car-expenses)                                                                                                             |
+| **Ignore** / **exclude similar** (car expense) | `UserData.ignoredCarExpenseEntryIds` / `UserData.carExpenseExclusionPatterns`; `ignoreCarExpenseEntry` / `excludeSimilarCarExpenses` (+ the two `clear*` actions, surfaced in Settings). [→](overview.md#find-car-expenses)                                                             |
+| **Manual car expense**                         | `ManualCarExpenseModal.tsx`; a sourceless `CarExpense` (cash fuel, pre-history costs, car-pool invoices). [→](overview.md#car-expense)                                                                                                                                                  |
+| **Car value chart**                            | `CarValueChartModal.tsx`; `buildCarValueSeries` / `buildCarMileageSeries` (`src/data/cars/series.ts`); `LineChart`. [→](overview.md#car-value-chart)                                                                                                                                    |
+| **Car cost chart** / **cost of ownership**     | `CarCostChartModal.tsx`; `carMonthlyCosts` / `carTotalCostOfOwnership` / `carCostBreakdown` (`src/data/cars/costs.ts`); `StackedBarChart`. [→](overview.md#car-cost-chart)                                                                                                              |
+| **Cost per km** / **cost per distance**        | `carCostPerDistance` (`src/data/cars/costs.ts`) — total cost legs ÷ `carDistanceDriven`. [→](overview.md#car-cost-chart)                                                                                                                                                                |
+| **Car loan link** / **loan interest** (car)    | `Car.loanId` → `UserData.loans`; `loanInterestAccruedBetween` (`src/data/loans/balance.ts`); swept by `deleteLoan`. [→](overview.md#car-loan-link)                                                                                                                                      |
+
 ## Insights page
 
 Cross-cutting analyses over everything the workspace tracks, organised
