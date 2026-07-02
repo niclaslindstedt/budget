@@ -9,7 +9,7 @@ import {
   countRowsAffectedByReapply,
   reapplyPatternsToAllSheets,
 } from "../../../data/budget/pattern-apply";
-import { resolveEntryLabels } from "../../../data/budget/synthesis";
+import { resolveEntryLabels } from "../../../data/synthesis";
 import type { Action } from "../../../data/reducer";
 import { findColumnByType, newId } from "../../../data/sheet";
 import type {

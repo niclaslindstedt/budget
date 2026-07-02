@@ -223,9 +223,9 @@ src/
 │   ├── sheet.ts            # universal sheet primitives (newId, factories,
 │   │                       #   column + sheet-tree traversal)
 │   ├── fiscal-month.ts     # fiscal-month + ISO date math
+│   ├── synthesis.ts        # synthesized rows (transfers, history) — cross-page
 │   ├── budget/
 │   │   ├── rows.ts             # budget-row algebra (sort, balances, series, …)
-│   │   ├── synthesis.ts        # synthesized rows (transfers, history)
 │   │   └── export.ts           # CSV/XLSX export builder
 │   ├── accounts/
 │   │   ├── balance.ts          # account-level aggregation

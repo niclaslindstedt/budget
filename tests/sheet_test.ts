@@ -14,7 +14,7 @@ import {
   userDataHasHalfDoneRows,
   userDataWithSavableRows,
 } from "../src/data/budget/rows";
-import { synthesizeHistoryRow } from "../src/data/budget/synthesis";
+import { synthesizeHistoryRow } from "../src/data/synthesis";
 import {
   applyMonthShift,
   computePrimaryIncomeShift,

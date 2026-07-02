@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 import {
   collectHiddenTransfersByAnchor,
   isTransferRow,
-} from "../../data/budget/synthesis";
+} from "../../data/synthesis";
 import { findColumnByType } from "../../data/sheet";
 import type { CellValue, Column, Row, Settings } from "../../data/types";
 import { useActionsCompaction, useNearViewport } from "../../hooks";

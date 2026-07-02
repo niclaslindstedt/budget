@@ -299,9 +299,6 @@ src/
 │   ├── budget/
 │   │   ├── rows.ts             # budget-row algebra (sort, computeBalances,
 │   │   │                       #   buildVisibleRows, mintBudgetRow, …)
-│   │   ├── synthesis.ts        # synthesize history + transfer rows into the
-│   │   │                       #   Row shape (synthesizeHistoryRow / -TransferRow,
-│   │   │                       #   resolveEntryLabels)
 │   │   ├── computed-state.ts   # one-shot row pipeline consumed by BudgetPage
 │   │   │                       #   (synthesis → merge → decorate → sort →
 │   │   │                       #    balance → bucket)
@@ -546,6 +543,11 @@ src/
 │   │                       #   (generateCoverMessage, buildCoverIndex,
 │   │                       #    applyCoverRoles, attachImportedCoverTransfers);
 │   │                       #   consumed by budget, accounts reducer, AppShell (cross-page)
+│   ├── synthesis.ts       # synthesize history + transfer rows into the Row
+│   │                       #   shape (synthesizeHistoryRow / -TransferRow,
+│   │                       #   resolveEntryLabels); consumed by budget,
+│   │                       #   scenarios, items/loans/properties finders
+│   │                       #   and cover-transfer (cross-page)
 │   ├── merchant-hints.ts  # per-merchant type memory recorder + suggester
 │   ├── match-rules.ts     # glob matcher for synthesized history rows
 │   ├── rename-patterns.ts # per-account "bank wrote X, user calls it Y" memory

@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FileDown, Home, Pencil, Plus } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
-import {
-  newRuleMatchCache,
-  resolveEntryLabels,
-} from "../../data/budget/synthesis";
+import { newRuleMatchCache, resolveEntryLabels } from "../../data/synthesis";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import { propertyInitialLoanTotal } from "../../data/finance/amortization";
 import {

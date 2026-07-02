@@ -5,7 +5,7 @@ import { getMonthKey } from "../../../data/fiscal-month";
 import {
   historyEntryIdFromRowId,
   synthesizeHistoryRow,
-} from "../../../data/budget/synthesis";
+} from "../../../data/synthesis";
 import type { Action } from "../../../data/reducer";
 import type { AccountBudget, Column, Row, UserData } from "../../../data/types";
 import type { ConfirmAction } from "../../ConfirmDialog";

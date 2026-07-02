@@ -12,7 +12,7 @@
 // (`UserData.itemFindExclusionPatterns`), and the hard `NEVER_ITEM_TYPE_IDS`
 // type denylist (rent, utilities, subscriptions — never resaleable goods).
 
-import { resolveEntryLabels } from "../budget/synthesis";
+import { resolveEntryLabels } from "../synthesis";
 import { normaliseDescription } from "../description-normaliser";
 import { NEVER_ITEM_TYPE_IDS } from "../presets/types";
 import type { Settings, UserData } from "../types";

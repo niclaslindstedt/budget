@@ -5,7 +5,7 @@ import {
   sortMonthKeys,
 } from "../fiscal-month";
 import { findColumnByType } from "../sheet";
-import { isTransferRow } from "./synthesis";
+import { isTransferRow } from "../synthesis";
 import type { Column, EntryType, Item, Row } from "../types";
 
 // Trailing fiscal-month window for the spending dashboard. Numbers

@@ -5,7 +5,7 @@ import {
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-} from "./synthesis";
+} from "../synthesis";
 import { findColumnByType, getStandardColumns, newId } from "../sheet";
 import type {
   AccountBudget,

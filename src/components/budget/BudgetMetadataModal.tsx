@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Split, Tags } from "lucide-react";
 
-import { resolveEntryLabels } from "../../data/budget/synthesis";
+import { resolveEntryLabels } from "../../data/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import {
   matchingBankDescriptionEntries,
