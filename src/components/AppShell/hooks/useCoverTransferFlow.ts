@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { unlock as unlockAchievement } from "../../../data/achievements";
-import {
-  coverTotal,
-  generateCoverMessage,
-} from "../../../data/accounts/cover-transfer";
+import { coverTotal, generateCoverMessage } from "../../../data/cover-transfer";
 import { newId } from "../../../data/sheet";
 import type {
   CoveredExpense,

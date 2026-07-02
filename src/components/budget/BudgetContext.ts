@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type { InducedEntryMetadata } from "../../data/budget/company-type-hints";
+import type { InducedEntryMetadata } from "../../data/company-type-hints";
 import type {
   Category,
   Company,

@@ -55,7 +55,7 @@ import {
   computeDescriptionCompanyHints,
   computeDescriptionMetadataInductions,
   computeTypeCompanyHints,
-} from "../../data/budget/company-type-hints";
+} from "../../data/company-type-hints";
 import {
   isRowSavable,
   userDataHasUnsavableRows,

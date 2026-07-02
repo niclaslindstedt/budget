@@ -316,7 +316,6 @@ src/
 │   │   ├── pattern-derive.ts   # glob-pattern seed from a row description
 │   │   ├── recurring-detection.ts  # "looks recurring" candidate detector
 │   │   ├── payday.ts           # salary detection over budget rows
-│   │   ├── company-type-hints.ts  # company→type + type→company + description→company hints (manual + learned)
 │   │   └── formula*.ts         # tokenizer / parser / ast / evaluator / resolve
 │   │                           #   + formula.ts facade for the `=` amount cell
 │   ├── accounts/
@@ -540,6 +539,13 @@ src/
 │   ├── import-staging.ts  # pure bank-import pipeline (merge → match → outcome)
 │   ├── recurrence.ts      # RecurrenceRule + expandRecurrence + isIsoDate
 │   ├── description-normaliser.ts  # lossy merchant-key normaliser (shared)
+│   ├── company-type-hints.ts  # company→type + type→company + description→company
+│   │                       #   hints (manual + learned); consumed by budget,
+│   │                       #   accounts, and the AppShell hooks (cross-page)
+│   ├── cover-transfer.ts   # cover-transfer roles + message matching
+│   │                       #   (generateCoverMessage, buildCoverIndex,
+│   │                       #    applyCoverRoles, attachImportedCoverTransfers);
+│   │                       #   consumed by budget, accounts reducer, AppShell (cross-page)
 │   ├── merchant-hints.ts  # per-merchant type memory recorder + suggester
 │   ├── match-rules.ts     # glob matcher for synthesized history rows
 │   ├── rename-patterns.ts # per-account "bank wrote X, user calls it Y" memory

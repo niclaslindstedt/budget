@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { autoTypeForCompany } from "../data/budget/company-type-hints";
+import { autoTypeForCompany } from "../data/company-type-hints";
 
 // Wrap `autoTypeForCompany` for the entry-edit modals' company picker.
 // Every `handlePickCompany` callback computes the same

@@ -7,7 +7,7 @@ import {
 import { findColumnByType, newId, updateAccountBudget } from "../sheet";
 import { findRuleDrivenCandidates } from "../reconciliation";
 import { attachImportedLoanPayments } from "../loans/auto-attach";
-import { attachImportedCoverTransfers } from "../accounts/cover-transfer";
+import { attachImportedCoverTransfers } from "../cover-transfer";
 import { sortHistoryByBalance } from "../accounts/history-order";
 import { applyImportedSavingBalances } from "../savings/value";
 import {

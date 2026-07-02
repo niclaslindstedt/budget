@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 import { unlock } from "../../data/achievements";
-import { applyCoverRoles } from "../../data/accounts/cover-transfer";
-import type { InducedEntryMetadata } from "../../data/budget/company-type-hints";
+import { applyCoverRoles } from "../../data/cover-transfer";
+import type { InducedEntryMetadata } from "../../data/company-type-hints";
 import { computeBudgetState } from "../../data/budget/computed-state";
 import { buildSynthesizedRows } from "../../data/budget/rows";
 import {

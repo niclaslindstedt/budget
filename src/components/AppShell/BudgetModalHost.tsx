@@ -30,7 +30,7 @@ import { BudgetEntryInfoModal } from "../budget/BudgetEntryInfoModal";
 import { ConfirmDialog, type ConfirmAction } from "../ConfirmDialog";
 import { EditHistoryEntryModal } from "../accounts/EditHistoryEntryModal";
 import { unlock as unlockAchievement } from "../../data/achievements";
-import { isCoverTransfer } from "../../data/accounts/cover-transfer";
+import { isCoverTransfer } from "../../data/cover-transfer";
 import { unlinkedItems } from "../../data/items/link";
 import { itemSubtypes } from "../../data/items/subtypes";
 import { findColumnByType } from "../../data/sheet";

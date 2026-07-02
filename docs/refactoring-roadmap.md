@@ -415,29 +415,22 @@ backup / auth helpers in one closure that mutates`currentAccessToken`+`pendingRe
     re-derives ~150–800 lines of engine today.
 
 - **Cross-page consumers reaching into page-scoped `src/data/`
-  directories** — four modules under page-named data dirs now have
-  consumers in _other_ pages' component directories, the shape the
-  placement rules say belongs at `src/data/` root (and the shape the
-  `src/data/finance/` hoist fixed 2026-06):
-  `data/budget/company-type-hints.ts` (423) ←
-  `accounts/EditHistoryEntryModal.tsx:4`; `data/budget/synthesis.ts`
-  (475) ← `items/ItemFinderModal.tsx:8`, `properties/PropertiesPage.tsx:8`,
-  `scenarios/ScenarioMonthTable.tsx:7`; `data/budget/rows.ts` (575) ←
-  `scenarios/ScenariosPage.tsx:14`; `data/accounts/cover-transfer.ts`
-  (261) ← `budget/BudgetPage.tsx:15`, `budget/BudgetCoverInfoModal.tsx:4`.
-  - **Plan**: per-module judgment, not a blanket move.
-    `company-type-hints` and `cover-transfer` look genuinely cross-page
-    (relocate to root: `git mv` + import updates + the
-    `docs/architecture.md` inventory). `synthesis` / `rows` are consumed
-    by scenarios _because scenarios is intrinsically a what-if layer over
-    budget rows_ — decide on pickup whether that makes the helpers
-    cross-page (relocate) or scenarios budget-coupled by design (document
-    the exception on the import sites instead); the items / properties
-    `synthesis` imports suggest relocation is the honest answer there.
-  - **Risk**: low — mechanical `git mv` moves; the synthesis / rows
-    decision is the only judgment call, and relocating them is churny
-    (many budget-internal consumers), so it may want its own slice.
-  - **Severity: 4** (easy-win flavoured for the two clear relocations).
+  directories — remaining slice: `synthesis` / `rows`** — the two clear
+  relocations landed 2026-07 (`company-type-hints` + `cover-transfer` to
+  `src/data/` root; see Landed). What remains is the judgment slice:
+  `data/budget/synthesis.ts` (475) ← `items/ItemFinderModal.tsx:8`,
+  `properties/PropertiesPage.tsx:8`, `scenarios/ScenarioMonthTable.tsx:7`
+  (and now also root-level `data/cover-transfer.ts`); `data/budget/rows.ts`
+  (575) ← `scenarios/ScenariosPage.tsx:14`.
+  - **Plan**: decide whether scenarios consuming budget-row algebra makes
+    the helpers cross-page (relocate to root) or scenarios
+    budget-coupled by design (document the exception on the import
+    sites instead); the items / properties `synthesis` imports suggest
+    relocation is the honest answer at least for `synthesis`.
+  - **Risk**: low but churny — many budget-internal consumers, so the
+    move is a large mechanical import-path diff.
+  - **Severity: 3** (was 4; the easy-win half landed, leaving the churny
+    judgment half).
 
 - **`scenarios/ScenariosPage.tsx` re-grew the flat modal-selector pile**
   — 1032 lines with ~12 `useState` (:133–:157), of which ~9 are
@@ -624,6 +617,26 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **Cross-page data modules relocated to `src/data/` root:
+  `company-type-hints.ts` + `cover-transfer.ts`** (2026-07): the easy-win
+  half of the placement-drift row. `company-type-hints.ts` (423) had grown
+  consumers in `accounts/EditHistoryEntryModal` and `src/hooks/`
+  alongside its eleven budget/AppShell sites; `cover-transfer.ts` (261)
+  was consumed by `budget/BudgetPage` + `BudgetCoverInfoModal`, the
+  AppShell flow hooks, and `data/reducers/accounts.ts` — both squarely
+  cross-page, the shape the placement rules route to data root (same as
+  the 2026-06 `finance/` hoist). `git mv`d both, flipped their internal
+  relative imports one level up, updated the 21 consumer import sites +
+  three test files, the `docs/architecture.md` inventory (which had
+  never listed `cover-transfer.ts` — added), and the
+  `docs/dictionary.md` / `docs/overview.md` path references.
+  `cover-transfer.ts` still imports `data/budget/synthesis` — that edge
+  is the remaining synthesis/rows slice of the Pending row. Pure module
+  relocation; behaviour pinned by `tests/company_type_hints_test.ts`,
+  `cover_transfer_test.ts`, `description_company_hints_test.ts`,
+  `description_metadata_induction_test.ts`. **Was severity 4 (easy-win
+  half; remainder re-rated to 3).**
 
 - **`insights/networth.ts` three hardcoded per-collection walks → simple-asset
   contributor registry** (2026-07): the five simple asset kinds (accounts,
@@ -1181,7 +1194,8 @@ _Reset 2026-05 — prior landed history cleared to start the roadmap fresh._
 
 - **Scan-cost findings in cover-transfer / transfer-collapse / GDrive
   property folders** (2026-07, Explore sweep rated them 6): the
-  `data/accounts/cover-transfer.ts:199–261` O(transfers × entries)
+  `data/cover-transfer.ts:199–261` (at `data/accounts/` when rated)
+  O(transfers × entries)
   best-match walk, the `transfer-collapse.ts:46–56` `hasCollapsedHistory`
   full-history scan per transfer-modal open, and the GDrive per-property
   folder walk per upload. These are **performance** questions, not

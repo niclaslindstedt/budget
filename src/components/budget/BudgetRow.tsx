@@ -6,7 +6,7 @@ import {
   descriptionCompanyHintsFor,
   descriptionMetadataInductionFor,
   mergeCompanyHintIds,
-} from "../../data/budget/company-type-hints";
+} from "../../data/company-type-hints";
 import { getStandardColumns } from "../../data/sheet";
 import { useLongPress } from "../../hooks";
 import { useLang, useT } from "../../i18n";

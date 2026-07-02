@@ -4,7 +4,7 @@ import {
   computeDescriptionCompanyHints,
   descriptionCompanyHintsFor,
   mergeCompanyHintIds,
-} from "../src/data/budget/company-type-hints";
+} from "../src/data/company-type-hints";
 import { findColumnByType } from "../src/data/sheet";
 import { freshUserData } from "../src/storage/local";
 import type {
