@@ -1,6 +1,7 @@
 import type {
   AccountBudget,
   AccountsView,
+  CarsView,
   CellValue,
   Column,
   ColumnType,
@@ -50,6 +51,7 @@ export type SheetItemValidationContext = {
   knownSavingIds: ReadonlySet<string>;
   knownPropertyIds: ReadonlySet<string>;
   knownLoanIds: ReadonlySet<string>;
+  knownCarIds: ReadonlySet<string>;
   // Every sheet id in the file, collected in a pre-pass over the raw
   // sheets array BEFORE the per-sheet validation loop — a scenarios
   // sheet may reference a base budget sheet that appears later in the
@@ -367,6 +369,15 @@ export function validateLoansView(
   return { ok: true, value: { id, type: "loansView" } };
 }
 
+export function validateCarsView(raw: unknown, path: string): Result<CarsView> {
+  if (!isObject(raw)) return fail(path, "expected an object");
+  const { id, type } = raw;
+  if (typeof id !== "string" || id === "")
+    return fail(`${path}.id`, "expected a non-empty string");
+  if (type !== "carsView") return fail(`${path}.type`, `expected "carsView"`);
+  return { ok: true, value: { id, type: "carsView" } };
+}
+
 export function validateInvestmentView(
   raw: unknown,
   path: string,
@@ -442,7 +453,8 @@ export function validateInsightsView(
           !ctx.knownSavingIds.has(entityId) &&
           !ctx.knownItemIds.has(entityId) &&
           !ctx.knownPropertyIds.has(entityId) &&
-          !ctx.knownLoanIds.has(entityId)
+          !ctx.knownLoanIds.has(entityId) &&
+          !ctx.knownCarIds.has(entityId)
         )
           continue;
         const override = normalizeInsightsOverride(rawOverride);

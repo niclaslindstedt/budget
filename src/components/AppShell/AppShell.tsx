@@ -124,6 +124,9 @@ const SavingsPage = lazy(() =>
 const LoansPage = lazy(() =>
   import("../loans/LoansPage").then((m) => ({ default: m.LoansPage })),
 );
+const CarsPage = lazy(() =>
+  import("../cars/CarsPage").then((m) => ({ default: m.CarsPage })),
+);
 const InsightsPage = lazy(() =>
   import("../insights/InsightsPage").then((m) => ({
     default: m.InsightsPage,
@@ -495,6 +498,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     onClearDuplicateIgnores,
     onClearIgnoredItemEntries,
     onClearItemFindExclusions,
+    onClearIgnoredCarExpenses,
+    onClearCarExpenseExclusions,
     onToggleRowTransfer,
     onToggleRowIgnored,
     onEditHistoryRequest,
@@ -1135,6 +1140,13 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     dispatch={dispatch}
                     attachments={propertyAttachments}
                   />
+                ) : activeSheet.type === "cars" ? (
+                  <CarsPage
+                    sheet={activeSheet}
+                    data={data}
+                    settings={effectiveSettings}
+                    dispatch={dispatch}
+                  />
                 ) : activeSheet.type === "salary" ? (
                   <SalaryPage
                     sheet={activeSheet}
@@ -1378,6 +1390,8 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
             onClearDuplicateIgnores={onClearDuplicateIgnores}
             onClearIgnoredItemEntries={onClearIgnoredItemEntries}
             onClearItemFindExclusions={onClearItemFindExclusions}
+            onClearIgnoredCarExpenses={onClearIgnoredCarExpenses}
+            onClearCarExpenseExclusions={onClearCarExpenseExclusions}
             onSaveSettings={onSaveSettings}
             onImport={onImport}
           />

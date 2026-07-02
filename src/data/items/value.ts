@@ -50,6 +50,20 @@ function decayedValue(
   return base * Math.pow(retained(dep.ratePerYear), years);
 }
 
+// What a depreciation rule says `base` has decayed to between two dates,
+// with the rule's residual-value floor applied. Shared with the Cars
+// sheet's value math (`computeCarCurrentValue`) so both catalogs decay
+// through the exact same curves.
+export function depreciatedValue(
+  base: number,
+  dep: ItemDepreciation,
+  fromIso: string,
+  toIso: string,
+): number {
+  const decayed = decayedValue(base, dep, yearsBetween(fromIso, toIso));
+  return dep.floor !== undefined ? Math.max(decayed, dep.floor) : decayed;
+}
+
 // The id stamped on the synthesised purchase value point. It is NOT a real
 // `valueHistory` entry, so the Update value modal renders it read-only —
 // the purchase value is owned by the item's `purchasePrice` / `acquiredAt`,
@@ -135,9 +149,7 @@ export function computeItemCurrentValue(item: Item, todayIso: string): number {
 
   const dep = item.depreciation;
   if (dep && item.acquiredAt !== undefined) {
-    const years = yearsBetween(item.acquiredAt, todayIso);
-    const decayed = decayedValue(base, dep, years);
-    return dep.floor !== undefined ? Math.max(decayed, dep.floor) : decayed;
+    return depreciatedValue(base, dep, item.acquiredAt, todayIso);
   }
 
   return base;

@@ -154,6 +154,25 @@ src/
 │       │                         #   area / monthly-payments bars, kind
 │       │                         #   filters, estimated-interest break-out)
 │       └── loan-kind.ts          # kind → i18n label key + fallback glyph
+│   └── cars/                 # cars page — real cost of having a car
+│       ├── CarsPage.tsx          # page root — car cards + sold section +
+│       │                         #   modal host (one discriminated union)
+│       ├── CarCard.tsx           # one car card (value, mileage, cost/km,
+│       │                         #   cost summary, loan line)
+│       ├── CarActionsMenu.tsx    # card "…" menu (find/add expenses, update
+│       │                         #   value, edit, delete)
+│       ├── CarEditorModal.tsx    # add/edit car (ownership pill, purchase +
+│       │                         #   depreciation fields, loan picker, sold)
+│       ├── UpdateCarValueModal.tsx    # value AND odometer in one dated
+│       │                         #   snapshot (Blocket-lookup flow)
+│       ├── CarValueChartModal.tsx     # value-over-time line (monthly-sampled
+│       │                         #   curve, cost/interest subtraction, mileage)
+│       ├── CarExpensesModal.tsx  # linked-expense list with month subtotals
+│       ├── CarExpenseFinderModal.tsx  # "Find car expenses" multi-select +
+│       │                         #   per-row ignore / exclude-similar
+│       ├── ManualCarExpenseModal.tsx  # sourceless expense add/edit
+│       └── CarCostChartModal.tsx # monthly stacked cost bars per type +
+│                                 #   depreciation / interest bands + cost/km
 │   └── insights/             # insights page — cross-area analyses
 │       ├── InsightsPage.tsx      # page root — net-worth total + breakdown +
 │       │                         #   over-time chart (mode toggle hidden until
@@ -213,6 +232,12 @@ src/
 │   │   │                       #   balance snapshots, optional link to
 │   │   │                       #   several of one property's mortgages),
 │   │   │                       #   LoanPayment, LoanBalancePoint, LoanKind
+│   │   ├── cars.ts             # Car (ownership form, purchase price/date/
+│   │   │                       #   odometer, sharePct, ItemDepreciation reuse,
+│   │   │                       #   loanId link, soldAt/soldFor), CarSnapshot
+│   │   │                       #   (dated value and/or mileage), CarExpense
+│   │   │                       #   (linked or manual transportation cost),
+│   │   │                       #   CarOwnership
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment, incl. soldDate /
 │   │   │                       #   soldAmount for one owned in the past,
@@ -266,6 +291,7 @@ src/
 │   │   ├── loans.ts            # LOANS_SHEET_DESCRIPTOR + createDefaultLoansView
 │   │   ├── investment.ts       # INVESTMENT_SHEET_DESCRIPTOR + createDefaultInvestmentView
 │   │   ├── scenarios.ts        # SCENARIOS_SHEET_DESCRIPTOR + createDefaultScenariosView
+│   │   ├── cars.ts             # CARS_SHEET_DESCRIPTOR + createDefaultCarsView
 │   │   └── index.ts            # SHEET_TYPE_REGISTRY + descriptor fields (validate,
 │   │                           #   itemTypes, rowsForItem) + lookup/traversal helpers
 │   ├── presets/           # built-in entry types + categories pickers,
@@ -439,6 +465,22 @@ src/
 │   │                           #   "Visualize loans" (balances over time;
 │   │                           #   per-month payments with the estimated
 │   │                           #   interest share clamped to what was paid)
+│   ├── cars/               # cars page — value / mileage / cost math + finder
+│   │   ├── value.ts            # computeCarCurrentValue (snapshot > curve >
+│   │   │                       #   purchase; leased/pool → undefined),
+│   │   │                       #   resolveCarSnapshots (purchase folded in),
+│   │   │                       #   carDepreciationToDate, currentCarMileage,
+│   │   │                       #   carDistanceDriven, isCarOwned
+│   │   ├── costs.ts            # carCostBreakdown / carMonthlyCosts (chart
+│   │   │                       #   feeds), carTotalCostOfOwnership (expenses /
+│   │   │                       #   depreciation / loan-interest legs kept
+│   │   │                       #   separate), carCostPerDistance, carExpenseKey
+│   │   ├── series.ts           # buildCarValueSeries (monthly-sampled decay +
+│   │   │                       #   optional cost / interest subtraction),
+│   │   │                       #   buildCarMileageSeries
+│   │   └── find.ts             # findCarExpenseCandidates — transport-typed
+│   │                           #   outflows minus already-linked / ignored /
+│   │                           #   excluded (repairs-finder shape)
 │   ├── investment/         # investment page — holdings + private-stock helpers
 │   │   ├── holdings.ts         # resolveHoldingValueHistory (purchase folded in),
 │   │   │                       #   currentHoldingValue / holdingValueAt,
@@ -506,22 +548,26 @@ src/
 │   │   ├── patch.ts            # shared applyPatch — id-keyed entity patch where
 │   │   │                       #   explicit `undefined` deletes the key
 │   │   ├── accounts.ts, salary.ts, properties.ts, savings.ts, loans.ts,
-│   │   │   sheets.ts, transfers.ts, history.ts, history-primary-income.ts,
-│   │   │   categories-and-types.ts, items.ts, match-rules.ts, recurring.ts,
-│   │   │   series-metadata.ts, settings.ts, achievements.ts, scenarios.ts
+│   │   │   cars.ts, sheets.ts, transfers.ts, history.ts,
+│   │   │   history-primary-income.ts, categories-and-types.ts, items.ts,
+│   │   │   match-rules.ts, recurring.ts, series-metadata.ts, settings.ts,
+│   │   │   achievements.ts, scenarios.ts
 │   ├── validate/          # boundary validator: unknown → Result<UserData>
 │   │   ├── index.ts            # validateUserData dispatcher + referential checks
 │   │   ├── sheet.ts            # validateSheet + registry-dispatched validateSheetItem
 │   │   ├── sheet-items.ts      # per-flavour leaf validators (column/row/budget/
 │   │   │                       #   accountsView/itemsView/salaryView/
 │   │   │                       #   propertiesView/savingsView/loansView/
-│   │   │                       #   scenariosView) —
+│   │   │                       #   carsView/scenariosView) —
 │   │   │                       #   cycle-free so the sheet-type descriptors can
 │   │   │                       #   import them
 │   │   ├── salary.ts           # validateSalary + validateEmployer (+ roles)
 │   │   ├── savings.ts          # validateSaving (+ balance points)
 │   │   ├── loans.ts            # validateLoan (+ payments; sweeps dangling
 │   │   │                       #   companyId and half-dangling mortgage links)
+│   │   ├── cars.ts             # validateCar (+ snapshots / expenses; sweeps
+│   │   │                       #   dangling loanId, drops empty snapshots and
+│   │   │                       #   half-linked expense source pairs)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
 │   │   │                       #   payments / repairs; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)
@@ -722,6 +768,12 @@ type UserData = {
   // similar"; the scanner drops every entry whose resolved description
   // collapses to one of these (past + future imports).
   itemFindExclusionPatterns: string[];
+  // The Cars sheet's "Find car expenses" dismiss pair — same contracts
+  // as the two items-finder lists above. Added in v84 alongside
+  // `cars: Car[]` (the cars catalog itself, listed with the other
+  // entity collections omitted from this snippet).
+  ignoredCarExpenseEntryIds: string[];
+  carExpenseExclusionPatterns: string[];
   // "Not a duplicate" rules for the cross-account duplicate finder, keyed
   // by EXACT bank description + signed amount; the finder skips matching
   // entries on every import. Cleared from the Memory settings tab.

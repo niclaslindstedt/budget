@@ -58,6 +58,7 @@ export const SEGMENT_FIELDS = {
     "investmentHoldings",
     "investmentStocks",
     "items",
+    "cars",
   ],
   taxonomy: [
     "companies",
@@ -84,6 +85,8 @@ export const SEGMENT_FIELDS = {
     "transferCollapseDismissals",
     "ignoredItemEntryIds",
     "itemFindExclusionPatterns",
+    "ignoredCarExpenseEntryIds",
+    "carExpenseExclusionPatterns",
     "duplicateIgnores",
   ],
   history: ["history", "historyImports"],

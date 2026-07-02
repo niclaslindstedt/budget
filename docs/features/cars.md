@@ -1,0 +1,75 @@
+# Cars sheet
+
+See what having a car actually costs — whether you own it, lease it,
+share it with someone, or reach one through a car pool — on a dedicated
+sheet type that links your real transportation charges to a specific
+car.
+
+## Four ways to have a car
+
+Each car records how you have access to it: **owned**, **leased**,
+**shared** (co-owned with someone outside this budget — an ownership
+share in percent scales what the car contributes to your net worth), or
+**car pool**. Value tracking only applies where you hold capital: an
+owned or shared car carries a purchase price, purchase date, and the
+odometer reading at purchase. A leased or pool car is pure running cost
+— its "value loss" is the leasing or pool fee, which arrives as a
+linked expense like any other charge.
+
+## Linking your real costs
+
+The point of the sheet is that the costs are _real_, not estimated.
+**Find car expenses** sweeps your imported bank history for charges
+categorised as transport — fuel, parking, car insurance, vehicle tax,
+congestion tax, leasing, service, taxi, and public transport — using
+the same category resolution the budget tables use, so a merchant you
+tagged once (or that a match rule / merchant memory recognises) shows
+up automatically. Tick the charges that belong to the car and add them
+in one go. A charge that isn't a car cost can be **ignored** (that one
+charge never resurfaces) or **excluded as similar** (every past and
+future charge with the same description disappears from the scan —
+handy for the commute bus pass). Both lists are clearable from
+Settings. Costs with no bank trace — cash fuel, expenses predating your
+imported history, a car-pool invoice on someone else's account — can be
+added manually.
+
+Taxi and public transport are deliberately included: attribute them to
+a car-pool "car" and the sheet gives you an honest own-versus-pool
+comparison.
+
+## Value and mileage in one step
+
+A second-hand-market lookup (say, Blocket) prices a car by model, year,
+and mileage — and the mileage is the only one of those that changes. So
+**Update value & mileage** records both in one dated snapshot: enter
+the value you found and the odometer reading you checked anyway. Either
+half is optional — a plain odometer check between lookups is just as
+valid. The latest recorded value wins over any computed figure; until
+one exists, an optional **value-loss curve** (steady percent per year,
+or an accelerated curve with an instant drive-off-the-lot drop and a
+steeper first year) decays the purchase price, with an optional floor.
+
+## The real cost, in three legs
+
+The cost view keeps the legs separate so you can see what dominates:
+
+- **Expenses** — everything you linked: fuel, insurance, tax, parking,
+  service, leasing fees.
+- **Depreciation** — value lost since purchase, from the curve or your
+  recorded lookups. Owned and shared cars only.
+- **Loan interest** — link the car to its loan on the Loans sheet and
+  the interest accrued so far joins the total. Amortisation is
+  deliberately _not_ a cost: it's your own money moving from the bank's
+  pocket to yours.
+
+The cost chart stacks the linked expenses per month by type, with the
+depreciation and interest legs as toggleable bands. The value chart
+draws the car's value over time — with toggles to subtract the running
+costs and interest, showing what the car has really consumed — plus
+your odometer readings. And once mileage is tracked, the headline
+figure appears: **cost per kilometre**, the sum of all three legs
+divided by the distance you have actually driven.
+
+Owned and shared cars count in the Insights sheet's net worth as their
+current value (times your share); a sold car (record the date and the
+proceeds) stops counting and moves to the sold section.

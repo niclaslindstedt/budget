@@ -54,6 +54,7 @@ import coverTransfer from "./coverTransfer";
 import account from "./account";
 import accountsSheet from "./accountsSheet";
 import itemsSheet from "./itemsSheet";
+import carsSheet from "./carsSheet";
 import savingsSheet from "./savingsSheet";
 import loansSheet from "./loansSheet";
 import insightsSheet from "./insightsSheet";
@@ -142,6 +143,7 @@ export const sv: Catalog = {
   account,
   accountsSheet,
   itemsSheet,
+  carsSheet,
   savingsSheet,
   loansSheet,
   insightsSheet,

@@ -66,8 +66,17 @@ export function reduceLoans(state: UserData, action: Action): UserData | null {
     );
   }
   if (action.type === "deleteLoan") {
+    // Sweep the link off any car financed by this loan — the car keeps
+    // its own figures (expenses, snapshots); only the interest leg
+    // disappears with the loan.
+    const cars = state.cars.some((c) => c.loanId === action.loanId)
+      ? state.cars.map((c) =>
+          c.loanId === action.loanId ? { ...c, loanId: undefined } : c,
+        )
+      : state.cars;
     return {
       ...state,
+      cars,
       loans: state.loans.filter((l) => l.id !== action.loanId),
     };
   }

@@ -375,6 +375,126 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Volvo loan" });
   });
 
+  it("names cars across the car actions", () => {
+    const prev: UserData = {
+      ...freshUserData(),
+      cars: [
+        {
+          id: "car-1",
+          name: "Volvo",
+          ownership: "owned",
+          snapshots: [{ id: "s1", date: "2026-03-15", value: 152000 }],
+          expenses: [
+            {
+              id: "e1",
+              date: "2026-01-10",
+              amount: 700,
+              description: "Bensin Tanka",
+              typeId: "preset-type-fuel",
+            },
+          ],
+        },
+      ],
+    };
+    expect(
+      describe2(
+        {
+          type: "addCar",
+          car: {
+            id: "car-2",
+            name: "Saab",
+            ownership: "pool",
+            snapshots: [],
+            expenses: [],
+          },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Saab" });
+    expect(
+      describe2(
+        { type: "updateCar", carId: "car-1", patch: { name: "Volvo V60" } },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo V60" });
+    expect(describe2({ type: "deleteCar", carId: "car-1" }, prev)).toEqual({
+      kind: "name",
+      value: "Volvo",
+    });
+    expect(
+      describe2(
+        {
+          type: "addCarSnapshot",
+          carId: "car-1",
+          snapshot: { id: "s2", date: "2026-06-01", mileage: 27000 },
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo" });
+    expect(
+      describe2(
+        { type: "deleteCarSnapshot", carId: "car-1", snapshotId: "s1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo" });
+    // One expense names the car; several report a count.
+    expect(
+      describe2(
+        {
+          type: "addCarExpenses",
+          carId: "car-1",
+          expenses: [
+            {
+              id: "e2",
+              date: "2026-02-01",
+              amount: 60,
+              description: "Parkering",
+              typeId: "preset-type-parking",
+            },
+          ],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo" });
+    expect(
+      describe2(
+        {
+          type: "addCarExpenses",
+          carId: "car-1",
+          expenses: [
+            {
+              id: "e3",
+              date: "2026-02-01",
+              amount: 60,
+              description: "Parkering",
+              typeId: "preset-type-parking",
+            },
+            {
+              id: "e4",
+              date: "2026-03-01",
+              amount: 65,
+              description: "Parkering",
+              typeId: "preset-type-parking",
+            },
+          ],
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "count", value: 2 });
+    expect(
+      describe2(
+        { type: "removeCarExpense", carId: "car-1", expenseId: "e1" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Volvo" });
+    expect(
+      describe2(
+        { type: "excludeSimilarCarExpenses", description: "Parkering P-hus" },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Parkering P-hus" });
+  });
+
   it("names the mortgage and counts added payments", () => {
     const prev: UserData = {
       ...freshUserData(),

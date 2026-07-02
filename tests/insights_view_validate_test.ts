@@ -48,6 +48,15 @@ function blob(item: Partial<InsightsView> = {}): UserData {
         balanceHistory: [],
       },
     ],
+    cars: [
+      {
+        id: "car-1",
+        name: "Volvo",
+        ownership: "owned",
+        snapshots: [],
+        expenses: [],
+      },
+    ],
   };
 }
 
@@ -70,6 +79,7 @@ describe("validateInsightsView via validateUserData", () => {
           "sav-1": { excluded: true, sharePct: 12.5 },
           "item-1": { sharePct: 1 },
           "loan-1": { excluded: true },
+          "car-1": { sharePct: 50 },
         },
       },
     });

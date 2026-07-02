@@ -14,6 +14,8 @@ const sheetModal: SheetModalCatalog = {
     "Prylbladet listar allt du äger, med vad varje sak kostade och vad den är värd nu. Lägg till prylar därifrån — ingen koppling per blad behövs.",
   propertiesHint:
     "Fastighetsbladet håller koll på bostäderna du äger — vad var och en kostade, vad den är värd nu, och bolånen på den. Lägg till fastigheter därifrån; varje bolån kopplas till sitt eget konto för att hitta betalningar.",
+  carsHint:
+    "Bilbladet visar vad det verkligen kostar att ha bil — länkade transportkostnader, värdeminskning och låneränta. Lägg till bilar därifrån — ingen koppling per blad behövs.",
   loansHint:
     "Lånebladet håller koll på pengarna du är skyldig — studielån, billån, bolån, lånade pengar — och betalningarna på varje lån. Lägg till lån därifrån; ett bolån kan länka en fastighets bolån så att de två bladen alltid stämmer överens.",
   insightsHint:

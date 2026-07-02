@@ -21,6 +21,7 @@ const insightsSheet = {
   categorySavings: "Savings",
   categoryItems: "Items",
   categoryInvestments: "Investments",
+  categoryCars: "Cars",
   categoryProperties: "Properties",
   categoryPropertiesNet: "Properties & mortgages",
   categoryLoans: "Other loans",

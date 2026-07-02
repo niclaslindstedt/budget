@@ -122,6 +122,11 @@ type Props = {
   // the Items sheet's "Find items" scan, surfaced (with a clear-all)
   // alongside the ignored-entries count in the Items tab.
   itemFindExclusionCount: number;
+  // The Cars sheet's "Find car expenses" pair — same contracts as the
+  // items pair above, surfaced (with clear-alls) in the Memory tab
+  // since there is no per-sheet Cars settings tab.
+  ignoredCarExpenseCount: number;
+  carExpenseExclusionCount: number;
   // Pass-through for the embedded Import / Export controls — they
   // used to live next to the Save button in the header, now they sit
   // inside Storage so the connection and the data-movement actions
@@ -157,6 +162,8 @@ type Props = {
   onClearDuplicateIgnores: () => void;
   onClearIgnoredItemEntries: () => void;
   onClearItemFindExclusions: () => void;
+  onClearIgnoredCarExpenses: () => void;
+  onClearCarExpenseExclusions: () => void;
   // Category / type admin. The list of presets lives in code
   // (`PRESET_CATEGORIES` / `PRESET_ENTRY_TYPES`); the per-user
   // hide-toggles travel through `data.hiddenPresetCategoryIds` and
@@ -281,6 +288,8 @@ export function SettingsModal({
   duplicateIgnoreCount,
   ignoredItemEntryCount,
   itemFindExclusionCount,
+  ignoredCarExpenseCount,
+  carExpenseExclusionCount,
   data,
   onImport,
   adapter,
@@ -304,6 +313,8 @@ export function SettingsModal({
   onClearDuplicateIgnores,
   onClearIgnoredItemEntries,
   onClearItemFindExclusions,
+  onClearIgnoredCarExpenses,
+  onClearCarExpenseExclusions,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
@@ -629,10 +640,14 @@ export function SettingsModal({
                 recurringDismissalCount={recurringDismissalCount}
                 transferDismissalCount={transferDismissalCount}
                 duplicateIgnoreCount={duplicateIgnoreCount}
+                ignoredCarExpenseCount={ignoredCarExpenseCount}
+                carExpenseExclusionCount={carExpenseExclusionCount}
                 onClearMerchantHints={onClearMerchantHints}
                 onClearRecurringDismissals={onClearRecurringDismissals}
                 onClearTransferDismissals={onClearTransferDismissals}
                 onClearDuplicateIgnores={onClearDuplicateIgnores}
+                onClearIgnoredCarExpenses={onClearIgnoredCarExpenses}
+                onClearCarExpenseExclusions={onClearCarExpenseExclusions}
               />
             )}
             {activeTab === "developer" && <DeveloperTab />}

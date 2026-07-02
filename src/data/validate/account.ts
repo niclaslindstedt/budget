@@ -301,8 +301,11 @@ function validateItemValueHistory(raw: unknown): ItemValuePoint[] {
 // Parse a persisted depreciation rule, returning the cleaned value or
 // `undefined` when absent / malformed. An unknown `method` or any
 // non-finite rate drops the whole rule (the item falls back to "no
-// depreciation"). `floor` is carried only when finite.
-function validateItemDepreciation(raw: unknown): ItemDepreciation | undefined {
+// depreciation"). `floor` is carried only when finite. Exported because
+// the Cars validator reuses the same rule shape (`Car.depreciation`).
+export function validateItemDepreciation(
+  raw: unknown,
+): ItemDepreciation | undefined {
   if (!isObject(raw)) return undefined;
   const finite = (v: unknown): v is number =>
     typeof v === "number" && Number.isFinite(v);

@@ -45,6 +45,7 @@ function sampleData(): UserData {
     properties: [],
     savings: [],
     loans: [],
+    cars: [],
     investmentHoldings: [],
     investmentStocks: [],
     fileCategories: [],
@@ -67,6 +68,8 @@ function sampleData(): UserData {
     transferCollapseDismissals: [],
     ignoredItemEntryIds: [],
     itemFindExclusionPatterns: [],
+    ignoredCarExpenseEntryIds: [],
+    carExpenseExclusionPatterns: [],
     duplicateIgnores: [],
     matchRules: [],
     seriesMatchRules: [],
@@ -160,6 +163,9 @@ describe("serializeUserData", () => {
       transferCollapseDismissals: b.transferCollapseDismissals,
       ignoredItemEntryIds: b.ignoredItemEntryIds,
       itemFindExclusionPatterns: b.itemFindExclusionPatterns,
+      ignoredCarExpenseEntryIds: b.ignoredCarExpenseEntryIds,
+      carExpenseExclusionPatterns: b.carExpenseExclusionPatterns,
+      cars: b.cars,
       duplicateIgnores: b.duplicateIgnores,
       matchRules: b.matchRules,
       seriesMatchRules: b.seriesMatchRules,
@@ -179,9 +185,11 @@ describe("serializeUserData", () => {
     const topKeys = Array.from(text.matchAll(/^\s{2}"([^"]+)":/gm)).map(
       (m) => m[1],
     );
-    expect(topKeys.slice(0, 39)).toEqual([
+    expect(topKeys.slice(0, 42)).toEqual([
       "accounts",
       "activeSheetId",
+      "carExpenseExclusionPatterns",
+      "cars",
       "categories",
       "companies",
       "companyCategories",
@@ -193,6 +201,7 @@ describe("serializeUserData", () => {
       "hiddenPresetTypeIds",
       "history",
       "historyImports",
+      "ignoredCarExpenseEntryIds",
       "ignoredItemEntryIds",
       "investmentHoldings",
       "investmentStocks",

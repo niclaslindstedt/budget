@@ -1026,6 +1026,27 @@ export const PRESET_TYPE_MORTGAGE_ID = "preset-type-mortgage";
 export const PRESET_TYPE_REPAIRS_ID = "preset-type-repairs";
 export const PRESET_TYPE_RENOVATIONS_ID = "preset-type-renovations";
 
+// The preset type ids the Cars sheet's "Find car expenses" scan treats
+// as transportation costs — the whole Transport preset category. The
+// finder surfaces outflows resolving to one of these so the user can
+// attribute them to a specific car (or ignore them). Taxi and public
+// transport are included deliberately: attributed to a car-pool /
+// no-car "car", they make the own-vs-pool cost comparison honest.
+// `preset-type-car-loan` is NOT here — the loan's cost enters through
+// the car's linked loan (interest leg), never as a linked expense, so
+// a loan payment can't be double-counted.
+export const CAR_EXPENSE_TYPE_IDS: ReadonlySet<string> = new Set([
+  "preset-type-fuel",
+  "preset-type-parking",
+  "preset-type-car-insurance",
+  "preset-type-vehicle-tax",
+  "preset-type-congestion-tax",
+  "preset-type-leasing",
+  "preset-type-car-service",
+  "preset-type-taxi",
+  "preset-type-public-transport",
+]);
+
 // Default allow-list for the Items sheet's "Find items" scan — the
 // preset types whose purchases tend to be durable physical things that
 // hold resale value (electronics, furniture, tools, …). Consumables

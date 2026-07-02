@@ -4,6 +4,7 @@ import { PRESET_ENTRY_TYPE_IDS } from "../presets/types";
 import { LATEST_VERSION } from "../migrations";
 import type {
   Account,
+  Car,
   Category,
   Company,
   CompanyCategory,
@@ -54,6 +55,7 @@ import { validateEmployer, validateSalary } from "./salary";
 import { validateProperty } from "./properties";
 import { validateSaving } from "./savings";
 import { validateLoan } from "./loans";
+import { validateCar } from "./cars";
 import {
   validateInvestmentHolding,
   validateStockPosition,
@@ -205,6 +207,22 @@ export function validateUserData(raw: unknown): Result<UserData> {
       return fail(`loans[${i}].id`, `duplicate id "${r.value.id}"`);
     seenLoanIds.add(r.value.id);
     loans.push(r.value);
+  }
+
+  // Cars. Validated after loans so each car's `loanId` link can be
+  // checked against the resolvable set (a dangling reference is dropped
+  // rather than rejecting the file). Duplicate ids fail the load like
+  // the other top-level arrays.
+  const rawCars = Array.isArray(raw.cars) ? raw.cars : [];
+  const cars: Car[] = [];
+  const seenCarIds = new Set<string>();
+  for (let i = 0; i < rawCars.length; i++) {
+    const r = validateCar(rawCars[i], `cars[${i}]`, seenLoanIds);
+    if (!r.ok) return r;
+    if (seenCarIds.has(r.value.id))
+      return fail(`cars[${i}].id`, `duplicate id "${r.value.id}"`);
+    seenCarIds.add(r.value.id);
+    cars.push(r.value);
   }
 
   // Investment holdings (broad catalog). Standalone (no cross-references
@@ -482,6 +500,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       knownSavingIds: seenSavingIds,
       knownPropertyIds: seenPropertyIds,
       knownLoanIds: seenLoanIds,
+      knownCarIds: seenCarIds,
       knownSheetIds,
     });
     if (!r.ok) return r;
@@ -567,6 +586,12 @@ export function validateUserData(raw: unknown): Result<UserData> {
   const ignoredItemEntryIds = sanitizeStringArray(raw.ignoredItemEntryIds);
   const itemFindExclusionPatterns = sanitizeStringArray(
     raw.itemFindExclusionPatterns,
+  );
+  const ignoredCarExpenseEntryIds = sanitizeStringArray(
+    raw.ignoredCarExpenseEntryIds,
+  );
+  const carExpenseExclusionPatterns = sanitizeStringArray(
+    raw.carExpenseExclusionPatterns,
   );
 
   // "Not a duplicate" rules for the cross-account duplicate finder.
@@ -712,6 +737,7 @@ export function validateUserData(raw: unknown): Result<UserData> {
       properties,
       savings,
       loans,
+      cars,
       investmentHoldings,
       investmentStocks,
       fileCategories,
@@ -734,6 +760,8 @@ export function validateUserData(raw: unknown): Result<UserData> {
       transferCollapseDismissals,
       ignoredItemEntryIds,
       itemFindExclusionPatterns,
+      ignoredCarExpenseEntryIds,
+      carExpenseExclusionPatterns,
       duplicateIgnores,
       matchRules,
       seriesMatchRules,

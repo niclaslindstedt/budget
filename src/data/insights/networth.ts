@@ -29,6 +29,7 @@ import type {
 } from "../types";
 import { computeAccountBalances } from "../accounts/balance";
 import { computeItemCurrentValue, isItemOwned } from "../items/value";
+import { computeCarCurrentValue, isCarOwned } from "../cars/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
 import { balanceAt } from "../finance/interest";
 import { propertyInitialLoanTotal } from "../finance/amortization";
@@ -43,6 +44,7 @@ const NET_WORTH_CATEGORIES = [
   "savings",
   "items",
   "investments",
+  "cars",
   "properties",
   "mortgages",
   "loans",
@@ -195,6 +197,7 @@ function zeroPerCategory(): Record<NetWorthCategory, number> {
     savings: 0,
     items: 0,
     investments: 0,
+    cars: 0,
     properties: 0,
     mortgages: 0,
     loans: 0,
@@ -366,6 +369,56 @@ const ASSET_CONTRIBUTORS: readonly AssetContributor[] = [
         if (!isIncluded(position.id)) continue;
         for (const tx of position.transactions) consider(tx.date);
         for (const point of position.priceHistory) consider(point.date);
+      }
+    },
+  },
+  {
+    // Cars are single-sided like items: a sold / leased / pool car
+    // contributes nothing (`isCarOwned`), and the loan financing a car
+    // already counts negatively through the standalone-loans leg, so the
+    // equity falls out without two-sided handling here. The car's own
+    // `sharePct` (a co-owner outside the budget) scales the GROSS — the
+    // user's stake is the figure the breakdown shows — and the insights
+    // per-entity override still applies on top like any other row.
+    category: "cars",
+    rowsAt: (data, iso) =>
+      data.cars.filter(isCarOwned).map((car) => {
+        const value = computeCarCurrentValue(car, iso);
+        return {
+          id: car.id,
+          name: car.name,
+          gross:
+            value === undefined
+              ? undefined
+              : value * ((car.sharePct ?? 100) / 100),
+        };
+      }),
+    seriesRowsAt: (data, iso) =>
+      data.cars
+        .filter(
+          (car) =>
+            isCarOwned(car) &&
+            !(car.purchaseDate !== undefined && car.purchaseDate > iso),
+        )
+        .map((car) => {
+          const value = computeCarCurrentValue(car, iso);
+          return {
+            id: car.id,
+            name: car.name,
+            gross:
+              value === undefined
+                ? undefined
+                : value * ((car.sharePct ?? 100) / 100),
+          };
+        }),
+    collectDates(data, isIncluded, consider) {
+      for (const car of data.cars) {
+        if (!isCarOwned(car) || !isIncluded(car.id)) continue;
+        consider(car.purchaseDate);
+        // A recorded snapshot can predate (or stand in for a missing)
+        // purchase date, so the series window starts where the value
+        // data does — mirrors the items contributor.
+        for (const snapshot of car.snapshots) consider(snapshot.date);
       }
     },
   },

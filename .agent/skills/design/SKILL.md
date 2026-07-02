@@ -240,6 +240,21 @@ and toggle the theme inside the recipe via the Settings modal (or by
 setting `localStorage` before the first navigation). Keeping the two
 runs separate makes the diff between them obvious in the Read output.
 
+### Browser binary mismatch (remote containers)
+
+When the environment pre-installs a Chromium build older than the one
+the repo's pinned Playwright expects, `chromium.launch()` fails with
+"Executable doesn't exist … run npx playwright install". Instead of
+downloading a browser, point the harness at the pre-installed binary:
+
+```sh
+PW_EXECUTABLE_PATH=/opt/pw-browsers/chromium \
+  node .agent/skills/design/screenshot.mjs --viewports desktop,mobile
+```
+
+The harness passes the env var through as `executablePath`; unset, the
+default Playwright resolution applies.
+
 ## Common pitfalls
 
 The trip-ups we've actually hit, in roughly descending order of

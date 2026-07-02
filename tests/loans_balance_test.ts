@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   linkedMortgageFigures,
+  loanInterestAccruedBetween,
   loanMonthlyPayment,
   loanPaidSoFar,
   loanRemainingBalance,
@@ -244,6 +245,82 @@ describe("loanMonthlyPayment", () => {
       (2400 + 2600 + 2500) / 3,
       5,
     );
+  });
+});
+
+describe("loanInterestAccruedBetween", () => {
+  it("returns null without a rate or without a balance anchor", () => {
+    expect(
+      loanInterestAccruedBetween(
+        loan({ rate: undefined }),
+        "2026-01-01",
+        "2026-06-01",
+      ),
+    ).toBeNull();
+    expect(
+      loanInterestAccruedBetween(
+        loan({ startSum: undefined, balanceHistory: [], rate: 5 }),
+        "2026-01-01",
+        "2026-06-01",
+      ),
+    ).toBeNull();
+  });
+
+  it("sums the same monthly accruals the balance walk applies", () => {
+    const l = loan({
+      startDate: "2026-01-01",
+      startSum: 120000,
+      startFee: 0,
+      rate: 6,
+      payments: [],
+      balanceHistory: [],
+    });
+    // Three accrual months at 0.5 % on a compounding balance.
+    const interest = loanInterestAccruedBetween(l, "2026-01-01", "2026-04-15");
+    expect(interest).toBeCloseTo(120000 * (1.005 ** 3 - 1), 6);
+    // The window is (from, to]: asking from a later date drops the
+    // months already accrued before it.
+    const tail = loanInterestAccruedBetween(l, "2026-03-15", "2026-04-15");
+    expect(tail).toBeCloseTo(120000 * 1.005 ** 2 * 0.005, 6);
+  });
+
+  it("accrues less once payments amortise the balance", () => {
+    const base = loan({
+      startDate: "2026-01-01",
+      startSum: 120000,
+      startFee: 0,
+      rate: 6,
+      balanceHistory: [],
+    });
+    const withPayment = {
+      ...base,
+      payments: [{ id: "p1", date: "2026-02-10", amount: 60000 }],
+    };
+    const without = loanInterestAccruedBetween(
+      base,
+      "2026-01-01",
+      "2026-06-01",
+    );
+    const withP = loanInterestAccruedBetween(
+      withPayment,
+      "2026-01-01",
+      "2026-06-01",
+    );
+    expect(withP).not.toBeNull();
+    expect(without).not.toBeNull();
+    expect(withP!).toBeLessThan(without!);
+  });
+
+  it("returns 0 for an empty or pre-loan window", () => {
+    const l = loan({
+      startDate: "2026-03-01",
+      startSum: 120000,
+      rate: 6,
+      payments: [],
+      balanceHistory: [],
+    });
+    expect(loanInterestAccruedBetween(l, "2026-06-01", "2026-01-01")).toBe(0);
+    expect(loanInterestAccruedBetween(l, "2025-01-01", "2025-02-01")).toBe(0);
   });
 });
 

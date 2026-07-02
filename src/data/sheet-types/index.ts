@@ -15,6 +15,7 @@ import {
   createDefaultAccountsView,
 } from "./accounts";
 import { BUDGET_SHEET_DESCRIPTOR, createDefaultAccountBudget } from "./budget";
+import { CARS_SHEET_DESCRIPTOR, createDefaultCarsView } from "./cars";
 import {
   INSIGHTS_SHEET_DESCRIPTOR,
   createDefaultInsightsView,
@@ -115,6 +116,7 @@ export const SHEET_TYPE_REGISTRY: readonly SheetTypeDescriptor[] = [
   INSIGHTS_SHEET_DESCRIPTOR,
   INVESTMENT_SHEET_DESCRIPTOR,
   SCENARIOS_SHEET_DESCRIPTOR,
+  CARS_SHEET_DESCRIPTOR,
 ];
 
 // Set-shaped view for validators and any other consumer that needs an
@@ -191,6 +193,7 @@ export function countSheetItemRows(state: UserData): number {
 export {
   createDefaultAccountBudget,
   createDefaultAccountsView,
+  createDefaultCarsView,
   createDefaultInsightsView,
   createDefaultInvestmentView,
   createDefaultItemsView,
