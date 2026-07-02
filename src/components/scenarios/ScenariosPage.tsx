@@ -116,6 +116,27 @@ type PendingRowDelete = {
   seriesRowIds: string[];
 };
 
+// The mutually-exclusive modal / staging selectors on the page. Only one
+// can ever be open, so they share a single slot rather than a pile of
+// independent `useState` flags. Each variant wraps the sub-state the modal
+// needs, so the render can derive the same locals it used before. The two
+// series-apply / recurring-delete confirms deliberately stay OUTSIDE this
+// union — they are staged from inside the modulate / row modals, which
+// close themselves (`onClose`) as the confirm opens, and a shared slot
+// would let that close clobber the just-staged confirm.
+type ScenarioModal =
+  | { kind: "row"; row: RowModalState }
+  | { kind: "modulate"; rowId: string }
+  | {
+      kind: "scenarioEdit";
+      edit: { kind: "create" } | { kind: "rename"; scenario: Scenario };
+    }
+  | { kind: "scenarioDelete"; scenario: Scenario }
+  | { kind: "diff" }
+  | { kind: "chart" }
+  | { kind: "addMonitor" }
+  | { kind: "changeBase"; nextSheetId: string };
+
 export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
@@ -132,22 +153,24 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   // not mint an undo step or a storage write).
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const [showEarlierMonths, setShowEarlierMonths] = useState(false);
-  const [rowModal, setRowModal] = useState<RowModalState | null>(null);
-  const [modulateRowId, setModulateRowId] = useState<string | null>(null);
-  const [editModal, setEditModal] = useState<
-    { kind: "create" } | { kind: "rename"; scenario: Scenario } | null
-  >(null);
-  const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
-  const [diffOpen, setDiffOpen] = useState(false);
-  const [chartOpen, setChartOpen] = useState(false);
+  const [modal, setModal] = useState<ScenarioModal | null>(null);
   const [pendingSeriesApply, setPendingSeriesApply] =
     useState<PendingSeriesApply | null>(null);
   const [pendingRowDelete, setPendingRowDelete] =
     useState<PendingRowDelete | null>(null);
-  const [pendingBaseSheetId, setPendingBaseSheetId] = useState<string | null>(
-    null,
-  );
-  const [addMonitorOpen, setAddMonitorOpen] = useState(false);
+
+  // Mutually-exclusive modal selectors, projected out of the single
+  // `modal` slot so at most one is ever open. The render below reads these
+  // exactly as it read the former independent `useState`s.
+  const rowModal = modal?.kind === "row" ? modal.row : null;
+  const modulateRowId = modal?.kind === "modulate" ? modal.rowId : null;
+  const editModal = modal?.kind === "scenarioEdit" ? modal.edit : null;
+  const deleteTarget = modal?.kind === "scenarioDelete" ? modal.scenario : null;
+  const diffOpen = modal?.kind === "diff";
+  const chartOpen = modal?.kind === "chart";
+  const addMonitorOpen = modal?.kind === "addMonitor";
+  const pendingBaseSheetId =
+    modal?.kind === "changeBase" ? modal.nextSheetId : null;
   // Anchor rows whose hidden-transfer run is expanded inline — same
   // per-row reveal the budget table drives via `useBudgetLayoutState`.
   // Reset when the sheet or the active variant changes (each variant
@@ -553,7 +576,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
   function requestBaseChange(nextId: string) {
     if (!view || nextId === view.baseSheetId) return;
     if (anyDeltas) {
-      setPendingBaseSheetId(nextId);
+      setModal({ kind: "changeBase", nextSheetId: nextId });
     } else {
       dispatch({
         type: "setScenariosBaseSheet",
@@ -572,7 +595,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             key: "visualize",
             icon: <LineChartIcon size={16} aria-hidden focusable={false} />,
             label: t("scenarios.visualizeAction"),
-            onClick: () => setChartOpen(true),
+            onClick: () => setModal({ kind: "chart" }),
           },
         ]
       : []),
@@ -582,7 +605,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             key: "diff",
             icon: <GitCompareArrows size={16} aria-hidden focusable={false} />,
             label: t("scenarios.diffAction"),
-            onClick: () => setDiffOpen(true),
+            onClick: () => setModal({ kind: "diff" }),
           },
         ]
       : []),
@@ -649,9 +672,18 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             scenarios={scenarios}
             activeScenarioId={activeScenario?.id ?? null}
             onSelect={setActiveScenarioId}
-            onAdd={() => setEditModal({ kind: "create" })}
-            onRename={(scenario) => setEditModal({ kind: "rename", scenario })}
-            onDelete={setDeleteTarget}
+            onAdd={() =>
+              setModal({ kind: "scenarioEdit", edit: { kind: "create" } })
+            }
+            onRename={(scenario) =>
+              setModal({
+                kind: "scenarioEdit",
+                edit: { kind: "rename", scenario },
+              })
+            }
+            onDelete={(scenario) =>
+              setModal({ kind: "scenarioDelete", scenario })
+            }
           />
 
           <div>
@@ -663,7 +695,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                 type="button"
                 aria-label={t("scenarios.addMonitor")}
                 title={t("scenarios.addMonitor")}
-                onClick={() => setAddMonitorOpen(true)}
+                onClick={() => setModal({ kind: "addMonitor" })}
                 className="flex size-6 cursor-pointer items-center justify-center rounded border border-line bg-surface text-muted hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
               >
                 <Plus size={14} aria-hidden focusable={false} />
@@ -735,7 +767,9 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                     balanceChars={activeState.colWidths.balanceChars}
                     settings={settings}
                     onCommitAmount={handleCommitAmount}
-                    onModulate={setModulateRowId}
+                    onModulate={(rowId) =>
+                      setModal({ kind: "modulate", rowId })
+                    }
                     onToggleExcluded={handleToggleExcluded}
                     onRevert={(rowId) => {
                       if (!view || !activeScenario) return;
@@ -751,15 +785,22 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                       const added = activeScenario?.addedRows.find(
                         (r) => r.id === addedId,
                       );
-                      if (added) setRowModal({ kind: "edit", row: added });
+                      if (added)
+                        setModal({
+                          kind: "row",
+                          row: { kind: "edit", row: added },
+                        });
                     }}
                     onAddRow={() =>
-                      setRowModal({
-                        kind: "add",
-                        seedDate: fiscalMonthSeedIso(
-                          monthKey,
-                          settings.startOfMonth,
-                        ),
+                      setModal({
+                        kind: "row",
+                        row: {
+                          kind: "add",
+                          seedDate: fiscalMonthSeedIso(
+                            monthKey,
+                            settings.startOfMonth,
+                          ),
+                        },
                       })
                     }
                   />
@@ -774,7 +815,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         initialName={
           editModal?.kind === "rename" ? editModal.scenario.name : null
         }
-        onClose={() => setEditModal(null)}
+        onClose={() => setModal(null)}
         onSave={(name) => {
           if (!view) return;
           if (editModal?.kind === "rename") {
@@ -808,7 +849,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         row={rowModal?.kind === "edit" ? rowModal.row : null}
         seedDate={rowModal?.kind === "add" ? rowModal.seedDate : ""}
         settings={settings}
-        onClose={() => setRowModal(null)}
+        onClose={() => setModal(null)}
         onSave={(rows) => {
           if (!view || !activeScenario) return;
           if (rowModal?.kind === "edit") {
@@ -856,7 +897,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
             : (activeOverrides.get(modulateRowId)?.modulation ?? null)
         }
         settings={settings}
-        onClose={() => setModulateRowId(null)}
+        onClose={() => setModal(null)}
         onSave={(modulation) => {
           if (modulateRowId !== null)
             handleSaveModulation(modulateRowId, modulation);
@@ -870,7 +911,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
       <ScenariosAddMonitorModal
         open={addMonitorOpen}
         monitors={monitors}
-        onClose={() => setAddMonitorOpen(false)}
+        onClose={() => setModal(null)}
         onAdd={(isoDate) => {
           if (!view) return;
           dispatch({
@@ -888,7 +929,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
         endBalancesByVariant={endBalancesByVariant}
         openingBalance={openingBalance}
         settings={settings}
-        onClose={() => setChartOpen(false)}
+        onClose={() => setModal(null)}
       />
 
       {activeScenario && baseItem && (
@@ -899,7 +940,7 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
           typesById={typesById}
           companiesById={companiesById}
           settings={settings}
-          onClose={() => setDiffOpen(false)}
+          onClose={() => setModal(null)}
         />
       )}
 
@@ -957,11 +998,11 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                 itemId: view.id,
                 scenarioId: deleteTarget.id,
               });
-              setDeleteTarget(null);
+              setModal(null);
             },
           },
         ]}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => setModal(null)}
       />
 
       <ConfirmDialog
@@ -1021,11 +1062,11 @@ export function ScenariosPage({ sheet, data, settings, dispatch }: Props) {
                 itemId: view.id,
                 baseSheetId: pendingBaseSheetId,
               });
-              setPendingBaseSheetId(null);
+              setModal(null);
             },
           },
         ]}
-        onCancel={() => setPendingBaseSheetId(null)}
+        onCancel={() => setModal(null)}
       />
     </section>
   );
