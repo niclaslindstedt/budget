@@ -8,7 +8,7 @@
 // surface the loan's whole history.
 
 import type { HistoryEntry, Loan, UserData } from "../types";
-import { newRuleMatchCache, resolveEntryLabels } from "../budget/synthesis";
+import { newRuleMatchCache, resolveEntryLabels } from "../synthesis";
 import {
   isNormalisedKeyMeaningful,
   normaliseDescription,

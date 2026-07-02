@@ -10,7 +10,7 @@ import {
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-} from "../src/data/budget/synthesis";
+} from "../src/data/synthesis";
 import { createDefaultSheet } from "../src/data/sheet";
 import type {
   AccountBudget,

@@ -11,7 +11,7 @@
 // monthly payment, so there's nothing to group or rank. Pure: fed the
 // `UserData` plus the resolution tables, it emits the eligible charges.
 
-import { resolveEntryLabels, newRuleMatchCache } from "../budget/synthesis";
+import { resolveEntryLabels, newRuleMatchCache } from "../synthesis";
 import { allTypes } from "../presets/merge";
 import {
   PRESET_TYPE_RENOVATIONS_ID,
@@ -26,7 +26,7 @@ import type {
 } from "../types";
 import { repairSourceKey, repairSources } from "./sources";
 
-import type { RuleMatchCache } from "../budget/synthesis";
+import type { RuleMatchCache } from "../synthesis";
 
 // One bank charge eligible to become a property repair / renovation.
 export type RepairCandidate = {

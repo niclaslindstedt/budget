@@ -57,7 +57,7 @@
 // so the finder reads the exact effective company / type the budget
 // tables show.
 
-import { resolveEntryLabels, newRuleMatchCache } from "../budget/synthesis";
+import { resolveEntryLabels, newRuleMatchCache } from "../synthesis";
 import {
   isNormalisedKeyMeaningful,
   normaliseDescription,

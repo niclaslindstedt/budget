@@ -390,22 +390,25 @@ backup / auth helpers in one closure that mutates`currentAccessToken`+`pendingRe
     re-derives ~150–800 lines of engine today.
 
 - **Cross-page consumers reaching into page-scoped `src/data/`
-  directories — remaining slice: `synthesis` / `rows`** — the two clear
-  relocations landed 2026-07 (`company-type-hints` + `cover-transfer` to
-  `src/data/` root; see Landed). What remains is the judgment slice:
-  `data/budget/synthesis.ts` (475) ← `items/ItemFinderModal.tsx:8`,
-  `properties/PropertiesPage.tsx:8`, `scenarios/ScenarioMonthTable.tsx:7`
-  (and now also root-level `data/cover-transfer.ts`); `data/budget/rows.ts`
-  (575) ← `scenarios/ScenariosPage.tsx:14`.
+  directories — remaining slice: `rows`** — the clear relocations landed
+  2026-07 (`company-type-hints` + `cover-transfer`, then `synthesis`, all to
+  `src/data/` root; see Landed). What remains is the genuine judgment call:
+  `data/budget/rows.ts` (575) is budget-row algebra consumed cross-page only
+  by `scenarios/ScenariosPage.tsx:14` (`buildSynthesizedRows`,
+  `getLastSeriesDate`) and the universal reducers / `search.ts` / `dev/seed.ts`
+  — everything else is budget-internal.
   - **Plan**: decide whether scenarios consuming budget-row algebra makes
-    the helpers cross-page (relocate to root) or scenarios
-    budget-coupled by design (document the exception on the import
-    sites instead); the items / properties `synthesis` imports suggest
-    relocation is the honest answer at least for `synthesis`.
-  - **Risk**: low but churny — many budget-internal consumers, so the
-    move is a large mechanical import-path diff.
-  - **Severity: 3** (was 4; the easy-win half landed, leaving the churny
-    judgment half).
+    `rows.ts` cross-page (relocate to root) or scenarios budget-coupled by
+    design (document the exception on the import site instead). Unlike
+    `synthesis` — which four page dirs + the root `cover-transfer` consumed,
+    making relocation unambiguous — `rows.ts`'s only non-universal consumer
+    is scenarios, which reruns the budget pipeline by design, so the honest
+    answer may well be to document the coupling rather than move a 575-line
+    budget-core module. Re-rate on pickup.
+  - **Risk**: low but churny if relocated — many budget-internal consumers,
+    so the move would be a large mechanical import-path diff for one
+    genuinely-cross-page consumer.
+  - **Severity: 3.**
 
 - **Byte-layer wrapper skeleton duplicated across the encrypting /
   compressing adapters** — `storage/encrypting-adapter.ts` (252) and
@@ -573,6 +576,30 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 
 ## Landed
 
+- **`data/budget/synthesis.ts` → `src/data/synthesis.ts` (relocated to data
+  root)** (2026-07): the row-synthesis primitive (`synthesizeHistoryRow` /
+  `synthesizeTransferRow` / `resolveEntryLabels` / `newRuleMatchCache` /
+  `isTransferRow`) was consumed cross-page from four page dirs
+  (`data/property-mortgage/discovery`, `data/loans/candidates`,
+  `data/property-repairs/candidates`, `data/items/find`), the root
+  `data/cover-transfer.ts`, and three non-budget page components
+  (`items/ItemFinderModal`, `scenarios/ScenarioMonthTable`,
+  `properties/PropertiesPage`) — an import-direction rule violation
+  (`AGENTS.md`: page dirs must not reach into a sibling page's dir). Its own
+  imports are all `src/data/` root modules (`description-normaliser`,
+  `match-rules`, `sheet`, `types`), so the move is clean (root never reaches
+  into a page dir). `git mv`d it, flipped its four internal `../` imports to
+  `./`, and updated the 15 consumer import sites (drop the `budget/` segment;
+  the three budget-internal `./synthesis` → `../synthesis`), three test files,
+  the `docs/architecture.md` inventory (moved from the `budget/` subtree to
+  the root listing), the AGENTS.md architecture summary, and the
+  `docs/dictionary.md` / `docs/overview.md` path references. Pure module
+  relocation — behaviour pinned by the existing transfer / reconciliation /
+  sheet suites; fast loop + build + icons-check green, all 2182 tests pass.
+  Resolves the `cover-transfer → budget/synthesis` edge the 2026-07
+  cover-transfer relocation left dangling. **Was severity 3 (the clear
+  half of the cross-page slice; `rows.ts` remains Pending).**
+
 - **`scenarios/ScenariosPage.tsx` flat modal-selector pile → one
   discriminated `ScenarioModal` union** (2026-07): the page held ~10
   independent modal/staging `useState`s. Folded the **eight
@@ -631,8 +658,9 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
   three test files, the `docs/architecture.md` inventory (which had
   never listed `cover-transfer.ts` — added), and the
   `docs/dictionary.md` / `docs/overview.md` path references.
-  `cover-transfer.ts` still imports `data/budget/synthesis` — that edge
-  is the remaining synthesis/rows slice of the Pending row. Pure module
+  `cover-transfer.ts` still imported `data/budget/synthesis` at the time —
+  that edge was resolved 2026-07 when `synthesis` itself moved to root (see
+  the `synthesis` relocation above). Pure module
   relocation; behaviour pinned by `tests/company_type_hints_test.ts`,
   `cover_transfer_test.ts`, `description_company_hints_test.ts`,
   `description_metadata_induction_test.ts`. **Was severity 4 (easy-win

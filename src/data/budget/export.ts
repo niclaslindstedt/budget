@@ -9,7 +9,7 @@ import {
   synthesizeHistoryRow,
   synthesizeTransferRow,
   transfersForAccount,
-} from "./synthesis";
+} from "../synthesis";
 import { findColumnByType } from "../sheet";
 import { indexById } from "../../utils/indexById";
 import type {

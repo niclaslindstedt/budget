@@ -5,7 +5,7 @@ import {
   findItemPurchaseCandidates,
   type ItemPurchaseCandidate,
 } from "../../data/items/find";
-import { synthesizeHistoryRow } from "../../data/budget/synthesis";
+import { synthesizeHistoryRow } from "../../data/synthesis";
 import { unlinkedItems } from "../../data/items/link";
 import { itemSubtypes } from "../../data/items/subtypes";
 import { normaliseDescription } from "../../data/description-normaliser";

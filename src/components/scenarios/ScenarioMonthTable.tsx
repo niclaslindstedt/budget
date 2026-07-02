@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import {
   collectHiddenTransfersByAnchor,
   isTransferRow,
-} from "../../data/budget/synthesis";
+} from "../../data/synthesis";
 import type {
   Company,
   EntryType,

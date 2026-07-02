@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PERSISTED_SETTINGS } from "../src/data/constants/defaults";
-import { synthesizeHistoryRow } from "../src/data/budget/synthesis";
+import { synthesizeHistoryRow } from "../src/data/synthesis";
 import { reducer } from "../src/data/reducer";
 import type {
   Column,

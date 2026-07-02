@@ -2820,7 +2820,7 @@ the latter with its ×2 / +5000 token rendered before the number; the
 `scenario-row-*` rules in `src/styles/components.css`). With `Settings.hideTransfers` on, the
 tables collapse inter-account transfers exactly like the budget
 table — the same `collectHiddenTransfersByAnchor` /` isTransferRow`
-helpers from `src/data/budget/synthesis.ts` group hidden runs under
+helpers from `src/data/synthesis.ts` group hidden runs under
 the next visible anchor row, whose balance renders italic with a
 dotted underline and toggles the run's inline reveal (muted
 `is-revealed-transfer` rows). On mobile the tables
@@ -3038,7 +3038,7 @@ column pair.
 
 A read-only row rendered into the budget table but not stored as a
 `Row`. Built by `synthesizeTransferRow` / `synthesizeHistoryRow` in
-`src/data/budget/synthesis.ts`.
+`src/data/synthesis.ts`.
 
 ### Series
 

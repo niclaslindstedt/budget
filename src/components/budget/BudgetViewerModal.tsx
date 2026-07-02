@@ -14,7 +14,7 @@ import {
   sortRowsByDate,
   type RowSortContext,
 } from "../../data/budget/rows";
-import { isTransferRow } from "../../data/budget/synthesis";
+import { isTransferRow } from "../../data/synthesis";
 import {
   currentFiscalMonthKey,
   groupRowsByMonth,
