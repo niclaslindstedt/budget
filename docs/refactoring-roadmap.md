@@ -407,26 +407,6 @@ backup / auth helpers in one closure that mutates`currentAccessToken`+`pendingRe
   - **Severity: 3** (was 4; the easy-win half landed, leaving the churny
     judgment half).
 
-- **`scenarios/ScenariosPage.tsx` re-grew the flat modal-selector pile**
-  — 1032 lines with ~12 `useState` (:133–:157), of which ~9 are
-  mutually-exclusive modal / staging selectors (`rowModal`,
-  `modulateRowId`, `editModal`, `deleteTarget`, `diffOpen`, `chartOpen`,
-  `addMonitorOpen`, `pendingSeriesApply`, `pendingRowDelete`,
-  `pendingBaseSheetId`) — the exact shape the landed PropertiesPage
-  discriminated-`modal`-union fix (2026-06, see Landed) was meant to be
-  the template for the next sheet-type page.
-  - **Plan**: copy the PropertiesPage template — one
-    `useState<ScenarioModalState | null>` discriminated union for the
-    mutually-exclusive selectors; keep genuinely co-open state
-    (`activeScenarioId`, `showEarlierMonths`, `expandedTransferAnchors`)
-    separate, and verify which staging dialogs intentionally stack before
-    folding them in (the PropertiesPage re-verify caught exactly that).
-    A size-decomposition pass (the render tree is ~430 lines) can ride
-    along if it stays mechanical, or wait.
-  - **Risk**: low-medium — the series-apply staging → confirm → reset
-    flow must map 1:1; no persisted-shape impact.
-  - **Severity: 4** (same rating the PropertiesPage instance carried).
-
 - **Byte-layer wrapper skeleton duplicated across the encrypting /
   compressing adapters** — `storage/encrypting-adapter.ts` (252) and
   `storage/compressing-adapter.ts` (148) re-implement the same
@@ -592,6 +572,26 @@ text-muted">…</span>…</label>` label-stack is inlined at ~40
 ---
 
 ## Landed
+
+- **`scenarios/ScenariosPage.tsx` flat modal-selector pile → one
+  discriminated `ScenarioModal` union** (2026-07): the page held ~10
+  independent modal/staging `useState`s. Folded the **eight
+  mutually-exclusive** selectors (`rowModal`, `modulateRowId`, `editModal`,
+  `deleteTarget`, `diffOpen`, `chartOpen`, `addMonitorOpen`,
+  `pendingBaseSheetId`) into one `useState<ScenarioModal | null>` whose
+  variants wrap each modal's sub-state; the render projects the same-named
+  locals (`rowModal`, `modulateRowId`, …) back out, so only the setter call
+  sites changed and the JSX reads are untouched. The re-verify caught the
+  stacking the PropertiesPage plan warned about: `pendingSeriesApply` and
+  `pendingRowDelete` are staged from **inside** the modulate / row modals,
+  whose handlers call `onClose` right after staging — so a shared slot would
+  let that close clobber the just-staged confirm. Both stay **separate**
+  `useState`s (documented on the union type), as do the genuinely co-open
+  `activeScenarioId` / `showEarlierMonths` / `expandedTransferAnchors`. Pure
+  state refactor — no behaviour change, no persisted-shape impact; fast loop
+  - build + icons-check green, all 2182 tests pass. The size-decomposition
+    pass the plan floated was left out to keep the diff a clean state-only
+    change. **Was severity 4.**
 
 - **Four update-balance/value modals → shared `ValueSnapshotModal` shell**
   (2026-07): the near-identical `value` / `date` / `importOpen` `useState`
