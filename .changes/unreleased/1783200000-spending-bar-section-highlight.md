@@ -1,6 +1,6 @@
 ---
 type: Added
-title: Press a spending bar section
+title: Highlight a spending category
 ---
 
-Press a section of a bar in Visualize spending to highlight it and its legend entry as a coloured pill, showing the section's amount and share of that month.
+In Visualize spending, press a bar section to highlight that month's slice, or click a legend entry to highlight the whole category across the window — either way its legend entry becomes a coloured pill showing the amount and share.

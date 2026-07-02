@@ -29,8 +29,10 @@ export type StackedChartPoint = { x: number; y: number };
 
 // A pressed segment: which series (by id) at which x sample. Lifted to the
 // caller so it can highlight the matching legend entry and show the
-// segment's real value.
-export type StackedBarSelection = { seriesId: string; x: number };
+// segment's real value. `x` is omitted for a whole-series selection (every
+// segment of the series highlights) — the shape a legend click produces,
+// where there is no single month to pin to.
+export type StackedBarSelection = { seriesId: string; x?: number };
 
 export type StackedBarChartSeries = {
   // Stable key for React + tooltip lookups.
@@ -434,7 +436,8 @@ function Chart({
               const barH = yScale(p.y0) - yScale(p.y1);
               if (barH <= 0) return null;
               const isSelected =
-                selected?.seriesId === s.id && selected?.x === p.x;
+                selected?.seriesId === s.id &&
+                (selected.x === undefined || selected.x === p.x);
               const isHovered =
                 tooltipOpen && tooltipData && tooltipData.x === p.x;
               return (

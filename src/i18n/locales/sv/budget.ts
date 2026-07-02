@@ -89,6 +89,11 @@ const budget: BudgetCatalog = {
   // Bildtext under stapeldiagrammet när en stapelsektion trycks — hur stor
   // andel av månadens stapel den tryckta sektionen utgör.
   spendingSectionShare: "{percent} av {month} · {total}",
+  // Bildtext när en förklaringspost klickas — kategorins andel av de totala
+  // utgifterna över hela perioden.
+  spendingCategoryShare: "{percent} av totalt · {total}",
+  // Tillgängligt namn för en klickbar förklaringspost under stapeldiagrammet.
+  spendingSelectCategoryAria: "Markera {name}",
   // Skrivskyddad postinfo-modal.
   entryInfoTitle: "Postdetaljer",
   entryInfoKindUser: "Budgetpost",
