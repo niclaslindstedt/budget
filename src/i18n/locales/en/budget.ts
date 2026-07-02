@@ -95,6 +95,11 @@ const budget = {
   // Caption shown under the monthly bar chart when a bar section is pressed
   // — how much of that month's bar the pressed section makes up.
   spendingSectionShare: "{percent} of {month} · {total}",
+  // Caption shown when a legend entry is clicked — the category's share of
+  // total spending across the whole window.
+  spendingCategoryShare: "{percent} of total · {total}",
+  // Accessible name for a clickable legend entry under the monthly bar chart.
+  spendingSelectCategoryAria: "Highlight {name}",
   // Read-only entry-info modal.
   entryInfoTitle: "Entry details",
   entryInfoKindUser: "Budget entry",

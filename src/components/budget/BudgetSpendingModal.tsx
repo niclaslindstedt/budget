@@ -279,19 +279,44 @@ export function BudgetSpendingModal({
     })),
   }));
 
-  // The pressed bar section resolved to its category, real value, and the
-  // total of the month it sits in — so the legend can pill the category and
-  // show how much of that month's bar the section makes up.
+  // Total spending across every category and month in the window — the
+  // denominator for a whole-category selection's share.
+  const barGrandTotal = barSeries.reduce(
+    (sum, b) => sum + b.points.reduce((s, p) => s + Math.max(0, p.y), 0),
+    0,
+  );
+
+  // The active selection resolved to its category, value, and share. Two
+  // shapes feed one highlight: pressing a single bar section
+  // (`barSelection.x` set) pins to that month — value is the section's real
+  // amount and the caption reads it against that month's bar; clicking a
+  // legend entry (`barSelection.x` omitted) selects the whole category —
+  // value is its total across the window and the caption reads it against
+  // total spending.
   const selectedSection = (() => {
     if (!barSelection) return null;
     const s = barSeries.find((b) => b.id === barSelection.seriesId);
-    const point = s?.points.find((p) => p.x === barSelection.x);
-    if (!s || !point || point.y <= 0) return null;
+    if (!s) return null;
+    if (barSelection.x === undefined) {
+      const value = s.points.reduce((sum, p) => sum + Math.max(0, p.y), 0);
+      if (value <= 0) return null;
+      return {
+        mode: "category" as const,
+        seriesId: s.id,
+        label: s.label,
+        color: s.color,
+        value,
+        share: barGrandTotal > 0 ? value / barGrandTotal : 0,
+      };
+    }
+    const point = s.points.find((p) => p.x === barSelection.x);
+    if (!point || point.y <= 0) return null;
     const monthTotal = barSeries.reduce(
       (sum, b) => sum + (b.points.find((p) => p.x === barSelection.x)?.y ?? 0),
       0,
     );
     return {
+      mode: "section" as const,
       seriesId: s.id,
       label: s.label,
       color: s.color,
@@ -301,6 +326,15 @@ export function BudgetSpendingModal({
       month: formatMonth(barSelection.x),
     };
   })();
+
+  // Toggle a whole-category highlight from a legend entry: clear it if this
+  // category is already the active category selection, otherwise select it.
+  const toggleCategorySelection = (seriesId: string) =>
+    setBarSelection((cur) =>
+      cur && cur.seriesId === seriesId && cur.x === undefined
+        ? null
+        : { seriesId },
+    );
 
   const slices: DonutChartSlice[] = shares.map((share: SpendingShare) => ({
     id: share.id ?? UNCATEGORIZED,
@@ -461,16 +495,23 @@ export function BudgetSpendingModal({
                     selected={barSelection}
                     onSelect={setBarSelection}
                   />
+                  {/* Legend doubles as a control: clicking an entry highlights
+                      that whole category across every month, the same
+                      selection pressing a single bar section produces (pinned
+                      to one month). */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
                     {barSeries.map((s) => {
                       const isSelected = selectedSection?.seriesId === s.id;
                       if (isSelected && selectedSection) {
-                        // The pressed section's category, as a filled pill in
-                        // its own colour, trailing the section's real amount.
+                        // The selected category, as a filled pill in its own
+                        // colour, trailing the selection's amount.
                         return (
-                          <span
+                          <button
                             key={s.id}
-                            className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium"
+                            type="button"
+                            onClick={() => toggleCategorySelection(s.id)}
+                            aria-pressed
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium"
                             style={{
                               backgroundColor: tintFill(cssColor(s.color)),
                               borderColor: tintBorder(cssColor(s.color)),
@@ -481,13 +522,19 @@ export function BudgetSpendingModal({
                             <span className="tabular-nums">
                               {formatAmountFull(selectedSection.value)}
                             </span>
-                          </span>
+                          </button>
                         );
                       }
                       return (
-                        <span
+                        <button
                           key={s.id}
-                          className={`inline-flex items-center gap-1.5 ${
+                          type="button"
+                          onClick={() => toggleCategorySelection(s.id)}
+                          aria-pressed={false}
+                          aria-label={t("budget.spendingSelectCategoryAria", {
+                            name: s.label,
+                          })}
+                          className={`inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-muted hover:text-fg ${
                             selectedSection ? "opacity-45" : ""
                           }`}
                         >
@@ -497,17 +544,22 @@ export function BudgetSpendingModal({
                             style={{ background: cssColor(s.color) }}
                           />
                           {s.label}
-                        </span>
+                        </button>
                       );
                     })}
                   </div>
                   {selectedSection && (
                     <p className="m-0 text-xs text-muted">
-                      {t("budget.spendingSectionShare", {
-                        percent: formatPercent(selectedSection.share),
-                        month: selectedSection.month,
-                        total: formatAmountFull(selectedSection.monthTotal),
-                      })}
+                      {selectedSection.mode === "section"
+                        ? t("budget.spendingSectionShare", {
+                            percent: formatPercent(selectedSection.share),
+                            month: selectedSection.month,
+                            total: formatAmountFull(selectedSection.monthTotal),
+                          })
+                        : t("budget.spendingCategoryShare", {
+                            percent: formatPercent(selectedSection.share),
+                            total: formatAmountFull(barGrandTotal),
+                          })}
                     </p>
                   )}
                 </section>
