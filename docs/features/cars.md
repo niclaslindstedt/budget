@@ -3,7 +3,9 @@
 See what having a car actually costs — whether you own it, lease it,
 share it with someone, or reach one through a car pool — on a dedicated
 sheet type that links your real transportation charges to a specific
-car.
+car. Give each car a glyph that matches its body type (a sports car, an
+SUV, a van, a camper…) and a real paint colour — white, silver, grey,
+gunmetal, black, or one of the muted automotive hues.
 
 ## Four ways to have a car
 
@@ -12,17 +14,34 @@ Each car records how you have access to it: **owned**, **leased**,
 share in percent scales what the car contributes to your net worth), or
 **car pool**. Value tracking only applies where you hold capital: an
 owned or shared car carries a purchase price, purchase date, and the
-odometer reading at purchase. A leased or pool car is pure running cost
-— its "value loss" is the leasing or pool fee, which arrives as a
-linked expense like any other charge.
+odometer reading at purchase. A pool car is pure running cost — its
+cost is the per-use and membership charges, which arrive as linked
+expenses like any other charge.
+
+## Leasing, and why a fresh lease is "underwater"
+
+A leased car doesn't involve a loan and you never hold its capital, but
+the lease still moves your net worth. Record its terms — the **start
+date**, the **length** in months, the **monthly cost**, the **interest
+rate**, and the car's **value at the start and end** of the lease — and
+the sheet models the lease as a level-payment plan: your fixed monthly
+payment is mostly interest early on, so the amount you have paid down
+grows slowly at first and fast toward the end. Meanwhile the car itself
+loses value fastest in the first months. Because value falls faster than
+the lease is paid down, a fresh lease is **underwater** — the car is
+worth less than what you are still committed to — so it drags your net
+worth down early in the term, and the gap closes back to zero by the
+end. The car card shows this live as a **Net position** figure, and the
+Insights net worth folds it in.
 
 ## Linking your real costs
 
 The point of the sheet is that the costs are _real_, not estimated.
 **Find car expenses** sweeps your imported bank history for charges
 categorised as transport — fuel, parking, car insurance, vehicle tax,
-congestion tax, leasing, service, taxi, and public transport — using
-the same category resolution the budget tables use, so a merchant you
+congestion tax, leasing, service, taxi, car pool, and public transport —
+using the same category resolution the budget tables use, so a merchant
+you
 tagged once (or that a match rule / merchant memory recognises) shows
 up automatically. Tick the charges that belong to the car and add them
 in one go. A charge that isn't a car cost can be **ignored** (that one
@@ -71,5 +90,7 @@ figure appears: **cost per kilometre**, the sum of all three legs
 divided by the distance you have actually driven.
 
 Owned and shared cars count in the Insights sheet's net worth as their
-current value (times your share); a sold car (record the date and the
-proceeds) stops counting and moves to the sold section.
+current value (times your share); a leased car with recorded terms
+counts as its net position (negative while it's underwater); a sold car
+(record the date and the proceeds) stops counting and moves to the sold
+section.

@@ -91,6 +91,27 @@ export type Car = {
   // purchase (`purchasePrice` + `purchaseMileage` at `purchaseDate`) is
   // folded in as a read-only first point at display time, never stored.
   snapshots: CarSnapshot[];
+  // Leasing terms. Present only for `ownership: "leased"` cars; the
+  // editor hides them otherwise. Together they model the lease as a
+  // level-payment ("annuity") balloon loan: the financed amount runs
+  // from `leaseStartValue` down to `leaseEndValue` (the residual) over
+  // `leaseMonths`, so the outstanding balance amortises slowly at first
+  // and fast near the end (small early amortisation, large late). The
+  // car's own market value depreciates front-loaded over the same
+  // window, so the two curves cross — the user is "underwater" (market
+  // value below the outstanding balance) early in the term. The
+  // net-worth roll-up surfaces that gap as a NEGATIVE contribution that
+  // recovers toward zero by lease end (see `leasedCarEquity`). All six
+  // are optional; the value model needs `leaseStart`, `leaseMonths`,
+  // `leaseStartValue`, and `leaseEndValue` (interest defaults to 0) to
+  // produce a figure — missing any of those leaves a leased car out of
+  // net worth exactly as before.
+  leaseStart?: string; // ISO yyyy-mm-dd the lease begins
+  leaseMonths?: number; // whole-month term length, > 0
+  leaseMonthlyCost?: number; // contract monthly payment (display / reference)
+  leaseInterestRate?: number; // nominal annual interest %, >= 0
+  leaseStartValue?: number; // car value / amount financed at lease start
+  leaseEndValue?: number; // residual value at lease end
   // The loan financing this car — points into `UserData.loans` (the
   // Loans sheet owns the entity; no duplication here). Lets the cost
   // view include the interest leg. Swept to absent when the loan is

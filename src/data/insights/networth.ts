@@ -29,7 +29,10 @@ import type {
 } from "../types";
 import { computeAccountBalances } from "../accounts/balance";
 import { computeItemCurrentValue, isItemOwned } from "../items/value";
-import { computeCarCurrentValue, isCarOwned } from "../cars/value";
+import {
+  carContributesToNetWorth,
+  carNetWorthContribution,
+} from "../cars/value";
 import { loanRemainingBalance, resolveLinkedMortgages } from "../loans/balance";
 import { balanceAt } from "../finance/interest";
 import { propertyInitialLoanTotal } from "../finance/amortization";
@@ -373,48 +376,42 @@ const ASSET_CONTRIBUTORS: readonly AssetContributor[] = [
     },
   },
   {
-    // Cars are single-sided like items: a sold / leased / pool car
-    // contributes nothing (`isCarOwned`), and the loan financing a car
-    // already counts negatively through the standalone-loans leg, so the
-    // equity falls out without two-sided handling here. The car's own
-    // `sharePct` (a co-owner outside the budget) scales the GROSS — the
-    // user's stake is the figure the breakdown shows — and the insights
-    // per-entity override still applies on top like any other row.
+    // Cars contribute single-sided through `carNetWorthContribution`: an
+    // owned / shared car adds its share-scaled market value; a leased car
+    // adds its lease equity (market value minus outstanding balance),
+    // which is NEGATIVE early in the term and recovers to ~0 by lease
+    // end; a sold / pool car adds nothing. The loan financing an owned
+    // car already counts negatively through the standalone-loans leg, so
+    // the equity falls out without two-sided handling here. The car's own
+    // `sharePct` (a co-owner outside the budget) is folded into the gross
+    // by the contribution helper, and the insights per-entity override
+    // still applies on top like any other row.
     category: "cars",
     rowsAt: (data, iso) =>
-      data.cars.filter(isCarOwned).map((car) => {
-        const value = computeCarCurrentValue(car, iso);
-        return {
-          id: car.id,
-          name: car.name,
-          gross:
-            value === undefined
-              ? undefined
-              : value * ((car.sharePct ?? 100) / 100),
-        };
-      }),
+      data.cars.filter(carContributesToNetWorth).map((car) => ({
+        id: car.id,
+        name: car.name,
+        gross: carNetWorthContribution(car, iso),
+      })),
     seriesRowsAt: (data, iso) =>
       data.cars
         .filter(
           (car) =>
-            isCarOwned(car) &&
+            carContributesToNetWorth(car) &&
             !(car.purchaseDate !== undefined && car.purchaseDate > iso),
         )
-        .map((car) => {
-          const value = computeCarCurrentValue(car, iso);
-          return {
-            id: car.id,
-            name: car.name,
-            gross:
-              value === undefined
-                ? undefined
-                : value * ((car.sharePct ?? 100) / 100),
-          };
-        }),
+        .map((car) => ({
+          id: car.id,
+          name: car.name,
+          gross: carNetWorthContribution(car, iso),
+        })),
     collectDates(data, isIncluded, consider) {
       for (const car of data.cars) {
-        if (!isCarOwned(car) || !isIncluded(car.id)) continue;
+        if (!carContributesToNetWorth(car) || !isIncluded(car.id)) continue;
         consider(car.purchaseDate);
+        // A leased car's window opens at its lease start — that's where
+        // its equity curve begins (and dives negative).
+        consider(car.leaseStart);
         // A recorded snapshot can predate (or stand in for a missing)
         // purchase date, so the series window starts where the value
         // data does — mirrors the items contributor.

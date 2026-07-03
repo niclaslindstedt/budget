@@ -75,6 +75,19 @@ const carsSheet = {
   loanNone: "No loan",
   loanHint:
     "Link the loan financing this car so its interest counts toward the cost.",
+
+  // Leasing terms (leased cars only)
+  leaseHint: "Lease terms",
+  leaseStartLabel: "Lease start",
+  leaseMonthsLabel: "Length (months)",
+  leaseStartValueLabel: "Value at start",
+  leaseEndValueLabel: "Value at end",
+  leaseMonthlyCostLabel: "Monthly cost",
+  leaseInterestRateLabel: "Interest (%/year)",
+  leaseInterestRatePlaceholder: "e.g. 5",
+  leaseNetPosition: "Net position",
+  leaseNetWorthHint:
+    "The car depreciates faster than the lease amortizes, so early on it drags your net worth down; the gap closes by the end of the lease.",
   soldDateLabel: "Sold on",
   soldDateHint: "Set a date if you no longer have this car.",
   soldForLabel: "Sold for",

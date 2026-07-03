@@ -234,7 +234,7 @@ src/
 │   │   │                       #   LoanPayment, LoanBalancePoint, LoanKind
 │   │   ├── cars.ts             # Car (ownership form, purchase price/date/
 │   │   │                       #   odometer, sharePct, ItemDepreciation reuse,
-│   │   │                       #   loanId link, soldAt/soldFor), CarSnapshot
+│   │   │                       #   lease terms, loanId link, soldAt/soldFor), CarSnapshot
 │   │   │                       #   (dated value and/or mileage), CarExpense
 │   │   │                       #   (linked or manual transportation cost),
 │   │   │                       #   CarOwnership
@@ -470,7 +470,9 @@ src/
 │   │   │                       #   purchase; leased/pool → undefined),
 │   │   │                       #   resolveCarSnapshots (purchase folded in),
 │   │   │                       #   carDepreciationToDate, currentCarMileage,
-│   │   │                       #   carDistanceDriven, isCarOwned
+│   │   │                       #   carDistanceDriven, isCarOwned; lease model
+│   │   │                       #   (leaseBalanceAt, leasedCarMarketValue,
+│   │   │                       #   leasedCarEquity, carNetWorthContribution)
 │   │   ├── costs.ts            # carCostBreakdown / carMonthlyCosts (chart
 │   │   │                       #   feeds), carTotalCostOfOwnership (expenses /
 │   │   │                       #   depreciation / loan-interest legs kept

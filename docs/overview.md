@@ -2658,7 +2658,11 @@ in `src/components/cars/`; helpers in `src/data/cars/`. Adding the
 first car unlocks the **Behind the Wheel** achievement. Owned / shared
 cars count in the Insights net-worth roll-up as the `cars` category
 (value × the car's own `sharePct`, then the insights per-entity
-override on top); leased / pool / sold cars contribute nothing.
+override on top). A **leased** car with modelled lease terms also counts
+— as its lease equity (market value − outstanding lease balance), which
+is negative early in the term and recovers toward zero by lease end (see
+Car leasing). Pool and sold cars, and leased cars without terms,
+contribute nothing.
 
 ### Car
 
@@ -2670,12 +2674,41 @@ its costs), or `pool` (car-pool membership). Value tracking (purchase
 price / date / odometer-at-purchase, a depreciation rule, value
 snapshots, sale fields) only applies to owned / shared cars — a leased
 or pool car is pure running cost, its "value loss" being the leasing /
-pool fee that arrives as a linked expense. An optional `loanId` points
-at the Loans-sheet loan financing the car (see Car loan link). Sale
-mirrors the items model: `soldAt` / `soldFor` move the card to the sold
-section and stop the net-worth contribution. The create / edit modal is
-`CarEditorModal.tsx` (ownership pill, purchase fields, depreciation
-editor, loan picker, sold fields, glyph + colour).
+pool fee that arrives as a linked expense — plus, for a leased car, the
+lease equity modelled from its terms (see Car leasing). An optional
+`loanId` points at the Loans-sheet loan financing the car (owned /
+shared only — leasing and pool don't involve a loan; see Car loan link).
+Sale mirrors the items model: `soldAt` / `soldFor` move the card to the
+sold section and stop the net-worth contribution. The create / edit
+modal is `CarEditorModal.tsx` (ownership pill, purchase fields,
+depreciation editor, lease terms for a leased car, loan picker for a
+capital car, sold fields, glyph + colour). The glyph picker
+(`CARS_GLYPH_NAMES`) leans on vehicle-body silhouettes (`gauge` for a
+sports car, `car-front` for an SUV, `van`, `truck`, `caravan`, …) and
+the colour picker uses a dedicated car-paint palette (`CAR_COLORS` —
+white / silver / grey / gunmetal / black plus muted automotive hues),
+the one place the shared "always a hue" rule is deliberately broken.
+
+### Car leasing
+
+A leased car (`ownership: "leased"`) carries six optional lease terms on
+`Car`: `leaseStart`, `leaseMonths`, `leaseMonthlyCost`,
+`leaseInterestRate`, `leaseStartValue`, and `leaseEndValue`. Together
+they model the lease as a level-payment **balloon loan**: the outstanding
+balance (`leaseBalanceAt`, `src/data/cars/value.ts`) runs from the start
+value down to the residual (end value) over the term, amortising slowly
+at first (mostly interest) and fast near the end. The car's own **market
+value** (`leasedCarMarketValue`) decays front-loaded (exponentially) over
+the same window, so it sheds value faster than the balance amortises. The
+gap between them — `leasedCarEquity` = market value − balance — is the
+car's net-worth contribution: it is zero at both ends of the term and
+NEGATIVE in between, so a fresh lease drags net worth down and recovers
+as the term runs out. `carNetWorthContribution` routes owned / shared
+cars to their share-scaled value and leased cars to this equity; the
+Insights roll-up and the card's "Net position" stat both read it. The
+`leaseMonthlyCost` is the contract figure the user types (shown on the
+card); the amortisation schedule that drives net worth is derived from
+the values, term, and rate, so the two can't contradict each other.
 
 ### Car snapshot
 
@@ -2734,11 +2767,12 @@ hidden / transfer-collapsed entries, resolving each entry's effective
 type exactly the way the budget tables do (`resolveEntryLabels` —
 per-entry override → match rule → merchant hint), and keeping charges
 whose type lands in `CAR_EXPENSE_TYPE_IDS` (`src/data/presets/types.ts`
-— the nine Transport presets: fuel, parking, car insurance, vehicle
-tax, congestion tax, leasing, car service, taxi, public transport;
-deliberately including taxi / public transport so a car-pool "car" can
-carry them, and deliberately excluding `preset-type-car-loan`, whose
-cost enters through the loan link instead). The modal multi-selects
+— the ten Transport presets: fuel, parking, car insurance, vehicle
+tax, congestion tax, leasing, car service, taxi, car pool, public
+transport; deliberately including taxi / public transport / car pool so
+a car-pool "car" can carry both its monthly fee and its per-use charges,
+and deliberately excluding `preset-type-car-loan`, whose cost enters
+through the loan link instead). The modal multi-selects
 candidates and commits them in one `addCarExpenses` undo entry. Per
 row, **Ignore** persists the entry id to
 `UserData.ignoredCarExpenseEntryIds` and **Exclude similar** persists

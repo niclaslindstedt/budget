@@ -352,6 +352,17 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "transport",
       kind: "expense",
     },
+    {
+      // A car pool / car-sharing membership — covers both the optional
+      // monthly membership fee and the per-use charge (starting fee +
+      // per-km), so it can back either kind of charge on a pool car.
+      slug: "car-pool",
+      name: "Car pool",
+      color: C[4],
+      glyph: "car-taxi-front",
+      category: "transport",
+      kind: "expense",
+    },
     // Health & personal
     {
       slug: "pharmacy",
@@ -1044,6 +1055,7 @@ export const CAR_EXPENSE_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-leasing",
   "preset-type-car-service",
   "preset-type-taxi",
+  "preset-type-car-pool",
   "preset-type-public-transport",
 ]);
 
@@ -1098,6 +1110,7 @@ export const NEVER_ITEM_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-parking",
   "preset-type-public-transport",
   "preset-type-taxi",
+  "preset-type-car-pool",
   "preset-type-fuel",
   // Health & personal services
   "preset-type-healthcare",

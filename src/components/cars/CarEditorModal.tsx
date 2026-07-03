@@ -1,7 +1,11 @@
 import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
-import { CARS_GLYPH_NAMES, SHEET_COLORS } from "../../data/constants/taxonomy";
+import {
+  CAR_COLORS,
+  CARS_GLYPH_NAMES,
+  DEFAULT_CAR_COLOR,
+} from "../../data/constants/taxonomy";
 import { newId } from "../../data/sheet";
 import type {
   Car,
@@ -55,7 +59,7 @@ type Props = {
   onDelete?: (car: Car) => void;
 };
 
-const DEFAULT_COLOR = SHEET_COLORS[0];
+const DEFAULT_COLOR = DEFAULT_CAR_COLOR;
 const OWNERSHIPS: readonly CarOwnership[] = [
   "owned",
   "leased",
@@ -99,6 +103,12 @@ export function CarEditorModal({
   const [firstYearRate, setFirstYearRate] = useState("");
   const [floor, setFloor] = useState("");
   const [loanId, setLoanId] = useState<string>(LOAN_NONE);
+  const [leaseStart, setLeaseStart] = useState("");
+  const [leaseMonths, setLeaseMonths] = useState("");
+  const [leaseMonthlyCost, setLeaseMonthlyCost] = useState("");
+  const [leaseInterestRate, setLeaseInterestRate] = useState("");
+  const [leaseStartValue, setLeaseStartValue] = useState("");
+  const [leaseEndValue, setLeaseEndValue] = useState("");
   const [soldDate, setSoldDate] = useState("");
   const [soldFor, setSoldFor] = useState("");
 
@@ -131,6 +141,16 @@ export function CarEditorModal({
     );
     setFloor(dep?.floor !== undefined ? seedAmount(dep.floor, settings) : "");
     setLoanId(car?.loanId ?? LOAN_NONE);
+    setLeaseStart(car?.leaseStart ?? "");
+    setLeaseMonths(
+      car?.leaseMonths !== undefined ? String(car.leaseMonths) : "",
+    );
+    setLeaseMonthlyCost(seedAmount(car?.leaseMonthlyCost, settings));
+    setLeaseInterestRate(
+      car?.leaseInterestRate !== undefined ? String(car.leaseInterestRate) : "",
+    );
+    setLeaseStartValue(seedAmount(car?.leaseStartValue, settings));
+    setLeaseEndValue(seedAmount(car?.leaseEndValue, settings));
     setSoldDate(car?.soldAt ?? "");
     setSoldFor(seedAmount(car?.soldFor, settings));
   });
@@ -200,6 +220,15 @@ export function CarEditorModal({
     const sharePctValue =
       share !== undefined && share > 0 && share < 100 ? share : undefined;
 
+    // Lease terms only ride with a leased car — switching away clears
+    // them. Months is a whole positive count.
+    const isLeased = ownership === "leased";
+    const monthsNum = isLeased ? num(leaseMonths) : undefined;
+    const leaseMonthsValue =
+      monthsNum !== undefined && monthsNum >= 1
+        ? Math.round(monthsNum)
+        : undefined;
+
     const patch: Partial<Omit<Car, "id">> = {
       name: trimmedName,
       ownership,
@@ -212,7 +241,13 @@ export function CarEditorModal({
       purchaseMileage: holdsCapital ? num(purchaseMileage) : undefined,
       sharePct: sharePctValue,
       depreciation,
-      loanId: loanId !== LOAN_NONE ? loanId : undefined,
+      leaseStart: isLeased && leaseStart !== "" ? leaseStart : undefined,
+      leaseMonths: leaseMonthsValue,
+      leaseMonthlyCost: isLeased ? num(leaseMonthlyCost) : undefined,
+      leaseInterestRate: isLeased ? num(leaseInterestRate) : undefined,
+      leaseStartValue: isLeased ? num(leaseStartValue) : undefined,
+      leaseEndValue: isLeased ? num(leaseEndValue) : undefined,
+      loanId: holdsCapital && loanId !== LOAN_NONE ? loanId : undefined,
       // The sale amount rides only with a sale date — a price with no date
       // can't place the sale on the timeline.
       soldAt: soldDate !== "" ? soldDate : undefined,
@@ -527,15 +562,118 @@ export function CarEditorModal({
             </>
           )}
 
-          <FormSection label={t("carsSheet.loanPickerLabel")}>
-            <SelectPicker
-              value={loanId}
-              options={loanOptions}
-              onChange={setLoanId}
-              ariaLabel={t("carsSheet.loanPickerLabel")}
-            />
-            <p className="m-0 text-xs text-muted">{t("carsSheet.loanHint")}</p>
-          </FormSection>
+          {ownership === "leased" && (
+            <div className="flex flex-col gap-3 rounded border border-line bg-surface-3 p-3">
+              <span className="text-xs text-muted">
+                {t("carsSheet.leaseHint")}
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseStartLabel")}
+                >
+                  <input
+                    type="date"
+                    value={leaseStart}
+                    onChange={(e) => setLeaseStart(e.target.value)}
+                    className={DATE_INPUT_CLASS}
+                  />
+                </FormSection>
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseMonthsLabel")}
+                >
+                  <ClearableInput
+                    value={leaseMonths}
+                    onValueChange={setLeaseMonths}
+                    inputMode="numeric"
+                    placeholder="36"
+                    wrapperClassName="w-full min-w-0"
+                    className={inputClass}
+                  />
+                </FormSection>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseStartValueLabel")}
+                >
+                  <ClearableInput
+                    value={leaseStartValue}
+                    onValueChange={setLeaseStartValue}
+                    inputMode="decimal"
+                    placeholder={formatAmountForInput(0, settings)}
+                    wrapperClassName="w-full min-w-0"
+                    className={inputClass}
+                  />
+                </FormSection>
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseEndValueLabel")}
+                >
+                  <ClearableInput
+                    value={leaseEndValue}
+                    onValueChange={setLeaseEndValue}
+                    inputMode="decimal"
+                    placeholder={formatAmountForInput(0, settings)}
+                    wrapperClassName="w-full min-w-0"
+                    className={inputClass}
+                  />
+                </FormSection>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseMonthlyCostLabel")}
+                >
+                  <ClearableInput
+                    value={leaseMonthlyCost}
+                    onValueChange={setLeaseMonthlyCost}
+                    inputMode="decimal"
+                    placeholder={formatAmountForInput(0, settings)}
+                    wrapperClassName="w-full min-w-0"
+                    className={inputClass}
+                  />
+                </FormSection>
+                <FormSection
+                  as="label"
+                  className="min-w-0"
+                  label={t("carsSheet.leaseInterestRateLabel")}
+                >
+                  <ClearableInput
+                    value={leaseInterestRate}
+                    onValueChange={setLeaseInterestRate}
+                    inputMode="decimal"
+                    placeholder={t("carsSheet.leaseInterestRatePlaceholder")}
+                    wrapperClassName="w-full min-w-0"
+                    className={inputClass}
+                  />
+                </FormSection>
+              </div>
+              <p className="m-0 text-xs text-muted">
+                {t("carsSheet.leaseNetWorthHint")}
+              </p>
+            </div>
+          )}
+
+          {holdsCapital && (
+            <FormSection label={t("carsSheet.loanPickerLabel")}>
+              <SelectPicker
+                value={loanId}
+                options={loanOptions}
+                onChange={setLoanId}
+                ariaLabel={t("carsSheet.loanPickerLabel")}
+              />
+              <p className="m-0 text-xs text-muted">
+                {t("carsSheet.loanHint")}
+              </p>
+            </FormSection>
+          )}
 
           <FormSection as="label" label={t("carsSheet.soldDateLabel")}>
             <input
@@ -574,9 +712,10 @@ export function CarEditorModal({
 
           <FormSection label={t("account.color")}>
             <ColorPalette
-              colors={SHEET_COLORS}
+              colors={CAR_COLORS}
               value={color}
               onChange={setColor}
+              bordered
             />
           </FormSection>
         </div>

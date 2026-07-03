@@ -8,6 +8,7 @@ import {
   carDistanceDriven,
   computeCarCurrentValue,
   currentCarMileage,
+  leasedCarEquity,
 } from "../../data/cars/value";
 import type { Car, Loan, Settings } from "../../data/types";
 import { useT } from "../../i18n";
@@ -70,6 +71,11 @@ export function CarCard({
   const totalCost =
     legs.expenses + (legs.depreciation ?? 0) + (legs.loanInterest ?? 0);
   const perDistance = carCostPerDistance(car, loan ?? undefined, today);
+  // A leased car's current net-worth position (market value minus
+  // outstanding lease balance) — negative while the car is worth less
+  // than the balance owed, recovering toward zero by lease end.
+  const leaseEquity =
+    car.ownership === "leased" ? leasedCarEquity(car, today) : undefined;
 
   const ownershipPill = ownershipLabel(t, car.ownership);
 
@@ -160,6 +166,26 @@ export function CarCard({
                 className="shrink-0 text-muted group-hover:text-accent"
               />
             </button>
+          </Stat>
+        )}
+        {car.ownership === "leased" && car.leaseMonthlyCost !== undefined && (
+          <Stat label={t("carsSheet.leaseMonthlyCostLabel")}>
+            <span className="tabular-nums text-fg">
+              {formatBalance(car.leaseMonthlyCost, settings, {
+                neverAbbreviate: true,
+              })}
+            </span>
+          </Stat>
+        )}
+        {leaseEquity !== undefined && (
+          <Stat label={t("carsSheet.leaseNetPosition")}>
+            <span
+              className={`tabular-nums ${
+                leaseEquity < 0 ? "text-negative" : "text-positive"
+              }`}
+            >
+              {formatBalance(leaseEquity, settings, { neverAbbreviate: true })}
+            </span>
           </Stat>
         )}
         {tracksValue && car.purchasePrice !== undefined && (

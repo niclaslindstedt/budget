@@ -34,6 +34,7 @@ const presetTypes: PresetTypesCatalog = {
   leasing: "Leasing",
   "car-service": "Bilservice",
   taxi: "Taxi",
+  "car-pool": "Bilpool",
   pharmacy: "Apoteket",
   healthcare: "Sjukvård",
   "health-insurance": "Sjukförsäkring",

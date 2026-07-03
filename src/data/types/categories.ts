@@ -53,6 +53,13 @@ export type CategoryIcon =
   | "bike"
   | "fuel"
   | "car-front"
+  | "car-taxi-front"
+  | "van"
+  | "truck-electric"
+  | "caravan"
+  | "motorbike"
+  | "scooter"
+  | "gauge"
   | "ship"
   // Home & utilities
   | "bed"

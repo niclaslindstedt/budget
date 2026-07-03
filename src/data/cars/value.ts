@@ -123,6 +123,148 @@ export function carDepreciationToDate(
   return Math.max(0, car.purchasePrice - value);
 }
 
+// --- Leasing value model ---------------------------------------------
+//
+// A leased car is not owned capital, but the lease still moves the
+// user's net worth: they are locked into a payment schedule while the
+// car depreciates faster than that schedule pays it down. We model the
+// lease as a level-payment balloon loan (the outstanding balance) and
+// the car as a front-loaded depreciating asset (its market value), then
+// report the gap between them.
+
+// The resolved lease terms, or undefined when the car isn't a leased car
+// with the full set the value model needs. Extracting once keeps the
+// three functions below free of repeated optional-field juggling.
+type LeaseTerms = {
+  start: string;
+  months: number;
+  startValue: number;
+  endValue: number;
+  monthlyRate: number;
+};
+
+function leaseTerms(car: Car): LeaseTerms | undefined {
+  if (car.ownership !== "leased") return undefined;
+  const { leaseStart, leaseMonths, leaseStartValue, leaseEndValue } = car;
+  if (leaseStart === undefined) return undefined;
+  if (leaseMonths === undefined || leaseMonths <= 0) return undefined;
+  if (leaseStartValue === undefined || leaseStartValue <= 0) return undefined;
+  if (leaseEndValue === undefined || leaseEndValue < 0) return undefined;
+  const annual = car.leaseInterestRate;
+  const monthlyRate =
+    annual === undefined || !Number.isFinite(annual) || annual <= 0
+      ? 0
+      : annual / 100 / 12;
+  return {
+    start: leaseStart,
+    months: leaseMonths,
+    startValue: leaseStartValue,
+    endValue: leaseEndValue,
+    monthlyRate,
+  };
+}
+
+// Fractional months elapsed from `fromIso` to `toIso`; the day-of-month
+// remainder resolves against a 30-day month — precise enough for a
+// monthly-sampled series. Negative before the start; NaN on unparseable
+// input.
+function monthsElapsed(fromIso: string, toIso: string): number {
+  const from = fromIso.slice(0, 10).split("-").map(Number);
+  const to = toIso.slice(0, 10).split("-").map(Number);
+  if (from.length !== 3 || to.length !== 3) return NaN;
+  if ([...from, ...to].some((n) => !Number.isFinite(n))) return NaN;
+  return (to[0] - from[0]) * 12 + (to[1] - from[1]) + (to[2] - from[2]) / 30;
+}
+
+// Whether this car has the modelled lease terms that let it enter the
+// net-worth roll-up (a leased car without them stays out, exactly as
+// every leased car did before the terms existed).
+export function hasLeaseTerms(car: Car): boolean {
+  return leaseTerms(car) !== undefined;
+}
+
+// Outstanding lease balance at `iso` — the level-payment balloon
+// schedule from the start value down to the residual (end value) over
+// the term at the nominal rate. The balance is the start value at t=0
+// and the residual at term end; in between it amortises slowly (mostly
+// interest) early and fast late. Undefined outside the term window or
+// when the terms are incomplete.
+export function leaseBalanceAt(car: Car, iso: string): number | undefined {
+  const terms = leaseTerms(car);
+  if (!terms) return undefined;
+  const { start, months, startValue, endValue, monthlyRate: r } = terms;
+  const t = monthsElapsed(start, iso);
+  if (!Number.isFinite(t) || t < 0 || t > months) return undefined;
+  if (r === 0) {
+    return startValue - ((startValue - endValue) * t) / months;
+  }
+  const growthN = Math.pow(1 + r, months);
+  const growthT = Math.pow(1 + r, t);
+  // Level payment P of a loan of `startValue` with a balloon `endValue`
+  // due at month `months`.
+  const payment = ((startValue * growthN - endValue) * r) / (growthN - 1);
+  // The balance carried forward t months at the same rate.
+  return startValue * growthT - (payment * (growthT - 1)) / r;
+}
+
+// The leased car's estimated market value at `iso` — an exponential
+// decay from the start value to the residual across the term. It drops
+// fastest early (the drive-it-off-the-lot fall) and flattens toward the
+// residual, so it sheds value faster than the balance amortises.
+// Undefined outside the term window or with incomplete terms.
+export function leasedCarMarketValue(
+  car: Car,
+  iso: string,
+): number | undefined {
+  const terms = leaseTerms(car);
+  if (!terms) return undefined;
+  const { start, months, startValue, endValue } = terms;
+  const t = monthsElapsed(start, iso);
+  if (!Number.isFinite(t) || t < 0 || t > months) return undefined;
+  if (endValue <= 0) {
+    // No positive residual to decay toward geometrically — fall to zero
+    // with a quadratic ease so the early drop still dominates.
+    const remaining = 1 - t / months;
+    return startValue * remaining * remaining;
+  }
+  return startValue * Math.pow(endValue / startValue, t / months);
+}
+
+// A leased car's contribution to net worth at `iso`: market value minus
+// outstanding lease balance. Zero at both ends of the term and negative
+// in between — the market value falls faster than the balance
+// amortises — so a fresh lease drags net worth down and recovers as the
+// term runs out. Undefined outside the term or with incomplete terms.
+export function leasedCarEquity(car: Car, iso: string): number | undefined {
+  const market = leasedCarMarketValue(car, iso);
+  const balance = leaseBalanceAt(car, iso);
+  if (market === undefined || balance === undefined) return undefined;
+  return market - balance;
+}
+
+// Whether a car counts toward net worth at all: owned / shared capital,
+// or a leased car with modelled terms. Pool and sold cars never do.
+export function carContributesToNetWorth(car: Car): boolean {
+  return isCarOwned(car) || hasLeaseTerms(car);
+}
+
+// A car's signed contribution to net worth at `iso`. Owned / shared cars
+// contribute their share-scaled market value; leased cars contribute
+// their (often negative) lease equity. Everything else contributes
+// nothing.
+export function carNetWorthContribution(
+  car: Car,
+  iso: string,
+): number | undefined {
+  if (isCarOwned(car)) {
+    const value = computeCarCurrentValue(car, iso);
+    if (value === undefined) return undefined;
+    return value * ((car.sharePct ?? 100) / 100);
+  }
+  if (car.ownership === "leased") return leasedCarEquity(car, iso);
+  return undefined;
+}
+
 // The latest known odometer reading on or before `iso` — the latest
 // recorded mileage snapshot, falling back to the purchase reading.
 // Undefined when the user has never recorded any.

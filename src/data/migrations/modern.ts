@@ -1225,6 +1225,15 @@ export const MODERN_MIGRATIONS: MigrationTable = {
     ignoredCarExpenseEntryIds: [],
     carExpenseExclusionPatterns: [],
   }),
+
+  // v84 → v85: a leased `Car` gains its optional lease terms —
+  // `leaseStart`, `leaseMonths`, `leaseMonthlyCost`, `leaseInterestRate`,
+  // `leaseStartValue`, `leaseEndValue` — that model the lease as a
+  // level-payment balloon so the car's (negative-early) equity can enter
+  // net worth. Every field is optional and absent on old exports; the
+  // v85 validator omits each when missing, so this is a bare additive
+  // bump.
+  84: (v84) => ({ ...v84, version: 85 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

@@ -1287,7 +1287,54 @@ export function buildSeedUserData(): UserData {
     loanId: carLoan.id,
     expenses: carLinkedExpenses,
   };
-  const cars: Car[] = [familyCar];
+  // A leased car — no capital, no loan; its lease terms model the
+  // level-payment balloon so the (negative-early) lease equity shows up
+  // in net worth and the "Net position" stat on the card.
+  const leasedCar: Car = {
+    id: mkId("car"),
+    name: "Tesla Model Y",
+    ownership: "leased",
+    glyph: "gauge",
+    color: "#e9ebee",
+    description: "Privatleasing, XYZ 789",
+    leaseStart: "2025-06-01",
+    leaseMonths: 36,
+    leaseMonthlyCost: 6490,
+    leaseInterestRate: 5.5,
+    leaseStartValue: 520000,
+    leaseEndValue: 280000,
+    snapshots: [],
+    expenses: [],
+  };
+  // A car-pool membership — an optional monthly fee plus per-use charges,
+  // both tagged with the "Car pool" transport type. No value of the
+  // user's, so it stays out of net worth and shows costs alone.
+  const poolCar: Car = {
+    id: mkId("car"),
+    name: "Bilpool",
+    ownership: "pool",
+    glyph: "car-taxi-front",
+    color: "#c2c7cd",
+    description: "Sunfleet",
+    snapshots: [],
+    expenses: [
+      {
+        id: mkId("carexp"),
+        date: "2026-03-04",
+        amount: 199,
+        description: "Bilpool månadsavgift",
+        typeId: "preset-type-car-pool",
+      },
+      {
+        id: mkId("carexp"),
+        date: "2026-03-19",
+        amount: 340,
+        description: "Bilpool körning",
+        typeId: "preset-type-car-pool",
+      },
+    ],
+  };
+  const cars: Car[] = [familyCar, leasedCar, poolCar];
 
   // ---- Transfers (cross-account log) -------------------------------
   const transfers: Transfer[] = MONTHS.map(({ year, month }) => ({

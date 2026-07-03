@@ -224,6 +224,31 @@ describe("computeNetWorthSnapshot", () => {
     expect(shared.perCategory.cars).toBe(180_000 + 25_000);
   });
 
+  it("adds a leased car's (negative early) equity to net worth", () => {
+    const data = workspace({
+      cars: [
+        {
+          id: "car-lease",
+          name: "Leased",
+          ownership: "leased",
+          leaseStart: "2026-01-01",
+          leaseMonths: 36,
+          leaseStartValue: 400_000,
+          leaseEndValue: 160_000,
+          leaseInterestRate: 6,
+          snapshots: [],
+          expenses: [],
+        },
+      ],
+    });
+    // Sample mid-lease: the car is worth less than the outstanding
+    // balance, so it drags the cars total below zero and still appears
+    // as its own entity row.
+    const snap = computeNetWorthSnapshot(data, undefined, "2027-07-01");
+    expect(snap.perCategory.cars).toBeLessThan(0);
+    expect(snap.entities.some((e) => e.id === "car-lease")).toBe(true);
+  });
+
   it("treats unknown values as zero-contribution but keeps the row", () => {
     const data = workspace({
       savings: [
