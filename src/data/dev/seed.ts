@@ -1344,6 +1344,9 @@ export function buildSeedUserData(): UserData {
         amount: 340,
         description: "Bilpool körning",
         typeId: "preset-type-car-pool",
+        // A pool car is driven per trip — each usage records its own
+        // distance, which sums to the pool car's distance driven.
+        distance: 78,
       },
     ],
     contracts: [],

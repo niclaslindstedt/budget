@@ -151,6 +151,80 @@ describe("mileage", () => {
   });
 });
 
+describe("carDistanceDriven for a car pool", () => {
+  const pool = car({
+    ownership: "pool",
+    expenses: [
+      {
+        id: "e1",
+        date: "2026-01-05",
+        amount: 199,
+        description: "Fee",
+        typeId: "preset-type-car-pool",
+      },
+      {
+        id: "e2",
+        date: "2026-01-19",
+        amount: 340,
+        description: "Trip",
+        typeId: "preset-type-car-pool",
+        distance: 78,
+      },
+      {
+        id: "e3",
+        date: "2026-02-08",
+        amount: 210,
+        description: "Trip",
+        typeId: "preset-type-car-pool",
+        distance: 42,
+      },
+    ],
+  });
+
+  it("sums the per-usage distances on or before the date", () => {
+    // Both trips counted; the fee (no distance) contributes nothing.
+    expect(carDistanceDriven(pool, "2026-03-01")).toBe(78 + 42);
+    // Only the first trip has landed by mid-January.
+    expect(carDistanceDriven(pool, "2026-01-31")).toBe(78);
+  });
+
+  it("ignores odometer snapshots — distance comes from expenses alone", () => {
+    // A pool car never gets range snapshots, but even if one leaked in it
+    // must not feed the pool distance.
+    const withSnapshot = car({
+      ownership: "pool",
+      snapshots: [{ id: "s", date: "2026-01-01", mileage: 99999 }],
+      expenses: [
+        {
+          id: "e",
+          date: "2026-01-10",
+          amount: 100,
+          description: "Trip",
+          typeId: "preset-type-car-pool",
+          distance: 12,
+        },
+      ],
+    });
+    expect(carDistanceDriven(withSnapshot, "2026-06-01")).toBe(12);
+  });
+
+  it("is undefined until a usage carries a distance", () => {
+    const noDistance = car({
+      ownership: "pool",
+      expenses: [
+        {
+          id: "e",
+          date: "2026-01-05",
+          amount: 199,
+          description: "Fee",
+          typeId: "preset-type-car-pool",
+        },
+      ],
+    });
+    expect(carDistanceDriven(noDistance, "2026-06-01")).toBeUndefined();
+  });
+});
+
 describe("resolveCarSnapshots", () => {
   it("folds the purchase in as a synthesised read-only point", () => {
     const c = car({

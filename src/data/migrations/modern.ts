@@ -1253,6 +1253,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // field; the v87 validator fills the "km" default (matching the app's
   // metric-leaning defaults), so this is a bare additive bump.
   86: (v86) => ({ ...v86, version: 87 }),
+
+  // v87 → v88: a `CarExpense` gains an optional `distance` — the km /
+  // miles a single charge covered, recorded per usage for car-pool cars
+  // (which have no odometer of the user's own to snapshot). Existing
+  // expenses have no such field; absent means "distance not recorded",
+  // so this is a bare additive bump with no payload rewrite.
+  87: (v87) => ({ ...v87, version: 88 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

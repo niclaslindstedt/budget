@@ -145,6 +145,11 @@ const carsSheet = {
   excludeSimilarHint: "Never suggest charges with this description",
   addCountOne: "Add {n} expense",
   addCountOther: "Add {n} expenses",
+  // Car-pool import: each usage needs the distance it covered.
+  findDistanceHint:
+    "Car-pool trips need the distance driven — enter each in {unit}.",
+  findDistanceMissing: "Enter a distance for every selected trip.",
+  findDistanceAria: "Distance in {unit}",
 
   // Manual expense modal
   manualExpenseTitle: "Add expense",
@@ -154,6 +159,11 @@ const carsSheet = {
   expenseAmount: "Amount",
   expenseDate: "Date",
   expenseType: "Type",
+  // Car-pool only: how far this usage went (km / miles, never converted).
+  expenseDistance: "Distance ({unit})",
+  expenseDistancePlaceholder: "e.g. 42",
+  expenseDistanceHint:
+    "How far this trip went. Sums into the pool car's distance and cost per {unit}.",
 
   // Contracts modal
   contractsTitle: "Contracts",

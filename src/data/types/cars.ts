@@ -47,6 +47,16 @@ export type CarExpense = {
   // cost chart. Points into the merged preset + user type list; a
   // dangling id renders as "uncategorised" rather than being swept.
   typeId: string;
+  // Distance covered by this single charge (km or miles — the user's
+  // `Settings.distanceUnit`, never converted). The special case for
+  // car-pool cars: a pool car has no odometer of the user's own, so it
+  // never gets range snapshots — instead each usage (per-trip charge)
+  // records how far it was driven, and those per-expense distances sum
+  // to the pool car's total distance driven (`carDistanceDriven`) and
+  // feed its cost-per-distance. Absent on non-pool expenses (owned /
+  // leased / shared cars track distance via odometer snapshots) and on
+  // any pool charge the user left blank.
+  distance?: number;
   accountId?: string;
   sourceHistoryId?: string;
 };

@@ -87,6 +87,9 @@ function validateExpense(raw: unknown): CarExpense | null {
   if (typeof description !== "string") return null;
   if (typeof typeId !== "string") return null;
   const expense: CarExpense = { id, date, amount, description, typeId };
+  // Per-usage distance (car-pool cars): a non-negative magnitude, dropped
+  // if malformed like every other advisory optional field.
+  if (isNonNegativeNumber(raw.distance)) expense.distance = raw.distance;
   if (
     typeof raw.accountId === "string" &&
     raw.accountId !== "" &&

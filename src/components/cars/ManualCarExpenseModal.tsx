@@ -8,7 +8,11 @@ import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
 import { todayIso } from "../../utils/date";
-import { formatAmountForInput, parseAmount } from "../../utils/format";
+import {
+  distanceUnitLabel,
+  formatAmountForInput,
+  parseAmount,
+} from "../../utils/format";
 import {
   Button,
   ClearableInput,
@@ -67,6 +71,7 @@ export function ManualCarExpenseModal({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [typeId, setTypeId] = useState("preset-type-fuel");
+  const [distance, setDistance] = useState("");
 
   useResetOnOpen(open, expense?.id ?? car?.id, () => {
     setDescription(expense?.description ?? "");
@@ -75,11 +80,21 @@ export function ManualCarExpenseModal({
     );
     setDate(expense?.date ?? todayIso());
     setTypeId(expense?.typeId ?? "preset-type-fuel");
+    setDistance(
+      expense?.distance !== undefined
+        ? formatAmountForInput(expense.distance, settings)
+        : "",
+    );
   });
 
   if (!open || !car) return null;
 
+  // Car pool: each usage records how far the car was driven — a pool car
+  // has no odometer of the user's own to snapshot, so the per-expense
+  // distance is the only distance signal it has.
+  const isPool = car.ownership === "pool";
   const parsed = parseAmount(amount);
+  const parsedDistance = parseAmount(distance);
   const canSubmit = description.trim() !== "" && parsed !== null && date !== "";
 
   const typeOptions: SelectOption<string>[] = [...CAR_EXPENSE_TYPE_IDS].map(
@@ -105,16 +120,28 @@ export function ManualCarExpenseModal({
 
   function handleSubmit() {
     if (!car || parsed === null || !canSubmit) return;
-    const fields = {
+    const base = {
       date,
       amount: Math.abs(parsed),
       description: description.trim(),
       typeId,
     };
+    // Pool distance: a blank field clears it (applyPatch drops an
+    // `undefined` key); a non-pool expense never carries one.
+    const distanceValue =
+      isPool && parsedDistance !== null ? Math.abs(parsedDistance) : undefined;
     if (isEdit && expense) {
-      onUpdate(car.id, expense.id, fields);
+      onUpdate(
+        car.id,
+        expense.id,
+        isPool ? { ...base, distance: distanceValue } : base,
+      );
     } else {
-      onAdd(car.id, { id: newId(), ...fields });
+      onAdd(car.id, {
+        id: newId(),
+        ...base,
+        ...(distanceValue !== undefined ? { distance: distanceValue } : {}),
+      });
     }
     onClose();
   }
@@ -192,6 +219,28 @@ export function ManualCarExpenseModal({
               ariaLabel={t("carsSheet.expenseType")}
             />
           </div>
+
+          {isPool && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted">
+                {t("carsSheet.expenseDistance", {
+                  unit: distanceUnitLabel(settings),
+                })}
+              </span>
+              <ClearableInput
+                value={distance}
+                onValueChange={setDistance}
+                inputMode="decimal"
+                placeholder={t("carsSheet.expenseDistancePlaceholder")}
+                className={AMOUNT_INPUT_CLASS}
+              />
+              <span className="text-xs text-muted">
+                {t("carsSheet.expenseDistanceHint", {
+                  unit: distanceUnitLabel(settings),
+                })}
+              </span>
+            </label>
+          )}
         </form>
       </Modal.Body>
       <Modal.Footer>

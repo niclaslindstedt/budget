@@ -70,6 +70,10 @@ export function CarCard({
   // Value surfaces only apply where the user holds capital — a leased /
   // pool car renders costs alone.
   const tracksValue = car.ownership === "owned" || car.ownership === "shared";
+  // The cost-breakdown chart is offered for every car except a car pool —
+  // a pool is a pay-per-use running cost with no ownership story to chart,
+  // so its total renders as a plain figure and the chart button is hidden.
+  const showsCostChart = car.ownership !== "pool";
   const value = computeCarCurrentValue(car, today);
   const mileage = currentCarMileage(car, today);
   const distance = carDistanceDriven(car, today);
@@ -116,14 +120,16 @@ export function CarCard({
             <LineChart size={16} aria-hidden focusable={false} />
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onViewCosts(car)}
-          aria-label={t("carsSheet.costChartTitle")}
-          className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
-        >
-          <BarChart3 size={16} aria-hidden focusable={false} />
-        </button>
+        {showsCostChart && (
+          <button
+            type="button"
+            onClick={() => onViewCosts(car)}
+            aria-label={t("carsSheet.costChartTitle")}
+            className="cursor-pointer rounded border-0 bg-transparent p-1 text-muted hover:text-fg"
+          >
+            <BarChart3 size={16} aria-hidden focusable={false} />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onViewExpenses(car)}
@@ -260,16 +266,22 @@ export function CarCard({
           </Stat>
         )}
         <Stat label={t("carsSheet.totalCosts")}>
-          <button
-            type="button"
-            onClick={() => onViewCosts(car)}
-            aria-label={t("carsSheet.costChartTitle")}
-            className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-          >
-            <span className="tabular-nums text-fg-bright group-hover:text-accent">
+          {showsCostChart ? (
+            <button
+              type="button"
+              onClick={() => onViewCosts(car)}
+              aria-label={t("carsSheet.costChartTitle")}
+              className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            >
+              <span className="tabular-nums text-fg-bright group-hover:text-accent">
+                {formatBalance(totalCost, settings, { neverAbbreviate: true })}
+              </span>
+            </button>
+          ) : (
+            <span className="tabular-nums text-fg-bright">
               {formatBalance(totalCost, settings, { neverAbbreviate: true })}
             </span>
-          </button>
+          )}
         </Stat>
         {perDistance !== undefined && (
           <Stat

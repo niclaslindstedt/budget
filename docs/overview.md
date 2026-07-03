@@ -2741,7 +2741,8 @@ The mileage reading is the user-facing **range** (odometer) figure.
 car it holds no capital in (leased / pool logic: `tracksValue` is
 false), hiding the value field, the value column, and the value-only
 batch import. It is reachable for every car **except a car pool** — a
-pool car is pure running cost with no per-km story — from three places:
+pool car has no odometer of its own to snapshot, so it tracks distance
+per usage on its expenses instead (see Car expense) — from three places:
 the card's **Range** stat (which reads "Set range" until the first
 reading lands), the card "…" menu's **Update range** entry
 (`CarActionsMenu`, the always-available entry point a fresh leased car
@@ -2779,6 +2780,19 @@ account. `CarExpensesModal.tsx` lists the linked expenses with month
 subtotals; removing one (`removeCarExpense`) leaves the bank entry
 untouched, so it becomes a finder candidate again. A charge can back at
 most one car — the finder excludes anything any car has consumed.
+
+An expense can also carry an optional **`distance`** — the km / miles
+that single usage covered (`Settings.distanceUnit`, never converted).
+This is the **car-pool special case**: a pool car has no odometer of the
+user's own to snapshot, so it never gets range readings — instead each
+usage records its own distance, and those per-expense distances sum to
+the pool car's **distance driven** (`carDistanceDriven` branches on
+`ownership === "pool"`) and feed its cost-per-distance. The manual
+expense modal shows a **Distance** field only for a pool car; the finder
+requires a positive distance on every selected trip before a pool import
+can commit (owned / leased / shared cars track distance via odometer
+snapshots and never collect a per-expense distance). The expenses list
+appends the distance to each row that has one.
 
 ### Find car expenses
 
@@ -2843,7 +2857,11 @@ range's total and the **cost per distance** — `carCostPerDistance`
 by `carDistanceDriven` (latest odometer reading − reading at
 purchase), labelled in the user's distance unit. Unknown legs stay
 unknown rather than reading as 0 — a car with no odometer data shows no
-per-distance figure at all.
+per-distance figure at all. The chart is offered for every ownership
+form except a **car pool** — a pay-per-use running cost with no
+ownership story to break down — so a pool car's card hides the
+cost-chart button and renders its total costs as a plain figure rather
+than a chart affordance.
 
 ### Car loan link
 
