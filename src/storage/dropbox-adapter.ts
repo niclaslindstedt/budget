@@ -67,6 +67,7 @@ export const DROPBOX_BACKUPS_INDEX_PATH = `${DROPBOX_BACKUPS_FOLDER}/index.json`
 export const DROPBOX_RECEIPTS_FOLDER = nsCloudPath("/receipts");
 export const DROPBOX_PAYSLIPS_FOLDER = nsCloudPath("/payslips");
 export const DROPBOX_PROPERTIES_FOLDER = nsCloudPath("/properties");
+export const DROPBOX_CARS_FOLDER = nsCloudPath("/cars");
 export const DROPBOX_EXPORTS_FOLDER = nsCloudPath("/exports");
 
 // Web URL that opens the budget file's parent folder in Dropbox's web
@@ -473,6 +474,9 @@ export function createDropboxAdapter(
     DROPBOX_PROPERTIES_FOLDER,
     "property file",
   );
+  // Per-car contract store — uploaded paperwork laid out per-car under nested
+  // subfolders. Dropbox auto-creates the intermediate folders on upload.
+  const carFiles = makeBlobFolderOps(DROPBOX_CARS_FOLDER, "car contract");
   // Generated archives the user saves to the backend (property handover ZIPs).
   // Flat filenames under a sibling `exports/` folder.
   const exportsOps = makeBlobFolderOps(DROPBOX_EXPORTS_FOLDER, "export");
@@ -486,6 +490,7 @@ export function createDropboxAdapter(
       "receipts",
       "payslips",
       "propertyFiles",
+      "carFiles",
       "exports",
       "getRevision",
     ]),
@@ -493,6 +498,7 @@ export function createDropboxAdapter(
     receipts,
     payslips,
     propertyFiles,
+    carFiles,
     exports: exportsOps,
 
     load: () => loadFromDropbox(),

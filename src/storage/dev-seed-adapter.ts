@@ -62,7 +62,7 @@ export function createDevSeedAdapter(): StorageAdapter {
     saveDebounceMs: 0,
     // Advertise the blob-file capabilities so the attachment flows the
     // seed preloads data for — property files, repair receipts, item
-    // receipts, payslips, saved exports — are fully reachable in
+    // receipts, payslips, car contracts, saved exports — are fully reachable in
     // fake-data mode. Without these, the Files manager (and friends)
     // would list seeded rows but hide the upload button, since the UI
     // gates the upload / manage affordance on the capability. The seed
@@ -73,10 +73,17 @@ export function createDevSeedAdapter(): StorageAdapter {
     // manifest-shaped contract unrelated to the attachment flows) and
     // no `loadSync` — see the file header for why the sync path stays
     // off.
-    capabilities: new Set(["receipts", "payslips", "propertyFiles", "exports"]),
+    capabilities: new Set([
+      "receipts",
+      "payslips",
+      "propertyFiles",
+      "carFiles",
+      "exports",
+    ]),
     receipts: inMemoryFileOps(),
     payslips: inMemoryFileOps(),
     propertyFiles: inMemoryFileOps(),
+    carFiles: inMemoryFileOps(),
     exports: inMemoryFileOps(),
 
     load(): Promise<Snapshot | null> {

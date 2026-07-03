@@ -69,6 +69,13 @@ export type AdapterCapability =
   // backends; the browser-localStorage adapter omits it, so the
   // property-attachment UI gates on this tag.
   | "propertyFiles"
+  // `carFiles` is implemented — binary contract documents attached to a car
+  // (purchase / leasing / sale paperwork) can be uploaded, downloaded, and
+  // removed in a sibling `cars/` folder, laid out per-car as
+  // `<name>/contracts/<file>`. Present on the folder and cloud backends; the
+  // browser-localStorage adapter omits it, so the car-contracts UI gates on
+  // this tag.
+  | "carFiles"
   // `exports` is implemented — generated archive files (e.g. a property
   // sale-handover ZIP) can be written, read, and removed in a sibling
   // `exports/` folder. Flat filenames, no subdirectory. Present on the
@@ -182,6 +189,17 @@ export type StorageAdapter = {
   // property-attachment UI gates on. Stored as raw image / PDF bytes — the
   // encrypting wrapper passes them through untouched, never encrypted at rest.
   readonly propertyFiles?: ReceiptOps;
+
+  // Optional support for binary contract documents attached to a car, stored
+  // in a sibling `cars/` folder next to the live budget file. Holds each
+  // car's uploaded purchase / leasing / sale paperwork
+  // (`<name>/contracts/<file>`). Same `ReceiptOps` blob-folder contract as
+  // `receipts` (upload / download / remove a `Blob` at a relative path that
+  // may contain a subdirectory segment). Present iff `capabilities` carries
+  // `"carFiles"`, which the car-contracts UI gates on. Stored as raw image /
+  // PDF bytes — the encrypting wrapper passes them through untouched, never
+  // encrypted at rest.
+  readonly carFiles?: ReceiptOps;
 
   // Optional support for generated archive files, stored in a sibling
   // `exports/` folder next to the live budget file. Holds the ZIPs the user

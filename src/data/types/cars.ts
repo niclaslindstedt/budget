@@ -51,6 +51,26 @@ export type CarExpense = {
   sourceHistoryId?: string;
 };
 
+// Which kind of contract an uploaded car document is. Purchase and
+// leasing contracts cover how the car was acquired; a sale contract is
+// the paperwork from selling it on. The kind drives only the badge /
+// grouping in the contracts manager — the bytes are stored the same way
+// regardless.
+export type CarContractKind = "purchase" | "lease" | "sale";
+
+// One uploaded contract document attached to a car (purchase, leasing,
+// or sale paperwork — a scan or PDF). The bytes live in the backend's
+// per-car `cars/<name>/contracts/` store; `path` addresses them there.
+// Mirrors `PropertyFile`, trimmed to the fields a car contract needs.
+export type CarContract = {
+  id: string;
+  // Relative path of the stored bytes within the `carFiles` store.
+  path: string;
+  kind: CarContractKind;
+  // Optional user label shown instead of the filename.
+  description?: string;
+};
+
 // A car the user owns, leases, shares, or reaches through a car pool.
 // Sits in `UserData.cars`, rendered by the Cars sheet. The point of the
 // record is the REAL cost of having the car: the linked transportation
@@ -123,4 +143,8 @@ export type Car = {
   soldAt?: string;
   soldFor?: number;
   expenses: CarExpense[];
+  // Uploaded contract documents (purchase / leasing / sale paperwork),
+  // managed from the car card's "…" menu. Empty until the user uploads
+  // one; the bytes live in the backend's `cars/<name>/contracts/` store.
+  contracts: CarContract[];
 };

@@ -94,3 +94,14 @@ current value (times your share); a leased car with recorded terms
 counts as its net position (negative while it's underwater); a sold car
 (record the date and the proceeds) stops counting and moves to the sold
 section.
+
+## Keeping the paperwork
+
+Every car collects paperwork — the purchase agreement when you buy it, a
+leasing contract if you lease, the sale contract when you move it on.
+Open **Contracts** from a car's "…" menu to attach those documents (a
+photo or PDF): tag each with its kind and an optional description, and it
+is saved in a per-car folder on your storage. View, replace, or delete a
+contract from the same panel. Like receipts and property files, contracts
+need a local-folder or cloud backend to store the bytes — on plain
+browser storage the list still shows but the upload button is hidden.

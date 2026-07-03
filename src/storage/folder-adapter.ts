@@ -23,6 +23,7 @@ export const FOLDER_BACKUPS_DIR_NAME = "backups";
 export const FOLDER_RECEIPTS_DIR_NAME = "receipts";
 export const FOLDER_PAYSLIPS_DIR_NAME = "payslips";
 export const FOLDER_PROPERTIES_DIR_NAME = "properties";
+export const FOLDER_CARS_DIR_NAME = "cars";
 export const FOLDER_EXPORTS_DIR_NAME = "exports";
 
 // Chrome reports filesystem errors as `DOMException` with these
@@ -228,6 +229,8 @@ export function createFolderAdapter(
   // Per-property attachment store: repair receipts at `<name>/receipts/<file>`
   // and uploaded files at `<name>/files/[<category>/]<file>`.
   const propertyFiles = makeNestedBlobOps(FOLDER_PROPERTIES_DIR_NAME);
+  // Per-car contract store: uploaded paperwork at `<name>/contracts/<file>`.
+  const carFiles = makeNestedBlobOps(FOLDER_CARS_DIR_NAME);
   // Generated archives the user saves to the backend (property handover ZIPs).
   // Flat filenames, so the same nested-blob ops handle it at depth one.
   const exportsOps = makeNestedBlobOps(FOLDER_EXPORTS_DIR_NAME);
@@ -302,12 +305,14 @@ export function createFolderAdapter(
       "receipts",
       "payslips",
       "propertyFiles",
+      "carFiles",
       "exports",
     ]),
     backups,
     receipts,
     payslips,
     propertyFiles,
+    carFiles,
     exports: exportsOps,
 
     async load(): Promise<Snapshot | null> {

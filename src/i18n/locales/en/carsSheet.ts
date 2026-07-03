@@ -34,6 +34,7 @@ const carsSheet = {
   // Card "…" menu
   findExpenses: "Find car expenses",
   addManualExpense: "Add expense manually",
+  contractsMenu: "Contracts",
   editCar: "Edit car",
   deleteCar: "Delete car",
   deleteCarTitle: "Delete car",
@@ -147,6 +148,27 @@ const carsSheet = {
   expenseAmount: "Amount",
   expenseDate: "Date",
   expenseType: "Type",
+
+  // Contracts modal
+  contractsTitle: "Contracts",
+  contractsEmpty: "No contracts uploaded yet.",
+  contractsUnavailable:
+    "Uploading contracts needs a local-folder or cloud backend.",
+  uploadContract: "Upload contract",
+  uploadContractAction: "Upload",
+  editContract: "Edit contract",
+  deleteContract: "Delete contract",
+  deleteContractTitle: "Delete contract",
+  deleteContractConfirm: "Delete {name}? The stored file is removed too.",
+  contractAttachment: "Contract",
+  contractKindLabel: "Contract type",
+  contractKindPurchase: "Purchase",
+  contractKindLease: "Leasing",
+  contractKindSale: "Sale",
+  contractDescriptionLabel: "Description",
+  contractDescriptionPlaceholder: "e.g. Purchase agreement",
+  // Segment used as the top folder when a car's name sanitises to empty.
+  contractsFolderFallback: "Cars",
 
   // Cost chart modal
   costChartEmpty: "No costs in this range yet.",

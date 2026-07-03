@@ -2817,6 +2817,30 @@ returns null when the loan lacks a rate or a balance anchor (the UI
 then hides the leg). Deleting the loan sweeps the link off any car
 (`deleteLoan` in `reducers/loans.ts`); the car keeps its own figures.
 
+### Car contract
+
+Uploaded contract documents attached to a car — a purchase agreement, a
+leasing contract, or the sale contract when the car is moved on. Each is
+a `CarContract` on `Car.contracts` (`src/data/types/cars.ts`) carrying
+an id, the stored `path`, a `kind` (`CarContractKind`:
+`"purchase" | "lease" | "sale"`, driving only the list badge), and an
+optional description. The manager, `CarContractsModal.tsx`, opens from
+the car card's "…" menu (`CarActionsMenu`, the "Contracts" item) and
+lists each contract with its kind badge; a contract is viewable /
+replaceable through the universal `AttachmentUploadModal`, its metadata
+editable, and deletable. `useCarContracts` (`src/components/cars/`) owns
+the file write plus the data commit — mirroring `usePropertyAttachments`
+but trimmed to the single upload flow (no categories / tags / export) —
+dispatching `addCarContract` / `updateCarContract` / `deleteCarContract`
+(reduced in `src/data/reducers/cars.ts`). The bytes live in the
+backend's per-car `cars/` store (`<name>/contracts/<file>`, named by
+`buildCarContractPath` in `src/data/items/receipt-name.ts`), gated on
+the new `carFiles` adapter capability — present on the folder and cloud
+backends, absent on plain localStorage, so the upload affordance hides
+there exactly like property files. Contract files are stored as raw
+image / PDF bytes and are never encrypted at rest. Uploading a contract
+unlocks the **Paperwork in Order** achievement (`carContractKeeper`).
+
 ## Insights page
 
 ### Insights page

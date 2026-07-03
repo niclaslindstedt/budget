@@ -563,6 +563,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Öppna Ladda upp fil på en fastighet och bifoga ett foto eller en PDF — en före/efter-bild, en besiktningsrapport, ett försäkringsdokument. Ge den en beskrivning, etiketter och en kategori (som blir en undermapp). Filer sparas under en fastighetsmapp i din lagring. Tillgängligt för lokal mapp och molnlagring.",
   },
+  carContractKeeper: {
+    name: "Ordning på pappren",
+    condition: "Ladda upp ett kontrakt till en bil.",
+    learnMore:
+      "Öppna Kontrakt i en bils …-meny och bifoga ett foto eller en PDF av pappren — ett köpekontrakt, ett leasingavtal eller försäljningskontraktet när du säljer den vidare. Märk varje med dess typ och en valfri beskrivning; filen sparas under en bilmapp i din lagring. Tillgängligt för lokal mapp och molnlagring.",
+  },
   propertyHandover: {
     name: "Ren överlämning",
     condition: "Exportera eller importera en fastighet.",

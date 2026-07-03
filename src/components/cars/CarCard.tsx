@@ -41,6 +41,7 @@ type Props = {
   onViewExpenses: (car: Car) => void;
   onFindExpenses: (car: Car) => void;
   onAddManualExpense: (car: Car) => void;
+  onManageContracts: (car: Car) => void;
   onEditCar: (car: Car) => void;
   onDeleteCar: (car: Car) => void;
 };
@@ -55,6 +56,7 @@ export function CarCard({
   onViewExpenses,
   onFindExpenses,
   onAddManualExpense,
+  onManageContracts,
   onEditCar,
   onDeleteCar,
 }: Props) {
@@ -130,6 +132,7 @@ export function CarCard({
           car={car}
           onFindExpenses={onFindExpenses}
           onAddManualExpense={onAddManualExpense}
+          onManageContracts={onManageContracts}
           onEditCar={onEditCar}
           onDeleteCar={onDeleteCar}
         />

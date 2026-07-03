@@ -28,7 +28,14 @@ export type {
   LineItemLink,
 } from "./items";
 
-export type { Car, CarExpense, CarOwnership, CarSnapshot } from "./cars";
+export type {
+  Car,
+  CarContract,
+  CarContractKind,
+  CarExpense,
+  CarOwnership,
+  CarSnapshot,
+} from "./cars";
 
 export type {
   AssociationLoan,

@@ -266,6 +266,7 @@ export function CarEditorModal({
       ownership,
       snapshots: [],
       expenses: [],
+      contracts: [],
     };
     for (const [key, value] of Object.entries(patch)) {
       if (key === "name" || key === "ownership" || value === undefined)

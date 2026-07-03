@@ -106,6 +106,14 @@ export function collectReceiptPaths(
       if (file.path) paths.add(file.path);
     }
   }
+  // Car contracts live in their own physical store (the `cars/` folder), but
+  // share this collision set so a fresh contract's name stays unique across
+  // every attachment regardless of store.
+  for (const car of data.cars) {
+    for (const contract of car.contracts) {
+      if (contract.path) paths.add(contract.path);
+    }
+  }
   if (exclude) paths.delete(exclude);
   return paths;
 }

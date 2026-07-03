@@ -105,6 +105,12 @@ const GDRIVE_PAYSLIPS_FOLDER_NAME = "payslips";
 // the parent already is.
 const GDRIVE_PROPERTIES_FOLDER_NAME = "properties";
 
+// Name of the folder car contracts live inside, nested under the app folder
+// (so the layout is `My Drive/<app>/cars/`). Contract paths nest one level
+// beneath it (`<name>/contracts/<file>`); the segment walk in
+// `resolveCarFilesParent` mints each. Not namespaced — the parent already is.
+const GDRIVE_CARS_FOLDER_NAME = "cars";
+
 // Name of the folder generated archives live inside, nested under the app
 // folder (so the layout is `My Drive/<app>/exports/`). Export filenames are
 // flat (no subfolder), so it mirrors the payslips resolver. Not namespaced —
@@ -629,6 +635,8 @@ export function createGdriveAdapter(
   let cachedPayslipsFolderId: string | null = null;
   let cachedPropertiesFolderId: string | null = null;
   const cachedPropertySubfolderIds = new Map<string, string>();
+  let cachedCarsFolderId: string | null = null;
+  const cachedCarSubfolderIds = new Map<string, string>();
   let cachedExportsFolderId: string | null = null;
 
   async function ensureSubfolder(
@@ -778,6 +786,52 @@ export function createGdriveAdapter(
         );
         if (!existing) return null;
         cachedPropertySubfolderIds.set(cacheKey, existing);
+        folderId = existing;
+      }
+    }
+    return { folderId, name };
+  }
+
+  async function ensureCarsFolder(): Promise<string> {
+    if (cachedCarsFolderId) return cachedCarsFolderId;
+    const appFolderId = await ensureAppFolder();
+    const id = await ensureSubfolder(appFolderId, GDRIVE_CARS_FOLDER_NAME);
+    cachedCarsFolderId = id;
+    return id;
+  }
+
+  // Resolve a car-contract path to its parent folder id and leaf filename,
+  // walking and (when `create` is set) minting each nested subfolder
+  // (`<name>/contracts/`). Mirrors `resolvePropertyFilesParent` but rooted at
+  // the `cars/` folder. Returns null when a read-side lookup hits a missing
+  // subfolder.
+  async function resolveCarFilesParent(
+    path: string,
+    create: boolean,
+  ): Promise<{ folderId: string; name: string } | null> {
+    const segments = path.split("/").filter((s) => s.length > 0);
+    if (segments.length === 0) return null;
+    const name = segments.pop() as string;
+    let folderId = await ensureCarsFolder();
+    for (const segment of segments) {
+      const cacheKey = `${folderId}/${segment}`;
+      const cached = cachedCarSubfolderIds.get(cacheKey);
+      if (cached) {
+        folderId = cached;
+        continue;
+      }
+      if (create) {
+        const sub = await ensureSubfolder(folderId, segment);
+        cachedCarSubfolderIds.set(cacheKey, sub);
+        folderId = sub;
+      } else {
+        const existing = await searchOne(
+          `name='${escapeDriveQuery(segment)}'` +
+            ` and mimeType='${FOLDER_MIME_TYPE}'` +
+            ` and '${folderId}' in parents and trashed=false`,
+        );
+        if (!existing) return null;
+        cachedCarSubfolderIds.set(cacheKey, existing);
         folderId = existing;
       }
     }
@@ -935,6 +989,7 @@ export function createGdriveAdapter(
     resolvePropertyFilesParent,
     "property file",
   );
+  const carFiles = makeBlobFolderOps(resolveCarFilesParent, "car contract");
   const exportsOps = makeBlobFolderOps(resolveExportsParent, "export");
 
   return {
@@ -946,6 +1001,7 @@ export function createGdriveAdapter(
       "receipts",
       "payslips",
       "propertyFiles",
+      "carFiles",
       "exports",
       "getRevision",
     ]),
@@ -953,6 +1009,7 @@ export function createGdriveAdapter(
     receipts,
     payslips,
     propertyFiles,
+    carFiles,
     exports: exportsOps,
     load,
     save,

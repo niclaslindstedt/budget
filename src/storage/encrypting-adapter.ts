@@ -119,6 +119,7 @@ export function withEncryption(
     receipts: inner.receipts,
     payslips: inner.payslips,
     propertyFiles: inner.propertyFiles,
+    carFiles: inner.carFiles,
     // Saved export archives (property handover ZIPs) pass straight through
     // unencrypted too — same rationale as receipts above.
     exports: inner.exports,

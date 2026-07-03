@@ -27,6 +27,7 @@ import { useDownloadFlow } from "./hooks/useDownloadFlow";
 import { useImportFlow } from "./hooks/useImportFlow";
 import { useReceiptManager } from "./hooks/useReceiptManager";
 import { usePropertyAttachments } from "../properties/usePropertyAttachments";
+import { useCarContracts } from "../cars/useCarContracts";
 import { useMatchRuleUi } from "./hooks/useMatchRuleUi";
 import { useTransferFlow } from "./hooks/useTransferFlow";
 import { useSheetMetaDialog } from "./hooks/useSheetMetaDialog";
@@ -839,6 +840,11 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     dispatch,
   });
 
+  // Car-contract handling — uploaded purchase / leasing / sale paperwork,
+  // living in the per-car `cars/` store. Owns the file write plus the data
+  // commit, threaded to the Cars page.
+  const carContracts = useCarContracts({ data, adapter, dispatch });
+
   // Item receipt attachment. A receipt hangs off the single transaction an
   // item is linked to (an item can belong to at most one purchase), so
   // managing an item's receipt reads / writes the linked row's or history
@@ -1146,6 +1152,7 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
                     data={data}
                     settings={effectiveSettings}
                     dispatch={dispatch}
+                    contracts={carContracts}
                   />
                 ) : activeSheet.type === "salary" ? (
                   <SalaryPage

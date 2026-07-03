@@ -1,5 +1,7 @@
 import type {
   Car,
+  CarContract,
+  CarContractKind,
   CarExpense,
   CarOwnership,
   CarSnapshot,
@@ -24,6 +26,33 @@ const CAR_OWNERSHIPS: ReadonlySet<string> = new Set<CarOwnership>([
   "shared",
   "pool",
 ]);
+
+const CAR_CONTRACT_KINDS: ReadonlySet<string> = new Set<CarContractKind>([
+  "purchase",
+  "lease",
+  "sale",
+]);
+
+// Validate one uploaded contract. Advisory — a malformed contract is
+// dropped rather than rejecting the whole car. Requires an id, a
+// non-empty `path` (the record is useless without the bytes it points
+// at), and a known kind; the description is kept only when a real
+// string.
+function validateContract(raw: unknown): CarContract | null {
+  if (!isObject(raw)) return null;
+  const { id, path, kind } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof path !== "string" || path === "") return null;
+  if (typeof kind !== "string" || !CAR_CONTRACT_KINDS.has(kind)) return null;
+  const contract: CarContract = {
+    id,
+    path,
+    kind: kind as CarContractKind,
+  };
+  if (typeof raw.description === "string" && raw.description !== "")
+    contract.description = raw.description;
+  return contract;
+}
 
 // Validate one value / mileage snapshot. Advisory display data — a
 // malformed point is dropped rather than rejecting the whole car
@@ -99,6 +128,7 @@ export function validateCar(
     ownership: ownership as CarOwnership,
     snapshots: [],
     expenses: [],
+    contracts: [],
   };
   if (
     typeof raw.glyph === "string" &&
@@ -165,6 +195,15 @@ export function validateCar(
       if (!expense || seen.has(expense.id)) continue;
       seen.add(expense.id);
       car.expenses.push(expense);
+    }
+  }
+  if (Array.isArray(raw.contracts)) {
+    const seen = new Set<string>();
+    for (const rawContract of raw.contracts) {
+      const contract = validateContract(rawContract);
+      if (!contract || seen.has(contract.id)) continue;
+      seen.add(contract.id);
+      car.contracts.push(contract);
     }
   }
   return { ok: true, value: car };
