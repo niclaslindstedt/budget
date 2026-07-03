@@ -11,6 +11,7 @@ import { useIsMobile, useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import {
+  distanceUnitLabel,
   formatMonthYearShort,
   formatNumber,
   withCurrency,
@@ -126,7 +127,9 @@ export function CarValueChartModal({
       isMobile ? { ...settings, showDecimals: true } : settings,
       isMobile ? { forceAbbreviate: true } : {},
     );
-    return mode === "value" ? withCurrency(figure, settings) : figure;
+    return mode === "value"
+      ? withCurrency(figure, settings)
+      : `${figure} ${distanceUnitLabel(settings)}`;
   };
 
   return (

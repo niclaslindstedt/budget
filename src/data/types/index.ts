@@ -131,6 +131,7 @@ export type {
   BudgetDownloadPrefs,
   CommonSettings,
   DeviceSettings,
+  DistanceUnit,
   HeaderAction,
   PersistedSettings,
   PropertySizeUnit,

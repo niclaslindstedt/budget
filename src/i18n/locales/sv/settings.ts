@@ -103,6 +103,11 @@ const settings: SettingsCatalog = {
     name: {
       SE: "Sverige",
     },
+    distanceUnit: "Avståndsenhet",
+    distanceUnitHint:
+      "Enhet som visas bredvid bilens mätarställning och kostnad per sträcka. De sparade avläsningarna räknas aldrig om.",
+    distanceKm: "Kilometer (km)",
+    distanceMi: "Miles (mi)",
   },
   appliesToMobile: "Gäller mobila enheter",
   appliesToDesktop: "Gäller datorenheter",

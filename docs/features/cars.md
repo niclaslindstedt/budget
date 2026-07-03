@@ -55,17 +55,28 @@ Settings. Costs with no bank trace — cash fuel, expenses predating your
 imported history, a car-pool invoice on someone else's account — can be
 added manually.
 
-## Value and mileage in one step
+## Value and range in one step
 
 A second-hand-market lookup (say, Blocket) prices a car by model, year,
 and mileage — and the mileage is the only one of those that changes. So
-**Update value & mileage** records both in one dated snapshot: enter
+**Update value & range** records both in one dated snapshot: enter
 the value you found and the odometer reading you checked anyway. Either
-half is optional — a plain odometer check between lookups is just as
+half is optional — a plain range check between lookups is just as
 valid. The latest recorded value wins over any computed figure; until
 one exists, an optional **value-loss curve** (steady percent per year,
 or an accelerated curve with an instant drive-off-the-lot drop and a
 steeper first year) decays the purchase price, with an optional floor.
+
+**Logging the range on its own.** The odometer reading — the **range** —
+is worth reporting far more often than the value, because it is what the
+cost-per-distance figure is built from and it tells its own story over
+the car's life. Every car but a car pool offers **Update range** from
+its "…" menu and from the **Range** stat on the card (which reads "Set
+range" until the first reading lands), so a leased car you track for
+running cost alone still logs its odometer without a value in sight.
+Readings show in kilometres or miles depending on the **distance unit**
+you pick next to Location in Settings — the stored numbers are never
+converted, only relabelled.
 
 ## The real cost, in three legs
 
@@ -83,12 +94,15 @@ The cost view keeps the legs separate so you can see what dominates:
 The cost chart stacks the linked expenses per month by type, with the
 depreciation and interest legs as toggleable bands, and overlays a
 3-month rolling average of the monthly total so the noisy bars read
-against what a month typically costs. The value chart
-draws the car's value over time — with toggles to subtract the running
-costs and interest, showing what the car has really consumed — plus
-your odometer readings. And once mileage is tracked, the headline
-figure appears: **cost per kilometre**, the sum of all three legs
-divided by the distance you have actually driven.
+against what a month typically costs. Alongside it, a flat dashed
+**monthly average** line marks the whole range's total spread evenly
+over its months — the moving line shows the trend, the flat line shows
+the long-run baseline. The value chart draws the car's value over
+time — with toggles to subtract the running costs and interest, showing
+what the car has really consumed — plus your range readings. And once
+range is tracked, the headline figure appears: **cost per distance**
+(per kilometre or per mile), the sum of all three legs divided by the
+distance you have actually driven.
 
 Owned and shared cars count in the Insights sheet's net worth as their
 current value (times your share); a leased car with recorded terms

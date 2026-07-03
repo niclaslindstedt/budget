@@ -15,12 +15,13 @@ const carsSheet = {
   // Card
   currentValue: "Current value",
   noValue: "Set value",
-  updateValue: "Update value & mileage",
+  updateValue: "Update value & range",
   boughtFor: "Bought for",
   purchased: "Purchased",
-  mileageLabel: "Mileage",
+  mileageLabel: "Range",
+  setRange: "Set range",
   distanceDriven: "Distance driven",
-  costPerDistance: "Cost per km",
+  costPerDistance: "Cost per {unit}",
   totalCosts: "Total costs",
   loanLabel: "Loan",
   soldBadge: "Sold",
@@ -32,6 +33,7 @@ const carsSheet = {
   viewExpenses: "Expenses",
 
   // Card "…" menu
+  updateRange: "Update range",
   findExpenses: "Find car expenses",
   addManualExpense: "Add expense manually",
   contractsMenu: "Contracts",
@@ -51,7 +53,7 @@ const carsSheet = {
   descriptionPlaceholder: "Model, year, plate…",
   purchasePriceLabel: "Purchase price",
   purchaseDateLabel: "Purchase date",
-  purchaseMileageLabel: "Mileage at purchase",
+  purchaseMileageLabel: "Range at purchase",
   purchaseMileagePlaceholder: "0 for a new car",
   sharePctLabel: "Your share (%)",
   sharePctHint:
@@ -93,12 +95,16 @@ const carsSheet = {
   soldDateHint: "Set a date if you no longer have this car.",
   soldForLabel: "Sold for",
 
-  // Update value & mileage modal
-  updateValueTitle: "Update value & mileage",
+  // Update value & range modal
+  updateValueTitle: "Update value & range",
+  updateRangeTitle: "Update range",
   valueLabel: "Value",
   valuePlaceholder: "e.g. 150 000",
+  rangeWithUnit: "Range ({unit})",
   mileagePlaceholder: "e.g. 42 000",
-  valueOrMileageHint: "Record a value, a mileage reading, or both.",
+  valueOrMileageHint: "Record a value, a range reading, or both.",
+  rangeOnlyHint:
+    "Record the current odometer reading. Log it often to track how cost per {unit} changes over the car's life.",
   asOfLabel: "As of",
   valueHistory: "Recorded history",
   noValueHistory: "Nothing recorded yet.",
@@ -107,10 +113,10 @@ const carsSheet = {
   // Value chart modal
   valueChartEmpty: "Not enough data to chart yet. Record a value first.",
   mileageChartEmpty:
-    "Not enough data to chart yet. Record a mileage reading first.",
+    "Not enough data to chart yet. Record a range reading first.",
   chartModeAria: "Chart mode",
   chartValueLabel: "Value",
-  chartMileageLabel: "Mileage",
+  chartMileageLabel: "Range",
   chartPurchaseLabel: "Purchase price",
   subtractCosts: "Subtract running costs",
   subtractCostsHint:
@@ -179,6 +185,7 @@ const carsSheet = {
   chartTotal: "Total",
   totalInRange: "Total in range",
   rollingAverage: "{n}-month average",
+  monthlyAverage: "Monthly average",
 } as const;
 
 export type CarsSheetCatalog = Widen<typeof carsSheet>;

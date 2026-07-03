@@ -109,6 +109,12 @@ const catalog = {
     learnMore:
       "The Cars sheet shows what having a car really costs — owned, leased, shared, or through a car pool. Link transportation charges from your bank history (fuel, insurance, parking, tax, service) via Find car expenses, set a value-loss curve or update the value after a second-hand-market lookup, record the odometer alongside, and the sheet rolls it all up — including the cost per kilometre once mileage is tracked.",
   },
+  rangeTracker: {
+    name: "On the Clock",
+    condition: "Log a range reading on a car.",
+    learnMore:
+      "Open Update range from a car's Range stat or its … menu (every car but a car pool) and record a dated odometer reading in your chosen unit — kilometres or miles, set next to Location in Settings. The reading feeds the cost-per-distance headline over the car's life, and logging it often lets the Range chart show how the number climbs over time.",
+  },
   investor: {
     name: "Investor",
     condition: "Add your first investment on the Investment sheet.",

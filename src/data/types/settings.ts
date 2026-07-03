@@ -236,7 +236,20 @@ export type CommonSettings = {
   // tax profile. Edited in the Location section of the General settings
   // tab.
   location: TaxLocation;
+  // Distance unit for the Cars sheet's range (odometer) readings, the
+  // derived distance-driven figure, and the cost-per-distance headline.
+  // `"km"` renders kilometres, `"mi"` miles. A display convention only —
+  // the stored odometer numbers are never converted, so switching the
+  // unit re-labels the figures without touching the data. Defaults to
+  // `"km"` (the metric convention of the app's `"SE"` default location);
+  // edited next to Location in the General settings tab, which is why
+  // the choice "follows location".
+  distanceUnit: DistanceUnit;
 };
+
+// Distance unit for car range / odometer figures. Both label the same
+// stored number; the choice is purely how the unit is written next to it.
+export type DistanceUnit = "km" | "mi";
 
 // Display label for a property's living area. Both mean square metres;
 // the choice is purely how the unit is written next to the number.

@@ -41,6 +41,7 @@ import {
   Filter,
   FolderTree,
   FunctionSquare,
+  Gauge,
   Gem,
   GitCompareArrows,
   GitMerge,
@@ -629,6 +630,26 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.cars],
       predicate: (prev, next) => prev.cars.length === 0 && next.cars.length > 0,
+    },
+  },
+  {
+    // The user logged their first car range (odometer) reading — the
+    // figure cost-per-distance is built from. Reachable for every car but
+    // a car pool from the card's Range stat or its "…" → Update range.
+    id: "rangeTracker",
+    tier: "pro",
+    glyph: Gauge,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.cars],
+      predicate: (prev, next) =>
+        !prev.cars.some((c) =>
+          c.snapshots.some((sn) => sn.mileage !== undefined),
+        ) &&
+        next.cars.some((c) =>
+          c.snapshots.some((sn) => sn.mileage !== undefined),
+        ),
     },
   },
   {

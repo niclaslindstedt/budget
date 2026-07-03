@@ -12,9 +12,10 @@ import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import {
+  distanceUnitLabel,
   formatBalance,
   formatDate,
-  formatNumber,
+  formatDistance,
   parseAmount,
 } from "../../utils/format";
 import { BatchValueImportModal } from "../BatchValueImportModal";
@@ -63,6 +64,7 @@ export function UpdateCarValueModal({
   const [date, setDate] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const valueInputRef = useRef<HTMLInputElement | null>(null);
+  const mileageInputRef = useRef<HTMLInputElement | null>(null);
 
   useResetOnOpen(open, car?.id, () => {
     setValue("");
@@ -73,22 +75,30 @@ export function UpdateCarValueModal({
 
   if (!open || !car) return null;
 
+  // Value surfaces only apply where the user holds capital. A leased car
+  // is pure running cost, so the modal collapses to a plain "date + range"
+  // odometer log — the same figure feeds cost-per-distance regardless.
+  const tracksValue = car.ownership === "owned" || car.ownership === "shared";
+  const unit = distanceUnitLabel(settings);
+
   const parsedValue = parseAmount(value);
   const parsedMileage = parseAmount(mileage);
   const canSubmit =
-    date !== "" && (parsedValue !== null || parsedMileage !== null);
+    date !== "" &&
+    (parsedMileage !== null || (tracksValue && parsedValue !== null));
 
   // Append the snapshot but keep the modal open so the user can record a
   // run of readings. Clear the figures (the date stays) and refocus.
   function handleAdd() {
     if (!car || !canSubmit) return;
     const snapshot: CarSnapshot = { id: newId(), date };
-    if (parsedValue !== null) snapshot.value = Math.abs(parsedValue);
+    if (tracksValue && parsedValue !== null)
+      snapshot.value = Math.abs(parsedValue);
     if (parsedMileage !== null) snapshot.mileage = Math.abs(parsedMileage);
     onAdd(car.id, snapshot);
     setValue("");
     setMileage("");
-    valueInputRef.current?.focus();
+    (tracksValue ? valueInputRef : mileageInputRef).current?.focus();
   }
 
   // Newest first. Includes the synthesised purchase point so the list is
@@ -107,7 +117,11 @@ export function UpdateCarValueModal({
       >
         <Modal.Header
           icon={<TrendingUp size={14} aria-hidden focusable={false} />}
-          title={t("carsSheet.updateValueTitle")}
+          title={
+            tracksValue
+              ? t("carsSheet.updateValueTitle")
+              : t("carsSheet.updateRangeTitle")
+          }
           onClose={onClose}
         />
         <Modal.Body>
@@ -115,7 +129,9 @@ export function UpdateCarValueModal({
             <p className="m-0 text-sm font-bold text-fg-bright">{car.name}</p>
 
             <p className="m-0 text-xs text-muted">
-              {t("carsSheet.valueOrMileageHint")}
+              {tracksValue
+                ? t("carsSheet.valueOrMileageHint")
+                : t("carsSheet.rangeOnlyHint", { unit })}
             </p>
 
             <form
@@ -125,25 +141,28 @@ export function UpdateCarValueModal({
                 handleAdd();
               }}
             >
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-muted">
-                  {t("carsSheet.valueLabel")}
-                </span>
-                <ClearableInput
-                  ref={valueInputRef}
-                  value={value}
-                  onValueChange={setValue}
-                  inputMode="decimal"
-                  placeholder={t("carsSheet.valuePlaceholder")}
-                  className={AMOUNT_INPUT_CLASS}
-                />
-              </label>
+              {tracksValue && (
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">
+                    {t("carsSheet.valueLabel")}
+                  </span>
+                  <ClearableInput
+                    ref={valueInputRef}
+                    value={value}
+                    onValueChange={setValue}
+                    inputMode="decimal"
+                    placeholder={t("carsSheet.valuePlaceholder")}
+                    className={AMOUNT_INPUT_CLASS}
+                  />
+                </label>
+              )}
 
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-muted">
-                  {t("carsSheet.mileageLabel")}
+                  {t("carsSheet.rangeWithUnit", { unit })}
                 </span>
                 <ClearableInput
+                  ref={mileageInputRef}
                   value={mileage}
                   onValueChange={setMileage}
                   inputMode="decimal"
@@ -169,13 +188,17 @@ export function UpdateCarValueModal({
               </Button>
             </form>
 
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setImportOpen(true)}
-            >
-              {t("valueImport.trigger")}
-            </Button>
+            {/* Batch import brings in value points only — offer it just
+                where values are tracked. */}
+            {tracksValue && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setImportOpen(true)}
+              >
+                {t("valueImport.trigger")}
+              </Button>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-bold tracking-wider uppercase text-muted">
@@ -203,16 +226,18 @@ export function UpdateCarValueModal({
                           )}
                         </span>
                         <span className="flex items-center gap-2">
-                          <span className="tabular-nums text-fg-bright">
-                            {snapshot.value !== undefined
-                              ? formatBalance(snapshot.value, settings, {
-                                  neverAbbreviate: true,
-                                })
-                              : "—"}
-                          </span>
+                          {tracksValue && (
+                            <span className="tabular-nums text-fg-bright">
+                              {snapshot.value !== undefined
+                                ? formatBalance(snapshot.value, settings, {
+                                    neverAbbreviate: true,
+                                  })
+                                : "—"}
+                            </span>
+                          )}
                           <span className="tabular-nums text-muted">
                             {snapshot.mileage !== undefined
-                              ? formatNumber(snapshot.mileage, settings, {
+                              ? formatDistance(snapshot.mileage, settings, {
                                   neverAbbreviate: true,
                                 })
                               : "—"}

@@ -1247,6 +1247,12 @@ export const MODERN_MIGRATIONS: MigrationTable = {
       : v85.cars;
     return { ...v85, version: 86, cars };
   },
+
+  // v86 → v87: `Settings` gains `distanceUnit` ("km" | "mi"), the display
+  // unit for car range / odometer figures. Existing buckets have no such
+  // field; the v87 validator fills the "km" default (matching the app's
+  // metric-leaning defaults), so this is a bare additive bump.
+  86: (v86) => ({ ...v86, version: 87 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

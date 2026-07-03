@@ -17,6 +17,7 @@ import {
   todayIso,
 } from "../../utils/date";
 import {
+  distanceUnitLabel,
   formatBalance,
   formatMonthYearShort,
   formatNumber,
@@ -34,6 +35,7 @@ import {
   StackedBarChart,
   type StackedBarChartSeries,
   type StackedBarOverlay,
+  type StackedBarReferenceLine,
 } from "../charts/StackedBarChart";
 
 // The cost-of-ownership view: linked expenses stacked per month by
@@ -213,6 +215,18 @@ export function CarCostChartModal({
     (sum, s) => sum + s.points.reduce((acc, p) => acc + p.y, 0),
     0,
   );
+  // A flat dashed baseline at the mean monthly cost — the whole-range total
+  // spread evenly over its months, so the noisy bars read against "what a
+  // month costs on average". Distinct from the (varying) rolling average.
+  const referenceLine: StackedBarReferenceLine | null =
+    months.length > 0
+      ? {
+          id: "monthlyAvg",
+          label: t("carsSheet.monthlyAverage"),
+          color: "--muted",
+          y: rangeTotal / months.length,
+        }
+      : null;
   const perDistance = carCostPerDistance(car, loan ?? undefined, today);
 
   const formatX = (x: number) =>
@@ -255,7 +269,9 @@ export function CarCostChartModal({
               </span>
               {perDistance !== undefined && (
                 <span>
-                  {t("carsSheet.costPerDistance")}{" "}
+                  {t("carsSheet.costPerDistance", {
+                    unit: distanceUnitLabel(settings),
+                  })}{" "}
                   <span className="font-bold tabular-nums text-fg-bright">
                     {/* Force decimals — see the card's per-km stat. */}
                     {formatBalance(
@@ -279,6 +295,7 @@ export function CarCostChartModal({
                 formatY={formatY}
                 totalLabel={t("carsSheet.chartTotal")}
                 overlay={overlay}
+                referenceLine={referenceLine}
               />
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 {series.map((s) => (
@@ -306,6 +323,19 @@ export function CarCostChartModal({
                       style={{ background: `var(${overlay.color})` }}
                     />
                     {overlay.label}
+                  </span>
+                )}
+                {referenceLine && (
+                  <span
+                    key={referenceLine.id}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span
+                      aria-hidden
+                      className="w-3 shrink-0 border-t border-dashed"
+                      style={{ borderColor: `var(${referenceLine.color})` }}
+                    />
+                    {referenceLine.label}
                   </span>
                 )}
               </div>

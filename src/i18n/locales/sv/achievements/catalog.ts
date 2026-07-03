@@ -104,6 +104,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Bilar-bladet visar vad det egentligen kostar att ha bil — ägd, leasad, delad eller via bilpool. Länka transportkostnader från din bankhistorik (bränsle, försäkring, parkering, skatt, service) med Hitta bilkostnader, sätt en värdeminskningskurva eller uppdatera värdet efter en Blocket-koll, registrera mätarställningen samtidigt, och bladet räknar ihop allt — inklusive kostnaden per kilometer när mätarställningen följs upp.",
   },
+  rangeTracker: {
+    name: "Mätarvakt",
+    condition: "Logga en mätarställning på en bil.",
+    learnMore:
+      "Öppna Uppdatera mätarställning från bilens mätarställningsruta eller dess …-meny (alla bilar utom bilpool) och registrera en daterad avläsning i din valda enhet — kilometer eller miles, satt bredvid Plats i Inställningar. Avläsningen matar kostnaden per sträcka över bilens livstid, och att logga den ofta låter mätarställningsdiagrammet visa hur siffran klättrar över tid.",
+  },
   investor: {
     name: "Investerare",
     condition: "Lägg till din första investering på Investeringssidan.",

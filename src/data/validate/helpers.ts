@@ -16,6 +16,7 @@ import type {
   DateFormat,
   DecimalSeparator,
   DensityPreset,
+  DistanceUnit,
   FontFamilyId,
   PropertySizeUnit,
   RadiusPreset,
@@ -46,6 +47,8 @@ export const RECEIPT_NAME_PATTERN_SET: ReadonlySet<ReceiptNamePattern> =
   new Set(RECEIPT_NAME_PATTERNS);
 export const PROPERTY_SIZE_UNIT_SET: ReadonlySet<PropertySizeUnit> =
   new Set<PropertySizeUnit>(["kvm", "sqm"]);
+export const DISTANCE_UNIT_SET: ReadonlySet<DistanceUnit> =
+  new Set<DistanceUnit>(["km", "mi"]);
 export const LOCATION_SET: ReadonlySet<TaxLocation> = new Set<TaxLocation>([
   "SE",
 ]);
