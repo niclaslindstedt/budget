@@ -13,7 +13,11 @@ import {
 import type { Car, Loan, Settings } from "../../data/types";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
-import { formatBalance, formatNumber } from "../../utils/format";
+import {
+  distanceUnitLabel,
+  formatBalance,
+  formatDistance,
+} from "../../utils/format";
 import { CategoryIconGlyph } from "../icons";
 import { CarActionsMenu } from "./CarActionsMenu";
 import { ownershipLabel } from "./CarEditorModal";
@@ -130,6 +134,7 @@ export function CarCard({
         </button>
         <CarActionsMenu
           car={car}
+          onUpdateRange={onUpdateValue}
           onFindExpenses={onFindExpenses}
           onAddManualExpense={onAddManualExpense}
           onManageContracts={onManageContracts}
@@ -217,17 +222,27 @@ export function CarCard({
             <span className="text-fg">{car.soldAt}</span>
           </Stat>
         )}
-        {mileage !== undefined && (
+        {/* A car pool has no per-km story of its own, so it never offers
+            range tracking. Every other ownership form does — the button
+            opens the range modal, showing "Set range" until the first
+            reading lands (mirrors the current-value stat's affordance). */}
+        {car.ownership !== "pool" && (
           <Stat label={t("carsSheet.mileageLabel")}>
             <button
               type="button"
               onClick={() => onUpdateValue(car)}
-              aria-label={t("carsSheet.updateValue")}
+              aria-label={t("carsSheet.updateRange")}
               className="group flex w-fit cursor-pointer items-center gap-1 rounded border-0 bg-transparent p-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
-              <span className="tabular-nums text-fg group-hover:text-accent">
-                {formatNumber(mileage, settings, { neverAbbreviate: true })}
-              </span>
+              {mileage !== undefined ? (
+                <span className="tabular-nums text-fg group-hover:text-accent">
+                  {formatDistance(mileage, settings, { neverAbbreviate: true })}
+                </span>
+              ) : (
+                <span className="text-xs text-muted group-hover:text-accent">
+                  {t("carsSheet.setRange")}
+                </span>
+              )}
               <TrendingUp
                 size={12}
                 aria-hidden
@@ -240,7 +255,7 @@ export function CarCard({
         {distance !== undefined && distance > 0 && (
           <Stat label={t("carsSheet.distanceDriven")}>
             <span className="tabular-nums text-fg">
-              {formatNumber(distance, settings, { neverAbbreviate: true })}
+              {formatDistance(distance, settings, { neverAbbreviate: true })}
             </span>
           </Stat>
         )}
@@ -257,7 +272,11 @@ export function CarCard({
           </button>
         </Stat>
         {perDistance !== undefined && (
-          <Stat label={t("carsSheet.costPerDistance")}>
+          <Stat
+            label={t("carsSheet.costPerDistance", {
+              unit: distanceUnitLabel(settings),
+            })}
+          >
             <span className="tabular-nums text-fg-bright">
               {/* Force decimals — a per-km rate rounded to whole
                   currency units ("2 kr") hides most of the signal. */}

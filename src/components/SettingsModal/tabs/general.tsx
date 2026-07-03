@@ -3,6 +3,7 @@ import { GripVertical } from "lucide-react";
 import { unlock } from "../../../data/achievements";
 import { SUPPORTED_LOCATIONS } from "../../../data/tax/engine";
 import type {
+  DistanceUnit,
   HeaderAction,
   Settings,
   Sheet,
@@ -70,6 +71,15 @@ export function GeneralTab({
             onChange={(v) => onUpdate("location", v)}
           />
           <p className="text-xs text-muted">{t("settings.location.hint")}</p>
+        </Field>
+        <Field label={t("settings.location.distanceUnit")}>
+          <DistanceUnitPicker
+            value={draft.distanceUnit}
+            onChange={(v) => onUpdate("distanceUnit", v)}
+          />
+          <p className="text-xs text-muted">
+            {t("settings.location.distanceUnitHint")}
+          </p>
         </Field>
       </Section>
 
@@ -312,6 +322,29 @@ function LocationPicker({
         onChange(v as TaxLocation);
       }}
       ariaLabel={t("settings.location.label")}
+      triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
+    />
+  );
+}
+
+function DistanceUnitPicker({
+  value,
+  onChange,
+}: {
+  value: DistanceUnit;
+  onChange: (next: DistanceUnit) => void;
+}) {
+  const t = useT();
+  const options: SelectOption<DistanceUnit>[] = [
+    { value: "km", label: t("settings.location.distanceKm") },
+    { value: "mi", label: t("settings.location.distanceMi") },
+  ];
+  return (
+    <SelectPicker<DistanceUnit>
+      value={value}
+      options={options}
+      onChange={onChange}
+      ariaLabel={t("settings.location.distanceUnit")}
       triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
     />
   );

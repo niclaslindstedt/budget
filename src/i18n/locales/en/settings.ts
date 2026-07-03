@@ -102,6 +102,11 @@ const settings = {
     name: {
       SE: "Sweden",
     },
+    distanceUnit: "Distance unit",
+    distanceUnitHint:
+      "Unit shown next to car range and cost-per-distance figures. The stored odometer readings are never converted.",
+    distanceKm: "Kilometres (km)",
+    distanceMi: "Miles (mi)",
   },
   appliesToMobile: "Applies to mobile devices",
   appliesToDesktop: "Applies to desktop devices",

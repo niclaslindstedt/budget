@@ -164,6 +164,24 @@ export function formatNumber(
   return `${intPart}${settings.decimalSeparator}${fracPartRaw}`;
 }
 
+// Short label for the user's chosen car-distance unit — "km" or "mi".
+// The stored odometer numbers are never converted; the unit is a display
+// label only (see `Settings.distanceUnit`).
+export function distanceUnitLabel(settings: Settings): string {
+  return settings.distanceUnit === "mi" ? "mi" : "km";
+}
+
+// A car range / distance figure with its unit suffix, e.g. "42 000 km".
+// Grouping and abbreviation follow the same `formatNumber` opts every
+// other figure uses.
+export function formatDistance(
+  n: number,
+  settings: Settings,
+  opts: FormatNumberOpts = {},
+): string {
+  return `${formatNumber(n, settings, opts)} ${distanceUnitLabel(settings)}`;
+}
+
 // An annual interest rate, always rendered with two fractional digits so
 // "2.00%" never collapses to a bare "2%". Unlike `formatNumber` this
 // deliberately ignores `showDecimals` and `abbreviateNumbers`: those

@@ -19,8 +19,9 @@ const carsSheet: CarsSheetCatalog = {
   boughtFor: "Köpt för",
   purchased: "Köpt",
   mileageLabel: "Mätarställning",
+  setRange: "Ange mätarställning",
   distanceDriven: "Körd sträcka",
-  costPerDistance: "Kostnad per km",
+  costPerDistance: "Kostnad per {unit}",
   totalCosts: "Totala kostnader",
   loanLabel: "Lån",
   soldBadge: "Såld",
@@ -32,6 +33,7 @@ const carsSheet: CarsSheetCatalog = {
   viewExpenses: "Kostnader",
 
   // Card "…" menu
+  updateRange: "Uppdatera mätarställning",
   findExpenses: "Hitta bilkostnader",
   addManualExpense: "Lägg till kostnad manuellt",
   contractsMenu: "Kontrakt",
@@ -93,12 +95,16 @@ const carsSheet: CarsSheetCatalog = {
   soldDateHint: "Ange ett datum om du inte längre har bilen.",
   soldForLabel: "Såld för",
 
-  // Update value & mileage modal
+  // Update value & range modal
   updateValueTitle: "Uppdatera värde & mätarställning",
+  updateRangeTitle: "Uppdatera mätarställning",
   valueLabel: "Värde",
   valuePlaceholder: "t.ex. 150 000",
+  rangeWithUnit: "Mätarställning ({unit})",
   mileagePlaceholder: "t.ex. 42 000",
   valueOrMileageHint: "Registrera ett värde, en mätarställning eller båda.",
+  rangeOnlyHint:
+    "Registrera aktuell mätarställning. Logga den ofta för att följa hur kostnaden per {unit} ändras över bilens livstid.",
   asOfLabel: "Per den",
   valueHistory: "Registrerad historik",
   noValueHistory: "Inget registrerat än.",
@@ -179,6 +185,7 @@ const carsSheet: CarsSheetCatalog = {
   chartTotal: "Totalt",
   totalInRange: "Totalt i intervallet",
   rollingAverage: "{n}-mån snitt",
+  monthlyAverage: "Månadssnitt",
 };
 
 export default carsSheet;

@@ -2736,6 +2736,22 @@ Excel import (`importCarSnapshots`) imports **values only** and
 preserves any mileage already recorded on an imported date. Actions:
 `addCarSnapshot` / `deleteCarSnapshot` / `importCarSnapshots`.
 
+The mileage reading is the user-facing **range** (odometer) figure.
+`UpdateCarValueModal` collapses to a plain date-plus-range form for a
+car it holds no capital in (leased / pool logic: `tracksValue` is
+false), hiding the value field, the value column, and the value-only
+batch import. It is reachable for every car **except a car pool** — a
+pool car is pure running cost with no per-km story — from three places:
+the card's **Range** stat (which reads "Set range" until the first
+reading lands), the card "…" menu's **Update range** entry
+(`CarActionsMenu`, the always-available entry point a fresh leased car
+relies on), and, on a value-tracking car, the value stat. Range,
+distance-driven, and cost-per-distance figures render with the user's
+distance unit — km or miles, `Settings.distanceUnit`, chosen next to
+Location in Settings and never converting the stored number
+(`formatDistance` / `distanceUnitLabel`). Logging a range reading
+unlocks the **rangeTracker** achievement.
+
 ### Car depreciation
 
 `Car.depreciation` reuses the item depreciation union
@@ -2816,13 +2832,18 @@ line is overlaid on the bars (via `StackedBarChart`'s `overlay` prop, a
 `StackedBarOverlay` sharing both scales): each month's total cost —
 every visible band summed, so it tracks the toggled legs — smoothed by
 a trailing mean over the last three months, so the noisy per-month bars
-read against a "what a month typically costs" line. The header carries
-the range's total and the **cost per kilometre** — `carCostPerDistance`
+read against a "what a month typically costs" line. A flat dashed
+**monthly-average** baseline sits alongside it (`StackedBarChart`'s
+`referenceLine` prop, a `StackedBarReferenceLine`): the range's total
+spread evenly over its months, so the bars read against "what a month
+costs on average" as well as the moving line. The header carries the
+range's total and the **cost per distance** — `carCostPerDistance`
 (`src/data/cars/costs.ts`) divides the sum of the known legs
 (`carTotalCostOfOwnership`: expenses + depreciation + loan interest)
 by `carDistanceDriven` (latest odometer reading − reading at
-purchase). Unknown legs stay unknown rather than reading as 0 — a car
-with no odometer data shows no per-km figure at all.
+purchase), labelled in the user's distance unit. Unknown legs stay
+unknown rather than reading as 0 — a car with no odometer data shows no
+per-distance figure at all.
 
 ### Car loan link
 

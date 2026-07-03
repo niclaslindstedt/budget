@@ -50,6 +50,22 @@ export type StackedBarOverlay = {
   points: StackedChartPoint[];
 };
 
+// A constant horizontal line spanning the whole plot — e.g. the mean of
+// the per-bar totals. Unlike `overlay` it carries one y value, not
+// per-sample points, so it reads as a flat baseline the bars are measured
+// against. Drawn dashed to set it apart from the (solid) overlay line.
+export type StackedBarReferenceLine = {
+  // Stable key for React + legend lookups.
+  id: string;
+  // Legend label (already translated by the caller).
+  label: string;
+  // Token ("--muted") or literal CSS colour — same "--" convention as a
+  // series colour.
+  color: string;
+  // The constant value the line sits at, in the series' y units.
+  y: number;
+};
+
 export type StackedBarChartSeries = {
   // Stable key for React + tooltip lookups.
   id: string;
@@ -83,6 +99,9 @@ type Props = {
   // An optional line overlaid on the bars (sharing both scales). Its x
   // values must line up with the bars' x samples.
   overlay?: StackedBarOverlay | null;
+  // An optional constant horizontal line (dashed) drawn across the whole
+  // plot — a flat reference such as the average of the bar totals.
+  referenceLine?: StackedBarReferenceLine | null;
 };
 
 // `left` is a floor: the chart widens the gutter to fit the actual Y-axis
@@ -137,14 +156,17 @@ export function StackedBarChart({
   selected = null,
   onSelect,
   overlay = null,
+  referenceLine = null,
 }: Props) {
   const colorVars = useMemo(() => {
     const set = new Set(
       series.map((s) => s.color).filter((c) => c.startsWith("--")),
     );
     if (overlay && overlay.color.startsWith("--")) set.add(overlay.color);
+    if (referenceLine && referenceLine.color.startsWith("--"))
+      set.add(referenceLine.color);
     return Array.from(set);
-  }, [series, overlay]);
+  }, [series, overlay, referenceLine]);
   const tokens = useThemeTokens([...CHROME_TOKENS, ...colorVars]);
   const fontFamily = tokens["--app-font-family"] || "monospace";
   const lineColor = tokens["--line"] || "#3a3f4b";
@@ -171,6 +193,7 @@ export function StackedBarChart({
               selected={selected}
               onSelect={onSelect}
               overlay={overlay}
+              referenceLine={referenceLine}
               fontFamily={fontFamily}
               lineColor={lineColor}
               mutedColor={mutedColor}
@@ -212,6 +235,7 @@ function Chart({
   selected,
   onSelect,
   overlay,
+  referenceLine,
   fontFamily,
   lineColor,
   mutedColor,
@@ -252,6 +276,9 @@ function Chart({
         if (p.y > maxTotal) maxTotal = p.y;
       }
     }
+    // The flat reference line lifts the ceiling too, so a high average
+    // never sits above the plot.
+    if (referenceLine && referenceLine.y > maxTotal) maxTotal = referenceLine.y;
     // Bars are anchored at 0; pad only the top so the tallest bar doesn't
     // graze the edge (and keep an all-zero chart from collapsing the scale).
     return {
@@ -259,7 +286,7 @@ function Chart({
       sortedXs: Array.from(xs).sort((a, b) => a - b),
       yDomain: [0, maxTotal * 1.08 || 1] as [number, number],
     };
-  }, [series, overlay]);
+  }, [series, overlay, referenceLine]);
 
   const yScale = useMemo(
     () => scaleLinear<number>({ domain: yDomain, range: [innerH, 0] }),
@@ -497,6 +524,17 @@ function Chart({
                 />
               );
             }),
+          )}
+
+          {referenceLine && (
+            <Line
+              from={{ x: 0, y: yScale(referenceLine.y) }}
+              to={{ x: innerW, y: yScale(referenceLine.y) }}
+              stroke={colorFor(referenceLine.color)}
+              strokeWidth={1.5}
+              strokeDasharray="5,4"
+              pointerEvents="none"
+            />
           )}
 
           {overlay && overlay.points.length > 0 && (
