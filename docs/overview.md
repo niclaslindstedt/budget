@@ -88,7 +88,13 @@ mapping lives in `src/data/sheet-routing.ts` (`sheetSlug`,
 in `src/data/types/sheets.ts`.
 
 `src/components/AppShell/hooks/useSheetUrlSync.ts` wires it to browser
-history. On load the URL wins: a slug that resolves to an existing
+history. Deep-link consumption is held until the storage backend has
+finished loading (the `ready` param, `status.kind !== "loading"`):
+while loading, the hook sees the placeholder `freshUserData()` seed (a
+lone default budget sheet), not the persisted set, so acting then would
+resolve a link like `/cars` against sheets that don't exist yet and
+wrongly open the new-sheet modal for a sheet that is about to load. On
+load (once ready) the URL wins: a slug that resolves to an existing
 sheet selects it; a valid type with no sheet at that ordinal opens the
 new-sheet modal pre-selected to that type (`onOpenNewSheet(type)` →
 `SheetModal`'s `initialType`); anything else (app root, stale/unknown

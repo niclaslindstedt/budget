@@ -624,6 +624,10 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
     activeSheetId: activeSheet.id,
     dispatch,
     onOpenNewSheet,
+    // Hold deep-link consumption until the backend finishes loading —
+    // while loading, `data.sheets` is the placeholder `freshUserData()`
+    // seed, not the user's persisted sheets.
+    ready: status.kind !== "loading",
   });
   const downloadFlow = useDownloadFlow({
     data,
