@@ -2761,18 +2761,25 @@ most one car — the finder excludes anything any car has consumed.
 ### Find car expenses
 
 The suggest → add / ignore walk (`CarExpenseFinderModal.tsx`).
-`findCarExpenseCandidates` (`src/data/cars/find.ts`) sweeps every
-account's history like the repairs finder: outflows only, skipping
+`findCarExpenseCandidates(data, car)` (`src/data/cars/find.ts`) sweeps
+every account's history like the repairs finder: outflows only, skipping
 hidden / transfer-collapsed entries, resolving each entry's effective
 type exactly the way the budget tables do (`resolveEntryLabels` —
 per-entry override → match rule → merchant hint), and keeping charges
 whose type lands in `CAR_EXPENSE_TYPE_IDS` (`src/data/presets/types.ts`
-— the ten Transport presets: fuel, parking, car insurance, vehicle
-tax, congestion tax, leasing, car service, taxi, car pool, public
-transport; deliberately including taxi / public transport / car pool so
-a car-pool "car" can carry both its monthly fee and its per-use charges,
-and deliberately excluding `preset-type-car-loan`, whose cost enters
-through the loan link instead). The modal multi-selects
+— the car-specific Transport presets: fuel, parking, car insurance,
+vehicle tax, congestion tax, leasing, car service, car pool;
+deliberately **excluding** taxi and public transport, which are
+alternative modes of transport rather than the cost of owning a car,
+and `preset-type-car-loan`, whose cost enters through the loan link
+instead). The scan is also bounded to the car's **ownership window** —
+`purchaseDate` (or `leaseStart` for a leased car) to `soldAt` (or the
+lease end, `leaseStart` + `leaseMonths`, for an unsold lease), so a
+charge dated before the user bought the car or after they sold it is
+never offered; a pool car with no dates and a still-owned car with no
+sale keep the respective bound open. The finder's date passed to the
+modal renders in full (`settings.dateFormat`, with year) so candidates
+spanning multiple years stay unambiguous. The modal multi-selects
 candidates and commits them in one `addCarExpenses` undo entry. Per
 row, **Ignore** persists the entry id to
 `UserData.ignoredCarExpenseEntryIds` and **Exclude similar** persists

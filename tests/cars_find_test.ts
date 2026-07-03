@@ -31,7 +31,7 @@ function state(over: Partial<UserData> = {}): UserData {
 }
 
 describe("findCarExpenseCandidates", () => {
-  it("surfaces transport-typed outflows and skips everything else", () => {
+  it("surfaces car-typed outflows and skips everything else", () => {
     const data = state({
       history: {
         acc: [
@@ -62,6 +62,20 @@ describe("findCarExpenseCandidates", () => {
             collapsedIntoTransferId: "x",
           }),
           entry({ id: "h9", userTypeId: "preset-type-fuel", isTransfer: true }),
+          // Taxi and public transport are alternative modes of transport,
+          // not the cost of owning a car — never candidates.
+          entry({
+            id: "h10",
+            userTypeId: "preset-type-taxi",
+            description: "Taxi Stockholm",
+            amount: -220,
+          }),
+          entry({
+            id: "h11",
+            userTypeId: "preset-type-public-transport",
+            description: "SL Access",
+            amount: -970,
+          }),
         ],
       },
     });
@@ -159,5 +173,88 @@ describe("findCarExpenseCandidates", () => {
       "h2",
       "h1",
     ]);
+  });
+
+  describe("ownership window", () => {
+    const history = {
+      acc: [
+        // Before purchase, within ownership, after sale.
+        entry({
+          id: "before",
+          date: "2024-01-05",
+          userTypeId: "preset-type-fuel",
+        }),
+        entry({
+          id: "during",
+          date: "2024-06-05",
+          userTypeId: "preset-type-fuel",
+        }),
+        entry({
+          id: "after",
+          date: "2025-03-05",
+          userTypeId: "preset-type-fuel",
+        }),
+      ],
+    };
+
+    it("drops charges before purchase and after sale for an owned car", () => {
+      const data = state({
+        history,
+        cars: [car({ purchaseDate: "2024-03-01", soldAt: "2024-12-31" })],
+      });
+      expect(
+        findCarExpenseCandidates(data, data.cars[0]).map((c) => c.entryId),
+      ).toEqual(["during"]);
+    });
+
+    it("keeps the window open-ended when the car is still owned", () => {
+      const data = state({
+        history,
+        cars: [car({ purchaseDate: "2024-03-01" })],
+      });
+      expect(
+        findCarExpenseCandidates(data, data.cars[0])
+          .map((c) => c.entryId)
+          .sort(),
+      ).toEqual(["after", "during"]);
+    });
+
+    it("bounds a leased car by its lease term", () => {
+      const data = state({
+        history,
+        cars: [
+          car({
+            ownership: "leased",
+            purchaseDate: undefined,
+            leaseStart: "2024-03-01",
+            leaseMonths: 6, // ends 2024-09-01
+          }),
+        ],
+      });
+      expect(
+        findCarExpenseCandidates(data, data.cars[0]).map((c) => c.entryId),
+      ).toEqual(["during"]);
+    });
+
+    it("does not filter by date for a pool car with no ownership dates", () => {
+      const data = state({
+        history,
+        cars: [car({ ownership: "pool", purchaseDate: undefined })],
+      });
+      expect(
+        findCarExpenseCandidates(data, data.cars[0])
+          .map((c) => c.entryId)
+          .sort(),
+      ).toEqual(["after", "before", "during"]);
+    });
+
+    it("scans all history when no car is supplied", () => {
+      const data = state({ history });
+      expect(
+        findCarExpenseCandidates(data)
+          .map((c) => c.entryId)
+          .sort(),
+      ).toEqual(["after", "before", "during"]);
+    });
   });
 });
