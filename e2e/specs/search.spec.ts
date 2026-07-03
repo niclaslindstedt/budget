@@ -16,13 +16,22 @@ test.describe("Transaction search", () => {
       .getByRole("button", { name: /^Add row/ })
       .first()
       .click();
-    const lastRow = page.locator("tbody tr").last();
-    // The description cell now opens its rich popover on every
+    // The table renders newest-first, so a freshly added row does NOT
+    // land at the end of the tbody once another same-date row exists.
+    // The new row is the only one still showing the "Add description"
+    // placeholder, so target it by that trigger rather than by row
+    // position. The description cell opens its rich popover on every
     // viewport — fill via the portalled textarea, not an inline one.
-    await lastRow.getByRole("button", { name: "Add description" }).click();
+    await page.getByRole("button", { name: "Add description" }).click();
     await page.getByPlaceholder("Description").fill(description);
     await page.keyboard.press("Escape");
-    await lastRow.locator("input[inputmode='decimal']").first().fill(amount);
+    // The row re-sorts once the description commits; re-locate it by the
+    // text we just typed to fill the amount.
+    const newRow = page
+      .locator("tbody tr")
+      .filter({ hasText: description })
+      .first();
+    await newRow.locator("input[inputmode='decimal']").first().fill(amount);
     await page.keyboard.press("Tab");
   }
 

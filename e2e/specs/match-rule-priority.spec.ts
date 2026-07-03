@@ -22,19 +22,20 @@ async function addRow(
     .click();
   await expect(tbody.locator("tr")).toHaveCount(before + 1);
 
-  // The empty row lands at the end of the tbody (it picks up today's
-  // date and an empty amount, so the sort hasn't moved it yet). Fill
-  // description and amount before either cell commits — once both
-  // commit the row re-sorts, but we've already captured the input
-  // refs so `.last()` is still pointing at it.
+  // The table renders newest-first, so the fresh row does NOT land at
+  // the end of the tbody once another same-date row already exists.
+  // The new row is the only one still showing the "Add description"
+  // placeholder, so target it by that trigger rather than by `.last()`.
   //
   // Description goes through the portalled `DescriptionPopover` on
   // every viewport — click the row's trigger, fill the popover's
   // textarea, then dismiss it before falling through to the amount.
-  const newRow = tbody.locator("tr").last();
-  await newRow.getByRole("button", { name: "Add description" }).click();
+  await page.getByRole("button", { name: "Add description" }).click();
   await page.getByPlaceholder("Description").fill(description);
   await page.keyboard.press("Escape");
+  // The row re-sorts once the description commits; re-locate it by the
+  // text we just typed to fill the amount.
+  const newRow = tbody.locator("tr").filter({ hasText: description }).first();
   const amt = newRow.locator("input[inputmode='decimal']").first();
   await amt.fill(amount);
   await amt.blur();
