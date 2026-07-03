@@ -5,6 +5,7 @@ import { useLang, useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
 import {
   formatBalance,
+  formatDistance,
   formatMonthYearShort,
   formatShortDate,
 } from "../../utils/format";
@@ -130,6 +131,15 @@ export function CarExpensesModal({
                               {type
                                 ? displayTypeName(type, t)
                                 : t("carsSheet.uncategorizedType")}
+                              {expense.distance !== undefined
+                                ? ` · ${formatDistance(
+                                    expense.distance,
+                                    settings,
+                                    {
+                                      neverAbbreviate: true,
+                                    },
+                                  )}`
+                                : ""}
                             </span>
                           </span>
                           <span className="shrink-0 tabular-nums text-fg-bright">

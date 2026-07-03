@@ -185,6 +185,39 @@ describe("validateCar via validateUserData", () => {
     }
   });
 
+  it("keeps a valid per-usage distance and drops a malformed one", () => {
+    const r = validateUserData(
+      blob([
+        car({
+          ownership: "pool",
+          expenses: [
+            {
+              id: "e1",
+              date: "2026-01-19",
+              amount: 340,
+              description: "Trip",
+              typeId: "preset-type-car-pool",
+              distance: 78,
+            },
+            {
+              id: "e2",
+              date: "2026-02-08",
+              amount: 210,
+              description: "Trip",
+              typeId: "preset-type-car-pool",
+              distance: -5, // negative — dropped, expense survives
+            },
+          ] as Car["expenses"],
+        }),
+      ]),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.cars[0].expenses[0].distance).toBe(78);
+      expect(r.value.cars[0].expenses[1].distance).toBeUndefined();
+    }
+  });
+
   it("drops a malformed depreciation rule whole", () => {
     const r = validateUserData(
       blob([

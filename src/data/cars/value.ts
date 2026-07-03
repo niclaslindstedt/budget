@@ -279,12 +279,30 @@ export function currentCarMileage(car: Car, iso: string): number | undefined {
   return car.purchaseMileage;
 }
 
-// Distance driven by the user as of `iso`: the latest odometer reading
-// minus the reading at purchase (0 when unrecorded — a car bought new).
-// Clamped at 0 so a corrected-downward odometer never goes negative.
-// Undefined without any recorded mileage snapshot — the purchase
-// reading alone says nothing about distance driven since.
+// Distance driven by the user as of `iso`.
+//
+// Car pool: there is no odometer of the user's own to snapshot — a pool
+// car is driven per trip — so its distance is the SUM of the per-usage
+// `distance` recorded on each expense on or before the date. Undefined
+// until at least one pool usage carries a distance (a rate over zero
+// distance is noise, not information).
+//
+// Every other ownership form: the latest odometer reading minus the
+// reading at purchase (0 when unrecorded — a car bought new). Clamped
+// at 0 so a corrected-downward odometer never goes negative. Undefined
+// without any recorded mileage snapshot — the purchase reading alone
+// says nothing about distance driven since.
 export function carDistanceDriven(car: Car, iso: string): number | undefined {
+  if (car.ownership === "pool") {
+    let sum = 0;
+    let hasAny = false;
+    for (const expense of car.expenses) {
+      if (expense.distance === undefined || expense.date > iso) continue;
+      sum += expense.distance;
+      hasAny = true;
+    }
+    return hasAny ? sum : undefined;
+  }
   const hasRecorded = car.snapshots.some(
     (s) => s.mileage !== undefined && s.date <= iso,
   );

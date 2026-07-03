@@ -16,7 +16,10 @@ share in percent scales what the car contributes to your net worth), or
 owned or shared car carries a purchase price, purchase date, and the
 odometer reading at purchase. A pool car is pure running cost — its
 cost is the per-use and membership charges, which arrive as linked
-expenses like any other charge.
+expenses like any other charge. Because a pool car has no odometer of
+your own to read, each usage instead carries the **distance** it
+covered, so you still get a total distance driven and a cost per
+kilometre (see "Value and range in one step").
 
 ## Leasing, and why a fresh lease is "underwater"
 
@@ -77,6 +80,14 @@ running cost alone still logs its odometer without a value in sight.
 Readings show in kilometres or miles depending on the **distance unit**
 you pick next to Location in Settings — the stored numbers are never
 converted, only relabelled.
+
+**A car pool logs distance per trip instead.** With no odometer of your
+own, a pool car records how far each usage went right on the expense:
+the manual expense form shows a **Distance** field, and when you import
+pool charges from your bank history the finder asks for the distance on
+every trip you tick before it will add them. Those per-trip distances
+add up to the pool car's total distance driven and its cost per
+kilometre, just as odometer readings do for the other cars.
 
 ## The real cost, in three legs
 

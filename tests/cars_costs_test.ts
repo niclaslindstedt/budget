@@ -151,4 +151,32 @@ describe("carCostPerDistance", () => {
     });
     expect(carCostPerDistance(c, undefined, "2026-06-01")).toBeUndefined();
   });
+
+  it("uses summed per-usage distance for a car pool", () => {
+    const pool = car({
+      ownership: "pool",
+      expenses: [
+        expense({ id: "e1", amount: 199, typeId: "preset-type-car-pool" }),
+        expense({
+          id: "e2",
+          date: "2026-01-19",
+          amount: 340,
+          typeId: "preset-type-car-pool",
+          distance: 78,
+        }),
+        expense({
+          id: "e3",
+          date: "2026-02-08",
+          amount: 210,
+          typeId: "preset-type-car-pool",
+          distance: 42,
+        }),
+      ],
+    });
+    // No depreciation leg for a pool car — expenses (199+340+210 = 749)
+    // over the summed distance (78+42 = 120).
+    expect(carCostPerDistance(pool, undefined, "2026-06-01")).toBeCloseTo(
+      749 / 120,
+    );
+  });
 });

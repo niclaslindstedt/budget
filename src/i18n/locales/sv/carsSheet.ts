@@ -146,6 +146,10 @@ const carsSheet: CarsSheetCatalog = {
   excludeSimilarHint: "Föreslå aldrig kostnader med den här beskrivningen",
   addCountOne: "Lägg till {n} kostnad",
   addCountOther: "Lägg till {n} kostnader",
+  // Car-pool import: each usage needs the distance it covered.
+  findDistanceHint: "Bilpoolsresor behöver körsträckan — ange varje i {unit}.",
+  findDistanceMissing: "Ange en sträcka för varje markerad resa.",
+  findDistanceAria: "Sträcka i {unit}",
 
   // Manual expense modal
   manualExpenseTitle: "Lägg till kostnad",
@@ -155,6 +159,11 @@ const carsSheet: CarsSheetCatalog = {
   expenseAmount: "Belopp",
   expenseDate: "Datum",
   expenseType: "Typ",
+  // Car-pool only: how far this usage went (km / miles, never converted).
+  expenseDistance: "Sträcka ({unit})",
+  expenseDistancePlaceholder: "t.ex. 42",
+  expenseDistanceHint:
+    "Hur långt den här resan gick. Summeras till bilpoolens sträcka och kostnad per {unit}.",
 
   // Contracts modal
   contractsTitle: "Kontrakt",
