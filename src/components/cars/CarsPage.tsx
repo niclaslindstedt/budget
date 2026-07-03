@@ -126,7 +126,8 @@ export function CarsPage({
   // Candidate charges — recomputed while the finder is open so an
   // ignore / exclude dispatch drops the row immediately.
   const candidates = useMemo(
-    () => (liveFindCar !== null ? findCarExpenseCandidates(data) : []),
+    () =>
+      liveFindCar !== null ? findCarExpenseCandidates(data, liveFindCar) : [],
     [liveFindCar, data],
   );
 

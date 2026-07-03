@@ -1038,14 +1038,15 @@ export const PRESET_TYPE_REPAIRS_ID = "preset-type-repairs";
 export const PRESET_TYPE_RENOVATIONS_ID = "preset-type-renovations";
 
 // The preset type ids the Cars sheet's "Find car expenses" scan treats
-// as transportation costs — the whole Transport preset category. The
-// finder surfaces outflows resolving to one of these so the user can
-// attribute them to a specific car (or ignore them). Taxi and public
-// transport are included deliberately: attributed to a car-pool /
-// no-car "car", they make the own-vs-pool cost comparison honest.
-// `preset-type-car-loan` is NOT here — the loan's cost enters through
-// the car's linked loan (interest leg), never as a linked expense, so
-// a loan payment can't be double-counted.
+// as costs of running a car. The finder surfaces outflows resolving to
+// one of these so the user can attribute them to a specific car (or
+// ignore them). This is the car-specific slice of the Transport preset
+// category — taxi and public transport are deliberately EXCLUDED: they
+// are alternative modes of transport, not the cost of owning this car,
+// so a bus pass or a taxi fare must never surface as a candidate.
+// `preset-type-car-loan` is NOT here either — the loan's cost enters
+// through the car's linked loan (interest leg), never as a linked
+// expense, so a loan payment can't be double-counted.
 export const CAR_EXPENSE_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-fuel",
   "preset-type-parking",
@@ -1054,9 +1055,7 @@ export const CAR_EXPENSE_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-congestion-tax",
   "preset-type-leasing",
   "preset-type-car-service",
-  "preset-type-taxi",
   "preset-type-car-pool",
-  "preset-type-public-transport",
 ]);
 
 // Default allow-list for the Items sheet's "Find items" scan — the

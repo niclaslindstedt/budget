@@ -7,7 +7,7 @@ import type { Car, CarExpense, EntryType, Settings } from "../../data/types";
 import { useResetOnOpen } from "../../hooks";
 import { useLang, useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
-import { formatBalance, formatShortDate } from "../../utils/format";
+import { formatBalance, formatDate } from "../../utils/format";
 import { Button, Checkbox } from "../form";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -145,9 +145,9 @@ export function CarExpenseFinderModal({
                             {candidate.description}
                           </span>
                           <span className="block truncate text-xs text-muted">
-                            {formatShortDate(
+                            {formatDate(
                               candidate.date,
-                              settings.shortDateFormat,
+                              settings.dateFormat,
                               lang,
                             )}
                             {type ? ` · ${displayTypeName(type, t)}` : ""}

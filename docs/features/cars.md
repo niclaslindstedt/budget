@@ -37,24 +37,23 @@ Insights net worth folds it in.
 ## Linking your real costs
 
 The point of the sheet is that the costs are _real_, not estimated.
-**Find car expenses** sweeps your imported bank history for charges
-categorised as transport — fuel, parking, car insurance, vehicle tax,
-congestion tax, leasing, service, taxi, car pool, and public transport —
-using the same category resolution the budget tables use, so a merchant
-you
+**Find car expenses** sweeps your imported bank history for the charges
+that are genuinely car costs — fuel, parking, car insurance, vehicle
+tax, congestion tax, leasing, service, and car pool — using the same
+category resolution the budget tables use, so a merchant you
 tagged once (or that a match rule / merchant memory recognises) shows
-up automatically. Tick the charges that belong to the car and add them
-in one go. A charge that isn't a car cost can be **ignored** (that one
-charge never resurfaces) or **excluded as similar** (every past and
-future charge with the same description disappears from the scan —
-handy for the commute bus pass). Both lists are clearable from
+up automatically. The scan is bounded to the dates you actually had the
+car — from the purchase (or lease start) to the sale (or lease end) —
+so a charge from before you bought it or after you sold it never
+appears. Taxi and public transport are left out on purpose: they are
+alternative ways to travel, not the cost of owning _this_ car. Tick the
+charges that belong to the car and add them in one go. A charge that
+isn't a car cost can be **ignored** (that one charge never resurfaces)
+or **excluded as similar** (every past and future charge with the same
+description disappears from the scan). Both lists are clearable from
 Settings. Costs with no bank trace — cash fuel, expenses predating your
 imported history, a car-pool invoice on someone else's account — can be
 added manually.
-
-Taxi and public transport are deliberately included: attribute them to
-a car-pool "car" and the sheet gives you an honest own-versus-pool
-comparison.
 
 ## Value and mileage in one step
 

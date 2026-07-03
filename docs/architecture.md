@@ -481,9 +481,9 @@ src/
 │   │   ├── series.ts           # buildCarValueSeries (monthly-sampled decay +
 │   │   │                       #   optional cost / interest subtraction),
 │   │   │                       #   buildCarMileageSeries
-│   │   └── find.ts             # findCarExpenseCandidates — transport-typed
-│   │                           #   outflows minus already-linked / ignored /
-│   │                           #   excluded (repairs-finder shape)
+│   │   └── find.ts             # findCarExpenseCandidates — car-typed
+│   │                           #   outflows in the ownership window minus
+│   │                           #   already-linked / ignored / excluded
 │   ├── investment/         # investment page — holdings + private-stock helpers
 │   │   ├── holdings.ts         # resolveHoldingValueHistory (purchase folded in),
 │   │   │                       #   currentHoldingValue / holdingValueAt,
