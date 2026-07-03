@@ -268,10 +268,39 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      # The successful attempt may be any of the three below; fall
+      # through to whichever one produced a page_url.
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-2.outputs.page_url || steps.deployment-3.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
+    # actions/deploy-pages intermittently returns "Deployment failed,
+    # try again later." straight from the Pages backend even when the
+    # uploaded artifact is valid (actions/deploy-pages#406, ongoing
+    # since 2026-01). The failure is transient — the exact same commit
+    # deploys cleanly on a re-run — so a single attempt turns a GitHub-
+    # side hiccup into a red build that needs a manual re-run. Retry the
+    # deploy up to three times (with a short back-off) before giving up.
+    # Each attempt re-invokes the action against the same already-
+    # uploaded artifact, so this is equivalent to hitting "Re-run" by
+    # hand, just automatic. Only the final attempt is allowed to fail
+    # the job. Note: tuning the action's own `timeout` / `error_count`
+    # would not help — this failure is an immediate error status, not a
+    # polling timeout, so the whole action call has to be retried.
     steps:
       - id: deployment
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Back off before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment-2
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Back off before final retry
+        if: steps.deployment.outcome == 'failure' && steps.deployment-2.outcome == 'failure'
+        run: sleep 60
+      - id: deployment-3
+        if: steps.deployment.outcome == 'failure' && steps.deployment-2.outcome == 'failure'
         uses: actions/deploy-pages@v5
