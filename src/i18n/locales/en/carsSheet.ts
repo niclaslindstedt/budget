@@ -178,6 +178,7 @@ const carsSheet = {
   chartLoanInterest: "Loan interest",
   chartTotal: "Total",
   totalInRange: "Total in range",
+  rollingAverage: "{n}-month average",
 } as const;
 
 export type CarsSheetCatalog = Widen<typeof carsSheet>;

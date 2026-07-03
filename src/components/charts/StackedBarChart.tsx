@@ -5,7 +5,7 @@ import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { Line } from "@visx/shape";
+import { Line, LinePath } from "@visx/shape";
 import { useTooltip, TooltipWithBounds } from "@visx/tooltip";
 
 import { useThemeTokens } from "../../hooks";
@@ -33,6 +33,22 @@ export type StackedChartPoint = { x: number; y: number };
 // segment of the series highlights) — the shape a legend click produces,
 // where there is no single month to pin to.
 export type StackedBarSelection = { seriesId: string; x?: number };
+
+// A single line drawn over the bars, sharing both scales — e.g. a rolling
+// average of the per-bar totals. Plotted at each bar's centre; joins the
+// tooltip as an extra row below the total. Reads as a computed metric over
+// the categorical stacks, not another band.
+export type StackedBarOverlay = {
+  // Stable key for React + tooltip lookups.
+  id: string;
+  // Legend / tooltip label (already translated by the caller).
+  label: string;
+  // Token ("--fg-bright") or literal CSS colour — same "--" convention as a
+  // series colour.
+  color: string;
+  // Points at the bars' x samples (a missing x contributes no vertex there).
+  points: StackedChartPoint[];
+};
 
 export type StackedBarChartSeries = {
   // Stable key for React + tooltip lookups.
@@ -64,6 +80,9 @@ type Props = {
   // clears the selection.
   selected?: StackedBarSelection | null;
   onSelect?: (selection: StackedBarSelection | null) => void;
+  // An optional line overlaid on the bars (sharing both scales). Its x
+  // values must line up with the bars' x samples.
+  overlay?: StackedBarOverlay | null;
 };
 
 // `left` is a floor: the chart widens the gutter to fit the actual Y-axis
@@ -104,6 +123,9 @@ type Tooltip = {
   rows: { id: string; label: string; y: number }[];
   total: number;
   topY: number;
+  // The overlay's value at this sample, when an overlay is present and has a
+  // vertex here.
+  overlay?: { label: string; y: number };
 };
 
 export function StackedBarChart({
@@ -114,14 +136,15 @@ export function StackedBarChart({
   height = 280,
   selected = null,
   onSelect,
+  overlay = null,
 }: Props) {
-  const colorVars = useMemo(
-    () =>
-      Array.from(
-        new Set(series.map((s) => s.color).filter((c) => c.startsWith("--"))),
-      ),
-    [series],
-  );
+  const colorVars = useMemo(() => {
+    const set = new Set(
+      series.map((s) => s.color).filter((c) => c.startsWith("--")),
+    );
+    if (overlay && overlay.color.startsWith("--")) set.add(overlay.color);
+    return Array.from(set);
+  }, [series, overlay]);
   const tokens = useThemeTokens([...CHROME_TOKENS, ...colorVars]);
   const fontFamily = tokens["--app-font-family"] || "monospace";
   const lineColor = tokens["--line"] || "#3a3f4b";
@@ -147,6 +170,7 @@ export function StackedBarChart({
               totalLabel={totalLabel}
               selected={selected}
               onSelect={onSelect}
+              overlay={overlay}
               fontFamily={fontFamily}
               lineColor={lineColor}
               mutedColor={mutedColor}
@@ -187,6 +211,7 @@ function Chart({
   totalLabel,
   selected,
   onSelect,
+  overlay,
   fontFamily,
   lineColor,
   mutedColor,
@@ -220,6 +245,13 @@ function Chart({
       });
       stacked.push(band);
     }
+    // Let the overlay lift the ceiling — a rolling average can peak above the
+    // tallest single bar, and it would otherwise clip at the top edge.
+    if (overlay) {
+      for (const p of overlay.points) {
+        if (p.y > maxTotal) maxTotal = p.y;
+      }
+    }
     // Bars are anchored at 0; pad only the top so the tallest bar doesn't
     // graze the edge (and keep an all-zero chart from collapsing the scale).
     return {
@@ -227,7 +259,7 @@ function Chart({
       sortedXs: Array.from(xs).sort((a, b) => a - b),
       yDomain: [0, maxTotal * 1.08 || 1] as [number, number],
     };
-  }, [series]);
+  }, [series, overlay]);
 
   const yScale = useMemo(
     () => scaleLinear<number>({ domain: yDomain, range: [innerH, 0] }),
@@ -312,8 +344,17 @@ function Chart({
         if (match.y1 > topY) topY = match.y1;
       }
       if (rows.length === 0) return;
+      const overlayMatch = overlay?.points.find((p) => p.x === nearest);
       showTooltip({
-        tooltipData: { x: nearest, rows, total, topY },
+        tooltipData: {
+          x: nearest,
+          rows,
+          total,
+          topY,
+          overlay: overlayMatch
+            ? { label: overlay!.label, y: overlayMatch.y }
+            : undefined,
+        },
         tooltipLeft: leftMargin + (xScale(nearest) ?? 0) + barWidth / 2,
         tooltipTop: MARGIN.top + yScale(topY),
       });
@@ -322,6 +363,7 @@ function Chart({
       sortedXs,
       series,
       stacked,
+      overlay,
       xScale,
       yScale,
       leftMargin,
@@ -457,6 +499,19 @@ function Chart({
             }),
           )}
 
+          {overlay && overlay.points.length > 0 && (
+            <LinePath<StackedChartPoint>
+              data={overlay.points}
+              x={(p) => (xScale(p.x) ?? 0) + barWidth / 2}
+              y={(p) => yScale(p.y)}
+              stroke={colorFor(overlay.color)}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
+          )}
+
           {tooltipOpen && tooltipData && (
             <Line
               from={{
@@ -470,6 +525,18 @@ function Chart({
               stroke={mutedColor}
               strokeWidth={1}
               strokeDasharray="3,3"
+              pointerEvents="none"
+            />
+          )}
+
+          {tooltipOpen && tooltipData?.overlay && overlay && (
+            <circle
+              cx={(xScale(tooltipData.x) ?? 0) + barWidth / 2}
+              cy={yScale(tooltipData.overlay.y)}
+              r={3.5}
+              fill={colorFor(overlay.color)}
+              stroke={surface}
+              strokeWidth={1.5}
               pointerEvents="none"
             />
           )}
@@ -556,6 +623,39 @@ function Chart({
                 }}
               >
                 {formatY(tooltipData.total)}
+              </span>
+            </div>
+          )}
+          {tooltipData.overlay && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 2,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 2,
+                  borderRadius: 9999,
+                  background: overlay ? colorFor(overlay.color) : mutedColor,
+                  flex: "0 0 auto",
+                }}
+              />
+              <span style={{ color: mutedColor }}>
+                {tooltipData.overlay.label}
+              </span>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontVariantNumeric: "tabular-nums",
+                  paddingLeft: 12,
+                }}
+              >
+                {formatY(tooltipData.overlay.y)}
               </span>
             </div>
           )}

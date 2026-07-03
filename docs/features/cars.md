@@ -81,7 +81,9 @@ The cost view keeps the legs separate so you can see what dominates:
   pocket to yours.
 
 The cost chart stacks the linked expenses per month by type, with the
-depreciation and interest legs as toggleable bands. The value chart
+depreciation and interest legs as toggleable bands, and overlays a
+3-month rolling average of the monthly total so the noisy bars read
+against what a month typically costs. The value chart
 draws the car's value over time — with toggles to subtract the running
 costs and interest, showing what the car has really consumed — plus
 your odometer readings. And once mileage is tracked, the headline

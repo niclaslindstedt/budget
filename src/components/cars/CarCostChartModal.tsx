@@ -33,6 +33,7 @@ import {
 import {
   StackedBarChart,
   type StackedBarChartSeries,
+  type StackedBarOverlay,
 } from "../charts/StackedBarChart";
 
 // The cost-of-ownership view: linked expenses stacked per month by
@@ -65,6 +66,11 @@ const TYPE_COLORS = [
   "--flag",
   "--success",
 ] as const;
+
+// Window (in months) for the rolling-average overlay — a trailing mean of
+// each month's total cost, so the noisy per-month bars read against a
+// smoother "what a month typically costs" line.
+const ROLLING_WINDOW = 3;
 
 export function CarCostChartModal({
   open,
@@ -178,6 +184,28 @@ export function CarCostChartModal({
     });
   }
 
+  // The rolling-average overlay: each month's total cost (every visible
+  // band summed, so it tracks the toggled legs), smoothed by a trailing
+  // mean over the last `ROLLING_WINDOW` months. The window shrinks at the
+  // start of the axis so the line has a value from the first bar.
+  const monthlyTotals = months.map((_, j) =>
+    series.reduce((sum, s) => sum + (s.points[j]?.y ?? 0), 0),
+  );
+  const overlay: StackedBarOverlay | null =
+    months.length > 0
+      ? {
+          id: "rollingAvg",
+          label: t("carsSheet.rollingAverage", { n: ROLLING_WINDOW }),
+          color: "--fg-bright",
+          points: months.map((_, j) => {
+            const start = Math.max(0, j - (ROLLING_WINDOW - 1));
+            const window = monthlyTotals.slice(start, j + 1);
+            const avg = window.reduce((acc, v) => acc + v, 0) / window.length;
+            return { x: monthMs[j], y: avg };
+          }),
+        }
+      : null;
+
   const hasChart =
     months.length > 0 && series.some((s) => s.points.some((p) => p.y > 0));
 
@@ -250,6 +278,7 @@ export function CarCostChartModal({
                 formatX={formatX}
                 formatY={formatY}
                 totalLabel={t("carsSheet.chartTotal")}
+                overlay={overlay}
               />
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 {series.map((s) => (
@@ -266,6 +295,19 @@ export function CarCostChartModal({
                     {s.label}
                   </span>
                 ))}
+                {overlay && (
+                  <span
+                    key={overlay.id}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-0.5 w-3 shrink-0 rounded-full"
+                      style={{ background: `var(${overlay.color})` }}
+                    />
+                    {overlay.label}
+                  </span>
+                )}
               </div>
             </div>
           ) : (
