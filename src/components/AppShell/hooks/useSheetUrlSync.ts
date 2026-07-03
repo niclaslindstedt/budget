@@ -14,6 +14,13 @@ type Params = {
   // yet (e.g. someone was linked to `/salary` before a salary sheet
   // exists).
   onOpenNewSheet: (type?: SheetType) => void;
+  // False while the storage backend is still loading the user's data.
+  // Until it flips true, `sheets` is the placeholder `freshUserData()`
+  // seed (a lone default budget sheet), not the persisted set — so a
+  // deep link to `/cars` would resolve against sheets that don't exist
+  // yet and wrongly open the new-sheet modal. The one-shot deep-link
+  // consumption is held until the real data has loaded.
+  ready: boolean;
 };
 
 // Vite's `base` — "/" in production, "/preview/" or "/branch/" in the
@@ -50,11 +57,12 @@ export function useSheetUrlSync({
   activeSheetId,
   dispatch,
   onOpenNewSheet,
+  ready,
 }: Params): void {
   // Latest values for the popstate listener, which is registered once
   // but must always act on current sheets / selection.
-  const latest = useRef({ sheets, activeSheetId, onOpenNewSheet });
-  latest.current = { sheets, activeSheetId, onOpenNewSheet };
+  const latest = useRef({ sheets, activeSheetId, onOpenNewSheet, ready });
+  latest.current = { sheets, activeSheetId, onOpenNewSheet, ready };
 
   const didInit = useRef(false);
   // Set when we drive the selection ourselves (deep link on mount, or a
@@ -88,7 +96,13 @@ export function useSheetUrlSync({
         sheets: liveSheets,
         activeSheetId: liveActive,
         onOpenNewSheet: liveOpenNew,
+        ready: liveReady,
       } = latest.current;
+      // Data still loading — `liveSheets` is the placeholder seed, so
+      // resolving a restored URL against it could open the new-sheet
+      // modal for a sheet that does exist. The reflect effect replays
+      // the URL once the load completes.
+      if (!liveReady) return;
       const slug = currentSlug();
       if (!slug) return;
       const resolved = resolveSheetSlug(liveSheets, slug);
@@ -110,6 +124,11 @@ export function useSheetUrlSync({
   // Keep the URL and the active sheet in step in both directions.
   useEffect(() => {
     if (oauthInFlight()) return;
+    // Hold everything — deep-link consumption and URL reflection — until
+    // the persisted data has loaded. Running against the placeholder
+    // seed would latch `didInit` on the wrong sheet set. `ready` is an
+    // effect dependency, so this re-runs the moment the load completes.
+    if (!ready) return;
 
     const slug = sheetSlug(sheets, activeSheetId);
     if (!slug) return;
@@ -181,5 +200,6 @@ export function useSheetUrlSync({
     oauthInFlight,
     dispatch,
     onOpenNewSheet,
+    ready,
   ]);
 }
