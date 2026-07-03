@@ -1,6 +1,7 @@
 import type {
   Account,
   Car,
+  CarContract,
   CarExpense,
   CarSnapshot,
   Category,
@@ -753,6 +754,32 @@ export type Action =
       description: string;
     }
   | { type: "clearCarExpenseExclusions" }
+  | {
+      // Append one uploaded contract document to a car. The bytes are
+      // written by `useCarContracts` before this commit; the record
+      // carries only the stored path + metadata. Mirrors
+      // `addPropertyFile`.
+      type: "addCarContract";
+      carId: string;
+      contract: CarContract;
+    }
+  | {
+      // Edit one contract's metadata (kind / description) or re-path it
+      // after a replace. Each field in `patch` is optional; an explicit
+      // `undefined` deletes the key. Mirrors `updatePropertyFile`.
+      type: "updateCarContract";
+      carId: string;
+      contractId: string;
+      patch: Partial<Omit<CarContract, "id">>;
+    }
+  | {
+      // Drop one contract's record. The bytes are removed by
+      // `useCarContracts` before this commit. Mirrors
+      // `deletePropertyFile`.
+      type: "deleteCarContract";
+      carId: string;
+      contractId: string;
+    }
   // Investments — the holdings catalog + private stocks rendered by the
   // Investment sheet. Holdings mutate `UserData.investmentHoldings`
   // (value points nest one level deep); stock positions mutate

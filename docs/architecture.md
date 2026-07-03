@@ -237,7 +237,8 @@ src/
 │   │   │                       #   lease terms, loanId link, soldAt/soldFor), CarSnapshot
 │   │   │                       #   (dated value and/or mileage), CarExpense
 │   │   │                       #   (linked or manual transportation cost),
-│   │   │                       #   CarOwnership
+│   │   │                       #   CarContract (uploaded purchase/lease/sale
+│   │   │                       #   paperwork), CarContractKind, CarOwnership
 │   │   ├── salary.ts           # Salary (one paycheck), Employer, Role
 │   │   ├── properties.ts       # Property (home/apartment, incl. soldDate /
 │   │   │                       #   soldAmount for one owned in the past,
@@ -567,9 +568,10 @@ src/
 │   │   ├── savings.ts          # validateSaving (+ balance points)
 │   │   ├── loans.ts            # validateLoan (+ payments; sweeps dangling
 │   │   │                       #   companyId and half-dangling mortgage links)
-│   │   ├── cars.ts             # validateCar (+ snapshots / expenses; sweeps
-│   │   │                       #   dangling loanId, drops empty snapshots and
-│   │   │                       #   half-linked expense source pairs)
+│   │   ├── cars.ts             # validateCar (+ snapshots / expenses /
+│   │   │                       #   contracts; sweeps dangling loanId, drops
+│   │   │                       #   empty snapshots, half-linked expense source
+│   │   │                       #   pairs, and pathless / unknown-kind contracts)
 │   │   ├── properties.ts       # validateProperty (+ value points / mortgages /
 │   │   │                       #   payments / repairs; drops dangling property accountId)
 │   │   ├── tax.ts              # validateTaxProfile (+ per-country params)

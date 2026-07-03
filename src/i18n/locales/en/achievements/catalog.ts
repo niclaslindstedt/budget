@@ -565,6 +565,12 @@ const catalog = {
     learnMore:
       "Open Upload file on a property and attach a photo or PDF — a before/after picture, an inspection report, an insurance document. Give it a description, tags, and a category (which becomes a subfolder). Files are saved under a per-property properties folder on your storage. Available on the local-folder and cloud backends.",
   },
+  carContractKeeper: {
+    name: "Paperwork in Order",
+    condition: "Upload a contract to a car.",
+    learnMore:
+      "Open Contracts on a car's … menu and attach a photo or PDF of the paperwork — a purchase agreement, a leasing contract, or the sale contract when you move it on. Tag each with its kind and an optional description; the file is saved under a per-car cars folder on your storage. Available on the local-folder and cloud backends.",
+  },
   propertyHandover: {
     name: "Clean Handover",
     condition: "Export or import a property.",

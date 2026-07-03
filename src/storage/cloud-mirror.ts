@@ -336,6 +336,7 @@ export function withCloudMirror(
     receipts: inner.receipts,
     payslips: inner.payslips,
     propertyFiles: inner.propertyFiles,
+    carFiles: inner.carFiles,
     exports: inner.exports,
 
     markSynced(snapshot: Snapshot): void {

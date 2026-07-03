@@ -320,6 +320,9 @@ export function describeActionSubject(
     case "importCarSnapshots":
     case "updateCarExpense":
     case "removeCarExpense":
+    case "addCarContract":
+    case "updateCarContract":
+    case "deleteCarContract":
       return name(byId(next.cars, action.carId)?.name);
     case "addCarExpenses":
       return action.expenses.length === 1

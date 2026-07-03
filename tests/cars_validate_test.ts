@@ -34,6 +34,9 @@ function car(over: Partial<Car> = {}): Car {
         sourceHistoryId: "h1",
       },
     ],
+    contracts: [
+      { id: "c1", path: "Volvo/contracts/Köpekontrakt.pdf", kind: "purchase" },
+    ],
     ...over,
   };
 }
@@ -197,5 +200,50 @@ describe("validateCar via validateUserData", () => {
     );
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.cars[0].depreciation).toBeUndefined();
+  });
+
+  it("keeps valid contracts and drops malformed ones", () => {
+    const r = validateUserData(
+      blob([
+        car({
+          contracts: [
+            {
+              id: "c1",
+              path: "Volvo/contracts/Köpekontrakt.pdf",
+              kind: "purchase",
+              description: "Köpekontrakt",
+            },
+            // Unknown kind — dropped.
+            {
+              id: "c2",
+              path: "Volvo/contracts/x.pdf",
+              kind: "rental" as never,
+            },
+            // Empty path — useless without the bytes, dropped.
+            { id: "c3", path: "", kind: "sale" } as Car["contracts"][number],
+            // Duplicate id — the second is dropped.
+            {
+              id: "c1",
+              path: "Volvo/contracts/dupe.pdf",
+              kind: "lease",
+            },
+          ] as Car["contracts"],
+        }),
+      ]),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const contracts = r.value.cars[0].contracts;
+      expect(contracts).toHaveLength(1);
+      expect(contracts[0].id).toBe("c1");
+      expect(contracts[0].kind).toBe("purchase");
+      expect(contracts[0].description).toBe("Köpekontrakt");
+    }
+  });
+
+  it("defaults contracts to an empty array when absent", () => {
+    const r = validateUserData(blob([car({ contracts: undefined })]));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.cars[0].contracts).toEqual([]);
   });
 });

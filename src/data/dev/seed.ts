@@ -1286,6 +1286,18 @@ export function buildSeedUserData(): UserData {
     ],
     loanId: carLoan.id,
     expenses: carLinkedExpenses,
+    // A seeded contract record so the contracts manager lists a row in
+    // fake-data mode. Like the property-files seed, the bytes were never
+    // written to the dev store, so opening it shows the viewer's
+    // "can't load" state — uploading a fresh one round-trips fine.
+    contracts: [
+      {
+        id: mkId("carcontract"),
+        path: "Volvo V60/contracts/Köpekontrakt.pdf",
+        kind: "purchase",
+        description: "Köpekontrakt",
+      },
+    ],
   };
   // A leased car — no capital, no loan; its lease terms model the
   // level-payment balloon so the (negative-early) lease equity shows up
@@ -1305,6 +1317,7 @@ export function buildSeedUserData(): UserData {
     leaseEndValue: 280000,
     snapshots: [],
     expenses: [],
+    contracts: [],
   };
   // A car-pool membership — an optional monthly fee plus per-use charges,
   // both tagged with the "Car pool" transport type. No value of the
@@ -1333,6 +1346,7 @@ export function buildSeedUserData(): UserData {
         typeId: "preset-type-car-pool",
       },
     ],
+    contracts: [],
   };
   const cars: Car[] = [familyCar, leasedCar, poolCar];
 

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 import type { Car } from "../../data/types";
 import { useT } from "../../i18n";
@@ -9,6 +9,7 @@ type Props = {
   car: Car;
   onFindExpenses: (car: Car) => void;
   onAddManualExpense: (car: Car) => void;
+  onManageContracts: (car: Car) => void;
   onEditCar: (car: Car) => void;
   onDeleteCar: (car: Car) => void;
 };
@@ -23,6 +24,7 @@ export function CarActionsMenu({
   car,
   onFindExpenses,
   onAddManualExpense,
+  onManageContracts,
   onEditCar,
   onDeleteCar,
 }: Props) {
@@ -40,6 +42,12 @@ export function CarActionsMenu({
       icon: <Plus size={16} aria-hidden focusable={false} />,
       label: t("carsSheet.addManualExpense"),
       onClick: () => onAddManualExpense(car),
+    },
+    {
+      key: "contracts",
+      icon: <FileText size={16} aria-hidden focusable={false} />,
+      label: t("carsSheet.contractsMenu"),
+      onClick: () => onManageContracts(car),
     },
     {
       key: "editCar",

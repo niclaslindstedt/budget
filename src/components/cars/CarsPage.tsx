@@ -22,6 +22,7 @@ import {
   type SheetTitleMenuItem,
 } from "../SheetTitleMenu";
 import { CarCard } from "./CarCard";
+import { CarContractsModal } from "./CarContractsModal";
 import { CarCostChartModal } from "./CarCostChartModal";
 import { CarEditorModal } from "./CarEditorModal";
 import { CarExpenseFinderModal } from "./CarExpenseFinderModal";
@@ -29,12 +30,16 @@ import { CarExpensesModal } from "./CarExpensesModal";
 import { CarValueChartModal } from "./CarValueChartModal";
 import { ManualCarExpenseModal } from "./ManualCarExpenseModal";
 import { UpdateCarValueModal } from "./UpdateCarValueModal";
+import type { CarContracts } from "./useCarContracts";
 
 type Props = {
   sheet: Sheet;
   data: UserData;
   settings: Settings;
   dispatch: (action: Action) => void;
+  // Car-contract file handling (upload / replace / remove / download),
+  // resolved by the AppShell against the active storage backend.
+  contracts: CarContracts;
 };
 
 // The page's mutually-exclusive modal set, modelled as one discriminated
@@ -51,9 +56,16 @@ type CarModalState =
   | { kind: "costs"; car: Car }
   | { kind: "expenses"; car: Car }
   | { kind: "find"; car: Car }
+  | { kind: "contracts"; car: Car }
   | { kind: "deleteCar"; car: Car };
 
-export function CarsPage({ sheet, data, settings, dispatch }: Props) {
+export function CarsPage({
+  sheet,
+  data,
+  settings,
+  dispatch,
+  contracts,
+}: Props) {
   const t = useT();
   const dispatchModal = useModalDispatch();
 
@@ -107,6 +119,8 @@ export function CarsPage({ sheet, data, settings, dispatch }: Props) {
   const liveExpensesCar =
     modal?.kind === "expenses" ? liveCar(modal.car) : null;
   const liveFindCar = modal?.kind === "find" ? liveCar(modal.car) : null;
+  const liveContractsCar =
+    modal?.kind === "contracts" ? liveCar(modal.car) : null;
   const liveManualCar = manualEditor ? liveCar(manualEditor.car) : null;
 
   // Candidate charges — recomputed while the finder is open so an
@@ -166,6 +180,9 @@ export function CarsPage({ sheet, data, settings, dispatch }: Props) {
                   onFindExpenses={(car) => setModal({ kind: "find", car })}
                   onAddManualExpense={(car) =>
                     setManualEditor({ car, expense: null })
+                  }
+                  onManageContracts={(car) =>
+                    setModal({ kind: "contracts", car })
                   }
                   onEditCar={(car) => setModal({ kind: "edit", car })}
                   onDeleteCar={(car) => setModal({ kind: "deleteCar", car })}
@@ -263,6 +280,42 @@ export function CarsPage({ sheet, data, settings, dispatch }: Props) {
           onExcludeSimilar={(description) =>
             dispatch({ type: "excludeSimilarCarExpenses", description })
           }
+        />
+
+        <CarContractsModal
+          open={liveContractsCar !== null}
+          car={liveContractsCar}
+          canManage={contracts.canManage}
+          onUploadContract={(file, meta) => {
+            if (liveContractsCar === null)
+              return Promise.reject(new Error("no car"));
+            return contracts.uploadContract(liveContractsCar, file, meta);
+          }}
+          onReplaceContract={(record, file) => {
+            if (liveContractsCar === null)
+              return Promise.reject(new Error("no car"));
+            return contracts.replaceContract(liveContractsCar, record, file);
+          }}
+          onDownloadContract={contracts.download}
+          onRemoveContract={(contractId, path) => {
+            if (liveContractsCar === null)
+              return Promise.reject(new Error("no car"));
+            return contracts.removeContract(
+              liveContractsCar.id,
+              contractId,
+              path,
+            );
+          }}
+          onUpdateContractMeta={(contractId, patch) => {
+            if (liveContractsCar === null) return;
+            dispatch({
+              type: "updateCarContract",
+              carId: liveContractsCar.id,
+              contractId,
+              patch,
+            });
+          }}
+          onClose={() => setModal(null)}
         />
 
         <ManualCarExpenseModal

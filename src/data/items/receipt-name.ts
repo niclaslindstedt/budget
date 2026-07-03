@@ -255,6 +255,61 @@ export function buildPropertyFilePath(opts: BuildPropertyFilePathOpts): string {
   return candidate;
 }
 
+export type BuildCarContractPathOpts = {
+  // The car's name — the top folder segment. Empty / all-illegal names
+  // fall back to `fallbackFolder` so the file still lands somewhere.
+  carName: string;
+  // Segment used when `carName` sanitises to empty (a translated "Cars").
+  fallbackFolder: string;
+  // The user's description (the preferred base name). Falls back to the
+  // uploaded file's own stem, then the literal "contract".
+  description?: string;
+  // The uploaded file's original name, used for the extension and as the
+  // base name when there is no description.
+  originalFilename: string;
+  // The contract's id, used only to disambiguate a name collision.
+  contractId: string;
+  // Paths already used elsewhere, so a duplicate name gets an id suffix
+  // rather than overwriting an unrelated file.
+  usedPaths: ReadonlySet<string>;
+};
+
+// Build the relative path for an uploaded car contract:
+// `<car>/contracts/<name>.<ext>`. The base name is the user's description
+// when given, else the uploaded file's own stem; the extension is
+// preserved from the original filename. Every segment is sanitised, and a
+// short contract-id suffix is appended on a name collision so two uploads
+// never fight over one path. Mirrors `buildPropertyFilePath`, minus the
+// category subfolder.
+export function buildCarContractPath(opts: BuildCarContractPathOpts): string {
+  const {
+    carName,
+    fallbackFolder,
+    description,
+    originalFilename,
+    contractId,
+    usedPaths,
+  } = opts;
+
+  const carDir = sanitizeSegment(carName) || fallbackFolder;
+  const extension = extensionOf(originalFilename);
+  const ext = extension ? `.${extension}` : "";
+  const originalStem = extension
+    ? originalFilename.slice(0, originalFilename.length - extension.length - 1)
+    : originalFilename;
+  const stem =
+    sanitizeSegment(description ?? "") ||
+    sanitizeSegment(originalStem) ||
+    "contract";
+
+  const prefix = `${carDir}/contracts/`;
+  const candidate = `${prefix}${stem}${ext}`;
+  if (usedPaths.has(candidate)) {
+    return `${prefix}${stem} (${contractId.slice(0, 6)})${ext}`;
+  }
+  return candidate;
+}
+
 // The basename's lower-case extension (no dot) — extension lookup scoped to
 // the final path segment so a dot in a subfolder name (a property "Apt 2.0")
 // can't be mistaken for the file's extension.

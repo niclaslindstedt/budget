@@ -34,6 +34,7 @@ import {
   EyeOff,
   FileLock2,
   Files,
+  FileSignature,
   FileSpreadsheet,
   FileText,
   FileUp,
@@ -1478,6 +1479,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "propertyFiler",
     tier: "pro",
     glyph: Paperclip,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    // The user uploaded a car contract (purchase / leasing / sale
+    // paperwork). A manual unlock fired from the car-contracts hook — the
+    // upload writes the bytes plus the record, not a derived state slice.
+    id: "carContractKeeper",
+    tier: "pro",
+    glyph: FileSignature,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

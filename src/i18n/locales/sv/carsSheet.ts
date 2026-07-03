@@ -34,6 +34,7 @@ const carsSheet: CarsSheetCatalog = {
   // Card "…" menu
   findExpenses: "Hitta bilkostnader",
   addManualExpense: "Lägg till kostnad manuellt",
+  contractsMenu: "Kontrakt",
   editCar: "Redigera bil",
   deleteCar: "Ta bort bil",
   deleteCarTitle: "Ta bort bil",
@@ -148,6 +149,26 @@ const carsSheet: CarsSheetCatalog = {
   expenseAmount: "Belopp",
   expenseDate: "Datum",
   expenseType: "Typ",
+
+  // Contracts modal
+  contractsTitle: "Kontrakt",
+  contractsEmpty: "Inga kontrakt uppladdade än.",
+  contractsUnavailable:
+    "Uppladdning av kontrakt kräver en lokal mapp eller molnlagring.",
+  uploadContract: "Ladda upp kontrakt",
+  uploadContractAction: "Ladda upp",
+  editContract: "Redigera kontrakt",
+  deleteContract: "Ta bort kontrakt",
+  deleteContractTitle: "Ta bort kontrakt",
+  deleteContractConfirm: "Ta bort {name}? Den sparade filen tas också bort.",
+  contractAttachment: "Kontrakt",
+  contractKindLabel: "Kontraktstyp",
+  contractKindPurchase: "Köp",
+  contractKindLease: "Leasing",
+  contractKindSale: "Försäljning",
+  contractDescriptionLabel: "Beskrivning",
+  contractDescriptionPlaceholder: "t.ex. Köpekontrakt",
+  contractsFolderFallback: "Bilar",
 
   // Cost chart modal
   costChartEmpty: "Inga kostnader i det här intervallet än.",

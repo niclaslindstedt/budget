@@ -72,6 +72,7 @@ export function withCompression(inner: StorageAdapter): StorageAdapter {
     receipts: inner.receipts,
     payslips: inner.payslips,
     propertyFiles: inner.propertyFiles,
+    carFiles: inner.carFiles,
     exports: inner.exports,
     getRevision: inner.getRevision ? () => inner.getRevision!() : undefined,
 

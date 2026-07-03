@@ -1234,6 +1234,19 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // v85 validator omits each when missing, so this is a bare additive
   // bump.
   84: (v84) => ({ ...v84, version: 85 }),
+
+  // v85 → v86: a `Car` gains `contracts`, the uploaded purchase / leasing
+  // / sale documents managed from the car card's "…" menu. Seeds `[]` on
+  // every car (additive; the v86 validator fills it regardless), so this
+  // is a bare additive bump that keeps the persisted shape explicit.
+  85: (v85) => {
+    const cars = Array.isArray(v85.cars)
+      ? v85.cars.map((car) =>
+          isObj(car) ? { ...car, contracts: car.contracts ?? [] } : car,
+        )
+      : v85.cars;
+    return { ...v85, version: 86, cars };
+  },
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

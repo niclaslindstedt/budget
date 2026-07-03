@@ -141,5 +141,29 @@ export function reduceCars(state: UserData, action: Action): UserData | null {
     if (state.carExpenseExclusionPatterns.length === 0) return state;
     return { ...state, carExpenseExclusionPatterns: [] };
   }
+  if (action.type === "addCarContract") {
+    return updateCarById(state, action.carId, (c) => ({
+      ...c,
+      contracts: [...c.contracts, action.contract],
+    }));
+  }
+  if (action.type === "updateCarContract") {
+    return updateCarById(state, action.carId, (c) => ({
+      ...c,
+      contracts: c.contracts.map((contract) =>
+        contract.id === action.contractId
+          ? applyPatch(contract, action.patch)
+          : contract,
+      ),
+    }));
+  }
+  if (action.type === "deleteCarContract") {
+    return updateCarById(state, action.carId, (c) => ({
+      ...c,
+      contracts: c.contracts.filter(
+        (contract) => contract.id !== action.contractId,
+      ),
+    }));
+  }
   return null;
 }

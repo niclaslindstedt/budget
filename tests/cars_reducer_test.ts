@@ -11,6 +11,7 @@ function car(over: Partial<Car> = {}): Car {
     ownership: "owned",
     snapshots: [],
     expenses: [],
+    contracts: [],
     ...over,
   };
 }
@@ -194,5 +195,62 @@ describe("deleteLoan cascade", () => {
     const next = reducer(prev, { type: "deleteLoan", loanId: "loan-1" });
     expect(next.loans).toHaveLength(0);
     expect(next.cars[0].loanId).toBeUndefined();
+  });
+});
+
+describe("car contracts", () => {
+  it("adds, edits and deletes a contract", () => {
+    const prev = state({ cars: [car()] });
+    const added = reducer(prev, {
+      type: "addCarContract",
+      carId: "car-1",
+      contract: {
+        id: "ct1",
+        path: "Volvo/contracts/Köpekontrakt.pdf",
+        kind: "purchase",
+      },
+    });
+    expect(added.cars[0].contracts).toHaveLength(1);
+    expect(added.cars[0].contracts[0].kind).toBe("purchase");
+
+    const edited = reducer(added, {
+      type: "updateCarContract",
+      carId: "car-1",
+      contractId: "ct1",
+      patch: { kind: "sale", description: "Slutlikvid" },
+    });
+    expect(edited.cars[0].contracts[0].kind).toBe("sale");
+    expect(edited.cars[0].contracts[0].description).toBe("Slutlikvid");
+
+    const deleted = reducer(edited, {
+      type: "deleteCarContract",
+      carId: "car-1",
+      contractId: "ct1",
+    });
+    expect(deleted.cars[0].contracts).toHaveLength(0);
+  });
+
+  it("clears a key when the patch carries an explicit undefined", () => {
+    const prev = state({
+      cars: [
+        car({
+          contracts: [
+            {
+              id: "ct1",
+              path: "Volvo/contracts/x.pdf",
+              kind: "lease",
+              description: "Avtal",
+            },
+          ],
+        }),
+      ],
+    });
+    const next = reducer(prev, {
+      type: "updateCarContract",
+      carId: "car-1",
+      contractId: "ct1",
+      patch: { description: undefined },
+    });
+    expect("description" in next.cars[0].contracts[0]).toBe(false);
   });
 });
