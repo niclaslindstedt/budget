@@ -178,6 +178,7 @@ const carsSheet: CarsSheetCatalog = {
   chartLoanInterest: "Låneränta",
   chartTotal: "Totalt",
   totalInRange: "Totalt i intervallet",
+  rollingAverage: "{n}-mån snitt",
 };
 
 export default carsSheet;

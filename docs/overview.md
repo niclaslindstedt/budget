@@ -2811,8 +2811,13 @@ property chart.
 `CarCostChartModal.tsx` is the cost-of-ownership view: a monthly
 `StackedBarChart` of the linked expenses, one band per transport type
 (`carMonthlyCosts`), with toggleable synthetic bands for the
-depreciation and loan-interest legs. The header carries the range's
-total and the **cost per kilometre** — `carCostPerDistance`
+depreciation and loan-interest legs. A **3-month rolling-average**
+line is overlaid on the bars (via `StackedBarChart`'s `overlay` prop, a
+`StackedBarOverlay` sharing both scales): each month's total cost —
+every visible band summed, so it tracks the toggled legs — smoothed by
+a trailing mean over the last three months, so the noisy per-month bars
+read against a "what a month typically costs" line. The header carries
+the range's total and the **cost per kilometre** — `carCostPerDistance`
 (`src/data/cars/costs.ts`) divides the sum of the known legs
 (`carTotalCostOfOwnership`: expenses + depreciation + loan interest)
 by `carDistanceDriven` (latest odometer reading − reading at
