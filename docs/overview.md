@@ -2843,7 +2843,11 @@ range's total and the **cost per distance** — `carCostPerDistance`
 by `carDistanceDriven` (latest odometer reading − reading at
 purchase), labelled in the user's distance unit. Unknown legs stay
 unknown rather than reading as 0 — a car with no odometer data shows no
-per-distance figure at all.
+per-distance figure at all. The chart is offered for every ownership
+form except a **car pool** — a pay-per-use running cost with no
+ownership story to break down — so a pool car's card hides the
+cost-chart button and renders its total costs as a plain figure rather
+than a chart affordance.
 
 ### Car loan link
 

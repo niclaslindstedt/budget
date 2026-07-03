@@ -97,7 +97,9 @@ depreciation and interest legs as toggleable bands, and overlays a
 against what a month typically costs. Alongside it, a flat dashed
 **monthly average** line marks the whole range's total spread evenly
 over its months — the moving line shows the trend, the flat line shows
-the long-run baseline. The value chart draws the car's value over
+the long-run baseline. A car pool, being pure pay-per-use running cost
+with no ownership story to break down, is the one exception — it doesn't
+offer the cost chart. The value chart draws the car's value over
 time — with toggles to subtract the running costs and interest, showing
 what the car has really consumed — plus your range readings. And once
 range is tracked, the headline figure appears: **cost per distance**
