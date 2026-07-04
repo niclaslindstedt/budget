@@ -252,6 +252,7 @@ export const SHEET_GLYPH_NAMES: readonly CategoryIcon[] = [
   "scale",
   "home",
   "car",
+  "utensils",
   "plane",
   "briefcase",
   "graduation-cap",
