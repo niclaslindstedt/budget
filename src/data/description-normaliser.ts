@@ -4,11 +4,13 @@
 // detected as recurring also memorises its category under the same
 // key the next import looks up.
 //
-// The transform is intentionally lossy: case, punctuation, ISO/short
-// dates, currency tokens, and long digit sequences (transaction
-// reference numbers) all collapse to a single canonical form. The
-// goal is "two charges with cosmetic differences map together" — not
-// fingerprinting a unique merchant.
+// The transform is intentionally lossy: case, punctuation, dates
+// (full Y-M-D / D-M-Y and short M/D forms, wherever they sit in the
+// string — banks routinely prefix or suffix a booking date), currency
+// tokens, and long digit sequences (transaction reference numbers) all
+// collapse to a single canonical form. The goal is "two charges with
+// cosmetic differences map together" — not fingerprinting a unique
+// merchant.
 
 // Currency / amount tokens banks frequently glue onto descriptions.
 // Stripped before digit-cleaning so "120,50 SEK" doesn't survive as a
@@ -27,7 +29,15 @@ const CURRENCY_RE = /\b(sek|usd|eur|gbp|nok|dkk|chf|kr)\b/gi;
 const NOISE_RE =
   /(?<![\p{L}\p{N}])(kortköp|kortkop|kkb|kkk|köp|kop|överföring|overforing|insättning|insattning|uttag|swish|betalning|autogiro|ref|notis|debit|credit|debet|kredit)(?![\p{L}\p{N}])/giu;
 
-const ISO_DATE_RE = /\d{4}-\d{2}-\d{2}/g;
+// Full three-group numeric dates the bank prefixes / suffixes onto a
+// description — `2025-05-06 APPLE`, `APPLE 06/05/2025`, `2025.5.6 …`.
+// Covers Y-M-D and D-M-Y order, `-` / `/` / `.` separators, 2- or
+// 4-digit years, and unpadded month / day. Runs before `SHORT_DATE_RE`
+// so a full date is consumed whole rather than leaving a stray year
+// fragment (`2025/05/06` → the two-group matcher would eat `25/05/06`
+// and strand a leading `20`). No `\b` anchor, so a date glued to a
+// reference token (`INV2025-05-06`) still strips.
+const FULL_DATE_RE = /\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/g;
 const SHORT_DATE_RE = /\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?/g;
 // Sequences of 4+ digits look like reference numbers; sequences of 1-3
 // digits sometimes carry meaning (a store number) but they're swept
@@ -61,7 +71,7 @@ export function normaliseDescription(input: string): string {
   }
   const result = input
     .toLowerCase()
-    .replace(ISO_DATE_RE, " ")
+    .replace(FULL_DATE_RE, " ")
     .replace(SHORT_DATE_RE, " ")
     .replace(CURRENCY_RE, " ")
     .replace(NOISE_RE, " ")

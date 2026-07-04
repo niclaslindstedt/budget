@@ -18,6 +18,24 @@ describe("normaliseDescription", () => {
     );
   });
 
+  it("strips a leading date so a date-prefixed merchant matches", () => {
+    // Many banks prefix the booking date. The stripped key must equal
+    // the bare-merchant key so the two collapse together and one tag
+    // suggests the rest.
+    const bare = normaliseDescription("APPLE");
+    expect(normaliseDescription("2025-05-06 APPLE")).toBe(bare);
+    expect(normaliseDescription("APPLE 2025-05-06")).toBe(bare);
+  });
+
+  it("strips full dates with slash and dot separators and unpadded parts", () => {
+    const bare = normaliseDescription("APPLE");
+    expect(normaliseDescription("2025/05/06 APPLE")).toBe(bare);
+    expect(normaliseDescription("2025.05.06 APPLE")).toBe(bare);
+    expect(normaliseDescription("2025-5-6 APPLE")).toBe(bare);
+    expect(normaliseDescription("06-05-2025 APPLE")).toBe(bare);
+    expect(normaliseDescription("APPLE 06/05/2025")).toBe(bare);
+  });
+
   it("strips short dates with various separators", () => {
     expect(normaliseDescription("Coffee 16/5")).toBe("coffee");
     expect(normaliseDescription("Coffee 16/05/2026")).toBe("coffee");
