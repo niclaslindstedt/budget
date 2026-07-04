@@ -24,6 +24,7 @@ import {
   initialMetadataFormState,
   type MetadataFormFields,
 } from "./budget-metadata-form-reducer";
+import { entryNeedsMetadata } from "./budget-metadata-needs";
 import {
   budgetMetadataSplitReducer,
   buildFinalSplits,
@@ -63,15 +64,8 @@ import { TypePicker } from "../TypePicker";
 // page's `…` menu. One entry at a time, biggest absolute amount first,
 // newest month first. Mirror-image of `BudgetFindConflictsModal`'s
 // step-through cleanup pattern but scoped to per-entry annotation
-// rather than de-duplication.
-//
-// "Needs metadata" is `resolveEntryLabels` (the same resolver the
-// synthesized history row reads) returning either no type at all OR
-// description equal to the raw bank text — i.e. nothing has been said
-// about this entry by an override, a match rule, or a merchant hint.
-// Entries that the budget UI already hides (`hidden`,
-// `collapsedIntoTransferId`, `isTransfer`) are excluded, as are
-// entries with `splits` because the single-row picker doesn't apply.
+// rather than de-duplication. The "needs metadata" predicate that
+// gates the queue lives in `./budget-metadata-needs`.
 
 type Props = {
   open: boolean;
@@ -153,31 +147,6 @@ function sameTagSet(a: readonly string[], b: readonly string[]): boolean {
   const set = new Set(a);
   for (const id of b) if (!set.has(id)) return false;
   return true;
-}
-
-function entryNeedsMetadata(
-  entry: HistoryEntry,
-  hints: Readonly<Record<string, MerchantHint>>,
-  rules: readonly MatchRule[],
-  companies: ReadonlyMap<string, Company>,
-  types: ReadonlyMap<string, EntryType>,
-): boolean {
-  if (entry.hidden) return false;
-  if (entry.collapsedIntoTransferId) return false;
-  if (entry.isTransfer) return false;
-  if (entry.splits && entry.splits.length > 0) return false;
-  const resolved = resolveEntryLabels(entry, hints, rules, companies, types);
-  // The entry still wants a closer look when any of the three first-
-  // class fields is missing: no type pinned, no company tagged, OR the
-  // resolved description is still the raw bank text. `entry.noCompany`
-  // exempts the entry from the company check — set from the "No
-  // company needed" toggle in the modal for entries where tagging a
-  // merchant doesn't apply (e.g. salary, internal transfers).
-  return (
-    resolved.typeId === null ||
-    (resolved.companyId === null && !entry.noCompany) ||
-    resolved.description === entry.description
-  );
 }
 
 export function BudgetMetadataModal({
@@ -335,27 +304,39 @@ export function BudgetMetadataModal({
   const canGoBack =
     reviewIndex === null ? trail.length > 0 : isReviewing && reviewIndex > 0;
   const currentMonth = current ? monthKeyOf(current.date) : null;
-  const monthRemaining = currentMonth
-    ? queue.filter((e) => monthKeyOf(e.date) === currentMonth).length
-    : 0;
-  const monthTotal = useMemo(() => {
-    if (!currentMonth) return 0;
-    let n = 0;
-    for (const e of entries) {
-      if (monthKeyOf(e.date) !== currentMonth) continue;
-      if (
-        entryNeedsMetadata(
-          e,
-          merchantHints,
-          matchRules,
-          companiesById,
-          typesById,
-        ) ||
-        completed.has(e.id)
+  // The current month's entries that belong to this session's walk —
+  // everything still needing metadata (pending or skipped) plus the
+  // entries already completed this session — in the exact order the walk
+  // visits them (biggest absolute amount first, id as tiebreak, matching
+  // `queue`). The progress counter reads position + length straight off
+  // this list so it stays correct whether `current` is the live front or
+  // an entry Back has stepped onto.
+  //
+  // Deriving the index from the queue's leftover count instead used to
+  // over-count while reviewing a skipped entry: skipping filters the
+  // entry out of `queue`, so the "remaining" math placed the reviewed
+  // entry one past the total — the "2 of 1" the counter showed after
+  // Skip → Back.
+  const monthOrdered = useMemo(() => {
+    if (!currentMonth) return [];
+    return entries
+      .filter(
+        (e) =>
+          monthKeyOf(e.date) === currentMonth &&
+          (entryNeedsMetadata(
+            e,
+            merchantHints,
+            matchRules,
+            companiesById,
+            typesById,
+          ) ||
+            completed.has(e.id)),
       )
-        n += 1;
-    }
-    return n;
+      .sort((a, b) => {
+        const absDiff = Math.abs(b.amount) - Math.abs(a.amount);
+        if (absDiff !== 0) return absDiff;
+        return a.id.localeCompare(b.id);
+      });
   }, [
     entries,
     merchantHints,
@@ -365,7 +346,11 @@ export function BudgetMetadataModal({
     currentMonth,
     completed,
   ]);
-  const monthIndex = monthTotal > 0 ? monthTotal - monthRemaining + 1 : 0;
+  const monthTotal = monthOrdered.length;
+  const monthPosition = current
+    ? monthOrdered.findIndex((e) => e.id === current.id)
+    : -1;
+  const monthIndex = monthPosition >= 0 ? monthPosition + 1 : 0;
 
   // The per-entry form fields plus their seed snapshot live in one
   // reducer so the reset-on-entry-change transition is a single
