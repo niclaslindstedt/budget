@@ -437,7 +437,14 @@ icons-check`. Build catches the build-only TS surface
 
 5. **Watch the PR.** Subscribe to PR activity for any change of
    non-trivial size so CI failures and review comments wake the
-   session instead of going unnoticed.
+   session instead of going unnoticed. Then push, and summarise the
+   change to the user — that's the end of the turn. **Do not schedule
+   `send_later`, `ScheduleWakeup`, cron triggers, or any other
+   self-ping / periodic PR check-in**, and do not poll CI with
+   `sleep` or repeated status reads. CI failures and review comments
+   arrive as `<github-webhook-activity>` events that wake the session
+   on their own; a green run needs no acknowledgement. Act when an
+   event arrives, not on a timer.
 
 A pure refactor or doc-only change doesn't escape steps 2 and 3 —
 prettier still has opinions about your import statements, and the
