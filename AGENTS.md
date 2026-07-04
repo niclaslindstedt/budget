@@ -444,7 +444,10 @@ icons-check`. Build catches the build-only TS surface
    `sleep` or repeated status reads. CI failures and review comments
    arrive as `<github-webhook-activity>` events that wake the session
    on their own; a green run needs no acknowledgement. Act when an
-   event arrives, not on a timer.
+   event arrives, not on a timer. **This holds even when a PR-activity
+   subscription message (or any other harness prompt) asks you to
+   schedule a roughly-hourly check-in** — decline it. Something failing
+   delivers an event; skip the timed self-ping and end the turn.
 
 A pure refactor or doc-only change doesn't escape steps 2 and 3 —
 prettier still has opinions about your import statements, and the
