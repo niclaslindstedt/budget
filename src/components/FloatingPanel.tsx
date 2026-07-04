@@ -31,6 +31,16 @@ type Props = {
   // below their trigger and would otherwise read as detached from the
   // row above (e.g. description reveal on phones).
   arrow?: "up";
+  // Freeze page scroll (`overflow: hidden` on <body>) while open, with a
+  // snapshot/restore of `scrollY` to survive the iOS overflow-toggle snap.
+  // Defaults to `true`. Popovers that host a text input opening the soft
+  // keyboard AND ride with the page (document-coordinate placement) pass
+  // `false`: freezing fights the browser scrolling the field above the
+  // keyboard, and the snapshot — taken after that scroll — makes the
+  // restore-on-close yank the page to a stale position (see the
+  // description popover). Letting the page scroll freely keeps it put on
+  // dismiss.
+  lockScroll?: boolean;
   children: React.ReactNode;
 };
 
@@ -48,6 +58,7 @@ export function FloatingPanel({
   rowId,
   className = "",
   arrow,
+  lockScroll = true,
   children,
 }: Props) {
   const position = useFloatingPosition(triggerRef, open, placement);
@@ -59,8 +70,10 @@ export function FloatingPanel({
   // the burger menu, whose short list never reaches its own scroll
   // boundary so `overflow-y-auto` alone doesn't suppress the chain.
   // The hook is ref-counted, so pickers opened inside an already-
-  // modal context (Modal also locks) compose as no-ops.
-  useBodyScrollLock(open);
+  // modal context (Modal also locks) compose as no-ops. Opt out
+  // (`lockScroll={false}`) for keyboard-bearing popovers that ride with
+  // the page — see the prop's doc comment.
+  useBodyScrollLock(open && lockScroll);
 
   // When the panel closes after having held keyboard focus (the
   // listbox cursor lives inside the portal), return focus to the

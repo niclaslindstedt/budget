@@ -546,6 +546,12 @@ function DescriptionPopover({
         placement={DESCRIPTION_POPOVER_PLACEMENT}
         rowId={rowId}
         arrow="up"
+        // The textarea auto-focuses on open, popping the iOS soft
+        // keyboard; the popover rides with the page (document-coordinate
+        // placement) so the field stays above the keyboard. Freezing the
+        // body would fight that scroll and, worse, leave a stale scroll
+        // snapshot that yanks the page on dismiss — keep the page free.
+        lockScroll={false}
       >
         {companies && onSetCompany && onCreateCompany && (
           // The `p-2` inset (not the tighter `p-1.5` other picker sections
@@ -803,6 +809,10 @@ export function TransferDescriptionCell({
         placement={DESCRIPTION_POPOVER_PLACEMENT}
         rowId={rowId}
         arrow="up"
+        // Shares the description popover's document-coordinate placement
+        // and ride-with-the-page behaviour; keep the page unfrozen so a
+        // dismiss can't snap it (mirrors the editable popover above).
+        lockScroll={false}
       >
         <div className="flex items-start gap-1.5 px-2 py-1.5 text-xs">
           <Landmark
