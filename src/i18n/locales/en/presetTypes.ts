@@ -34,6 +34,7 @@ const presetTypes = {
   leasing: "Leasing",
   "car-service": "Car service",
   taxi: "Taxi",
+  "e-scooter": "E-scooter",
   "car-pool": "Car pool",
   pharmacy: "Pharmacy",
   healthcare: "Healthcare",

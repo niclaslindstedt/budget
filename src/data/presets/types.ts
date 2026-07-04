@@ -353,6 +353,17 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
+      // A rented e-scooter / e-bike ride (Voi, Tier, Lime, …) — a
+      // per-trip micromobility charge, not a cost of owning a car,
+      // so it is deliberately kept out of CAR_EXPENSE_TYPE_IDS below.
+      slug: "e-scooter",
+      name: "E-scooter",
+      color: C[4],
+      glyph: "scooter",
+      category: "transport",
+      kind: "expense",
+    },
+    {
       // A car pool / car-sharing membership — covers both the optional
       // monthly membership fee and the per-use charge (starting fee +
       // per-km), so it can back either kind of charge on a pool car.
@@ -1109,6 +1120,7 @@ export const NEVER_ITEM_TYPE_IDS: ReadonlySet<string> = new Set([
   "preset-type-parking",
   "preset-type-public-transport",
   "preset-type-taxi",
+  "preset-type-e-scooter",
   "preset-type-car-pool",
   "preset-type-fuel",
   // Health & personal services
