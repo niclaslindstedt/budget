@@ -33,7 +33,7 @@
     "@visx/scale": "^4.0.0",
     "@visx/shape": "^4.0.0",
     "@visx/tooltip": "^4.0.0",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.23.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
