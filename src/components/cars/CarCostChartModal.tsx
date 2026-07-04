@@ -8,6 +8,7 @@ import {
 } from "../../data/cars/costs";
 import type { Car, EntryType, Loan, Settings } from "../../data/types";
 import { useIsMobile, useResetOnOpen } from "../../hooks";
+import { bcp47 } from "../../i18n/locale";
 import { useLang, useT } from "../../i18n";
 import { displayTypeName } from "../../i18n/preset-names";
 import {
@@ -23,6 +24,7 @@ import {
   formatNumber,
   withCurrency,
 } from "../../utils/format";
+import { tintBorder, tintFill } from "../../utils/tint";
 import { Checkbox } from "../form";
 import { Modal } from "../Modal";
 import {
@@ -36,6 +38,7 @@ import {
   type StackedBarChartSeries,
   type StackedBarOverlay,
   type StackedBarReferenceLine,
+  type StackedBarSelection,
 } from "../charts/StackedBarChart";
 
 // The cost-of-ownership view: linked expenses stacked per month by
@@ -89,11 +92,18 @@ export function CarCostChartModal({
   const [range, setRange] = useState<ChartRange>(DEFAULT_CHART_RANGE);
   const [includeDepreciation, setIncludeDepreciation] = useState(false);
   const [includeInterest, setIncludeInterest] = useState(false);
+  // The pressed band of the monthly bar chart (a type/leg within one month),
+  // or null. Highlights the bar section, turns the matching legend entry into
+  // a filled pill, and surfaces the section's real cost.
+  const [barSelection, setBarSelection] = useState<StackedBarSelection | null>(
+    null,
+  );
 
   useResetOnOpen(open, car?.id, () => {
     setRange(DEFAULT_CHART_RANGE);
     setIncludeDepreciation(false);
     setIncludeInterest(false);
+    setBarSelection(null);
   });
 
   if (!open || !car) return null;
@@ -240,6 +250,66 @@ export function CarCostChartModal({
       ),
       settings,
     );
+  const formatAmountFull = (n: number) =>
+    formatBalance(n, settings, { neverAbbreviate: true });
+  const percentFmt = new Intl.NumberFormat(bcp47(lang), {
+    style: "percent",
+    maximumFractionDigits: 0,
+  });
+  const formatPercent = (share: number) => percentFmt.format(share);
+
+  // Resolve a stored colour (a "--token" or a hex) to a CSS colour string.
+  const cssColor = (color: string) =>
+    color.startsWith("--") ? `var(${color})` : color;
+
+  // The active selection resolved to its band, value, and share. Two shapes
+  // feed one highlight: pressing a single bar section (`barSelection.x` set)
+  // pins to that month — value is the section's real cost, read against that
+  // month's bar; clicking a legend entry (`barSelection.x` omitted) selects
+  // the whole band — value is its total across the range, read against the
+  // range total. `rangeTotal` is the denominator for a whole-band selection.
+  const selectedSection = (() => {
+    if (!barSelection) return null;
+    const s = series.find((b) => b.id === barSelection.seriesId);
+    if (!s) return null;
+    if (barSelection.x === undefined) {
+      const value = s.points.reduce((sum, p) => sum + Math.max(0, p.y), 0);
+      if (value <= 0) return null;
+      return {
+        mode: "category" as const,
+        seriesId: s.id,
+        label: s.label,
+        color: s.color,
+        value,
+        share: rangeTotal > 0 ? value / rangeTotal : 0,
+      };
+    }
+    const point = s.points.find((p) => p.x === barSelection.x);
+    if (!point || point.y <= 0) return null;
+    const monthTotal = series.reduce(
+      (sum, b) => sum + (b.points.find((p) => p.x === barSelection.x)?.y ?? 0),
+      0,
+    );
+    return {
+      mode: "section" as const,
+      seriesId: s.id,
+      label: s.label,
+      color: s.color,
+      value: point.y,
+      monthTotal,
+      share: monthTotal > 0 ? point.y / monthTotal : 0,
+      month: formatX(barSelection.x),
+    };
+  })();
+
+  // Toggle a whole-band highlight from a legend entry: clear it if this band
+  // is already the active whole-band selection, otherwise select it.
+  const toggleTypeSelection = (seriesId: string) =>
+    setBarSelection((cur) =>
+      cur && cur.seriesId === seriesId && cur.x === undefined
+        ? null
+        : { seriesId },
+    );
 
   return (
     <Modal
@@ -285,7 +355,13 @@ export function CarCostChartModal({
             </div>
           </div>
 
-          <ChartRangeRow value={range} onChange={setRange} />
+          <ChartRangeRow
+            value={range}
+            onChange={(next) => {
+              setRange(next);
+              setBarSelection(null);
+            }}
+          />
 
           {hasChart ? (
             <div className="flex flex-col gap-2">
@@ -296,22 +372,60 @@ export function CarCostChartModal({
                 totalLabel={t("carsSheet.chartTotal")}
                 overlay={overlay}
                 referenceLine={referenceLine}
+                selected={barSelection}
+                onSelect={setBarSelection}
               />
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                {series.map((s) => (
-                  <span key={s.id} className="inline-flex items-center gap-1.5">
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{
-                        background: s.color.startsWith("--")
-                          ? `var(${s.color})`
-                          : s.color,
-                      }}
-                    />
-                    {s.label}
-                  </span>
-                ))}
+              {/* Legend doubles as a control: clicking a band highlights it
+                  across every month, the same selection pressing a single bar
+                  section produces (pinned to one month). The overlay and
+                  reference-line markers stay static — they're metrics over the
+                  stacks, not selectable bands. */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+                {series.map((s) => {
+                  const isSelected = selectedSection?.seriesId === s.id;
+                  if (isSelected && selectedSection) {
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleTypeSelection(s.id)}
+                        aria-pressed
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium"
+                        style={{
+                          backgroundColor: tintFill(cssColor(s.color)),
+                          borderColor: tintBorder(cssColor(s.color)),
+                          color: cssColor(s.color),
+                        }}
+                      >
+                        <span className="truncate">{s.label}</span>
+                        <span className="tabular-nums">
+                          {formatAmountFull(selectedSection.value)}
+                        </span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleTypeSelection(s.id)}
+                      aria-pressed={false}
+                      aria-label={t("carsSheet.costChartSelectTypeAria", {
+                        name: s.label,
+                      })}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-muted hover:text-fg ${
+                        selectedSection ? "opacity-45" : ""
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: cssColor(s.color) }}
+                      />
+                      {s.label}
+                    </button>
+                  );
+                })}
                 {overlay && (
                   <span
                     key={overlay.id}
@@ -339,6 +453,20 @@ export function CarCostChartModal({
                   </span>
                 )}
               </div>
+              {selectedSection && (
+                <p className="m-0 text-xs text-muted">
+                  {selectedSection.mode === "section"
+                    ? t("carsSheet.costChartSectionShare", {
+                        percent: formatPercent(selectedSection.share),
+                        month: selectedSection.month,
+                        total: formatAmountFull(selectedSection.monthTotal),
+                      })
+                    : t("carsSheet.costChartCategoryShare", {
+                        percent: formatPercent(selectedSection.share),
+                        total: formatAmountFull(rangeTotal),
+                      })}
+                </p>
+              )}
             </div>
           ) : (
             <div className="rounded border border-line bg-surface-2 px-4 py-8 text-center text-sm text-muted">
@@ -349,13 +477,19 @@ export function CarCostChartModal({
           <div className="flex flex-col gap-3 border-t border-line pt-4">
             <Checkbox
               checked={includeDepreciation}
-              onChange={setIncludeDepreciation}
+              onChange={(next) => {
+                setIncludeDepreciation(next);
+                setBarSelection(null);
+              }}
               label={t("carsSheet.includeDepreciation")}
             />
             {hasInterest && (
               <Checkbox
                 checked={includeInterest}
-                onChange={setIncludeInterest}
+                onChange={(next) => {
+                  setIncludeInterest(next);
+                  setBarSelection(null);
+                }}
                 label={t("carsSheet.includeLoanInterest")}
               />
             )}

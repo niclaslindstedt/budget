@@ -2850,7 +2850,14 @@ read against a "what a month typically costs" line. A flat dashed
 **monthly-average** baseline sits alongside it (`StackedBarChart`'s
 `referenceLine` prop, a `StackedBarReferenceLine`): the range's total
 spread evenly over its months, so the bars read against "what a month
-costs on average" as well as the moving line. The header carries the
+costs on average" as well as the moving line. Pressing a bar section —
+or its legend entry — **highlights** that band the same way the budget
+sheet's Visualize-spending chart does (via `StackedBarChart`'s
+`selected` / `onSelect` props): a single section pins to its month and
+the caption reads its share of that month's bar, while a legend click
+selects the whole band across the range and reads its share of the
+range total; the selected band's legend entry becomes a filled pill
+trailing the highlighted amount. The header carries the
 range's total and the **cost per distance** — `carCostPerDistance`
 (`src/data/cars/costs.ts`) divides the sum of the known legs
 (`carTotalCostOfOwnership`: expenses + depreciation + loan interest)

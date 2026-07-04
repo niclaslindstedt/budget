@@ -196,6 +196,14 @@ const carsSheet = {
   totalInRange: "Total in range",
   rollingAverage: "{n}-month average",
   monthlyAverage: "Monthly average",
+  // Accessible name for a clickable legend band under the cost bar chart.
+  costChartSelectTypeAria: "Highlight {name}",
+  // Caption shown when a bar section is pressed — how much of that month's
+  // bar the pressed band makes up.
+  costChartSectionShare: "{percent} of {month} · {total}",
+  // Caption shown when a legend band is clicked — its share of total cost
+  // across the whole range.
+  costChartCategoryShare: "{percent} of total · {total}",
 } as const;
 
 export type CarsSheetCatalog = Widen<typeof carsSheet>;

@@ -195,6 +195,9 @@ const carsSheet: CarsSheetCatalog = {
   totalInRange: "Totalt i intervallet",
   rollingAverage: "{n}-mån snitt",
   monthlyAverage: "Månadssnitt",
+  costChartSelectTypeAria: "Markera {name}",
+  costChartSectionShare: "{percent} av {month} · {total}",
+  costChartCategoryShare: "{percent} av totalt · {total}",
 };
 
 export default carsSheet;
