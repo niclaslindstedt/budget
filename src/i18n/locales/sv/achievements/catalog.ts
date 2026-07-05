@@ -186,6 +186,12 @@ const catalog: AchievementsCatalogEntries = {
     learnMore:
       "Betalade du för någon annan? Flagga posten som ignorerad: den finns kvar i kontoutdraget och saldot, men snedvrider inte utgiftsdiagrammen — som barnvisor som inte ska forma din smakprofil.",
   },
+  notMyLedger: {
+    name: "Inte min ledger",
+    condition: "Ignorera en hel budget i statistiken.",
+    learnMore:
+      "Under Redigera blad kan du flagga en hel budget som ignorerad i statistiken. Bladet faller som standard bort från utgiftsdiagrammen, och radväxlaren blir en opt-in — så att en partners budget bara bidrar med de få rader du faktiskt finansierat.",
+  },
   groundhogDay: {
     name: "Måndag igen",
     condition: "Gör en rad återkommande.",

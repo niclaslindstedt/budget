@@ -907,6 +907,7 @@ type AccountBudget = {
   accountId: string | null; // points at one of UserData.accounts, or null
   columns: Column[]; // ordered; drag-and-drop reorders this array
   rows: Row[]; // persisted UserRow / CorrectionRow only
+  ignoredForStats?: boolean; // true ⇒ whole budget out of stats, rows opt IN
 };
 
 type AccountsView = { id: string; type: "accountsView" }; // singleton dashboard

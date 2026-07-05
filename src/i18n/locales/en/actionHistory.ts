@@ -141,6 +141,7 @@ const actionHistory = {
     updateTaxProfile: "Edited tax profile",
     deleteTaxProfile: "Deleted tax profile",
     setSalaryTaxProfile: "Set tax profile on sheet",
+    setBudgetIgnoredForStats: "Changed budget statistics setting",
     setInsightsNetWorthSettings: "Updated net worth settings",
     setScenariosBaseSheet: "Changed base budget",
     addScenario: "Created scenario",

@@ -28,6 +28,11 @@ export type SpendingInputs = {
   // The owned-items catalog keyed by id. Only consulted when
   // `spreadItemCosts` is on; omit it otherwise.
   itemsById?: ReadonlyMap<string, Item>;
+  // `AccountBudget.ignoredForStats` — when true the budget is excluded
+  // from statistics by default and each row's `ignored` flag flips to an
+  // opt-IN (see `isActualSpendingRow`). Omitted ⇒ false (the normal
+  // "rows opt out" polarity).
+  budgetIgnoredForStats?: boolean;
   // When true, expense rows carrying line items whose `Item` has both a
   // `purchasePrice` and a `lifetimeYears` lose the item's cost in the
   // purchase month and gain it back as equal monthly slices across the
@@ -63,13 +68,18 @@ export type SpendingFact = {
 export function isActualSpendingRow(
   row: Row,
   completedColumnId: string | null,
+  budgetIgnoredForStats = false,
 ): boolean {
   if (row.kind === "correction") return false;
   if (isTransferRow(row)) return false;
-  // Explicitly ignored rows are real money that the user has flagged as
-  // unrepresentative of their spending — keep them in the ledger and
-  // running balance, but never in the dashboard's facts.
-  if (row.ignored) return false;
+  // Per-row statistics polarity, relative to the budget's default. On a
+  // normal budget (`budgetIgnoredForStats` false) `Row.ignored` opts a
+  // row OUT — real money the user flagged as unrepresentative of their
+  // spending. On an ignored-for-stats budget the default is "excluded"
+  // and the same flag opts a row back IN (e.g. a spouse's ledger where
+  // only the transactions you funded should count). Either way a row is
+  // kept iff its flag matches the budget default: `ignored === ignored`.
+  if (!!row.ignored !== !!budgetIgnoredForStats) return false;
   // A reimbursed expense belongs to the account that covered it, not the
   // one it was charged to — drop it here (it's re-attributed to the
   // covering account's budget as an "attributed" row, which counts there).
@@ -101,8 +111,15 @@ export function collectSpendingFacts(inputs: SpendingInputs): {
   facts: SpendingFact[];
   monthKeys: string[];
 } {
-  const { rows, columns, typesById, startOfMonth, currentMonthKey, period } =
-    inputs;
+  const {
+    rows,
+    columns,
+    typesById,
+    startOfMonth,
+    currentMonthKey,
+    period,
+    budgetIgnoredForStats,
+  } = inputs;
   const dateCol = findColumnByType(columns, "date");
   const amountCol = findColumnByType(columns, "amount");
   const completedCol = findColumnByType(columns, "completed");
@@ -122,7 +139,14 @@ export function collectSpendingFacts(inputs: SpendingInputs): {
     if (!/^\d{4}-\d{2}$/.test(monthKey)) continue;
     if (monthKey > currentMonthKey) continue;
     for (const row of monthRows) {
-      if (!isActualSpendingRow(row, completedCol?.id ?? null)) continue;
+      if (
+        !isActualSpendingRow(
+          row,
+          completedCol?.id ?? null,
+          budgetIgnoredForStats,
+        )
+      )
+        continue;
       const value = row.cells[amountCol.id];
       let amount = typeof value === "number" ? value : 0;
       if (amount === 0) continue;

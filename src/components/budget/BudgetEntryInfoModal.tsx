@@ -46,6 +46,10 @@ type Props = {
   tags: readonly Tag[];
   items: readonly Item[];
   settings: Settings;
+  // `AccountBudget.ignoredForStats` — flips what a set `ignored` flag
+  // means (opted OUT on a normal budget, opted IN on an ignored one) so
+  // the statistics field reads truthfully.
+  budgetIgnoredForStats: boolean;
 };
 
 // Read-only modal that lays out every field of a budget or imported
@@ -65,6 +69,7 @@ export function BudgetEntryInfoModal({
   tags,
   items,
   settings,
+  budgetIgnoredForStats,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -313,7 +318,11 @@ export function BudgetEntryInfoModal({
             )}
             {row.ignored && (
               <InfoField
-                label={t("budget.entryInfoIgnored")}
+                label={
+                  budgetIgnoredForStats
+                    ? t("budget.entryInfoCounted")
+                    : t("budget.entryInfoIgnored")
+                }
                 display={
                   <span className="flex items-center justify-end gap-1.5 text-fg-bright">
                     <Ban size={14} aria-hidden focusable={false} />

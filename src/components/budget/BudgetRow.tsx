@@ -75,6 +75,10 @@ type Props = {
   // dashboard). Threaded through to `BudgetEntryActionsMenu`; surfaces
   // on user-authored and history rows.
   onToggleRowIgnored?: (row: Row) => void;
+  // `AccountBudget.ignoredForStats` — flips the meaning of the per-row
+  // "ignore for statistics" action (opt-out on a normal budget, opt-in
+  // on an ignored one). Passed to `BudgetEntryActionsMenu` for the label.
+  budgetIgnoredForStats?: boolean;
   onUpdateCell: (rowId: string, columnId: string, value: CellValue) => void;
   // Fires after the user finishes editing a cell (blur / discrete select).
   // Used to prompt for series-wide propagation on recurring rows; the
@@ -104,6 +108,7 @@ function BudgetRowImpl({
   revealedTransfer = false,
   onToggleRowTransfer,
   onToggleRowIgnored,
+  budgetIgnoredForStats = false,
   onUpdateCell,
   onCommitCell,
   onSetFiscalMonthShift,
@@ -639,6 +644,7 @@ function BudgetRowImpl({
                   ? onToggleRowIgnored
                   : undefined
               }
+              budgetIgnoredForStats={budgetIgnoredForStats}
               onSetFiscalMonthShift={onSetFiscalMonthShift}
               onEdit={() =>
                 dispatchModal({

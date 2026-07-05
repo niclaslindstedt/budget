@@ -196,6 +196,56 @@ describe("isActualSpendingRow", () => {
       isActualSpendingRow(makeRow("user", { completed: true }), null),
     ).toBe(false);
   });
+
+  describe("with budgetIgnoredForStats (opt-in polarity)", () => {
+    it("excludes non-ignored rows by default", () => {
+      expect(
+        isActualSpendingRow(
+          makeRow("user", { completed: true }),
+          COMPLETED_COL,
+          true,
+        ),
+      ).toBe(false);
+      expect(isActualSpendingRow(makeRow("historic"), null, true)).toBe(false);
+    });
+    it("includes ignored (opted-in) rows", () => {
+      expect(
+        isActualSpendingRow(
+          makeRow("user", { completed: true, ignored: true }),
+          COMPLETED_COL,
+          true,
+        ),
+      ).toBe(true);
+      expect(
+        isActualSpendingRow(makeRow("historic", { ignored: true }), null, true),
+      ).toBe(true);
+    });
+    it("still requires the completed cell on opted-in user rows", () => {
+      expect(
+        isActualSpendingRow(
+          makeRow("user", { completed: false, ignored: true }),
+          COMPLETED_COL,
+          true,
+        ),
+      ).toBe(false);
+    });
+    it("keeps transfers and corrections excluded regardless of polarity", () => {
+      expect(
+        isActualSpendingRow(
+          makeRow("transfer", { ignored: true }),
+          COMPLETED_COL,
+          true,
+        ),
+      ).toBe(false);
+      expect(
+        isActualSpendingRow(
+          makeRow("correction", { completed: true, ignored: true }),
+          COMPLETED_COL,
+          true,
+        ),
+      ).toBe(false);
+    });
+  });
 });
 
 describe("collectSpendingFacts", () => {
@@ -210,6 +260,22 @@ describe("collectSpendingFacts", () => {
     ]);
     expect(facts.map((f) => f.amount).sort((a, b) => a - b)).toEqual([
       -250, -50,
+    ]);
+  });
+
+  it("flips to opt-in when budgetIgnoredForStats is set", () => {
+    const { facts } = collect(
+      [
+        makeRow("user", { completed: true, amount: -250 }),
+        makeRow("historic", { amount: -50 }),
+        makeRow("user", { completed: true, amount: -400, ignored: true }),
+        makeRow("historic", { amount: -70, ignored: true }),
+      ],
+      { budgetIgnoredForStats: true },
+    );
+    // Only the two `ignored` (opted-in) rows survive; the default rows drop.
+    expect(facts.map((f) => f.amount).sort((a, b) => a - b)).toEqual([
+      -400, -70,
     ]);
   });
 

@@ -35,6 +35,10 @@ const sheetModal: SheetModalCatalog = {
   newAccountPlaceholder: "Lönekonto, Kontanter, Resefond…",
   accountHint:
     "Koppla budgeten till ett konto så att det löpande saldot kan återspegla kontots verkliga saldo. Lämna okopplad för en fristående framtidsorienterad ledger.",
+  statistics: "Statistik",
+  ignoreForStats: "Ignorera denna budget i statistiken",
+  ignoreForStatsHint:
+    "Lämna hela budgeten utanför utgiftsdiagrammen och räkna sedan in enskilda rader igen från varje posts ”…”-meny. Praktiskt för en budget som inte är dina egna utgifter — t.ex. en partners — där bara raderna du finansierat ska räknas.",
   descriptionPlaceholder: "Valfritt. t.ex. utgifter för barnkonto.",
   description: "Beskrivning",
   pickAccount: "Välj ett konto",

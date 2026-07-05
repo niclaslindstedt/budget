@@ -834,6 +834,7 @@ export function BudgetPage({
                     onToggleTransferAnchor={toggleTransferAnchor}
                     onToggleRowTransfer={onToggleRowTransfer}
                     onToggleRowIgnored={onToggleRowIgnored}
+                    budgetIgnoredForStats={item.ignoredForStats ?? false}
                     onUpdateCell={handleUpdateCell}
                     onCommitCell={handleCommitCell}
                     onAddRow={slotAdd}
@@ -884,6 +885,7 @@ export function BudgetPage({
             companies={companies}
             items={data.items}
             settings={settings}
+            budgetIgnoredForStats={item.ignoredForStats ?? false}
           />
           <BudgetFindConflictsModal
             open={conflictsOpen}

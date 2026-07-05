@@ -33,6 +33,10 @@ type Props = {
   // omitted on synthesized transfer / correction rows that don't carry
   // spending facts.
   onToggleRowIgnored?: (row: Row) => void;
+  // `AccountBudget.ignoredForStats` — flips the ignore action's polarity:
+  // on a normal budget `ignored` opts a row OUT, on an ignored budget it
+  // opts a row back IN. Drives the label so it always reads truthfully.
+  budgetIgnoredForStats?: boolean;
   // Manual fiscal-month override. Null clears the override; ±1 sets it.
   // Hidden on synthesized history / transfer rows — they have no
   // editable persisted form and the shift would have nothing to attach
@@ -60,6 +64,7 @@ export function BudgetEntryActionsMenu({
   isSeries,
   onToggleRowTransfer,
   onToggleRowIgnored,
+  budgetIgnoredForStats = false,
   onSetFiscalMonthShift,
   onEdit,
   onDelete,
@@ -142,15 +147,20 @@ export function BudgetEntryActionsMenu({
   }
 
   if (onToggleRowIgnored) {
+    // A row currently counts in statistics iff its `ignored` flag matches
+    // the budget's default (see `isActualSpendingRow`). Offer the inverse
+    // action: "ignore" when it counts, "count" when it doesn't — so the
+    // label reads truthfully whichever polarity the budget is in.
+    const countsInStats = !!row.ignored === budgetIgnoredForStats;
     items.push({
       key: "toggleIgnored",
       icon: <Ban size={16} aria-hidden focusable={false} />,
-      label: row.ignored
-        ? t("cell.unignoreForStats")
-        : t("cell.ignoreForStats"),
-      title: row.ignored
-        ? t("cell.unignoreForStats")
-        : t("cell.ignoreForStatsTitle"),
+      label: countsInStats
+        ? t("cell.ignoreForStats")
+        : t("cell.unignoreForStats"),
+      title: countsInStats
+        ? t("cell.ignoreForStatsTitle")
+        : t("cell.unignoreForStats"),
       onClick: () => onToggleRowIgnored(row),
     });
   }

@@ -152,5 +152,33 @@ export function reduceSheets(state: UserData, action: Action): UserData | null {
     });
     return changed ? { ...state, sheets } : state;
   }
+  if (action.type === "setBudgetIgnoredForStats") {
+    // Toggle the whole-budget "ignore for statistics" flag on a budget
+    // sheet's `accountBudget` item. Same map-and-guard shape as
+    // `setSalaryTaxProfile`; keeps `ignoredForStats` absent (not `false`)
+    // when off, matching the optional-field convention.
+    let changed = false;
+    const sheets = state.sheets.map((sheet) => {
+      if (sheet.id !== action.sheetId) return sheet;
+      let itemChanged = false;
+      const items = sheet.items.map((item) => {
+        if (item.id !== action.itemId || item.type !== "accountBudget")
+          return item;
+        const current = item.ignoredForStats === true;
+        if (current === action.ignoredForStats) return item;
+        itemChanged = true;
+        if (!action.ignoredForStats) {
+          const { ignoredForStats: _drop, ...rest } = item;
+          void _drop;
+          return rest;
+        }
+        return { ...item, ignoredForStats: true };
+      });
+      if (!itemChanged) return sheet;
+      changed = true;
+      return { ...sheet, items };
+    });
+    return changed ? { ...state, sheets } : state;
+  }
   return null;
 }

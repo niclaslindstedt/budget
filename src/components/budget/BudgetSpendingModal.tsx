@@ -83,6 +83,10 @@ type Props = {
   // option to find each linked item's price and lifetime.
   items: readonly Item[];
   settings: Settings;
+  // `AccountBudget.ignoredForStats` — when true this budget is excluded
+  // from statistics by default and its rows opt IN (see
+  // `isActualSpendingRow`). Threaded into the fact collection.
+  budgetIgnoredForStats: boolean;
 };
 
 const PERIODS: {
@@ -130,6 +134,7 @@ export function BudgetSpendingModal({
   companies,
   items,
   settings,
+  budgetIgnoredForStats,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -189,6 +194,7 @@ export function BudgetSpendingModal({
         period,
         itemsById,
         spreadItemCosts: spreadItemCosts && hasSpreadableItems,
+        budgetIgnoredForStats,
       }),
     [
       rows,
@@ -200,6 +206,7 @@ export function BudgetSpendingModal({
       itemsById,
       spreadItemCosts,
       hasSpreadableItems,
+      budgetIgnoredForStats,
     ],
   );
 

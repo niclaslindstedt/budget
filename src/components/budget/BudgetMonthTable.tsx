@@ -75,6 +75,9 @@ type Props = {
   onToggleTransferAnchor: (rowId: string) => void;
   onToggleRowTransfer: (row: Row) => void;
   onToggleRowIgnored: (row: Row) => void;
+  // `AccountBudget.ignoredForStats` — flips the per-row "ignore for
+  // statistics" action's label (opt-out vs opt-in). Threaded to each row.
+  budgetIgnoredForStats: boolean;
   onToggleCollapsed: () => void;
   // Bypass the viewport-proximity gate so the row tree always renders.
   // Used by BudgetPage when a scroll-to-row request targets this month —
@@ -133,6 +136,7 @@ function MonthTableImpl({
   onToggleTransferAnchor,
   onToggleRowTransfer,
   onToggleRowIgnored,
+  budgetIgnoredForStats,
   onToggleCollapsed,
   forceMount = false,
   onUpdateCell,
@@ -469,6 +473,7 @@ function MonthTableImpl({
                             onCommitCell={onCommitCell}
                             onToggleRowTransfer={onToggleRowTransfer}
                             onToggleRowIgnored={onToggleRowIgnored}
+                            budgetIgnoredForStats={budgetIgnoredForStats}
                             onSetFiscalMonthShift={onSetFiscalMonthShift}
                             onToggleSelect={onToggleSelect}
                           />
@@ -492,6 +497,7 @@ function MonthTableImpl({
                         onCommitCell={onCommitCell}
                         onToggleRowTransfer={onToggleRowTransfer}
                         onToggleRowIgnored={onToggleRowIgnored}
+                        budgetIgnoredForStats={budgetIgnoredForStats}
                         onSetFiscalMonthShift={onSetFiscalMonthShift}
                         onToggleSelect={onToggleSelect}
                       />

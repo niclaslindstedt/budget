@@ -116,6 +116,37 @@ describe("describeActionSubject", () => {
     ).toEqual({ kind: "name", value: "Insights" });
   });
 
+  it("names the sheet when toggling a budget's ignore-for-statistics flag", () => {
+    const fresh = freshUserData();
+    const budget: UserData["sheets"][number] = {
+      ...fresh.sheets[0],
+      id: "sheet-budget",
+      name: "Partner budget",
+      type: "budget",
+      items: [
+        {
+          id: "ab-1",
+          type: "accountBudget",
+          accountId: null,
+          columns: [],
+          rows: [],
+        },
+      ],
+    };
+    const prev: UserData = { ...fresh, sheets: [...fresh.sheets, budget] };
+    expect(
+      describe2(
+        {
+          type: "setBudgetIgnoredForStats",
+          sheetId: "sheet-budget",
+          itemId: "ab-1",
+          ignoredForStats: true,
+        },
+        prev,
+      ),
+    ).toEqual({ kind: "name", value: "Partner budget" });
+  });
+
   it("names scenarios actions by scenario or sheet", () => {
     const fresh = freshUserData();
     const scenariosSheet: UserData["sheets"][number] = {
