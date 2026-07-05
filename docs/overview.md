@@ -400,7 +400,10 @@ creator. Supports `amountFormula`. Its company picker offers the same
 minted row `noCompany` (held mutually exclusive with a picked company)
 so a user-authored entry can record "no company, on purpose". The same
 toggle is reachable afterwards from the row editor
-(`BudgetEditEntryFullModal`) and the inline description-cell picker.
+(`BudgetEditEntryFullModal`), the inline description-cell picker, and
+the promote-history-to-recurring form (`BudgetPromoteHistoryForm`) —
+where omitting flags every minted future row `noCompany` and clears any
+company the merchant hint held for the key.
 
 ### Amount span
 

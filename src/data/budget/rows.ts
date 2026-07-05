@@ -515,6 +515,10 @@ export function mintBudgetRow(
     amount: number;
     typeId?: string | null;
     companyId?: string | null;
+    // Explicit "omit company" flag — mutually exclusive with
+    // `companyId` (a real company wins). Stamped so a minted row can
+    // record "no company, on purpose" the way user-authored entries do.
+    noCompany?: boolean;
     seriesId?: string;
     // Optional inclusive estimate band. Both bounds set together (a row
     // is in estimate mode iff both are present); the estimate itself
@@ -534,6 +538,9 @@ export function mintBudgetRow(
   if (values.seriesId) row.seriesId = values.seriesId;
   if (values.typeId) row.typeId = values.typeId;
   if (values.companyId) row.companyId = values.companyId;
+  // Mutually exclusive with `companyId`, so a flagged row never carries
+  // a company alongside the omit.
+  else if (values.noCompany) row.noCompany = true;
   if (values.amountMin !== undefined && values.amountMax !== undefined) {
     row.amountMin = values.amountMin;
     row.amountMax = values.amountMax;
