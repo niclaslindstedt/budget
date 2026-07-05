@@ -826,6 +826,7 @@ export const TYPE_GLYPH_NAMES: readonly CategoryIcon[] = [
   "pill",
   "heart-pulse",
   "shield-plus",
+  "shield",
   "glasses",
   "brain",
   // Work & education
