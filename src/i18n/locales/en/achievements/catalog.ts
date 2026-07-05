@@ -191,6 +191,12 @@ const catalog = {
     learnMore:
       "Paid for someone else? Flag the entry as ignored: it stays in the ledger and your running balance, but it won't skew the spending charts — like baby songs that shouldn't shape your taste profile.",
   },
+  notMyLedger: {
+    name: "Not My Ledger",
+    condition: "Ignore a whole budget for statistics.",
+    learnMore:
+      "From Edit sheet, flag an entire budget as ignored for statistics. The ledger drops out of the spending charts by default, and the per-row toggle flips to opt-in — so a partner's budget can contribute only the handful of rows you actually funded.",
+  },
   groundhogDay: {
     name: "Groundhog Day",
     condition: "Make a row recurring.",

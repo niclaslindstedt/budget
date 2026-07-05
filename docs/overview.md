@@ -4066,6 +4066,19 @@ an `is-ignored` class (`BudgetRow`) that washes it a faint muted grey
 (`src/styles/utilities.css`) so an ignored entry is recognisable at a
 glance — it wins over the green `is-finished` tint when a row is both.
 
+The polarity flips per budget: `AccountBudget.ignoredForStats` (toggled
+from the budget-only "Statistics" section of `SheetModal`) excludes the
+**whole** budget from the spending dashboard by default and turns
+`Row.ignored` into an opt-**in**. `isActualSpendingRow` keeps a row iff
+its flag matches the budget default (`!!row.ignored === ignoredForStats`),
+so on a normal budget non-ignored rows count and on an ignored budget only
+the flagged rows do. The per-row menu label (`BudgetEntryActionsMenu`) and
+the info-modal field (`BudgetEntryInfoModal`, "Counted in statistics"
+instead of "Ignored for statistics") both track the polarity so they read
+truthfully. The reducer action is `setBudgetIgnoredForStats`. Use it for a
+ledger that isn't your own spending — a partner's budget where only the
+transactions you funded via a transfer should count.
+
 ### Triage orphans
 
 Tap the orange "{N} entries to move or delete" button on a covered

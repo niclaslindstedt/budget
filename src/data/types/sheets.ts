@@ -19,6 +19,17 @@ export type AccountBudget = {
   // synthesizers (`synthesizeHistoryRow`, `synthesizeTransferRow`)
   // never write into `item.rows[]`.
   rows: Row[];
+  // When `true`, the whole budget is excluded from spending statistics
+  // by default and the per-row `Row.ignored` flag INVERTS its meaning:
+  // instead of opting a row OUT of stats, it opts a row back IN. Use it
+  // for a ledger that isn't your own spending — e.g. a spouse's budget —
+  // where only a handful of transactions (the ones you actually funded
+  // via a transfer) should count. A row is counted iff its `ignored`
+  // flag matches this flag (see `isActualSpendingRow`): with this off,
+  // non-ignored rows count; with it on, only `ignored` (opted-in) rows
+  // do. Only `true` is ever persisted — absent means "counts normally,
+  // rows opt out". Edited from the budget-only section of `SheetModal`.
+  ignoredForStats?: boolean;
 };
 
 // Workspace-wide dashboard sheet item. The Accounts sheet is a

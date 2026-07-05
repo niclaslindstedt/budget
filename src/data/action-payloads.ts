@@ -31,6 +31,10 @@ export type SheetDraft = {
   // the account it lives on in a single round-trip through the
   // modal.
   newAccountName: string | null;
+  // Budget-only: exclude the whole budget from spending statistics and
+  // flip its rows to opt-in (see `AccountBudget.ignoredForStats`).
+  // Always emitted; ignored for non-budget sheets.
+  ignoredForStats: boolean;
 };
 
 export type BulkPatch = {

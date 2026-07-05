@@ -393,6 +393,11 @@ export function UniversalModalHost(props: Props) {
               )?.baseSheetId ?? null)
             : null
         }
+        currentIgnoredForStats={
+          sheetModal?.sheet?.items.some(
+            (it) => it.type === "accountBudget" && it.ignoredForStats === true,
+          ) ?? false
+        }
         budgetSheets={data.sheets
           .filter((s) => s.type === "budget")
           .map((s) => ({ id: s.id, name: s.name }))}

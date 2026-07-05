@@ -123,6 +123,23 @@ export function useSheetMetaDialog({
             taxProfileId: draft.taxProfileId,
           });
         }
+        // Toggle the budget's "ignore for statistics" flag if it changed.
+        // Only the `accountBudget` item carries it; kept separate from the
+        // account / tax-profile bindings for the same reason they are.
+        const budgetItem = target.items.find(
+          (it): it is AccountBudget => it.type === "accountBudget",
+        );
+        if (
+          budgetItem &&
+          (budgetItem.ignoredForStats === true) !== draft.ignoredForStats
+        ) {
+          dispatch({
+            type: "setBudgetIgnoredForStats",
+            sheetId: target.id,
+            itemId: budgetItem.id,
+            ignoredForStats: draft.ignoredForStats,
+          });
+        }
         // Rebind the scenarios sheet's base budget if it changed. The
         // reducer clears every scenario's deltas on rebind (they key
         // off the old base's row ids); the modal warns before save.
@@ -149,6 +166,21 @@ export function useSheetMetaDialog({
           description: draft.description,
         });
         dispatch({ type: "addSheet", sheet });
+        // Carry an "ignore for statistics" choice onto the fresh budget
+        // sheet's item when the user ticked it during creation.
+        if (draft.type === "budget" && draft.ignoredForStats) {
+          const budgetItem = sheet.items.find(
+            (it): it is AccountBudget => it.type === "accountBudget",
+          );
+          if (budgetItem) {
+            dispatch({
+              type: "setBudgetIgnoredForStats",
+              sheetId: sheet.id,
+              itemId: budgetItem.id,
+              ignoredForStats: true,
+            });
+          }
+        }
         // Bind the chosen tax profile onto the fresh salary sheet's
         // item. The sheet object is in hand here, so its item id is
         // known without a re-lookup against the store.

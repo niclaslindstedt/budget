@@ -447,6 +447,15 @@ export type Action =
       taxProfileId: string | null;
     }
   | {
+      // Toggle the "ignore this whole budget for statistics" flag on a
+      // budget sheet's `accountBudget` item. `false` clears it (drops the
+      // field). Mirrors `setItemAccount` but writes `ignoredForStats`.
+      type: "setBudgetIgnoredForStats";
+      sheetId: string;
+      itemId: string;
+      ignoredForStats: boolean;
+    }
+  | {
       // Replace the net-worth settings on an insights sheet's
       // `insightsView` item wholesale. The settings modal edits a local
       // draft and dispatches once on Save, so one action is one undo

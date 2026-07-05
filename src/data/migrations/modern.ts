@@ -1260,6 +1260,13 @@ export const MODERN_MIGRATIONS: MigrationTable = {
   // expenses have no such field; absent means "distance not recorded",
   // so this is a bare additive bump with no payload rewrite.
   87: (v87) => ({ ...v87, version: 88 }),
+
+  // v88 → v89: an `AccountBudget` gains an optional `ignoredForStats` —
+  // when set the whole budget is excluded from spending statistics and
+  // `Row.ignored` flips to an opt-in. Existing budgets have no such
+  // field; absent means "counts normally", so this is a bare additive
+  // bump with no payload rewrite.
+  88: (v88) => ({ ...v88, version: 89 }),
 };
 
 function extractBool(value: unknown, fallback: boolean): boolean {

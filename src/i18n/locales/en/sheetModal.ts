@@ -35,6 +35,10 @@ const sheetModal = {
   newAccountPlaceholder: "Checking, Cash, Travel fund…",
   accountHint:
     "Attach this budget to an account so its running balance can reflect the account's real balance. Leave it unassigned for a free-standing forward-looking ledger.",
+  statistics: "Statistics",
+  ignoreForStats: "Ignore this budget for statistics",
+  ignoreForStatsHint:
+    "Leave the whole budget out of the spending charts, then opt individual rows back in from each entry's “…” menu. Handy for a budget that isn't your own spending — say a partner's — where only the rows you funded should count.",
   descriptionPlaceholder: "Optional. e.g. expenses for child account.",
   description: "Description",
   pickAccount: "Pick an account",

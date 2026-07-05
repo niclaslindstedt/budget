@@ -152,6 +152,13 @@ describe("deriveUnlocks", () => {
     expect(fresh).not.toContain("estimateRange");
   });
 
+  it("fires notMyLedger when a budget is flagged ignore-for-statistics", () => {
+    const prev = withItem([]);
+    const next = withItem([]);
+    (next.sheets[0].items[0] as AccountBudget).ignoredForStats = true;
+    expect(deriveUnlocks(prev, next, {})).toContain("notMyLedger");
+  });
+
   it("fires checkPlease when a row's completed cell flips to true", () => {
     const prev = withItem([{ id: "r1", cells: { d: "2026-05-22" } }]);
     const next = withItem([{ id: "r1", cells: { d: "2026-05-22", c: true } }]);

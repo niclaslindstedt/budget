@@ -390,6 +390,7 @@ export function describeActionSubject(
       return name(byId(prev.taxProfiles, action.profileId)?.name);
     case "setSalaryTaxProfile":
     case "setItemAccount":
+    case "setBudgetIgnoredForStats":
     case "setInsightsNetWorthSettings":
       return name(byId(next.sheets, action.sheetId)?.name);
 

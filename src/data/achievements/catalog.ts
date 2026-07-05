@@ -183,6 +183,14 @@ const hasTransferRow = (s: UserData) =>
 const hasIgnoredEntry = (s: UserData) =>
   eachRow(s, (r) => r.ignored === true) ||
   Object.values(s.history).some((arr) => arr.some((e) => e.ignored === true));
+// A whole budget flagged "ignore for statistics" — the opt-in-per-row
+// mode where the ledger is excluded by default (e.g. a partner's budget).
+const hasIgnoredBudget = (s: UserData) =>
+  s.sheets.some((sheet) =>
+    sheet.items.some(
+      (item) => item.type === "accountBudget" && item.ignoredForStats === true,
+    ),
+  );
 const hasTypedRow = (s: UserData) =>
   eachRow(s, (r) => typeof r.typeId === "string" && r.typeId !== "");
 const hasTaggedRow = (s: UserData) =>
@@ -801,6 +809,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.sheets, s.history],
       predicate: (prev, next) =>
         !hasIgnoredEntry(prev) && hasIgnoredEntry(next),
+    },
+  },
+  {
+    id: "notMyLedger",
+    tier: "intermediate",
+    glyph: EyeOff,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.sheets],
+      predicate: (prev, next) =>
+        !hasIgnoredBudget(prev) && hasIgnoredBudget(next),
     },
   },
   {

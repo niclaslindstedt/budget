@@ -109,6 +109,7 @@ const budget: BudgetCatalog = {
   entryInfoRecurring: "Återkommande",
   entryInfoTransfer: "Överföring",
   entryInfoIgnored: "Ignorerad i statistik",
+  entryInfoCounted: "Räknad i statistik",
   entryInfoImported: "Importerad",
   entryInfoSplits: "Delningar",
   entryInfoLineItems: "Prylar",

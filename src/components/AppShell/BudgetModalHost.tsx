@@ -593,6 +593,7 @@ export function BudgetModalHost(props: Props) {
         tags={data.tags}
         items={data.items}
         settings={effectiveSettings}
+        budgetIgnoredForStats={activeItem.ignoredForStats ?? false}
       />
       <BudgetCoverTransferModal
         open={coverFlow.coverPrompt !== null}

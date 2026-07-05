@@ -132,6 +132,7 @@ const actionHistory: ActionHistoryCatalog = {
     updateTaxProfile: "Redigerade skatteprofil",
     deleteTaxProfile: "Tog bort skatteprofil",
     setSalaryTaxProfile: "Satte skatteprofil på blad",
+    setBudgetIgnoredForStats: "Ändrade budgetens statistikinställning",
     setInsightsNetWorthSettings: "Uppdaterade nettoförmögenhetsinställningar",
     setScenariosBaseSheet: "Bytte basbudget",
     addScenario: "Skapade scenario",

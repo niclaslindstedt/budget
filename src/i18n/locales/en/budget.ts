@@ -115,6 +115,7 @@ const budget = {
   entryInfoRecurring: "Recurring",
   entryInfoTransfer: "Transfer",
   entryInfoIgnored: "Ignored for statistics",
+  entryInfoCounted: "Counted in statistics",
   entryInfoImported: "Imported",
   entryInfoSplits: "Splits",
   entryInfoLineItems: "Line items",

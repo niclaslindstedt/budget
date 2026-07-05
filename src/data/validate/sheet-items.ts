@@ -294,16 +294,19 @@ export function validateAccountBudget(
     validatedRows.push(r.value);
   }
 
-  return {
-    ok: true,
-    value: {
-      id,
-      type: "accountBudget",
-      accountId: accountId as string | null,
-      columns: validatedColumns,
-      rows: validatedRows,
-    },
+  const value: AccountBudget = {
+    id,
+    type: "accountBudget",
+    accountId: accountId as string | null,
+    columns: validatedColumns,
+    rows: validatedRows,
   };
+  // Optional opt-in-statistics flag. Only `true` is persisted — anything
+  // else (absent, false, garbage) reads as "counts normally".
+  if ((raw as { ignoredForStats?: unknown }).ignoredForStats === true)
+    value.ignoredForStats = true;
+
+  return { ok: true, value };
 }
 
 export function validateAccountsView(

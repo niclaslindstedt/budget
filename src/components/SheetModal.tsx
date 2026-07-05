@@ -26,6 +26,7 @@ import { ColorPalette } from "./ColorPalette";
 import { FloatingPanel } from "./FloatingPanel";
 import {
   Button,
+  Checkbox,
   ClearableInput,
   ClearableTextarea,
   FormSection,
@@ -66,6 +67,11 @@ type Props = {
   // seeds the base-budget picker on a scenarios sheet so an edit
   // doesn't appear to wipe the binding on open.
   currentBaseSheetId: string | null;
+  // Whether the sheet's budget item is flagged "ignore for statistics"
+  // (`AccountBudget.ignoredForStats`) — seeds the budget-only toggle so
+  // an edit doesn't appear to reset it on open. False for new sheets and
+  // non-budget flavours.
+  currentIgnoredForStats: boolean;
   // Budget sheets offered as base candidates by the scenarios picker.
   budgetSheets: { id: string; name: string }[];
   // True when the sheet's scenarios carry deltas — picking a different
@@ -101,6 +107,7 @@ export function SheetModal({
   taxProfiles,
   onCreateTaxProfile,
   currentBaseSheetId,
+  currentIgnoredForStats,
   budgetSheets,
   baseChangeHasDeltas,
   accounts,
@@ -122,6 +129,7 @@ export function SheetModal({
   const [accountOpen, setAccountOpen] = useState(false);
   const [taxProfileId, setTaxProfileId] = useState<string | null>(null);
   const [baseSheetId, setBaseSheetId] = useState<string | null>(null);
+  const [ignoredForStats, setIgnoredForStats] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const newAccountInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,6 +151,7 @@ export function SheetModal({
     setNewAccountName("");
     setTaxProfileId(currentTaxProfileId);
     setBaseSheetId(currentBaseSheetId);
+    setIgnoredForStats(currentIgnoredForStats);
   }, [
     open,
     sheet,
@@ -150,6 +159,7 @@ export function SheetModal({
     currentAccountId,
     currentTaxProfileId,
     currentBaseSheetId,
+    currentIgnoredForStats,
   ]);
 
   useEffect(() => {
@@ -192,6 +202,7 @@ export function SheetModal({
           : null,
       taxProfileId: type === "salary" ? taxProfileId : null,
       baseSheetId: type === "scenarios" ? baseSheetId : null,
+      ignoredForStats: type === "budget" ? ignoredForStats : false,
     });
     onClose();
   }
@@ -382,6 +393,17 @@ export function SheetModal({
                   ? t("sheetModal.salaryAccountHint")
                   : t("sheetModal.accountHint")}
               </p>
+            </FormSection>
+          )}
+
+          {type === "budget" && (
+            <FormSection label={t("sheetModal.statistics")}>
+              <Checkbox
+                checked={ignoredForStats}
+                onChange={setIgnoredForStats}
+                label={t("sheetModal.ignoreForStats")}
+                description={t("sheetModal.ignoreForStatsHint")}
+              />
             </FormSection>
           )}
 
