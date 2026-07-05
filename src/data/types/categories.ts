@@ -75,6 +75,7 @@ export type CategoryIcon =
   | "brush-cleaning"
   | "trash-2"
   | "sprout"
+  | "flower"
   | "umbrella"
   | "paint-roller"
   | "washing-machine"

@@ -105,6 +105,7 @@ const presetTypes = {
   art: "Art",
   decor: "Decor",
   plants: "Plants",
+  flowers: "Flowers",
   tools: "Tools",
   stationery: "Stationery",
   appliances: "Appliances",
