@@ -3522,7 +3522,14 @@ closing the picker also clear it). This is shared infrastructure —
 `typeaheadQuery`, so every name-list picker (type, category, company
 category, subtype, item, tag, employer, property file category) gets the
 same behaviour by passing one label per row and feeding the query to the
-cursored option. Its "New company" creator submits on Enter.
+cursored option. The two-tier type picker (`TypePicker`) is the one
+twist: it owns a single `useTypeahead` over the **flattened** list of
+every available type — typing never matches the category names, so
+"bak" typed on the category tier jumps straight into the matched
+type's category pane ("Bakery" under Food) with the cursor on, and the
+matched characters highlighted in, that type's chip; extending the
+buffer from inside a type pane can likewise jump across categories.
+Its "New company" creator submits on Enter.
 
 ### Company category
 

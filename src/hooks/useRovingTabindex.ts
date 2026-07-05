@@ -46,6 +46,12 @@ export function useRovingTabindex(opts: {
   // the returned `onKeyDown` also drives type-ahead (see `useTypeahead`).
   // Absent / empty ⇒ no type-ahead.
   typeaheadLabels?: readonly string[];
+  // Change this value to force the cursor back onto `initialIndex`
+  // even when the index itself is unchanged. Used by callers that
+  // derive `initialIndex` from an external type-ahead match: the same
+  // match can fire twice in a row (arrow keys moved the cursor away in
+  // between), and without a re-snap the cursor would stay put.
+  snapKey?: unknown;
 }): {
   cursor: number;
   isCursorAt: (i: number) => boolean;
@@ -64,6 +70,7 @@ export function useRovingTabindex(opts: {
     wrap = true,
     focusOnMove = true,
     typeaheadLabels = NO_LABELS,
+    snapKey,
   } = opts;
   const [cursor, setCursor] = useState(initialIndex);
   const itemsRef = useRef<(HTMLElement | null)[]>([]);
@@ -73,6 +80,9 @@ export function useRovingTabindex(opts: {
   // ref has been written (the callback fires during commit, but the
   // item may not have rendered yet on the first open).
   useEffect(() => {
+    // `snapKey` is read for identity only — a change forces this
+    // effect to re-run so the cursor re-snaps onto `initialIndex`.
+    void snapKey;
     if (!active) return;
     const idx = Math.max(0, Math.min(initialIndex, itemCount - 1));
     setCursor(idx);
@@ -81,7 +91,7 @@ export function useRovingTabindex(opts: {
       itemsRef.current[idx]?.focus();
     });
     return () => cancelAnimationFrame(raf);
-  }, [active, initialIndex, itemCount, focusOnMove]);
+  }, [active, initialIndex, itemCount, focusOnMove, snapKey]);
 
   const registerItem = useCallback(
     (i: number) => (el: HTMLElement | null) => {

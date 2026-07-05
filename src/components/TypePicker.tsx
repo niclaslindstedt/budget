@@ -11,7 +11,11 @@ import { Check, ChevronDown, ChevronLeft, Plus, Tag, X } from "lucide-react";
 import { TYPE_GLYPH_NAMES } from "../data/constants/taxonomy";
 import { DEFAULT_CATEGORY_ID } from "../data/presets/categories";
 import type { Category, EntryType } from "../data/types";
-import { useRovingTabindex, type FloatingPlacement } from "../hooks";
+import {
+  useRovingTabindex,
+  useTypeahead,
+  type FloatingPlacement,
+} from "../hooks";
 import { useT } from "../i18n";
 import { displayCategoryName, displayTypeName } from "../i18n/preset-names";
 import { CategoryChip, CategoryCreator } from "./CategoryPicker";
@@ -234,10 +238,60 @@ export function TypePicker({
     [categories, activeCategoryId],
   );
 
+  // Picker-wide type-ahead over the FLATTENED type list: printable
+  // keystrokes search every available type by name — never the
+  // category names — so typing "bak" from the category tier jumps
+  // straight to "Bakery". A match slides the picker into the matched
+  // type's category pane with the cursor on the match, and the live
+  // buffer highlights the matched characters on that chip (same
+  // affordance as the company picker). Both panes feed their printable
+  // keys into this one search, so extending the buffer keeps working
+  // after the jump — even across categories.
+  const flatTypes = useMemo(
+    () =>
+      [...availableTypes].sort((a, b) =>
+        displayTypeName(a, t).localeCompare(displayTypeName(b, t)),
+      ),
+    [availableTypes, t],
+  );
+  const flatLabels = useMemo(
+    () => flatTypes.map((ty) => displayTypeName(ty, t)),
+    [flatTypes, t],
+  );
+  // The matched type drives the type pane's cursor; `seq` bumps on
+  // every match so the pane re-snaps even when the same type matches
+  // twice in a row (arrow keys may have moved the cursor off it in
+  // between). Cleared on close so a reopen starts neutral — but NOT on
+  // in-picker navigation, where clearing would change the pane's
+  // initialIndex and yank focus around under the user.
+  const [typeaheadMatch, setTypeaheadMatch] = useState<{
+    typeId: string;
+    seq: number;
+  } | null>(null);
+  const handleTypeaheadMatch = useCallback(
+    (idx: number) => {
+      const ty = flatTypes[idx];
+      setTypeaheadMatch((prev) => ({
+        typeId: ty.id,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
+      setActiveCategoryId(ty.categoryId);
+      setTier("type");
+    },
+    [flatTypes],
+  );
+  const {
+    onKeyDown: onTypeaheadKeyDown,
+    query: typeaheadQuery,
+    reset: resetTypeahead,
+  } = useTypeahead({ labels: flatLabels, onMatch: handleTypeaheadMatch });
+
   const close = useCallback(() => {
     setOpen(false);
     setCreating(false);
-  }, []);
+    resetTypeahead();
+    setTypeaheadMatch(null);
+  }, [resetTypeahead]);
 
   const handleOpen = useCallback(() => {
     if (open) {
@@ -265,14 +319,19 @@ export function TypePicker({
     [onSelect, close],
   );
 
-  const handlePickCategory = useCallback((id: string) => {
-    setActiveCategoryId(id);
-    setTier("type");
-  }, []);
+  const handlePickCategory = useCallback(
+    (id: string) => {
+      resetTypeahead();
+      setActiveCategoryId(id);
+      setTier("type");
+    },
+    [resetTypeahead],
+  );
 
   const handleBackToCategories = useCallback(() => {
+    resetTypeahead();
     setTier("category");
-  }, []);
+  }, [resetTypeahead]);
 
   const beginCreating = useCallback(() => {
     setOpen(false);
@@ -421,6 +480,8 @@ export function TypePicker({
                 onClear={selected ? () => handlePickType(null) : undefined}
                 clearLabel={t("type.clearType")}
                 emptyLabel={t("type.noTypesYet")}
+                onTypeaheadKeyDown={onTypeaheadKeyDown}
+                resetTypeahead={resetTypeahead}
               />
             </div>
             <div
@@ -444,6 +505,10 @@ export function TypePicker({
                 clearLabel={t("type.clearType")}
                 createLabel={t("type.newType")}
                 emptyLabel={t("type.noTypesInCategory")}
+                onTypeaheadKeyDown={onTypeaheadKeyDown}
+                resetTypeahead={resetTypeahead}
+                typeaheadQuery={typeaheadQuery}
+                typeaheadMatch={typeaheadMatch}
               />
             </div>
           </div>
@@ -519,6 +584,8 @@ function CategoryPane({
   onClear,
   clearLabel,
   emptyLabel,
+  onTypeaheadKeyDown,
+  resetTypeahead,
 }: {
   categories: readonly Category[];
   selectedCategoryId: string | null;
@@ -526,18 +593,32 @@ function CategoryPane({
   onClear?: () => void;
   clearLabel: string;
   emptyLabel: string;
+  // The picker-wide flattened type search (owned by TypePicker):
+  // printable keystrokes match type names, not the category names
+  // shown here, so typing jumps straight into the matched type's pane.
+  onTypeaheadKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  resetTypeahead: () => void;
 }) {
   const initialIdx = Math.max(
     0,
     categories.findIndex((c) => c.id === selectedCategoryId),
   );
-  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
-    useRovingTabindex({
-      itemCount: categories.length,
-      initialIndex: initialIdx,
-      active: true,
-      typeaheadLabels: categories.map((c) => c.name),
-    });
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: categories.length,
+    initialIndex: initialIdx,
+    active: true,
+  });
+  // Arrow / Home / End (which the roving hook consumes) drop the type
+  // search so a stale highlight never lingers; everything the hook
+  // left alone feeds the shared flattened type-ahead.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      onKeyDown(e);
+      if (e.defaultPrevented) resetTypeahead();
+      else onTypeaheadKeyDown(e);
+    },
+    [onKeyDown, onTypeaheadKeyDown, resetTypeahead],
+  );
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       {categories.length === 0 && (
@@ -552,14 +633,10 @@ function CategoryPane({
             aria-selected={cat.id === selectedCategoryId}
             tabIndex={isCursorAt(idx) ? 0 : -1}
             onClick={() => onPick(cat.id)}
-            onKeyDown={onKeyDown}
+            onKeyDown={handleKeyDown}
             className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
           >
-            <CategoryChip
-              category={cat}
-              compact
-              query={isCursorAt(idx) ? typeaheadQuery : ""}
-            />
+            <CategoryChip category={cat} compact />
             <ChevronDown
               size={12}
               className="ml-auto shrink-0 -rotate-90 text-muted"
@@ -597,6 +674,10 @@ function TypePane({
   clearLabel,
   createLabel,
   emptyLabel,
+  onTypeaheadKeyDown,
+  resetTypeahead,
+  typeaheadQuery,
+  typeaheadMatch,
 }: {
   category: Category | null;
   types: readonly EntryType[];
@@ -609,18 +690,46 @@ function TypePane({
   clearLabel: string;
   createLabel: string;
   emptyLabel: string;
+  // The picker-wide flattened type search (owned by TypePicker). The
+  // match places the cursor; the live query highlights the matched
+  // characters on the cursored chip.
+  onTypeaheadKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  resetTypeahead: () => void;
+  typeaheadQuery: string;
+  typeaheadMatch: { typeId: string; seq: number } | null;
 }) {
-  const initialIdx = Math.max(
-    0,
-    types.findIndex((t) => t.id === selectedId),
+  // The flattened search's match wins the cursor; otherwise fall back
+  // to the current selection (the pre-search behaviour). A match id
+  // that isn't in this category's list (the user drilled elsewhere
+  // manually after a search) just falls through.
+  const matchedIdx = typeaheadMatch
+    ? types.findIndex((ty) => ty.id === typeaheadMatch.typeId)
+    : -1;
+  const initialIdx =
+    matchedIdx !== -1
+      ? matchedIdx
+      : Math.max(
+          0,
+          types.findIndex((t) => t.id === selectedId),
+        );
+  const { isCursorAt, registerItem, onKeyDown } = useRovingTabindex({
+    itemCount: types.length,
+    initialIndex: initialIdx,
+    active: true,
+    snapKey: typeaheadMatch?.seq,
+  });
+  // Arrow / Home / End (which the roving hook consumes) drop the type
+  // search so a stale highlight never lingers; everything the hook
+  // left alone feeds the shared flattened type-ahead — so extending
+  // the buffer can jump to a type in another category.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      onKeyDown(e);
+      if (e.defaultPrevented) resetTypeahead();
+      else onTypeaheadKeyDown(e);
+    },
+    [onKeyDown, onTypeaheadKeyDown, resetTypeahead],
   );
-  const { isCursorAt, registerItem, onKeyDown, typeaheadQuery } =
-    useRovingTabindex({
-      itemCount: types.length,
-      initialIndex: initialIdx,
-      active: true,
-      typeaheadLabels: types.map((ty) => ty.name),
-    });
   return (
     <ul role="listbox" className="max-h-72 overflow-auto py-1">
       <li>
@@ -651,7 +760,7 @@ function TypePane({
               aria-selected={ty.id === selectedId}
               tabIndex={isCursorAt(idx) ? 0 : -1}
               onClick={() => onPick(ty.id)}
-              onKeyDown={onKeyDown}
+              onKeyDown={handleKeyDown}
               className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-3 py-1.5 text-left text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             >
               <TypeChip
