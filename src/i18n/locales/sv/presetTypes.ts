@@ -105,6 +105,7 @@ const presetTypes: PresetTypesCatalog = {
   art: "Konst",
   decor: "Dekor",
   plants: "Växter",
+  flowers: "Blommor",
   tools: "Verktyg",
   stationery: "Kontorsmaterial",
   appliances: "Vitvaror",

@@ -947,6 +947,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       kind: "expense",
     },
     {
+      slug: "flowers",
+      name: "Flowers",
+      color: C[3],
+      glyph: "flower",
+      category: "consumption",
+      kind: "expense",
+    },
+    {
       slug: "tools",
       name: "Tools",
       color: C[15],
