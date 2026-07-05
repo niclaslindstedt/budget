@@ -578,6 +578,22 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       category: "bills",
       kind: "expense",
     },
+    {
+      slug: "insurance",
+      name: "Insurance",
+      color: C[7],
+      glyph: "shield",
+      category: "bills",
+      kind: "expense",
+    },
+    {
+      slug: "bank-services",
+      name: "Bank services",
+      color: C[7],
+      glyph: "landmark",
+      category: "bills",
+      kind: "expense",
+    },
     // Loans — repayments on borrowed money. `mortgage` and `csn` kept
     // their original ids when this category was carved out (mortgage was
     // under housing, csn under bills) per the id-immutability rule above.
@@ -967,6 +983,14 @@ export const PRESET_ENTRY_TYPES: ReadonlyArray<EntryType> = (() => {
       name: "Digital services",
       color: C[5],
       glyph: "cloud",
+      category: "consumption",
+      kind: "expense",
+    },
+    {
+      slug: "consumption-other",
+      name: "Other",
+      color: C[15],
+      glyph: "package",
       category: "consumption",
       kind: "expense",
     },
