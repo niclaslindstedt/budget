@@ -62,6 +62,7 @@ type Result = {
       amount: number;
       typeId: string | null;
       companyId: string | null;
+      noCompany: boolean;
       amountMin?: number;
       amountMax?: number;
       dates: string[];
@@ -181,6 +182,7 @@ export function useComplexEntry({
         amount: number;
         typeId: string | null;
         companyId: string | null;
+        noCompany: boolean;
         amountMin?: number;
         amountMax?: number;
         dates: string[];
@@ -204,6 +206,7 @@ export function useComplexEntry({
         amount: promotion.amount,
         typeId: promotion.typeId,
         companyId: promotion.companyId,
+        noCompany: promotion.noCompany,
         ...(promotion.amountMin !== undefined &&
         promotion.amountMax !== undefined
           ? { amountMin: promotion.amountMin, amountMax: promotion.amountMax }

@@ -78,6 +78,10 @@ export type HistoryPromotion = {
   // Company tagged on the promoted entry. Folded into the merchant-
   // hint alongside the type so future imports inherit both.
   companyId: string | null;
+  // Explicit "omit company" decision. When true the minted rows are
+  // flagged `noCompany` (mutually exclusive with `companyId`, held
+  // empty here) and the merchant hint clears any company for the key.
+  noCompany: boolean;
   dates: string[];
   // When false, the merchant-hint stamp is skipped so past entries
   // that share the merchant key keep their raw bank text. The future
@@ -189,6 +193,9 @@ export function BudgetPromoteHistoryForm({
     row.typeId ?? hintPrefill?.typeId ?? null;
   const initialCompanyId: string | null =
     row.companyId ?? hintPrefill?.companyId ?? null;
+  // Seed the "omit company" flag from the source row, but only when no
+  // company resolved — a real company always wins over a stale omit.
+  const initialNoCompany = initialCompanyId === null && row.noCompany === true;
 
   // Default seed for the recurrence form on history-row promotions:
   // first month on or after today whose day-of-month matches the
@@ -207,6 +214,10 @@ export function BudgetPromoteHistoryForm({
   const [amountMaxText, setAmountMaxText] = useState(initialSpanStrings.max);
   const [typeId, setTypeId] = useState<string | null>(initialTypeId);
   const [companyId, setCompanyId] = useState<string | null>(initialCompanyId);
+  // Explicit "omit company" flag — mutually exclusive with a picked
+  // company (the CompanyPicker enforces the exclusivity as the user
+  // toggles between them).
+  const [noCompany, setNoCompany] = useState(initialNoCompany);
   // Wrap the company picker's onSelect so a confident company → type
   // pairing auto-fills the empty type. The user can still override
   // either field afterwards.
@@ -278,6 +289,7 @@ export function BudgetPromoteHistoryForm({
         : {}),
       typeId,
       companyId,
+      noCompany,
       dates: recurringDates,
       applyToHistoric,
       excludedHistoryEntryIds: applyToHistoric
@@ -301,7 +313,9 @@ export function BudgetPromoteHistoryForm({
               variant="field"
               companies={companies}
               selectedId={companyId}
+              noCompany={noCompany}
               onSelect={handlePickCompany}
+              onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
             />
           </div>

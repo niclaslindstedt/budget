@@ -23,6 +23,7 @@ function appendSeriesRowsToBudget(
     amount: number;
     typeId: string | null;
     companyId?: string | null;
+    noCompany?: boolean;
     amountMin?: number;
     amountMax?: number;
   },
@@ -37,6 +38,7 @@ function appendSeriesRowsToBudget(
         amount: action.amount,
         typeId: action.typeId,
         companyId: action.companyId ?? null,
+        noCompany: action.noCompany,
         seriesId,
         amountMin: action.amountMin,
         amountMax: action.amountMax,
@@ -166,8 +168,10 @@ export function reduceRecurring(
           // Fold the company tag into the merchant hint alongside the
           // type so past synthesized rows sharing the merchant key
           // adopt it automatically. `undefined` (the field absent on
-          // the action) preserves any existing company on the hint.
-          companyId: action.companyId ?? undefined,
+          // the action) preserves any existing company on the hint;
+          // an explicit "omit company" sends `null` so the user's
+          // decision clears any stale company suggestion for the key.
+          companyId: action.noCompany ? null : (action.companyId ?? undefined),
         },
       ],
       action.now,

@@ -1113,6 +1113,12 @@ export type Action =
       // history rows inherit the same tag. `null` means "no company
       // override" — the row stays untagged.
       companyId: string | null;
+      // Explicit "omit company" decision from the picker. When true every
+      // minted future row is flagged `noCompany` (mutually exclusive with
+      // `companyId`, which the form holds empty) and the recorded merchant
+      // hint clears any stale company for the key. Absent / false ⇒ the
+      // company (or its absence) is treated the ordinary way.
+      noCompany?: boolean;
       // Optional inclusive estimate band stamped on every minted future
       // row (the estimate itself stays in `amount`). Both bounds are
       // present together or both absent — an exact promotion sends
