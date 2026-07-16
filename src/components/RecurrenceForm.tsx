@@ -10,7 +10,7 @@ import {
   type RecurrenceRule,
 } from "../data/recurrence";
 import { addMonthsIso, todayIso } from "../utils/date";
-import { ClearableInput } from "./form";
+import { ClearableInput, DateField } from "./form";
 import {
   recurrenceFormReducer,
   initialRecurrenceFormState,
@@ -224,12 +224,9 @@ export function RecurrenceForm({
         {mode === "once" && (
           <label className="flex flex-col gap-1 text-xs text-muted">
             <span>{t("recurrenceForm.date")}</span>
-            <input
-              type="date"
+            <DateField
               value={onceDate}
-              onChange={(e) =>
-                dispatch({ kind: "setOnceDate", value: e.target.value })
-              }
+              onChange={(value) => dispatch({ kind: "setOnceDate", value })}
               className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
             />
           </label>
@@ -242,14 +239,13 @@ export function RecurrenceForm({
             </span>
             {datesList.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input
-                  type="date"
+                <DateField
                   value={d}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     dispatch({
                       kind: "setDateAt",
                       index: i,
-                      value: e.target.value,
+                      value,
                     })
                   }
                   className="field-input flex-1 rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
@@ -280,11 +276,10 @@ export function RecurrenceForm({
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-xs text-muted">
               <span>{t("recurrenceForm.start")}</span>
-              <input
-                type="date"
+              <DateField
                 value={everyNStart}
-                onChange={(e) =>
-                  dispatch({ kind: "setEveryNStart", value: e.target.value })
+                onChange={(value) =>
+                  dispatch({ kind: "setEveryNStart", value })
                 }
                 className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
               />
@@ -303,12 +298,9 @@ export function RecurrenceForm({
             </label>
             <label className="flex flex-col gap-1 text-xs text-muted">
               <span>{t("recurrenceForm.end")}</span>
-              <input
-                type="date"
+              <DateField
                 value={everyNEnd}
-                onChange={(e) =>
-                  dispatch({ kind: "setEveryNEnd", value: e.target.value })
-                }
+                onChange={(value) => dispatch({ kind: "setEveryNEnd", value })}
                 className="field-input rounded border border-line bg-surface px-2 py-1.5 text-sm text-path"
               />
             </label>

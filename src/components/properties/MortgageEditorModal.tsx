@@ -18,7 +18,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { FloatingPanel } from "../FloatingPanel";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { Modal } from "../Modal";
 
 // The payment-frequency presets offered in the editor, in months. Most loans
@@ -399,14 +399,10 @@ export function MortgageEditorModal({
             <div className="flex flex-col gap-1.5">
               {rateRows.map((row) => (
                 <div key={row.id} className="flex items-center gap-1.5">
-                  <input
-                    type="date"
+                  <DateField
                     value={row.date}
-                    onChange={(e) =>
-                      updateRateRow(row.id, { date: e.target.value })
-                    }
-                    aria-label={t("properties.rateChangeDateLabel")}
-                    className={DATE_INPUT_CLASS}
+                    onChange={(value) => updateRateRow(row.id, { date: value })}
+                    ariaLabel={t("properties.rateChangeDateLabel")}
                   />
                   <ClearableInput
                     value={row.rate}
@@ -462,11 +458,9 @@ export function MortgageEditorModal({
             <span className="text-xs text-muted">
               {t("properties.nextRateChangeLabel")}
             </span>
-            <input
-              type="date"
+            <DateField
               value={nextRateChangeDate}
-              onChange={(e) => setNextRateChangeDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
+              onChange={setNextRateChangeDate}
             />
           </label>
 
@@ -505,14 +499,12 @@ export function MortgageEditorModal({
             <div className="flex flex-col gap-1.5">
               {amortRows.map((row) => (
                 <div key={row.id} className="flex items-center gap-1.5">
-                  <input
-                    type="date"
+                  <DateField
                     value={row.date}
-                    onChange={(e) =>
-                      updateAmortRow(row.id, { date: e.target.value })
+                    onChange={(value) =>
+                      updateAmortRow(row.id, { date: value })
                     }
-                    aria-label={t("properties.amortChangeDateLabel")}
-                    className={DATE_INPUT_CLASS}
+                    ariaLabel={t("properties.amortChangeDateLabel")}
                   />
                   <ClearableInput
                     value={row.value}
@@ -590,12 +582,7 @@ export function MortgageEditorModal({
             <span className="text-xs text-muted">
               {t("properties.loanStartLabel")}
             </span>
-            <input
-              type="date"
-              value={loanStartDate}
-              onChange={(e) => setLoanStartDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={loanStartDate} onChange={setLoanStartDate} />
             <p className="m-0 text-xs text-muted">
               {t("properties.loanStartHint")}
             </p>

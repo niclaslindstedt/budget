@@ -12,7 +12,7 @@ import {
   Button,
   ClearableInput,
   ClearableTextarea,
-  DATE_INPUT_CLASS,
+  DateField,
   FormSection,
 } from "../form";
 import { Modal } from "../Modal";
@@ -182,12 +182,7 @@ export function SalaryAddModal({
       <Modal.Body>
         <div className="flex flex-col gap-3">
           <FormSection as="label" label={t("salary.payDateLabel")}>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={date} onChange={setDate} />
             <span className="text-xs text-muted">
               {t("salary.payDateHint")}
             </span>

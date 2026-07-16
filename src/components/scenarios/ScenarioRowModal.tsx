@@ -9,7 +9,7 @@ import { parseAmount } from "../../utils/format";
 import {
   Button,
   ClearableInput,
-  DATE_INPUT_CLASS,
+  DateField,
   FormSection,
   SignedAmountInput,
 } from "../form";
@@ -121,12 +121,7 @@ export function ScenarioRowModal({
         <div className="flex flex-col gap-4">
           {isEdit && (
             <FormSection as="label" label={t("scenarios.rowDate")}>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={DATE_INPUT_CLASS}
-              />
+              <DateField value={date} onChange={setDate} />
             </FormSection>
           )}
 

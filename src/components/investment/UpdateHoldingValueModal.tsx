@@ -17,7 +17,7 @@ import { useLang, useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatBalance, formatDate, parseAmount } from "../../utils/format";
 import { BatchValueImportModal } from "../BatchValueImportModal";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { Modal } from "../Modal";
 
 // Record a new market value for a holding — appends one point to its
@@ -129,13 +129,7 @@ export function UpdateHoldingValueModal({
                 <span className="text-xs text-muted">
                   {t("investment.asOfLabel")}
                 </span>
-                <input
-                  type="date"
-                  value={date}
-                  max={todayIso()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={DATE_INPUT_CLASS}
-                />
+                <DateField value={date} max={todayIso()} onChange={setDate} />
               </label>
 
               <Button type="submit" variant="primary" disabled={!canSubmit}>

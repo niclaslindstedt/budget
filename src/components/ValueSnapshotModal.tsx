@@ -8,7 +8,7 @@ import { useT } from "../i18n";
 import { todayIso } from "../utils/date";
 import { parseAmount } from "../utils/format";
 import { BatchValueImportModal } from "./BatchValueImportModal";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "./form";
+import { Button, ClearableInput, DateField } from "./form";
 import { Modal } from "./Modal";
 
 // Shared shell for every "record a dated value/balance over time" modal
@@ -162,13 +162,7 @@ export function ValueSnapshotModal<P extends { id: string }>({
 
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-muted">{asOfLabel}</span>
-                <input
-                  type="date"
-                  value={date}
-                  max={dateMax}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={DATE_INPUT_CLASS}
-                />
+                <DateField value={date} max={dateMax} onChange={setDate} />
               </label>
 
               <Button type="submit" variant="primary" disabled={!canSubmit}>

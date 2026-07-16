@@ -2,6 +2,7 @@ import type { Widen } from "./_widen";
 
 const datePicker = {
   title: "Pick a date",
+  placeholder: "Select date",
   today: "Today",
   clear: "Clear",
   clearDate: "Clear date",

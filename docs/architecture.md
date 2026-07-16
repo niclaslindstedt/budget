@@ -35,7 +35,8 @@ src/
 │   │                            #   (budget cell commits + scenario overrides)
 │   ├── RecurrenceForm.tsx       # recurrence rule picker + preview (budget
 │   │                            #   entry modals + scenario added rows)
-│   ├── DatePickerModal.tsx      # modal calendar (mobile-friendly)
+│   ├── DatePickerModal.tsx      # modal calendar (mobile-friendly); the
+│   │                            #   universal date picker every DateField opens
 │   ├── ColorPalette.tsx         # circular color-swatch grid
 │   ├── GlyphGrid.tsx            # 8-column icon-button grid
 │   ├── GlyphPicker.tsx          # glyph picker built on GlyphGrid
@@ -80,9 +81,9 @@ src/
 │   │                            #   categories, companies, tags, patterns,
 │   │                            #   memory, developer, logs
 │   ├── form/                 # form primitives (Button, Checkbox, Radio,
-│   │                         #   ClearableInput/Textarea, FormSection,
-│   │                         #   SelectPicker, SignedAmountInput, Slider,
-│   │                         #   RangeSlider)
+│   │                         #   ClearableInput/Textarea, DateField,
+│   │                         #   FormSection, SelectPicker, SignedAmountInput,
+│   │                         #   Slider, RangeSlider)
 │   ├── budget/               # budget page — per-account ledger
 │   │   ├── BudgetPage.tsx, BudgetContext.ts, BudgetContextProvider.tsx
 │   │   ├── BudgetMonthTable.tsx, BudgetColumnHeader.tsx, OrphanIndicator.tsx

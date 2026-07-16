@@ -10,7 +10,7 @@ import type {
 } from "../../data/types";
 import { useT } from "../../i18n";
 import { AttachmentUploadModal } from "../AttachmentUploadModal";
-import { Button } from "../form";
+import { Button, DateField } from "../form";
 import { Modal } from "../Modal";
 
 // The repair-receipts manager — a repair owns a list of dated receipt
@@ -137,19 +137,18 @@ export function RepairReceiptsModal({
                 key={receipt.id}
                 className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-2"
               >
-                <input
-                  type="date"
+                <DateField
                   value={receipt.date.slice(0, 10)}
-                  aria-label={t("properties.repairReceiptDateAria")}
+                  ariaLabel={t("properties.repairReceiptDateAria")}
                   className={DATE_CLASS}
-                  onChange={(e) => {
-                    if (!e.target.value) return;
+                  onChange={(value) => {
+                    if (!value) return;
                     void onSetDate(
                       property,
                       repair,
                       receipt,
                       companyName,
-                      e.target.value,
+                      value,
                     );
                   }}
                 />

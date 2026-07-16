@@ -16,7 +16,14 @@ import { formatAmountForInput } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
-import { Button, Checkbox, ClearableInput, Radio, RadioGroup } from "../form";
+import {
+  Button,
+  Checkbox,
+  ClearableInput,
+  DateField,
+  Radio,
+  RadioGroup,
+} from "../form";
 import { TypePicker } from "../TypePicker";
 import { BudgetAmountSpanFields } from "./BudgetAmountSpanFields";
 import {
@@ -284,10 +291,9 @@ export function BudgetEditSeriesForm({
                   className="items-center"
                 />
                 {untilEnabled && (
-                  <input
-                    type="date"
+                  <DateField
                     value={untilDate}
-                    onChange={(e) => setUntilDate(e.target.value)}
+                    onChange={setUntilDate}
                     className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
                   />
                 )}

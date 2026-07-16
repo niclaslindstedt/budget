@@ -4,7 +4,7 @@ import { Scissors } from "lucide-react";
 import type { Account, HistoryEntry, Transfer } from "../../data/types";
 import { todayIso } from "../../utils/date";
 import { useT } from "../../i18n";
-import { Button } from "../form";
+import { Button, DateField } from "../form";
 import { Modal } from "../Modal";
 
 type Props = {
@@ -79,10 +79,9 @@ export function AccountCutHistoryModal({
             <span className="text-xs text-muted">
               {t("cutHistory.cutoffDate")}
             </span>
-            <input
-              type="date"
+            <DateField
               value={cutoffDate}
-              onChange={(e) => setCutoffDate(e.target.value)}
+              onChange={setCutoffDate}
               className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-path"
             />
           </label>

@@ -2,6 +2,7 @@ import type { DatePickerCatalog } from "../en/datePicker";
 
 const datePicker: DatePickerCatalog = {
   title: "Välj ett datum",
+  placeholder: "Välj datum",
   today: "Idag",
   clear: "Rensa",
   clearDate: "Rensa datum",

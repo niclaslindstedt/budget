@@ -5,7 +5,7 @@ import { rowsInSeriesFrom } from "../../data/budget/rows";
 import type { Row, Settings } from "../../data/types";
 import { useT } from "../../i18n";
 import { formatDate } from "../../utils/format";
-import { Checkbox } from "../form";
+import { Checkbox, DateField } from "../form";
 import { Modal } from "../Modal";
 
 type Props = {
@@ -136,11 +136,10 @@ export function BudgetDeleteRecurringDialog({
               className="items-center"
             />
             {untilEnabled && (
-              <input
-                type="date"
+              <DateField
                 value={untilDate}
                 min={anchorDate || undefined}
-                onChange={(e) => setUntilDate(e.target.value)}
+                onChange={setUntilDate}
                 className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
               />
             )}

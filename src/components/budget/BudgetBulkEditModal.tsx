@@ -14,7 +14,7 @@ import type {
 import { useT } from "../../i18n";
 import { normalizeAmountInput, parseAmount } from "../../utils/format";
 import { Modal } from "../Modal";
-import { Button, Checkbox, ClearableInput } from "../form";
+import { Button, Checkbox, ClearableInput, DateField } from "../form";
 import { RecurrenceForm } from "../RecurrenceForm";
 import { TagsPicker } from "../TagsPicker";
 import { TypePicker } from "../TypePicker";
@@ -204,12 +204,9 @@ export function BudgetBulkEditModal({
           enabled={dateEnabled}
           onToggle={(value) => dispatch({ kind: "setDateEnabled", value })}
         >
-          <input
-            type="date"
+          <DateField
             value={dateValue}
-            onChange={(e) =>
-              dispatch({ kind: "setDateValue", value: e.target.value })
-            }
+            onChange={(value) => dispatch({ kind: "setDateValue", value })}
             className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-path"
           />
         </Toggle>
