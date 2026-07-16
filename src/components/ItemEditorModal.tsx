@@ -17,7 +17,7 @@ import {
   Checkbox,
   ClearableInput,
   ClearableTextarea,
-  DATE_INPUT_CLASS,
+  DateField,
 } from "./form";
 import { Modal } from "./Modal";
 import { SubtypePicker } from "./SubtypePicker";
@@ -302,12 +302,7 @@ export function ItemEditorModal({
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">{t("items.acquiredAt")}</span>
-            <input
-              type="date"
-              value={acquiredAt}
-              onChange={(e) => setAcquiredAt(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={acquiredAt} onChange={setAcquiredAt} />
           </label>
 
           <div className="flex flex-col gap-2 rounded border border-line bg-surface-3 p-3">
@@ -478,12 +473,7 @@ export function ItemEditorModal({
                   <span className="text-xs text-muted">
                     {t("items.disposedAt")}
                   </span>
-                  <input
-                    type="date"
-                    value={disposedAt}
-                    onChange={(e) => setDisposedAt(e.target.value)}
-                    className={DATE_INPUT_CLASS}
-                  />
+                  <DateField value={disposedAt} onChange={setDisposedAt} />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-muted">

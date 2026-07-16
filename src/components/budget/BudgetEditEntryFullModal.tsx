@@ -23,7 +23,14 @@ import { useT } from "../../i18n";
 import { addDaysIso, diffDaysIso } from "../../utils/date";
 import { formatAmount, formatShortDate, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
-import { Checkbox, Button, ClearableInput, Radio, RadioGroup } from "../form";
+import {
+  Checkbox,
+  Button,
+  ClearableInput,
+  DateField,
+  Radio,
+  RadioGroup,
+} from "../form";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
@@ -430,12 +437,9 @@ export function BudgetEditEntryFullModal({
           {dateCol && (
             <label className="col-span-2 flex min-w-0 flex-col gap-1">
               <span className="text-xs text-muted">{t("budget.date")}</span>
-              <input
-                type="date"
+              <DateField
                 value={date}
-                onChange={(e) =>
-                  dispatch({ kind: "setDate", value: e.target.value })
-                }
+                onChange={(value) => dispatch({ kind: "setDate", value })}
                 className="field-input min-w-0 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-path"
               />
             </label>
@@ -524,13 +528,12 @@ export function BudgetEditEntryFullModal({
                     className="items-center"
                   />
                   {untilEnabled && (
-                    <input
-                      type="date"
+                    <DateField
                       value={untilDate}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         dispatch({
                           kind: "setUntilDate",
-                          value: e.target.value,
+                          value,
                         })
                       }
                       className="field-input rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"

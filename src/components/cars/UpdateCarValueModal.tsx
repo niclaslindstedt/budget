@@ -19,7 +19,7 @@ import {
   parseAmount,
 } from "../../utils/format";
 import { BatchValueImportModal } from "../BatchValueImportModal";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { Modal } from "../Modal";
 
 // Record a dated value and/or odometer reading for a car — appends one
@@ -175,12 +175,7 @@ export function UpdateCarValueModal({
                 <span className="text-xs text-muted">
                   {t("carsSheet.asOfLabel")}
                 </span>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={DATE_INPUT_CLASS}
-                />
+                <DateField value={date} onChange={setDate} />
               </label>
 
               <Button type="submit" variant="primary" disabled={!canSubmit}>

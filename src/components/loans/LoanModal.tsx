@@ -24,7 +24,7 @@ import {
   Checkbox,
   ClearableInput,
   ClearableTextarea,
-  DATE_INPUT_CLASS,
+  DateField,
   FormSection,
   SelectPicker,
   type SelectOption,
@@ -352,12 +352,7 @@ export function LoanModal({
                   className="min-w-0"
                   label={t("loansSheet.startDate")}
                 >
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className={DATE_INPUT_CLASS}
-                  />
+                  <DateField value={startDate} onChange={setStartDate} />
                 </FormSection>
                 {kind !== "student" && (
                   <FormSection

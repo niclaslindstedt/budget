@@ -13,7 +13,7 @@ import {
   formatBalance,
   parseAmount,
 } from "../../utils/format";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { Modal } from "../Modal";
 
 // Edit one mortgage's share within a charge. The charge total is fixed
@@ -168,12 +168,7 @@ export function MortgagePaymentEditModal({
             <span className="text-xs text-muted">
               {t("properties.paymentDate")}
             </span>
-            <input
-              type="date"
-              value={dateText}
-              onChange={(e) => setDateText(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={dateText} onChange={setDateText} />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">

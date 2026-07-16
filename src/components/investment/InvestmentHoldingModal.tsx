@@ -21,7 +21,7 @@ import { ColorPalette } from "../ColorPalette";
 import {
   Button,
   ClearableInput,
-  DATE_INPUT_CLASS,
+  DateField,
   FormSection,
   SelectPicker,
   type SelectOption,
@@ -221,12 +221,10 @@ export function InvestmentHoldingModal({
               />
             </FormSection>
             <FormSection as="label" label={t("investment.purchaseDateLabel")}>
-              <input
-                type="date"
+              <DateField
                 value={purchaseDate}
                 max={todayIso()}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                className={DATE_INPUT_CLASS}
+                onChange={setPurchaseDate}
               />
             </FormSection>
           </div>

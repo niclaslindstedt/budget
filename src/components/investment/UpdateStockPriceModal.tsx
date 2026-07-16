@@ -16,7 +16,7 @@ import { BatchValueImportModal } from "../BatchValueImportModal";
 import {
   Button,
   ClearableInput,
-  DATE_INPUT_CLASS,
+  DateField,
   SelectPicker,
   type SelectOption,
 } from "../form";
@@ -200,13 +200,7 @@ export function UpdateStockPriceModal({
                 <span className="text-xs text-muted">
                   {t("investment.asOfLabel")}
                 </span>
-                <input
-                  type="date"
-                  value={date}
-                  max={todayIso()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={DATE_INPUT_CLASS}
-                />
+                <DateField value={date} max={todayIso()} onChange={setDate} />
               </label>
 
               <Button type="submit" variant="primary" disabled={!canSubmit}>

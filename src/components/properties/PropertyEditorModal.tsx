@@ -15,7 +15,7 @@ import { useT } from "../../i18n";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
 import { tintBorder, tintFill } from "../../utils/tint";
 import { CompanyPicker } from "../CompanyPicker";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { FloatingPanel } from "../FloatingPanel";
 import { CategoryIconGlyph } from "../icons";
 import { Modal } from "../Modal";
@@ -328,24 +328,14 @@ export function PropertyEditorModal({
             <span className="text-xs text-muted">
               {t("properties.purchaseDateLabel")}
             </span>
-            <input
-              type="date"
-              value={purchaseDate}
-              onChange={(e) => setPurchaseDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={purchaseDate} onChange={setPurchaseDate} />
           </label>
 
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted">
               {t("properties.soldDateLabel")}
             </span>
-            <input
-              type="date"
-              value={soldDate}
-              onChange={(e) => setSoldDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={soldDate} onChange={setSoldDate} />
             <p className="m-0 text-xs text-muted">
               {t("properties.soldDateHint")}
             </p>
@@ -422,16 +412,13 @@ export function PropertyEditorModal({
                   className="flex flex-col gap-1.5 rounded border border-line bg-surface-2 p-2"
                 >
                   <div className="flex items-center gap-1.5">
-                    <input
-                      type="date"
+                    <DateField
                       value={row.date}
-                      onChange={(e) =>
-                        updateAssocRow(row.id, { date: e.target.value })
+                      onChange={(value) =>
+                        updateAssocRow(row.id, { date: value })
                       }
-                      aria-label={t(
-                        "properties.associationLoanChangeDateLabel",
-                      )}
-                      className={`${DATE_INPUT_CLASS} flex-1`}
+                      ariaLabel={t("properties.associationLoanChangeDateLabel")}
+                      className="field-input rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg flex-1"
                     />
                     {assocRows.length > 1 && (
                       <button

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Repeat } from "lucide-react";
 
 import { useT } from "../i18n";
-import { Checkbox } from "./form";
+import { Checkbox, DateField } from "./form";
 import { Modal } from "./Modal";
 
 // "Apply this edit to the rest of the recurring series?" prompt staged
@@ -95,10 +95,9 @@ export function ApplySeriesDialog({
           className="mt-2 items-center"
         />
         {untilEnabled && (
-          <input
-            type="date"
+          <DateField
             value={untilDate}
-            onChange={(e) => setUntilDate(e.target.value)}
+            onChange={setUntilDate}
             className="field-input mt-1.5 ml-6 rounded border border-line bg-surface-2 px-2 py-1 text-sm text-path"
           />
         )}

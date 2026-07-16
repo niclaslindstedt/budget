@@ -19,7 +19,7 @@ import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
 import { todayIso } from "../../utils/date";
 import { formatAmountForInput, parseAmount } from "../../utils/format";
-import { Button, ClearableInput, DATE_INPUT_CLASS } from "../form";
+import { Button, ClearableInput, DateField } from "../form";
 import { Modal } from "../Modal";
 import { RepairFields } from "./RepairFields";
 
@@ -210,12 +210,7 @@ export function ManualRepairModal({
               <span className="text-xs text-muted">
                 {t("properties.repairDateLabel")}
               </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={DATE_INPUT_CLASS}
-              />
+              <DateField value={date} onChange={setDate} />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted">

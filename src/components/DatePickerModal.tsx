@@ -12,6 +12,12 @@ type Props = {
   open: boolean;
   // Current ISO value (YYYY-MM-DD) or empty string when unset.
   value: string;
+  // Optional inclusive bounds (ISO). Day cells outside the range are
+  // disabled, and the "Today" shortcut greys out when today falls
+  // outside it. ISO strings compare lexically, so a plain string
+  // comparison is the range check.
+  min?: string;
+  max?: string;
   onClose: () => void;
   onSelect: (iso: string | null) => void;
 };
@@ -58,7 +64,14 @@ function mondayIndex(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 
-export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
+export function DatePickerModal({
+  open,
+  value,
+  min,
+  max,
+  onClose,
+  onSelect,
+}: Props) {
   const t = useT();
   const initialIso = isIsoDate(value) ? value : todayIso();
   const [iy, im] = initialIso.split("-").map(Number);
@@ -123,6 +136,12 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
 
   const today = todayIso();
   const selected = isIsoDate(value) ? value : "";
+
+  function outOfRange(iso: string): boolean {
+    if (min && iso < min) return true;
+    if (max && iso > max) return true;
+    return false;
+  }
 
   function shiftMonth(delta: number) {
     const total = viewYear * 12 + (viewMonth - 1) + delta;
@@ -203,19 +222,23 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           {cells.map((cell) => {
             const isSelected = cell.iso === selected;
             const isToday = cell.iso === today;
+            const isDisabled = outOfRange(cell.iso);
             const base =
-              "inline-flex h-9 w-full cursor-pointer items-center justify-center rounded border font-mono text-sm tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
-            const cls = isSelected
-              ? "border-accent bg-accent/20 text-accent"
-              : isToday
-                ? "border-path text-path hover:bg-surface-2"
-                : cell.inMonth
-                  ? "border-transparent text-fg hover:border-line hover:bg-surface-2"
-                  : "border-transparent text-muted/60 hover:border-line hover:bg-surface-2";
+              "inline-flex h-9 w-full items-center justify-center rounded border font-mono text-sm tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
+            const cls = isDisabled
+              ? "cursor-not-allowed border-transparent text-muted/40"
+              : isSelected
+                ? "cursor-pointer border-accent bg-accent/20 text-accent"
+                : isToday
+                  ? "cursor-pointer border-path text-path hover:bg-surface-2"
+                  : cell.inMonth
+                    ? "cursor-pointer border-transparent text-fg hover:border-line hover:bg-surface-2"
+                    : "cursor-pointer border-transparent text-muted/60 hover:border-line hover:bg-surface-2";
             return (
               <button
                 key={cell.iso}
                 type="button"
+                disabled={isDisabled}
                 onClick={() => commit(cell.iso)}
                 className={`${base} ${cls}`}
                 aria-pressed={isSelected}
@@ -242,7 +265,8 @@ export function DatePickerModal({ open, value, onClose, onSelect }: Props) {
           <button
             type="button"
             onClick={() => commit(today)}
-            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent"
+            disabled={outOfRange(today)}
+            className="cursor-pointer rounded border border-line px-3 py-1.5 text-sm text-fg hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:text-fg"
           >
             {t("datePicker.today")}
           </button>

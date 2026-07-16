@@ -16,7 +16,7 @@ import {
 import {
   Button,
   ClearableInput,
-  DATE_INPUT_CLASS,
+  DateField,
   SelectPicker,
   type SelectOption,
 } from "../form";
@@ -200,12 +200,7 @@ export function ManualCarExpenseModal({
             <span className="text-xs text-muted">
               {t("carsSheet.expenseDate")}
             </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={date} onChange={setDate} />
           </label>
 
           <div className="flex flex-col gap-1">

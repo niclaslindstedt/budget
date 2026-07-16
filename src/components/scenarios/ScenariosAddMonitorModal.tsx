@@ -3,7 +3,7 @@ import { CalendarClock } from "lucide-react";
 
 import { useResetOnOpen } from "../../hooks";
 import { useT } from "../../i18n";
-import { Button, DATE_INPUT_CLASS, FormSection } from "../form";
+import { Button, DateField, FormSection } from "../form";
 import { Modal } from "../Modal";
 
 type Props = {
@@ -52,12 +52,7 @@ export function ScenariosAddMonitorModal({
       />
       <Modal.Body>
         <FormSection as="label" label={t("scenarios.monitorDateLabel")}>
-          <input
-            type="date"
-            value={draftDate}
-            onChange={(e) => setDraftDate(e.target.value)}
-            className={DATE_INPUT_CLASS}
-          />
+          <DateField value={draftDate} onChange={setDraftDate} />
           <p className="text-xs text-muted">{t("scenarios.monitorsIntro")}</p>
         </FormSection>
       </Modal.Body>

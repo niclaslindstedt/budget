@@ -25,7 +25,7 @@ import {
   Checkbox,
   ClearableInput,
   ClearableTextarea,
-  DATE_INPUT_CLASS,
+  DateField,
   FormSection,
   SelectPicker,
   type SelectOption,
@@ -391,12 +391,7 @@ export function CarEditorModal({
                   className="min-w-0"
                   label={t("carsSheet.purchaseDateLabel")}
                 >
-                  <input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                    className={DATE_INPUT_CLASS}
-                  />
+                  <DateField value={purchaseDate} onChange={setPurchaseDate} />
                 </FormSection>
               </div>
 
@@ -574,12 +569,7 @@ export function CarEditorModal({
                   className="min-w-0"
                   label={t("carsSheet.leaseStartLabel")}
                 >
-                  <input
-                    type="date"
-                    value={leaseStart}
-                    onChange={(e) => setLeaseStart(e.target.value)}
-                    className={DATE_INPUT_CLASS}
-                  />
+                  <DateField value={leaseStart} onChange={setLeaseStart} />
                 </FormSection>
                 <FormSection
                   as="label"
@@ -677,12 +667,7 @@ export function CarEditorModal({
           )}
 
           <FormSection as="label" label={t("carsSheet.soldDateLabel")}>
-            <input
-              type="date"
-              value={soldDate}
-              onChange={(e) => setSoldDate(e.target.value)}
-              className={DATE_INPUT_CLASS}
-            />
+            <DateField value={soldDate} onChange={setSoldDate} />
             <p className="m-0 text-xs text-muted">
               {t("carsSheet.soldDateHint")}
             </p>
