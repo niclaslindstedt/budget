@@ -400,9 +400,12 @@ creator. Supports `amountFormula`. Its company picker offers the same
 minted row `noCompany` (held mutually exclusive with a picked company)
 so a user-authored entry can record "no company, on purpose". The same
 toggle is reachable afterwards from the row editor
-(`BudgetEditEntryFullModal`), the inline description-cell picker, and
-the promote-history-to-recurring form (`BudgetPromoteHistoryForm`) —
-where omitting flags every minted future row `noCompany` and clears any
+(`BudgetEditEntryFullModal`), the inline description-cell picker, the
+promote-to-recurring form (`BudgetPromoteToSeriesForm`, which seeds the
+toggle from the anchor's `noCompany` so promoting a company-less row
+keeps the choice and stamps every minted occurrence), and the
+promote-history-to-recurring form (`BudgetPromoteHistoryForm`) — where
+omitting flags every minted future row `noCompany` and clears any
 company the merchant hint held for the key.
 
 ### Amount span
@@ -438,7 +441,11 @@ selected rows (bulk edit, move-copy, apply-series).
 recurring row** (staged by `onCommitCell` in `useRowMutations`): editing
 a description, amount, type, or company offers to copy the same value to
 every following occurrence (`SERIES_PROPAGATABLE_COLUMN_TYPES` +
-`field: "company"`). A **date** edit can't copy verbatim — the dates
+`field: "company"`). Toggling the inline **"Omit company"** flag on a
+recurring row stages the same prompt via `field: "noCompany"` (staged by
+`onSetRowNoCompany`): confirming "apply to all following" flags every
+later occurrence `noCompany` (clearing any company on those rows). A
+**date** edit can't copy verbatim — the dates
 differ per occurrence — so it stages `field: "dateShift"` instead: the
 anchor keeps the exact date the inline edit just wrote, and confirming
 "apply to all following" slides every later occurrence by the same day

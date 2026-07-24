@@ -155,7 +155,10 @@ export function reduceAccountBudget(
         });
         row.seriesId = seriesId;
         if (action.typeId) setRowType(row, action.typeId);
+        // A real company wins over the omit flag (they're mutually
+        // exclusive); an omit only lands when no company was chosen.
         if (action.companyId) row.companyId = action.companyId;
+        else if (action.noCompany) row.noCompany = true;
         // Carry the anchor's estimate range onto every generated
         // occurrence so the whole series stays matchable against the
         // band, not just the anchor.
@@ -173,10 +176,18 @@ export function reduceAccountBudget(
             const next: Row = { ...r, seriesId };
             if (action.typeId) setRowType(next, action.typeId);
             else if (action.typeId === null) clearRowType(next);
+            // Keep company / omit mutually exclusive on the anchor too: a
+            // chosen company clears the omit flag, an omit clears any
+            // company, and "no decision" clears both.
             if (action.companyId) {
               next.companyId = action.companyId;
-            } else if (action.companyId === null) {
+              delete next.noCompany;
+            } else if (action.noCompany) {
+              next.noCompany = true;
               delete next.companyId;
+            } else {
+              delete next.companyId;
+              delete next.noCompany;
             }
             return next;
           }),
@@ -317,28 +328,42 @@ export function reduceAccountBudget(
               else delete next.companyId;
               return next;
             }
-          : action.field === "dateShift"
+          : action.field === "noCompany"
             ? (r: Row): Row => {
-                // The anchor already holds the user's exact new date —
-                // only the following occurrences slide along with it.
-                if (r.id === anchor.id) return r;
-                const delta =
-                  typeof action.value === "number" ? action.value : 0;
-                const cur = r.cells[dateCol.id];
-                if (delta === 0 || typeof cur !== "string" || cur === "")
-                  return r;
-                return {
-                  ...r,
-                  cells: { ...r.cells, [dateCol.id]: addDaysIso(cur, delta) },
-                };
+                // Mirror the inline "Omit company" write: enabling the
+                // flag drops any company on the row (they're mutually
+                // exclusive); disabling clears the flag entirely.
+                const next = { ...r };
+                if (action.value === true) {
+                  next.noCompany = true;
+                  delete next.companyId;
+                } else {
+                  delete next.noCompany;
+                }
+                return next;
               }
-            : (r: Row): Row =>
-                writeColumnValue(
-                  { ...r },
-                  item.columns,
-                  action.columnId,
-                  action.value,
-                );
+            : action.field === "dateShift"
+              ? (r: Row): Row => {
+                  // The anchor already holds the user's exact new date —
+                  // only the following occurrences slide along with it.
+                  if (r.id === anchor.id) return r;
+                  const delta =
+                    typeof action.value === "number" ? action.value : 0;
+                  const cur = r.cells[dateCol.id];
+                  if (delta === 0 || typeof cur !== "string" || cur === "")
+                    return r;
+                  return {
+                    ...r,
+                    cells: { ...r.cells, [dateCol.id]: addDaysIso(cur, delta) },
+                  };
+                }
+              : (r: Row): Row =>
+                  writeColumnValue(
+                    { ...r },
+                    item.columns,
+                    action.columnId,
+                    action.value,
+                  );
       return {
         ...item,
         rows: mapSeriesFrom(

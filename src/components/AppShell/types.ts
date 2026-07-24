@@ -98,11 +98,14 @@ export type PendingSeriesEdit = {
   // When set, the propagation does something other than write `value` to
   // a cell column. `"company"` propagates the inline company assignment
   // (set from the description popover, which has no dedicated column;
-  // `columnId` is unused in that mode). `"dateShift"` slides every later
-  // occurrence's date by `value` days, leaving the anchor — already
-  // re-stamped to the user's exact new date — untouched. Absent ⇒ a
-  // plain cell edit (description / amount), propagated via `columnId`.
-  field?: "company" | "dateShift";
+  // `columnId` is unused in that mode). `"noCompany"` propagates the
+  // inline "Omit company" toggle — `value` is the boolean flag and each
+  // following occurrence gains / loses `noCompany` (clearing `companyId`
+  // when set). `"dateShift"` slides every later occurrence's date by
+  // `value` days, leaving the anchor — already re-stamped to the user's
+  // exact new date — untouched. Absent ⇒ a plain cell edit (description /
+  // amount), propagated via `columnId`.
+  field?: "company" | "noCompany" | "dateShift";
 };
 
 // Reconciliation modal state, populated after the user picks a bank
