@@ -250,6 +250,7 @@ export function BudgetModalHost(props: Props) {
       futureDates: string[],
       typeId: string | null,
       companyId: string | null,
+      noCompany: boolean,
     ) => {
       dispatch({
         type: "convertToRecurring",
@@ -259,6 +260,7 @@ export function BudgetModalHost(props: Props) {
         futureDates,
         typeId,
         companyId,
+        noCompany,
       });
       setEditPrompt(null);
     },

@@ -59,6 +59,10 @@ export type ItemAction =
       futureDates: string[];
       typeId: string | null;
       companyId: string | null;
+      // The anchor's "Omit company" decision, carried onto every minted
+      // occurrence. Mutually exclusive with `companyId` — a real company
+      // wins, so an omit only lands when `companyId` is null.
+      noCompany: boolean;
     }
   | {
       type: "editSeries";
@@ -79,10 +83,14 @@ export type ItemAction =
       // When `"company"`, propagate the row-level company assignment to
       // every following occurrence instead of a cell value; `columnId`
       // is ignored and `value` carries the companyId (`string | null`).
-      // When `"dateShift"`, slide every later occurrence's date by
-      // `value` days (a signed number); the anchor keeps the exact date
-      // the inline edit already wrote, so it is excluded from the slide.
-      field?: "company" | "dateShift";
+      // When `"noCompany"`, propagate the "Omit company" toggle;
+      // `columnId` is ignored and `value` carries the boolean flag —
+      // enabling it clears any company on the swept rows (the two stay
+      // mutually exclusive). When `"dateShift"`, slide every later
+      // occurrence's date by `value` days (a signed number); the anchor
+      // keeps the exact date the inline edit already wrote, so it is
+      // excluded from the slide.
+      field?: "company" | "noCompany" | "dateShift";
     }
   | {
       type: "deleteRows";

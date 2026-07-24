@@ -145,6 +145,55 @@ describe("bulkUpdate with the omit flag", () => {
   });
 });
 
+describe("convertToRecurring with the omit flag", () => {
+  function convert(
+    state: UserData,
+    rowId: string,
+    extra: { companyId: string | null; noCompany: boolean },
+  ): UserData {
+    return reducer(state, {
+      type: "convertToRecurring",
+      sheetId: state.sheets[0].id,
+      itemId: budget(state).id,
+      rowId,
+      futureDates: ["2026-08-01", "2026-09-01"],
+      typeId: null,
+      companyId: extra.companyId,
+      noCompany: extra.noCompany,
+    });
+  }
+
+  it("carries the omit flag onto the anchor and every minted occurrence", () => {
+    let state = addComplex(makeState(), { noCompany: true });
+    const rowId = budget(state).rows[0].id;
+    state = convert(state, rowId, { companyId: null, noCompany: true });
+    const rows = budget(state).rows;
+    expect(rows).toHaveLength(3);
+    expect(rows.every((r) => r.noCompany === true)).toBe(true);
+    expect(rows.every((r) => r.companyId === undefined)).toBe(true);
+  });
+
+  it("lets a chosen company win over the omit flag", () => {
+    // The modal never sends both, but the minting must stay consistent
+    // if it ever did: the company is the stronger signal.
+    let state = addComplex(makeState());
+    const rowId = budget(state).rows[0].id;
+    state = convert(state, rowId, { companyId: COMPANY_ID, noCompany: true });
+    const rows = budget(state).rows;
+    expect(rows.every((r) => r.companyId === COMPANY_ID)).toBe(true);
+    expect(rows.every((r) => r.noCompany === undefined)).toBe(true);
+  });
+
+  it("clears a prior omit flag on the anchor when no decision is made", () => {
+    let state = addComplex(makeState(), { noCompany: true });
+    const rowId = budget(state).rows[0].id;
+    state = convert(state, rowId, { companyId: null, noCompany: false });
+    const rows = budget(state).rows;
+    expect(rows.every((r) => r.noCompany === undefined)).toBe(true);
+    expect(rows.every((r) => r.companyId === undefined)).toBe(true);
+  });
+});
+
 describe("editSeries with the omit flag", () => {
   it("applies the omit flag and clears any prior company", () => {
     let state = addComplex(makeState(), { companyId: COMPANY_ID });

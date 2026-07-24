@@ -118,6 +118,52 @@ describe("propagateCellToFuture", () => {
     for (const r of rowsOf(next)) expect(r.companyId).toBeUndefined();
   });
 
+  it("propagates the omit-company flag via the `noCompany` field", () => {
+    let state = seedSeries();
+    // Every occurrence starts tagged with a company.
+    for (const r of rowsOf(state)) r.companyId = "company-landlord";
+    state = { ...state };
+    const anchor = rowsOf(state)[1]; // Feb — sweeps Feb + Mar
+    const next = reducer(state, {
+      type: "propagateCellToFuture",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: "",
+      value: true,
+      field: "noCompany",
+      untilIso: null,
+    });
+    const out = rowsOf(next);
+    // Jan untouched — keeps its company, no omit flag.
+    expect(out[0].companyId).toBe("company-landlord");
+    expect(out[0].noCompany).toBeUndefined();
+    // Feb + Mar gain the omit flag and drop the company (mutually
+    // exclusive).
+    expect(out[1].noCompany).toBe(true);
+    expect(out[1].companyId).toBeUndefined();
+    expect(out[2].noCompany).toBe(true);
+    expect(out[2].companyId).toBeUndefined();
+  });
+
+  it("clears the omit-company flag across the sweep when value is false", () => {
+    let state = seedSeries();
+    for (const r of rowsOf(state)) r.noCompany = true;
+    state = { ...state };
+    const anchor = rowsOf(state)[0]; // Jan — sweeps all three
+    const next = reducer(state, {
+      type: "propagateCellToFuture",
+      sheetId: state.sheets[0].id,
+      itemId: item(state).id,
+      rowId: anchor.id,
+      columnId: "",
+      value: false,
+      field: "noCompany",
+      untilIso: null,
+    });
+    for (const r of rowsOf(next)) expect(r.noCompany).toBeUndefined();
+  });
+
   it("slides later occurrences by the day delta on a date-shift", () => {
     const state = seedSeries();
     const dateId = colId(state, "date");

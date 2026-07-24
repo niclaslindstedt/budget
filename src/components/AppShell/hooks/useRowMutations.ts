@@ -555,8 +555,38 @@ export function useRowMutations({
           ? { noCompany: true, companyId: null }
           : { noCompany: false },
       });
+      // Mirror the inline company path: an omit toggle on a recurring row
+      // is written to the anchor above, then staged so the
+      // ApplySeriesDialog can offer to fan it out to every following
+      // occurrence — the same prompt the user gets after assigning a
+      // company on a recurring entry.
+      if (row.seriesId) {
+        const { anchorDate, lastSeriesDate } = seriesAnchorDates(
+          row,
+          activeRows,
+          activeColumns,
+        );
+        setPendingSeriesEdit({
+          rowId: row.id,
+          columnId: "",
+          fieldLabel: t("editEntry.company"),
+          anchorDate,
+          lastSeriesDate,
+          value: next,
+          field: "noCompany",
+        });
+      }
     },
-    [dispatch, sheetId, itemId, activeAccountId],
+    [
+      dispatch,
+      sheetId,
+      itemId,
+      activeAccountId,
+      activeRows,
+      activeColumns,
+      setPendingSeriesEdit,
+      t,
+    ],
   );
 
   // Accept an induced metadata suggestion on a synthesized history row.

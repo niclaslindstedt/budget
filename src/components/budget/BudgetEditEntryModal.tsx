@@ -62,6 +62,7 @@ type Props = {
     dates: string[],
     typeId: string | null,
     companyId: string | null,
+    noCompany: boolean,
   ) => void;
   onEditSeries: (rowId: string, patch: EditPatch, scope: EditScope) => void;
   // Fires when the user submits the promote form on a synthesized

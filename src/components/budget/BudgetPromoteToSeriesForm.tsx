@@ -43,6 +43,7 @@ type Props = {
     dates: string[],
     typeId: string | null,
     companyId: string | null,
+    noCompany: boolean,
   ) => void;
   onCreateType: (draft: Omit<EntryType, "id">) => EntryType;
   onCreateCategory: (draft: Omit<Category, "id">) => Category;
@@ -76,6 +77,10 @@ export function BudgetPromoteToSeriesForm({
   const [companyId, setCompanyId] = useState<string | null>(
     row.companyId ?? null,
   );
+  // Seed the "Omit company" decision from the anchor so promoting a row
+  // that already opts out of a company keeps that choice — the minted
+  // series inherits it instead of silently reverting to "not decided".
+  const [noCompany, setNoCompany] = useState(row.noCompany === true);
   // Wrap the company picker's onSelect so a confident company → type
   // pairing auto-fills the empty type. The user can still override
   // either field afterwards.
@@ -86,6 +91,8 @@ export function BudgetPromoteToSeriesForm({
   const handlePickCompany = useCallback(
     (next: string | null) => {
       setCompanyId(next);
+      // A real company and the omit flag are mutually exclusive.
+      if (next !== null) setNoCompany(false);
       const auto = autoTypeForPickedCompany(next);
       if (auto !== undefined) setTypeId(auto);
     },
@@ -107,7 +114,7 @@ export function BudgetPromoteToSeriesForm({
 
   function handleSubmit() {
     if (extras.length === 0) return;
-    onSubmit(row.id, extras, typeId, companyId);
+    onSubmit(row.id, extras, typeId, companyId, noCompany);
   }
 
   return (
@@ -120,7 +127,9 @@ export function BudgetPromoteToSeriesForm({
             variant="field"
             companies={companies}
             selectedId={companyId}
+            noCompany={noCompany}
             onSelect={handlePickCompany}
+            onOmitChange={setNoCompany}
             onCreate={onCreateCompany}
           />
         </div>
