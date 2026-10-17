@@ -51,7 +51,11 @@ import { SheetSwitcher } from "../SheetSwitcher";
 import { SyncStatus } from "../SyncStatus";
 import { allCategories, allTypes } from "../../data/presets/merge";
 import {
-  companyTypeSuggestionsFromHints,
+  computeCompanyTypeAmountModel,
+  createCompanyTypeHintLookup,
+  createCompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
+import {
   computeCompanyTypeHints,
   computeDescriptionCompanyHints,
   computeDescriptionMetadataInductions,
@@ -399,10 +403,29 @@ export function AppShell({ auth, storage, currentDataRef }: AppShellProps) {
   // threshold, we auto-fill the type. Walks every budget row and
   // history-entry override on every relevant data change — small
   // surface, cheap enough not to bother caching across renders.
-  const companyTypeHints = useMemo(() => computeCompanyTypeHints(data), [data]);
+  // Both lookups are amount-aware: the per-pairing amounts in
+  // `companyTypeAmounts` re-rank the hints for a row's amount and let a
+  // multi-type company auto-fill when the amount picks one type.
+  const staticCompanyTypeHints = useMemo(
+    () => computeCompanyTypeHints(data),
+    [data],
+  );
+  const companyTypeAmounts = useMemo(
+    () => computeCompanyTypeAmountModel(data),
+    [data],
+  );
+  const companyTypeHints = useMemo(
+    () =>
+      createCompanyTypeHintLookup(staticCompanyTypeHints, companyTypeAmounts),
+    [staticCompanyTypeHints, companyTypeAmounts],
+  );
   const companyTypeSuggestions = useMemo(
-    () => companyTypeSuggestionsFromHints(companyTypeHints),
-    [companyTypeHints],
+    () =>
+      createCompanyTypeSuggestionLookup(
+        staticCompanyTypeHints,
+        companyTypeAmounts,
+      ),
+    [staticCompanyTypeHints, companyTypeAmounts],
   );
   // The inverse direction — typeId → most-used companies — surfaced as
   // the description popover's "Suggested" band when a type is picked

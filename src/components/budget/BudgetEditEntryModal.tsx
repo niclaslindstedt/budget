@@ -1,6 +1,10 @@
 import { Pencil } from "lucide-react";
 
 import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
+import type {
   Category,
   Column,
   Company,
@@ -36,8 +40,8 @@ type Props = {
   // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
   // typeIds map forwarded to each sub-form's TypePicker for its
   // "Suggested" band. See `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row. `null` if this row isn't part of a series.

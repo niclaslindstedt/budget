@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { descriptionCompanyHintsFor } from "../../data/company-type-hints";
 import { normaliseDescription } from "../../data/description-normaliser";
 import {
@@ -46,8 +50,8 @@ type Props = {
   // companyId → suggested typeId for the auto-fill, and companyId →
   // ranked hint typeIds for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   // normalised description → ranked companyIds (see
   // `computeDescriptionCompanyHints`). Surfaces the company the user
   // has tagged this merchant with before as the CompanyPicker's
@@ -134,6 +138,7 @@ export function EditHistoryEntryModal({
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    entry?.amount ?? null,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -238,7 +243,9 @@ export function EditHistoryEntryModal({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                companyId
+                  ? (companyTypeHints.get(companyId, entry?.amount) ?? [])
+                  : []
               }
             />
           </div>

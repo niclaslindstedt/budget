@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { Sigma } from "lucide-react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { unlock } from "../../data/achievements";
 import { formulaToStored, parseFormula } from "../../data/budget/formula";
 import type { RecurrenceRule } from "../../data/recurrence";
@@ -45,8 +49,8 @@ type Props = {
   // companyId → suggested typeId for the auto-fill, and companyId →
   // ranked hint typeIds for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   settings: Settings;
   // All sheets in the workspace. Used by the formula editor's
   // autocomplete (sheet name suggestions) and the name ↔ id transform
@@ -159,9 +163,21 @@ export function BudgetComplexEntryModal({
     (value: string | null) => dispatch({ kind: "setTypeId", value }),
     [],
   );
+  const parsedAbs = useMemo(() => parseAmount(amountText), [amountText]);
+  const parsedAmount = useMemo(
+    () =>
+      parsedAbs === null
+        ? null
+        : negative
+          ? -Math.abs(parsedAbs)
+          : Math.abs(parsedAbs),
+    [parsedAbs, negative],
+  );
+
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    parsedAmount,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -212,17 +228,6 @@ export function BudgetComplexEntryModal({
       dispatch({ kind: "setDates", value: nextDates });
     },
     [],
-  );
-
-  const parsedAbs = useMemo(() => parseAmount(amountText), [amountText]);
-  const parsedAmount = useMemo(
-    () =>
-      parsedAbs === null
-        ? null
-        : negative
-          ? -Math.abs(parsedAbs)
-          : Math.abs(parsedAbs),
-    [parsedAbs, negative],
   );
 
   // Live parse the formula so the user sees a syntax error as they
@@ -365,7 +370,9 @@ export function BudgetComplexEntryModal({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                companyId
+                  ? (companyTypeHints.get(companyId, parsedAmount) ?? [])
+                  : []
               }
             />
           </div>

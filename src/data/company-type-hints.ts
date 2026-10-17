@@ -7,6 +7,11 @@
 //   2. A company that resolves to SEVERAL types surfaces its top few as a
 //      "Suggested" section at the top of the `TypePicker`, one tap each.
 //
+// Both are made amount-aware by `company-type-amounts.ts`, which wraps
+// these static hints: the "Suggested" band is re-ranked by how well each
+// type matches the row's amount, and a multi-type company instant-fills
+// when the amount alone makes one type a confident pick.
+//
 // A company's associated types come from two sources, ranked in this
 // order:
 //   - Manual associations the user pins in the Companies settings tab
@@ -19,6 +24,7 @@
 // de-duplicated against the manual set. The combined list is capped (5
 // by default) so the picker's "Suggested" band stays short.
 
+import type { CompanyTypeSuggestionLookup } from "./company-type-amounts";
 import {
   isNormalisedKeyMeaningful,
   normaliseDescription,
@@ -160,34 +166,25 @@ export function computeTypeCompanyHints(
   return out;
 }
 
-// Derive the single-type instant-fill map from the ranked hints: a
-// company whose ranked list resolves to exactly one type is confident
-// enough to auto-fill it. The shape (companyId → typeId) is what the
-// entry-edit modals and the row-level company writer already consume.
-export function companyTypeSuggestionsFromHints(
-  hints: ReadonlyMap<string, readonly string[]>,
-): ReadonlyMap<string, string> {
-  const out = new Map<string, string>();
-  for (const [companyId, typeIds] of hints) {
-    if (typeIds.length === 1) out.set(companyId, typeIds[0]);
-  }
-  return out;
-}
-
 // Compose helper used by every modal and the AppShell row-level company
 // writer. Returns the typeId to auto-fill, or `undefined` when no
 // auto-fill should happen — either because the user already pinned a
 // type, the company was cleared, or the company has no single confident
 // suggestion. Callers decide whether to write that into local state or
 // dispatch it alongside the company write.
+//
+// `amount` (the row / entry's signed amount, when known) lets an
+// amount-aware lookup (see `createCompanyTypeSuggestionLookup`) pick a
+// type for a company that's been used with several.
 export function autoTypeForCompany(
   currentTypeId: string | null,
   nextCompanyId: string | null,
-  suggestions: ReadonlyMap<string, string>,
+  suggestions: CompanyTypeSuggestionLookup,
+  amount?: number | null,
 ): string | undefined {
   if (currentTypeId !== null) return undefined;
   if (nextCompanyId === null) return undefined;
-  return suggestions.get(nextCompanyId);
+  return suggestions.get(nextCompanyId, amount);
 }
 
 export const MAX_DESCRIPTION_COMPANY_HINTS = 5;

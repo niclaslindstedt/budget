@@ -1,5 +1,9 @@
 import { useCallback, useState } from "react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { unlock } from "../../data/achievements";
 import type { EditPatch, EditScope } from "../../data/action-payloads";
 import type {
@@ -12,7 +16,7 @@ import type {
 } from "../../data/types";
 import { useAutoTypeForCompany, useStandardColumns } from "../../hooks";
 import { useT } from "../../i18n";
-import { formatAmountForInput } from "../../utils/format";
+import { formatAmountForInput, parseAmount } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
 import { Modal } from "../Modal";
@@ -44,8 +48,8 @@ type Props = {
   // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
   // typeIds map for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   settings: Settings;
   // Last known date in the same series — defaults the "until" date when
   // editing a series row.
@@ -116,9 +120,16 @@ export function BudgetEditSeriesForm({
   // Wrap the company picker's onSelect so a confident company → type
   // pairing auto-fills the empty type. The user can still override
   // either field afterwards.
+  // The typed amount (signed by the sign toggle) steers the company →
+  // type suggestions toward the types this company is usually filed
+  // under at this price.
+  const parsedAbs = parseAmount(amount);
+  const signedAmount =
+    parsedAbs === null ? null : negative ? -Math.abs(parsedAbs) : parsedAbs;
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    signedAmount,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -217,7 +228,9 @@ export function BudgetEditSeriesForm({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                companyId
+                  ? (companyTypeHints.get(companyId, signedAmount) ?? [])
+                  : []
               }
             />
           </div>

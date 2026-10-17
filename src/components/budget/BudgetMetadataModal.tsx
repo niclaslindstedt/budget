@@ -8,6 +8,10 @@ import {
 } from "react";
 import { Split, Tags } from "lucide-react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { resolveEntryLabels } from "../../data/synthesis";
 import { derivePatternFromDescription } from "../../data/budget/pattern-derive";
 import {
@@ -30,6 +34,7 @@ import {
   buildFinalSplits,
   canCommitContinue,
   canFinish,
+  draftSignedAmount,
   makeInitialSplitState,
   splitRemaining,
 } from "./budget-metadata-split-reducer";
@@ -85,8 +90,8 @@ type Props = {
   // companyId → suggested typeId for the auto-fill, and companyId →
   // ranked hint typeIds for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   // normalised description → ranked companyIds (see
   // `computeDescriptionCompanyHints`). Surfaces the company the user
   // has tagged the current entry's merchant with before as the
@@ -390,6 +395,7 @@ export function BudgetMetadataModal({
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    current?.amount ?? null,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -748,10 +754,11 @@ export function BudgetMetadataModal({
           splitState.draft.typeId,
           next,
           companyTypeSuggestions,
+          draftSignedAmount(splitState.draft),
         ),
       });
     },
-    [splitState.draft.typeId, companyTypeSuggestions],
+    [splitState.draft, companyTypeSuggestions],
   );
 
   const splitRemainingAmount = splitRemaining(splitState);
@@ -918,8 +925,10 @@ export function BudgetMetadataModal({
                     }
                     hintTypeIds={
                       splitState.draft.companyId
-                        ? (companyTypeHints.get(splitState.draft.companyId) ??
-                          [])
+                        ? (companyTypeHints.get(
+                            splitState.draft.companyId,
+                            draftSignedAmount(splitState.draft),
+                          ) ?? [])
                         : []
                     }
                   />
@@ -994,7 +1003,10 @@ export function BudgetMetadataModal({
                       onCreateCategory={onCreateCategory}
                       amountSign={current.amount < 0 ? "negative" : "positive"}
                       hintTypeIds={
-                        companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                        companyId
+                          ? (companyTypeHints.get(companyId, current.amount) ??
+                            [])
+                          : []
                       }
                     />
                   </div>

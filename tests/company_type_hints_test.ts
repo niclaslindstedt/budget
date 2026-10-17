@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   autoTypeForCompany,
-  companyTypeSuggestionsFromHints,
   computeCompanyTypeHints,
   computeTypeCompanyHints,
 } from "../src/data/company-type-hints";
@@ -213,18 +212,6 @@ describe("computeTypeCompanyHints", () => {
       row({ id: "r1", typeId: "t_clothes" }),
     ];
     expect(computeTypeCompanyHints(makeData({ rows })).size).toBe(0);
-  });
-});
-
-describe("companyTypeSuggestionsFromHints", () => {
-  it("keeps only companies that resolve to exactly one type", () => {
-    const hints = new Map<string, readonly string[]>([
-      ["co_one", ["t_only"]],
-      ["co_many", ["t_a", "t_b"]],
-    ]);
-    const suggestions = companyTypeSuggestionsFromHints(hints);
-    expect(suggestions.get("co_one")).toBe("t_only");
-    expect(suggestions.has("co_many")).toBe(false);
   });
 });
 

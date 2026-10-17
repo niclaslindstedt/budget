@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { nextOccurrenceWithSameDom } from "../../data/recurrence";
 import type { RecurrenceRule } from "../../data/recurrence";
 import type {
@@ -107,8 +111,8 @@ type Props = {
   // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
   // typeIds map for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   settings: Settings;
   hintPrefill?: HistoryPromotePrefill | null;
   matches?: ReadonlyArray<HistoryMatchPreview>;
@@ -221,9 +225,18 @@ export function BudgetPromoteHistoryForm({
   // Wrap the company picker's onSelect so a confident company → type
   // pairing auto-fills the empty type. The user can still override
   // either field afterwards.
+  const parsedAbs = parseAmount(amount);
+  const parsedAmount =
+    parsedAbs === null
+      ? null
+      : negative
+        ? -Math.abs(parsedAbs)
+        : Math.abs(parsedAbs);
+
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    parsedAmount,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -257,14 +270,6 @@ export function BudgetPromoteHistoryForm({
     },
     [],
   );
-
-  const parsedAbs = parseAmount(amount);
-  const parsedAmount =
-    parsedAbs === null
-      ? null
-      : negative
-        ? -Math.abs(parsedAbs)
-        : Math.abs(parsedAbs);
 
   function toggleSign() {
     setNegative((s) => !s);
@@ -330,7 +335,9 @@ export function BudgetPromoteHistoryForm({
               onCreate={onCreateType}
               onCreateCategory={onCreateCategory}
               hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                companyId
+                  ? (companyTypeHints.get(companyId, parsedAmount) ?? [])
+                  : []
               }
             />
           </div>

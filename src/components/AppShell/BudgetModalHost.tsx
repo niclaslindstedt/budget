@@ -1,5 +1,9 @@
 import { useCallback, useMemo } from "react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { ApplySeriesDialog } from "../ApplySeriesDialog";
 import { BudgetBulkEditModal } from "../budget/BudgetBulkEditModal";
 import { BudgetComplexEntryModal } from "../budget/BudgetComplexEntryModal";
@@ -68,8 +72,8 @@ type Props = {
   // whose type isn't set yet. `companyTypeHints` is the companyId →
   // ranked hint typeIds map, forwarded the same way so each modal's
   // TypePicker can render its "Suggested" band.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   // normalised description → ranked companyIds (see
   // `computeDescriptionCompanyHints`). Forwarded to the per-entry
   // history editor so its CompanyPicker surfaces the company the user

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import type { CompanyTypeSuggestionLookup } from "../../../data/company-type-amounts";
 import { unlock } from "../../../data/achievements";
 import { autoTypeForCompany } from "../../../data/company-type-hints";
 import { SERIES_PROPAGATABLE_COLUMN_TYPES } from "../../../data/budget/rows";
@@ -62,7 +63,7 @@ type Params = {
   // entry's current `userTypeId` before deciding whether to auto-fill.
   history: Readonly<Record<string, readonly HistoryEntry[]>>;
   // (company, type) tallies feeding the auto-type-on-company-pick rule.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
   // Active effective settings — used to pre-format the correction
   // delete prompt's delta text.
   effectiveSettings: Settings;
@@ -448,6 +449,7 @@ export function useRowMutations({
           userTypeId,
           companyId,
           companyTypeSuggestions,
+          entry?.amount ?? null,
         );
         const patch: {
           userCompanyId: string | null;
@@ -465,10 +467,13 @@ export function useRowMutations({
         return;
       }
       const rowTypeId = row.typeId ?? null;
+      const amountCol = findColumnByType(activeColumns, "amount");
+      const amountCell = amountCol ? row.cells[amountCol.id] : undefined;
       const autoTypeId = autoTypeForCompany(
         rowTypeId,
         companyId,
         companyTypeSuggestions,
+        typeof amountCell === "number" ? amountCell : null,
       );
       const patch: {
         companyId: string | null;
