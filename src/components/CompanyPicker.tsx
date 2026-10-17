@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Ban, Building2, Check, ChevronDown, Plus, X } from "lucide-react";
 
 import type { Company } from "../data/types";
@@ -58,6 +58,10 @@ type Props = {
   // future inline cell uses the same component.
   variant?: "chip" | "field";
   placeholder?: string;
+  // Rendered atop the "New company" creator — typically an
+  // `EntrySummary` of the transaction the picker is labelling, so the
+  // user can still see it once the creator modal covers the editor.
+  creatorContext?: ReactNode;
 };
 
 export function CompanyPicker({
@@ -71,6 +75,7 @@ export function CompanyPicker({
   hintCompanyIds,
   variant = "field",
   placeholder,
+  creatorContext,
 }: Props) {
   const t = useT();
   const placeholderText = placeholder ?? t("company.pickCompanyEllipsis");
@@ -358,6 +363,7 @@ export function CompanyPicker({
       {creating && (
         <CompanyCreator
           existing={companies}
+          context={creatorContext}
           onCancel={close}
           onSubmit={(draft) => {
             const created = onCreate(draft);
@@ -374,10 +380,12 @@ export function CompanyPicker({
 // shape of `CategoryCreator` minus the colour / glyph pickers.
 function CompanyCreator({
   existing,
+  context,
   onCancel,
   onSubmit,
 }: {
   existing: readonly Company[];
+  context?: ReactNode;
   onCancel: () => void;
   onSubmit: (draft: Omit<Company, "id">) => void;
 }) {
@@ -410,6 +418,7 @@ function CompanyCreator({
         onClose={onCancel}
       />
       <Modal.Body>
+        {context && <div className="mb-3">{context}</div>}
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted">{t("company.name")}</span>
           <ClearableInput

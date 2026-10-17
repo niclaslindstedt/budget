@@ -8,6 +8,7 @@ const company = {
   omitCompany: "Omit company",
   omittedLabel: "Company omitted",
   newCompany: "New company",
+  forTransaction: "For this transaction",
   editCompany: "Edit company",
   noCompaniesYet: "No companies yet.",
   suggested: "Suggested",

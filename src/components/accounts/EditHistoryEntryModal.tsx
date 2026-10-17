@@ -12,7 +12,7 @@ import {
   useDesktopAutoFocus,
   useResetOnOpen,
 } from "../../hooks";
-import { useLang, useT } from "../../i18n";
+import { useT } from "../../i18n";
 import type {
   Category,
   Company,
@@ -22,9 +22,9 @@ import type {
   Settings,
   Tag,
 } from "../../data/types";
-import { formatBalance, formatShortDate } from "../../utils/format";
 import { parseInt32 } from "../../utils/parse";
 import { CompanyPicker } from "../CompanyPicker";
+import { EntrySummary } from "../EntrySummary";
 import { Button, Checkbox, ClearableInput } from "../form";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
@@ -104,7 +104,6 @@ export function EditHistoryEntryModal({
   onCreateTag,
 }: Props) {
   const t = useT();
-  const lang = useLang();
 
   const initialDescription = entry?.userDescription ?? "";
   const initialTypeId = entry?.userTypeId ?? null;
@@ -196,26 +195,12 @@ export function EditHistoryEntryModal({
       />
       <Modal.Body>
         <p className="mb-3 text-sm text-muted">{t("editHistory.hint")}</p>
-        <fieldset className="mb-4 flex flex-col gap-1.5 rounded border border-line bg-surface-3 p-3">
-          <legend className="px-1 text-xs text-muted">
-            {t("editHistory.originalDescription")}
-          </legend>
-          <div className="flex flex-wrap items-baseline gap-2 text-xs">
-            <span className="font-mono text-muted">
-              {formatShortDate(entry.date, settings.shortDateFormat, lang)}
-            </span>
-            <span
-              className={`font-mono tabular-nums ${
-                entry.amount < 0 ? "text-negative" : "text-positive"
-              }`}
-            >
-              {formatBalance(entry.amount, settings)}
-            </span>
-          </div>
-          <p className="font-mono text-sm break-words whitespace-pre-wrap text-fg">
-            {entry.description || "—"}
-          </p>
-        </fieldset>
+        <EntrySummary
+          legend={t("editHistory.originalDescription")}
+          description={entry.description}
+          figures={{ date: entry.date, amount: entry.amount, settings }}
+          className="mb-4"
+        />
         <div className="grid gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted">
@@ -230,6 +215,13 @@ export function EditHistoryEntryModal({
               onOmitChange={setNoCompany}
               onCreate={onCreateCompany}
               hintCompanyIds={companyHintIds}
+              creatorContext={
+                <EntrySummary
+                  legend={t("company.forTransaction")}
+                  description={entry.description}
+                  figures={{ date: entry.date, amount: entry.amount, settings }}
+                />
+              }
             />
           </div>
           <div className="flex flex-col gap-1">

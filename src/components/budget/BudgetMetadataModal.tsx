@@ -51,14 +51,10 @@ import type {
   Settings,
   Tag,
 } from "../../data/types";
-import {
-  formatBalance,
-  formatDate,
-  formatShortDate,
-  formatYearMonth,
-} from "../../utils/format";
+import { formatBalance, formatDate, formatYearMonth } from "../../utils/format";
 import { indexById } from "../../utils/indexById";
 import { CompanyPicker } from "../CompanyPicker";
+import { EntrySummary } from "../EntrySummary";
 import { Button, Checkbox, ClearableInput, SignedAmountInput } from "../form";
 import { Modal } from "../Modal";
 import { TagsPicker } from "../TagsPicker";
@@ -779,6 +775,14 @@ export function BudgetMetadataModal({
 
   if (!open) return null;
 
+  const companyCreatorContext = current ? (
+    <EntrySummary
+      legend={t("company.forTransaction")}
+      description={current.description}
+      figures={{ date: current.date, amount: current.amount, settings }}
+    />
+  ) : undefined;
+
   return (
     <Modal
       open={open}
@@ -808,30 +812,12 @@ export function BudgetMetadataModal({
                 total: monthTotal,
               })}
             </p>
-            <fieldset className="mb-4 flex flex-col gap-1.5 rounded border border-line bg-surface-3 p-3">
-              <legend className="px-1 text-xs text-muted">
-                {t("metadata.fromBank")}
-              </legend>
-              <div className="flex flex-wrap items-baseline gap-2 text-xs">
-                <span className="font-mono text-muted">
-                  {formatShortDate(
-                    current.date,
-                    settings.shortDateFormat,
-                    lang,
-                  )}
-                </span>
-                <span
-                  className={`font-mono tabular-nums ${
-                    current.amount < 0 ? "text-negative" : "text-positive"
-                  }`}
-                >
-                  {formatBalance(current.amount, settings)}
-                </span>
-              </div>
-              <p className="font-mono text-sm break-words whitespace-pre-wrap text-fg">
-                {current.description || "—"}
-              </p>
-            </fieldset>
+            <EntrySummary
+              legend={t("metadata.fromBank")}
+              description={current.description}
+              figures={{ date: current.date, amount: current.amount, settings }}
+              className="mb-4"
+            />
             {splitting ? (
               <div className="grid gap-3">
                 <p className="text-xs text-muted">{t("metadata.splitIntro")}</p>
@@ -904,6 +890,7 @@ export function BudgetMetadataModal({
                     }
                     onCreate={onCreateCompany}
                     hintCompanyIds={companyHintIds}
+                    creatorContext={companyCreatorContext}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -982,6 +969,7 @@ export function BudgetMetadataModal({
                       onOmitChange={setNoCompany}
                       onCreate={onCreateCompany}
                       hintCompanyIds={companyHintIds}
+                      creatorContext={companyCreatorContext}
                     />
                     <span className="text-xs text-muted">
                       {noCompany

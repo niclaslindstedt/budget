@@ -21,6 +21,7 @@ import { ClearableTextarea } from "../../form";
 import { useT } from "../../../i18n";
 import { displayTypeName } from "../../../i18n/preset-names";
 import { CompanyPicker } from "../../CompanyPicker";
+import { EntrySummary } from "../../EntrySummary";
 import {
   EntryDescriptionContent,
   resolveEntryDescriptionDisplay,
@@ -571,6 +572,14 @@ function DescriptionPopover({
               onCreate={onCreateCompany}
               hintCompanyIds={companyHintIds}
               variant="field"
+              creatorContext={
+                bankText ? (
+                  <EntrySummary
+                    legend={t("company.forTransaction")}
+                    description={bankText}
+                  />
+                ) : undefined
+              }
             />
           </div>
         )}
