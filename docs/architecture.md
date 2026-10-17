@@ -590,6 +590,8 @@ src/
 │   ├── company-type-hints.ts  # company→type + type→company + description→company
 │   │                       #   hints (manual + learned); consumed by budget,
 │   │                       #   accounts, and the AppShell hooks (cross-page)
+│   ├── company-type-amounts.ts  # amount-aware company→type ranking +
+│   │                       #   confident prediction (log-amount KDE per pairing)
 │   ├── cover-transfer.ts   # cover-transfer roles + message matching
 │   │                       #   (generateCoverMessage, buildCoverIndex,
 │   │                       #    applyCoverRoles, attachImportedCoverTransfers);

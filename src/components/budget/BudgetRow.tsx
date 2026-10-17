@@ -122,6 +122,7 @@ function BudgetRowImpl({
     companiesById,
     itemsById,
     companyTypeHints,
+    companyTypeSuggestions,
     typeCompanyHints,
     descriptionCompanyHints,
     descriptionInductions,
@@ -132,12 +133,6 @@ function BudgetRowImpl({
   const company = row.companyId
     ? (companiesById.get(row.companyId) ?? null)
     : null;
-  // The row's company → type hint ids, surfaced as the "Suggested" band
-  // in the inline type picker. Empty when the row has no company.
-  const typeHintIds = useMemo(
-    () => (row.companyId ? (companyTypeHints.get(row.companyId) ?? []) : []),
-    [companyTypeHints, row.companyId],
-  );
   // The row's type → company hint ids — that type's most-used
   // companies. Empty when the row has no type set yet.
   const typeCompanyHintIds = useMemo(
@@ -311,11 +306,34 @@ function BudgetRowImpl({
     induction?.companyId && !row.companyId && row.noCompany !== true
       ? induction.companyId
       : undefined;
-  const suggestedTypeId =
-    induction?.typeId && !row.typeId ? induction.typeId : undefined;
   const suggestedCompany = suggestedCompanyId
     ? (companiesById.get(suggestedCompanyId) ?? null)
     : null;
+  // The company the type hints key off: the row's own, else the one the
+  // induction suggests (so an untagged row still gets a useful
+  // "Suggested" band and type guess before the company is accepted).
+  const hintCompanyId = row.companyId ?? suggestedCompany?.id;
+  const rowAmount = typeof amountValue === "number" ? amountValue : null;
+  // The company → type hint ids, ranked for the row's amount and
+  // surfaced as the "Suggested" band in the inline type picker. Empty
+  // when no company is known.
+  const typeHintIds = useMemo(
+    () =>
+      hintCompanyId
+        ? (companyTypeHints.get(hintCompanyId, rowAmount) ?? [])
+        : [],
+    [companyTypeHints, hintCompanyId, rowAmount],
+  );
+  // When the merchant's connections disagree on a type (e.g. a grocery
+  // store filed under both groceries and snacks), fall back to the
+  // amount-aware company → type prediction, which only answers when the
+  // amount points confidently at one type.
+  const suggestedTypeId = row.typeId
+    ? undefined
+    : (induction?.typeId ??
+      (isHistory && hintCompanyId
+        ? companyTypeSuggestions.get(hintCompanyId, rowAmount)
+        : undefined));
   const suggestedType = suggestedTypeId
     ? (typesById.get(suggestedTypeId) ?? null)
     : null;

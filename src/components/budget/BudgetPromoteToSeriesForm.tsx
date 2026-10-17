@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import type { RecurrenceRule } from "../../data/recurrence";
 import { findColumnByType } from "../../data/sheet";
 import type {
@@ -30,8 +34,8 @@ type Props = {
   // CompanyPicker. `companyTypeHints` is the companyId → ranked hint
   // typeIds map for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   // Past bank-history rows that share this row's merchant key. Shown
   // greyed-out alongside the future preview so the user can see what
   // settled entries will adopt the typed label (those rows aren't
@@ -67,6 +71,14 @@ export function BudgetPromoteToSeriesForm({
 }: Props) {
   const t = useT();
   const dateCol = useMemo(() => findColumnByType(columns, "date"), [columns]);
+  const amountCol = useMemo(
+    () => findColumnByType(columns, "amount"),
+    [columns],
+  );
+  // The anchor row's amount steers the company → type suggestions toward
+  // the types this company is usually filed under at this price.
+  const amountCell = amountCol ? row.cells[amountCol.id] : undefined;
+  const rowAmount = typeof amountCell === "number" ? amountCell : null;
 
   const initialDate =
     dateCol && typeof row.cells[dateCol.id] === "string"
@@ -87,6 +99,7 @@ export function BudgetPromoteToSeriesForm({
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    rowAmount,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -144,7 +157,9 @@ export function BudgetPromoteToSeriesForm({
             onCreate={onCreateType}
             onCreateCategory={onCreateCategory}
             hintTypeIds={
-              companyId ? (companyTypeHints.get(companyId) ?? []) : []
+              companyId
+                ? (companyTypeHints.get(companyId, rowAmount) ?? [])
+                : []
             }
           />
         </div>

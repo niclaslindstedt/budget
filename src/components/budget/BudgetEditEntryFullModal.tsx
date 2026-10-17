@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import { Pencil } from "lucide-react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { unlock } from "../../data/achievements";
 import { sortRowsByDate } from "../../data/budget/rows";
 import type {
@@ -64,8 +68,8 @@ type Props = {
   // companyId → suggested typeId for the auto-fill, and companyId →
   // ranked hint typeIds for the picker's "Suggested" band. See
   // `src/data/company-type-hints.ts`.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
+  companyTypeHints: CompanyTypeHintLookup;
   settings: Settings;
   // Last ISO date in the same series — defaults the "until" picker
   // when the user picks the future scope. `null` for one-off rows.
@@ -210,9 +214,17 @@ export function BudgetEditEntryFullModal({
     shiftDaysText,
   } = state;
 
+  const parsedAbs = parseAmount(amount);
+  const parsedAmount =
+    parsedAbs === null
+      ? null
+      : negative
+        ? -Math.abs(parsedAbs)
+        : Math.abs(parsedAbs);
   const autoTypeForPickedCompany = useAutoTypeForCompany(
     typeId,
     companyTypeSuggestions,
+    parsedAmount,
   );
   const handlePickCompany = useCallback(
     (next: string | null) => {
@@ -264,13 +276,6 @@ export function BudgetEditEntryFullModal({
 
   if (!open || !row) return null;
 
-  const parsedAbs = parseAmount(amount);
-  const parsedAmount =
-    parsedAbs === null
-      ? null
-      : negative
-        ? -Math.abs(parsedAbs)
-        : Math.abs(parsedAbs);
   // Whether this row reads as income — drives the gate on the
   // primary-income toggle below. A row is income when its sign toggle
   // says positive OR when its typeId resolves to a `kind: "income"`
@@ -408,7 +413,9 @@ export function BudgetEditEntryFullModal({
               onCreateCategory={onCreateCategory}
               amountSign={pickerSign}
               hintTypeIds={
-                companyId ? (companyTypeHints.get(companyId) ?? []) : []
+                companyId
+                  ? (companyTypeHints.get(companyId, parsedAmount) ?? [])
+                  : []
               }
             />
           </div>

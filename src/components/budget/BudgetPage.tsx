@@ -11,6 +11,10 @@ import {
   Tags,
 } from "lucide-react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import { unlock } from "../../data/achievements";
 import { applyCoverRoles } from "../../data/cover-transfer";
 import type { InducedEntryMetadata } from "../../data/company-type-hints";
@@ -95,11 +99,11 @@ type Props = {
   // type on entries that don't have one. The description popover's
   // inline picker routes through `onSetRowCompany` (defined in
   // AppShell) which applies the same rule directly.
-  companyTypeSuggestions: ReadonlyMap<string, string>;
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
   // companyId → ranked hint typeIds (see `computeCompanyTypeHints`).
   // Surfaced into BudgetContext so the row's inline type picker can
   // render its "Suggested" band, and forwarded to the metadata modal.
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeHints: CompanyTypeHintLookup;
   // typeId → ranked hint companyIds (see `computeTypeCompanyHints`).
   // Surfaced into BudgetContext so the row's description popover can
   // render its "Suggested" companies band when a type is picked first.
@@ -377,6 +381,7 @@ export function BudgetPage({
       companiesById,
       itemsById,
       companyTypeHints,
+      companyTypeSuggestions,
       typeCompanyHints,
       descriptionCompanyHints,
       descriptionInductions,
@@ -394,6 +399,7 @@ export function BudgetPage({
       companiesById,
       itemsById,
       companyTypeHints,
+      companyTypeSuggestions,
       typeCompanyHints,
       descriptionCompanyHints,
       descriptionInductions,

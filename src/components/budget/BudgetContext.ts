@@ -1,5 +1,9 @@
 import { createContext, useContext } from "react";
 
+import type {
+  CompanyTypeHintLookup,
+  CompanyTypeSuggestionLookup,
+} from "../../data/company-type-amounts";
 import type { InducedEntryMetadata } from "../../data/company-type-hints";
 import type {
   Category,
@@ -35,10 +39,16 @@ export type BudgetContextValue = {
   // re-scanning the array. Consumed by the description cell to render
   // the line-item pill / glyph and the popover's line-item list.
   itemsById: ReadonlyMap<string, Item>;
-  // companyId → ranked hint typeIds (see `computeCompanyTypeHints`).
+  // companyId → ranked hint typeIds (see `computeCompanyTypeHints`),
+  // re-ranked for an amount (see `createCompanyTypeHintLookup`).
   // Consumed by the row's inline type cell to render its "Suggested"
   // band for the row's company.
-  companyTypeHints: ReadonlyMap<string, readonly string[]>;
+  companyTypeHints: CompanyTypeHintLookup;
+  // companyId (+ amount) → the one type to suggest, or nothing (see
+  // `createCompanyTypeSuggestionLookup`). Consumed by `BudgetRow` as the
+  // type fallback for an untagged history row's suggestion pill when the
+  // merchant's connections don't agree on one type.
+  companyTypeSuggestions: CompanyTypeSuggestionLookup;
   // typeId → ranked hint companyIds (see `computeTypeCompanyHints`).
   // The inverse direction: consumed by the row's description popover so
   // picking a type first surfaces that type's most-used companies atop

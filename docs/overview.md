@@ -3600,6 +3600,36 @@ A company's associated types ("suggested type"), ranked manual
 company resolving to one type instant-fills it on pick; several render
 as the "Suggested" band atop `TypePicker`.
 
+### Amount-aware type prediction
+
+The same company often sells different things at different price points
+— a grocery store's big shop is groceries, a small top-up is snacks — so
+the company type hints are made **amount-aware** by
+`src/data/company-type-amounts.ts`. `computeCompanyTypeAmountModel`
+collects the signed amounts of every `(companyId, typeId)` pairing (budget
+rows, history-entry overrides, history splits), and
+`scoreTypesForAmount` scores each type for a new amount as a sum of
+Gaussian kernels over the log-distance to each same-sign past sample
+(log-space so 40 vs 60 is as close as 400 vs 600; summing per sample
+folds the usage prior in). Two lookups wrap the static hints and are
+threaded everywhere the plain maps used to be (`companyTypeHints` /
+`companyTypeSuggestions` props, `BudgetContext`):
+
+- `createCompanyTypeHintLookup` — `rankTypesForAmount` re-orders the
+  "Suggested" band so the types used near this amount lead (a rarely
+  used type cut from the capped base list can still surface); with no
+  amount, or one far from every sample, the usage order stands.
+- `createCompanyTypeSuggestionLookup` — a single-type company still
+  always instant-fills; a multi-type company instant-fills only when
+  `predictTypeForAmount` is confident (the leading type holds ≥ 80% of
+  the evidence with roughly two close samples behind it).
+
+Every entry modal passes its current signed amount, the inline row
+company writer (`onSetRowCompany`) passes the row / entry amount, and
+`BudgetRow` uses the confident prediction as the type fallback for an
+untagged history row's [metadata suggestion](#metadata-suggestion).
+Purely usage-derived and recomputed whenever `data` changes.
+
 ### Type company hint
 
 The inverse direction: a type's most-used companies, ranked by learned
@@ -3666,7 +3696,12 @@ field is only suggested when the row doesn't already resolve it (no
 company unless one is set or the row omits a company; no type unless one
 is set), so accepting always moves the row toward "finished". Resolved
 per-row via `descriptionMetadataInductionFor`; threaded through
-`BudgetContext.descriptionInductions`.
+`BudgetContext.descriptionInductions`. When the merchant's connections
+disagree on a type (a store filed under both groceries and snacks), the
+type falls back to the [amount-aware type prediction](#amount-aware-type-prediction)
+for the row's (or the suggested) company, which only answers when the
+amount points confidently at one type. The same company also feeds the
+inline type picker's "Suggested" band, ranked for the row's amount.
 
 ### Drag-to-reorder
 
