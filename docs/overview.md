@@ -3539,7 +3539,13 @@ every available type — typing never matches the category names, so
 type's category pane ("Bakery" under Food) with the cursor on, and the
 matched characters highlighted in, that type's chip; extending the
 buffer from inside a type pane can likewise jump across categories.
-Its "New company" creator submits on Enter.
+Its "New company" creator submits on Enter. When the picker is labelling
+a bank transaction (metadata mode, the history-entry edit modal, the
+budget description cell), the caller passes a `creatorContext` — an
+`EntrySummary` card (`src/components/EntrySummary.tsx`) with the
+transaction's date, amount, and bank text — which the creator renders
+above the name field, so the user can still see which transaction
+prompted the new company once the creator covers the editor.
 
 ### Company category
 
